@@ -8,15 +8,15 @@ mutable struct ParameterizedModelTimeSeries{UU, VV, BΘ, EE}
                      e :: EE
 end
 
-function model_time_series(parameters, nll)
+function model_time_series(parameters, loss)
 
-    model_plus_Δt = nll.model
-    data = nll.data
+    model_plus_Δt = loss.model
+    data = loss.data
 
     # Nt = length(data.t)
 
     # start = 1
-    start = nll.loss.targets[1]
+    start = loss.targets[1]
     Nt = length(data.t) - start + 1
 
     initialize_forward_run!(model_plus_Δt, data, parameters, start)

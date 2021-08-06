@@ -22,20 +22,20 @@ plot_prefix = "annealing__prior_mean_center_bound"
 # set_prior_means_to_initial_parameters = true
 # plot_prefix = "annealing__prior_mean_optimal"
 
-function loss_closure(nll)
-        ℒ(parameters::ParametersToOptimize) = nll(parameters)
-        ℒ(parameters::Vector) = nll(ParametersToOptimize([parameters...]))
+function loss_closure(loss)
+        ℒ(parameters::ParametersToOptimize) = loss(parameters)
+        ℒ(parameters::Vector) = loss(ParametersToOptimize([parameters...]))
         return ℒ
 end
 
-nll, initial_parameters = custom_tke_calibration(LESdata, RelevantParameters, ParametersToOptimize;
+loss, initial_parameters = custom_tke_calibration(LESdata, RelevantParameters, ParametersToOptimize;
                                         loss_closure = loss_closure,
                                         relative_weights = relative_weights)
 
 initial_parameters = ParametersToOptimize([0.1320799067908237, 0.21748565946199314, 0.051363488558909924, 0.5477193236638974, 0.8559038503413254, 3.681157252463703, 2.4855193201082426])
-nll(initial_parameters)
+loss(initial_parameters)
 
-function simulated_annealing_experimental(nll, initial_parameters;
+function simulated_annealing_experimental(loss, initial_parameters;
                                                 samples = 500,
                                              iterations = 5,
                   set_prior_means_to_initial_parameters = true,
@@ -49,7 +49,7 @@ function simulated_annealing_experimental(nll, initial_parameters;
    initial_parameters = set_prior_means_to_initial_parameters ? initial_parameters : [mean.(bounds)...]
 
     # Iterative simulated annealing...
-    prob = anneal(nll, initial_parameters, variance, BoundedNormalPerturbation, bounds;
+    prob = anneal(loss, initial_parameters, variance, BoundedNormalPerturbation, bounds;
                            iterations = iterations,
                               samples = samples,
                    annealing_schedule = AdaptiveAlgebraicSchedule(   initial_scale = initial_scale,
@@ -70,11 +70,11 @@ bounds, _ = get_bounds_and_variance(initial_parameters; stds_within_bounds = 0);
 annealing_initial_parameters = ParametersToOptimize([mean.(bounds)...])
 function loss_reduction(kwargs)
     println(kwargs)
-    initial_loss = nll(annealing_initial_parameters)
-    prob = simulated_annealing_experimental(nll, annealing_initial_parameters; samples=200, iterations=5, set_prior_means_to_initial_parameters = set_prior_means_to_initial_parameters, kwargs...);
+    initial_loss = loss(annealing_initial_parameters)
+    prob = simulated_annealing_experimental(loss, annealing_initial_parameters; samples=200, iterations=5, set_prior_means_to_initial_parameters = set_prior_means_to_initial_parameters, kwargs...);
     final_parameters = Dao.optimal(prob.markov_chains[end]).param
     println([final_parameters...])
-    loss_reduction = nll(final_parameters) / initial_loss
+    loss_reduction = loss(final_parameters) / initial_loss
     println(loss_reduction)
     return loss_reduction
 end

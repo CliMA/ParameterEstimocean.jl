@@ -4,16 +4,16 @@ using OceanTurbulenceParameterEstimation
 colors = Dict("u" => :blue, "v" => :green, "b" => :red, :e => :yellow)
 x_lims = Dict("u" => (-0.3,0.4), "v" => (-0.3,0.1), "b" => (19.6,20.0), "e" => (-0.5,4))
 
-function animate_LESbrary_suite(ce, directory; parameters=ce.default_parameters, targets=ce.validation.nll.batch[1].loss.targets)
+function animate_LESbrary_suite(ce, directory; parameters=ce.default_parameters, targets=ce.validation.loss.batch[1].loss.targets)
 
     # Cast `parameters` as Freeparameter object in case it is vector-valued
     parameters = ce.parameters.ParametersToOptimize(parameters)
 
     truth = Dict()
     model = Dict()
-    for mynll in ce.validation.nll.batch
-        truth[mynll.data.name] = mynll.data
-        model[mynll.data.name] = model_time_series(parameters, mynll)
+    for myloss in ce.validation.loss.batch
+        truth[myloss.data.name] = myloss.data
+        model[myloss.data.name] = model_time_series(parameters, myloss)
     end
 
     function plot_(name, file, t)

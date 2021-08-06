@@ -45,13 +45,13 @@ calibration = dataset(FourDaySuite, p; relative_weights = relative_weight_option
 validation = dataset(merge(TwoDaySuite, SixDaySuite), p; relative_weights = relative_weight_options["all_but_e"], grid_type=ZGrid, grid_size=64, Δt=10.0);
 ce = CalibrationExperiment(calibration, validation, p);
 
-nll = ce.calibration.nll_wrapper
-nll_validation = ce.validation.nll_wrapper
+loss = ce.calibration.loss
+loss_validation = ce.validation.loss
 initial_parameters = ce.calibration.default_parameters
 parameternames = propertynames(initial_parameters)
 
-plot_stds_within_bounds(nll, nll_validation, initial_parameters, directory, xrange=-3:0.25:5)
-v = plot_prior_variance(nll, nll_validation, initial_parameters, directory; xrange=0.1:0.05:1.0)
-plot_num_ensemble_members(nll, nll_validation, initial_parameters, directory; xrange=1:5:30)
-nl = plot_observation_noise_level(nll, nll_validation, initial_parameters, directory; xrange=-2.0:0.1:3.0)
+plot_stds_within_bounds(loss, loss_validation, initial_parameters, directory, xrange=-3:0.25:5)
+v = plot_prior_variance(loss, loss_validation, initial_parameters, directory; xrange=0.1:0.05:1.0)
+plot_num_ensemble_members(loss, loss_validation, initial_parameters, directory; xrange=1:5:30)
+nl = plot_observation_noise_level(loss, loss_validation, initial_parameters, directory; xrange=-2.0:0.1:3.0)
 

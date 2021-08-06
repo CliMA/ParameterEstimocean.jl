@@ -24,7 +24,7 @@ export
        set!,
 
        # tke_utils.jl
-       get_nll,
+       get_loss,
        init_tke_calibration,
        dataset,
 
@@ -78,11 +78,10 @@ Base.@kwdef struct Parameters{T <: UnionAll}
     ParametersToOptimize::T
 end
 
-struct DataSet{LD, RW, NLL, NW, FP}
+struct DataSet{LD, RW, NLL, FP}
         LESdata::LD
         relative_weights::RW # field weights
-        nll::NLL
-        nll_wrapper::NW
+        loss::NLL
         default_parameters::FP
 end
 
@@ -98,11 +97,11 @@ function CalibrationExperiment(calibration, validation, parameters)
 end
 
 function validation_loss_reduction(ce::CalibrationExperiment, parameters::FreeParameters)
-    validation_loss = ce.validation.nll(parameters)
-    calibration_loss = ce.calibration.nll(parameters)
+    validation_loss = ce.validation.loss(parameters)
+    calibration_loss = ce.calibration.loss(parameters)
 
-    default_validation_loss = ce.validation.nll(ce.default_parameters)
-    default_calibration_loss = ce.calibration.nll(ce.default_parameters)
+    default_validation_loss = ce.validation.loss(ce.default_parameters)
+    default_calibration_loss = ce.calibration.loss(ce.default_parameters)
 
     validation_loss_reduction = validation_loss/default_validation_loss
     println("Parameters: $([parameters...])")

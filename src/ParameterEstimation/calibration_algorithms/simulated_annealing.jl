@@ -1,4 +1,4 @@
-function simulated_annealing(nll, initial_parameters, ParametersToOptimize;
+function simulated_annealing(loss, initial_parameters, ParametersToOptimize;
                                                 samples = 100,
                                              iterations = 5,
                   set_prior_means_to_initial_parameters = true,
@@ -19,7 +19,7 @@ function simulated_annealing(nll, initial_parameters, ParametersToOptimize;
     prior_means = set_prior_means_to_initial_parameters ? initial_parameters : ParametersToOptimize([mean.(bounds)...])
 
     # Iterative simulated annealing...
-    prob = anneal(nll, prior_means, variance, BoundedNormalPerturbation, bounds;
+    prob = anneal(loss, prior_means, variance, BoundedNormalPerturbation, bounds;
                            iterations = iterations,
                               samples = samples,
                    annealing_schedule = annealing_schedule,

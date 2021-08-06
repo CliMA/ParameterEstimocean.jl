@@ -38,7 +38,7 @@ function init_tke_calibration(datapath;
 
     set!(model, td, 1)
 
-    return init_negative_log_likelihood(model, td, first_target, last_target,
+    return init_loss_function(model, td, first_target, last_target,
                                         fields, relative_weights)
 end
 
@@ -46,12 +46,12 @@ tke_fields(datum) = !(datum.stressed) ? (:b, :e) :
                     !(datum.rotating) ? (:b, :u, :e) :
                                         (:b, :u, :v, :e)
 
-function get_nll(LEScase, p::Parameters, relative_weights; grid_type=ZGrid, grid_size=64, Δt=10.0)
+function get_loss(LEScase, p::Parameters, relative_weights; grid_type=ZGrid, grid_size=64, Δt=10.0)
 
     fields = tke_fields(LEScase)
 
     relative_weights_ = [relative_weights[field] for field in fields]
-    nll = init_tke_calibration(LEScase.filename;
+    loss = init_tke_calibration(LEScase.filename;
                                      grid_type = grid_type,
                                      grid_size = grid_size,
                                             Δt = Δt,
@@ -63,10 +63,10 @@ function get_nll(LEScase, p::Parameters, relative_weights; grid_type=ZGrid, grid
                             )
 
     # Set model to custom defaults
-    set!(nll.model, custom_defaults(nll.model, p.RelevantParameters))
+    set!(loss.model, custom_defaults(loss.model, p.RelevantParameters))
 
-    default_parameters = custom_defaults(nll.model, p.ParametersToOptimize)
-    return nll, default_parameters
+    default_parameters = custom_defaults(loss.model, p.ParametersToOptimize)
+    return loss, default_parameters
 end
 
 function dataset(LESdata, p::Parameters{UnionAll}; relative_weights = Dict(:b => 1.0, :u => 1.0, :v => 1.0, :e => 1.0), grid_type=ZGrid, grid_size=64, Δt=60.0)
@@ -74,7 +74,7 @@ function dataset(LESdata, p::Parameters{UnionAll}; relative_weights = Dict(:b =>
     if typeof(LESdata) <: NamedTuple
 
         # Single simulation
-        nll, default_parameters = get_nll(LESdata, p, relative_weights; grid_type=grid_type, grid_size=grid_size, Δt=Δt)
+        loss, default_parameters = get_loss(LESdata, p, relative_weights; grid_type=grid_type, grid_size=grid_size, Δt=Δt)
 
     else
 
@@ -82,15 +82,15 @@ function dataset(LESdata, p::Parameters{UnionAll}; relative_weights = Dict(:b =>
         batch = []
         default_parameters = nothing
         for LEScase in values(LESdata)
-            nll, default_parameters = get_nll(LEScase, p, relative_weights; grid_type=grid_type, grid_size=grid_size, Δt=Δt)
-            push!(batch, nll)
+            loss, default_parameters = get_loss(LEScase, p, relative_weights; grid_type=grid_type, grid_size=grid_size, Δt=Δt)
+            push!(batch, loss)
         end
-        nll = BatchedNegativeLogLikelihood([nll for nll in batch],
+        loss = BatchedLossFunction([loss for loss in batch],
                                             weights=[1.0 for d in LESdata])
     end
 
-    # Loss wrapper for vector input
-    nll_wrapper(θ::Vector) = nll(p.ParametersToOptimize(θ))
+    loss(θ::Vector) = loss(p.ParametersToOptimize(θ))
+    loss(θ::FreeParameters) = loss(θ)
 
-    return DataSet(LESdata, relative_weights, nll, nll_wrapper, default_parameters)
+    return DataSet(LESdata, relative_weights, loss, default_parameters)
 end

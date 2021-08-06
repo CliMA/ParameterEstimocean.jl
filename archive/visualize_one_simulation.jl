@@ -58,22 +58,22 @@ params = [0.7212840482250865, 0.758750120145174, 0.1513196166076823, 0.733733950
 
 params = [19.856400080198597, 4.457257067068098]
 
-# ce.validation.nll(initial_parameters)
-# ce.validation.nll_wrapper(params)
+# ce.validation.loss(initial_parameters)
+# ce.validation.loss(params)
 # params = initial_parameters
 
 params = [3.618765767212402, 1.3051900286568907]
-ce.calibration.nll_wrapper(params)
-ce.calibration.nll_wrapper([1.3169453047222575, 1.5077502014763762])
-ce.calibration.nll_wrapper([19.856400080198597, 4.457257067068098])
+ce.calibration.loss(params)
+ce.calibration.loss([1.3169453047222575, 1.5077502014763762])
+ce.calibration.loss([19.856400080198597, 4.457257067068098])
 
 parameters = ce.default_parameters
 parameters = ce.parameters.ParametersToOptimize(params)
 Truth = Dict()
 CATKE = Dict()
-for mynll in ce.validation.nll.batch
-    Truth[mynll.data.name] = mynll.data
-    CATKE[mynll.data.name] = model_time_series(parameters, mynll)
+for myloss in ce.validation.loss.batch
+    Truth[myloss.data.name] = myloss.data
+    CATKE[myloss.data.name] = model_time_series(parameters, myloss)
 end
 
 f = Dict(

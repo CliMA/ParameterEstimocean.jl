@@ -50,7 +50,7 @@ loss_function = LossFunction(model, tdata,
                             )
 
 # This version of the loss runs the forward model internally
-loss = NegativeLogLikelihood(model, tdata, loss_function)
+loss = LossFunction(model, tdata, loss_function)
 loss(default_parameters)
 
 # Run forward map and then compute loss from forward map output

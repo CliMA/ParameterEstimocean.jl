@@ -11,7 +11,7 @@ datapath = joinpath(FourDaySuite_path, LEScase.filename)
 RelevantParameters = TKEConvectiveAdjustmentRiIndependent
 ParametersToOptimize = TKEConvectiveAdjustmentRiIndependent
 
-nll = init_tke_calibration(datapath;
+loss = init_tke_calibration(datapath;
                                          N = 32,
                                         Δt = 60.0, #1minute
                               first_target = LEScase.first,
@@ -22,13 +22,13 @@ nll = init_tke_calibration(datapath;
                      convective_adjustment = TKEMassFlux.VariablePrandtlConvectiveAdjustment(),
                         )
 
-model = nll.model
-tdata = nll.data
+model = loss.model
+tdata = loss.data
 set!(model, custom_defaults(model, RelevantParameters))
 initial_parameters = custom_defaults(model, ParametersToOptimize)
 
 # Run the case
-calibration = calibrate(nll, initial_parameters, samples = 1000, iterations = 10)
+calibration = calibrate(loss, initial_parameters, samples = 1000, iterations = 10)
 
 # Save results
 @save results calibration

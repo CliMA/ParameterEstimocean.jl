@@ -82,7 +82,7 @@ using Plots,
 import Oceananigans.TimeSteppers: time_step!
 import Oceananigans.Fields: interpolate
 
-using Oceananigans: AbstractModel
+using Oceananigans: AbstractModel, AbstractEddyViscosityClosure
 using Oceananigans.Fields: CenterField, AbstractDataField
 using Oceananigans.Grids: Face, Center, AbstractGrid
 using Oceananigans.TurbulenceClosures: TKEBasedVerticalDiffusivity

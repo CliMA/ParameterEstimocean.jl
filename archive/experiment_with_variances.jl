@@ -20,13 +20,13 @@ relative_weights_options = Dict(
 )
 
 # define closure here cause ParametersToOptimize has to be in the global scope
-function loss_closure(nll)
-        ℒ(parameters::ParametersToOptimize) = nll(parameters)
-        ℒ(parameters::Vector) = nll(ParametersToOptimize([parameters...]))
+function loss_closure(loss)
+        ℒ(parameters::ParametersToOptimize) = loss(parameters)
+        ℒ(parameters::Vector) = loss(ParametersToOptimize([parameters...]))
         return ℒ
 end
 
-nll, initial_parameters = custom_tke_calibration(LESdata, RelevantParameters, ParametersToOptimize;
+loss, initial_parameters = custom_tke_calibration(LESdata, RelevantParameters, ParametersToOptimize;
                                 loss_closure = loss_closure,
                                 relative_weights = relative_weights)
 
@@ -34,12 +34,12 @@ initial_parameters = ParametersToOptimize([0.1320799067908237, 0.217485659461993
 bounds, _ = get_bounds_and_variance(initial_parameters; stds_within_bounds = stds_within_bounds);
 initial_parameters = set_prior_means_to_initial_parameters ? initial_parameters : ParametersToOptimize([mean.(bounds)...])
 
-nll, initial_parameters = custom_tke_calibration(LESdata, RelevantParameters, ParametersToOptimize;
+loss, initial_parameters = custom_tke_calibration(LESdata, RelevantParameters, ParametersToOptimize;
                                 relative_weights = relative_weights)
-strong_wind_weak_cooling_loss = nll.batch[2].loss
+strong_wind_weak_cooling_loss = loss.batch[2].loss
 
 fields = strong_wind_weak_cooling_loss.fields
-data = nll.batch[2].data
+data = loss.batch[2].data
 targets = strong_wind_weak_cooling_loss.targets
 
 max_variances = [max_variance(data, field, targets) for field in fields]

@@ -22,7 +22,7 @@ end
 include("zscore_normalization.jl")
 
 """
-eki_unidimensional(nll_wrapper, initial_parameters;
+eki_unidimensional(loss, initial_parameters;
                                     set_prior_means_to_initial_parameters = true,
                                     noise_level = 10^(-2.0),
                                     N_ens = 10,
@@ -36,7 +36,7 @@ In this ``unidimensional" formulation of EKI, we let the forward map output G be
 evaluation of the loss function on θ directly.
 
 Arguments
-- `nll_wrapper`: function `f(θ::Vector)` that evaluates the loss on the training data
+- `loss`: function `f(θ::Vector)` that evaluates the loss on the training data
 - `initial_parameters`: (`Vector` or `FreeParameter`) if `informed_priors == true`
 and `set_prior_means_to_initial_parameters`, this sets the means of the parameter prior distributions.
 
@@ -59,7 +59,7 @@ deviations `n` spanned by the parameter bounds where σᵢ = (θmaxᵢ - θmin�
     - parameter priors are set to desired mean and variances according to `initial_parameters`
     and `stds_within_bounds`
 """
-function eki_unidimensional(nll_wrapper, initial_parameters;
+function eki_unidimensional(loss, initial_parameters;
                                     set_prior_means_to_initial_parameters = true,
                                     noise_level = 10^(-2.0),
                                     N_ens = 10,
@@ -97,19 +97,19 @@ function eki_unidimensional(nll_wrapper, initial_parameters;
     # noise = MvNormal(zeros(n_obs), Γy)
 
     # We let Forward map be the loss function evaluation
-    G(u) = sqrt(nll_wrapper(transform_unconstrained_to_constrained(prior, u)))
-    # println(nll_wrapper([initial_parameters...]))
+    G(u) = sqrt(loss(transform_unconstrained_to_constrained(prior, u)))
+    # println(loss([initial_parameters...]))
 
-    # model_time_series(parameters, nll_wrapper)
+    # model_time_series(parameters, loss)
 
-    # ℒ = ce.calibration.nll_wrapper(prior_means)
+    # ℒ = ce.calibration.loss(prior_means)
     # println("approx. scale of L in first term (data misfit) of EKI obj:", ℒ)
     # pr = norm((σ²s.^(-1/2)) .* μs)^2
     # println("approx. scale of second term (prior misfit) of EKI obj:", pr)
     # obs_noise_level = ℒ / pr
     # println("for equal weighting of data misfit and prior misfit in EKI objective, let obs noise level be about:", obs_noise_level)
 
-    # Calibrate
+    # (dim(G), N_ens)
     initial_ensemble = construct_initial_ensemble(prior, N_ens;
                                                     rng_seed=rng_seed)
 
@@ -117,17 +117,15 @@ function eki_unidimensional(nll_wrapper, initial_parameters;
 
     for i in 1:N_iter
         params_i = get_u_final(ekiobj)
-        g_ens = hcat([G(params_i[:,i]) for i in 1:N_ens]...)
+        g_ens = hcat([G(params_i[:,i]) for i in 1:N_ens]...) # (N_cases, N_ens, Nz) array
         update_ensemble!(ekiobj, g_ens)
     end
 
     # All unconstrained
-    params = mean(get_u_final(ekiobj), dims=2)
-    losses = [G([mean(get_u(ekiobj, i), dims=2)...])^2 for i in 1:N_iter]
-    # mean_vars = [mean(sum((get_u_at_iteration(i) .- params).^2, dims=1)) for i in 1:N_iter]
-    mean_vars = [diag(cov(get_u(ekiobj, i), dims=2)) for i in 1:N_iter]
+    params = mean(get_u_final(ekiobj), dims=2) # ensemble mean
+    losses = [G([mean(get_u(ekiobj, i), dims=2)...])^2 for i in 1:N_iter] # particle loss
+    mean_vars = [diag(cov(get_u(ekiobj, i), dims=2)) for i in 1:N_iter] # ensemble variance for each parameter
 
-    # All unconstrained
     params = transform_unconstrained_to_constrained(prior, params)
     params = [params...] # matrix → vector
 
@@ -136,7 +134,7 @@ function eki_unidimensional(nll_wrapper, initial_parameters;
 end
 
 """
-function eki_multidimensional(nll::BatchedNegativeLogLikelihood, ParametersToOptimize, initial_parameters;
+function eki_multidimensional(loss::BatchedLossFunction, ParametersToOptimize, initial_parameters;
                                     set_prior_means_to_initial_parameters = true,
                                     noise_level = 10^(-2.0),
                                     N_ens = 10,
@@ -151,7 +149,7 @@ In this ``eki_multidimensional" formulation of EKI, we let the forward map outpu
 profiles for the predicted `u`, `v`, `b`, and `e` at the final timestep. Thus the truth y corresponds to the 
 
 Arguments
-- `nll_wrapper`: function `f(θ::Vector)` that evaluates the loss on the training data
+- `loss`: function `f(θ::Vector)` that evaluates the loss on the training data
 - `initial_parameters`: (`Vector` or `FreeParameter`) if `informed_priors == true`
 and `set_prior_means_to_initial_parameters`, this sets the means of the parameter prior distributions.
 
@@ -174,7 +172,7 @@ deviations `n` spanned by the parameter bounds where σᵢ = (θmaxᵢ - θmin�
     - parameter priors are set to desired mean and variances according to `initial_parameters`
     and `stds_within_bounds`
 """
-function eki_multidimensional(nll::BatchedNegativeLogLikelihood, ParametersToOptimize, initial_parameters;
+function eki_multidimensional(loss::BatchedLossFunction, ParametersToOptimize, initial_parameters;
                                     set_prior_means_to_initial_parameters = true,
                                     noise_level = 10^(-2.0),
                                     N_ens = 10,
@@ -204,11 +202,11 @@ function eki_multidimensional(nll::BatchedNegativeLogLikelihood, ParametersToOpt
     prior_cov = get_cov(prior)
 
     # z-score normalization for profiles
-    normalize_function = get_normalization_functions(nll; data_indices=28:126)
+    normalize_function = get_normalization_functions(loss; data_indices=28:126)
 
     # Loss Function Minimum
     y_obs  = []
-    for simulation in nll.batch
+    for simulation in loss.batch
         data = simulation.data
         coarse_data = CenterField(simulation.model.grid)
 
@@ -235,7 +233,7 @@ function eki_multidimensional(nll::BatchedNegativeLogLikelihood, ParametersToOpt
     function G(u)
         all = []
         parameters = ParametersToOptimize(transform_unconstrained_to_constrained(prior, u))
-        for simulation in nll.batch
+        for simulation in loss.batch
             data = simulation.data
             output = model_time_series(parameters, simulation)
 

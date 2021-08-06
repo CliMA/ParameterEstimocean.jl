@@ -28,7 +28,7 @@
 # end
 
 # normalize_function = get_normalization_functions(FourDaySuite)
-# normalize_function[:U](parent(ce.calibration.nll.batch[1].data.U[end].data))
+# normalize_function[:U](parent(ce.calibration.loss.batch[1].data.U[end].data))
 
 function get_normalization_functions_each_simulation(LESdata)
     normalize_function = Dict()
@@ -53,9 +53,9 @@ function get_normalization_functions_each_simulation(LESdata)
     return normalize_function
 end
 
-function get_normalization_functions(nll::BatchedNegativeLogLikelihood; data_indices = 28:126)
+function get_normalization_functions(loss::BatchedLossFunction; data_indices = 28:126)
     normalize_function = Dict()
-    for simulation in ce.calibration.nll.batch
+    for simulation in ce.calibration.loss.batch
         data = simulation.data
         case = data.name
         normalize_function[case] = Dict()
@@ -76,14 +76,14 @@ function get_normalization_functions(nll::BatchedNegativeLogLikelihood; data_ind
     return normalize_function
 end
 
-# function get_normalization_functions(nll::BatchedNegativeLogLikelihood; data_indices = 40:127)
+# function get_normalization_functions(loss::BatchedLossFunction; data_indices = 40:127)
 #     normalize_function = Dict()
 #
 #     for field in (:T, :U, :V, :e)
 #         normalize_function[field] = Dict()
 #         μs = []
 #         σs = []
-#         for simulation in ce.calibration.nll.batch
+#         for simulation in ce.calibration.loss.batch
 #             data = simulation.data
 #             case = data.name
 #             loss = simulation.loss
@@ -109,7 +109,7 @@ end
 
 
 # normalize_function = Dict()
-# for simulation in ce.calibration.nll.batch
+# for simulation in ce.calibration.loss.batch
 #     data = simulation.data
 #     case = data.name
 #     normalize_function[case] = Dict()

@@ -14,8 +14,8 @@ LESdata = merge(FourDaySuite, GeneralStrat)
 dname = "calibrate_FourDaySuiteGeneralStrat"
 
 ##
-nll, initial_parameters = custom_tke_calibration(LESdata, RelevantParameters, ParametersToOptimize)
-nll_validation, _ = custom_tke_calibration(LESdata_validation, RelevantParameters, ParametersToOptimize)
+loss, initial_parameters = custom_tke_calibration(LESdata, RelevantParameters, ParametersToOptimize)
+loss_validation, _ = custom_tke_calibration(LESdata_validation, RelevantParameters, ParametersToOptimize)
 
 initial_parameters = ParametersToOptimize([2.1638101987647502, 0.2172594537369187, 0.4522886369267623, 0.7534625713891345, 0.4477179760916435,
         6.777679962252731, 1.2403584780163417, 1.9967245163343093])
@@ -36,33 +36,33 @@ function writeout2(o, name, params, loss, loss_validation)
         params_dict[name] = param_vect
         loss_dict[name] = loss
 end
-writeout3(o, name, params) = writeout2(o, name, params, nll(params), nll_validation(params))
+writeout3(o, name, params) = writeout2(o, name, params, loss(params), loss_validation(params))
 
 @info "Output statistics will be written to: $(directory)"
 
 writeout3(o, "Default", initial_parameters)
 
 # @info "Running Random Plugin..."
-# random_plugin_params = random_plugin(nll, initial_parameters, ParametersToOptimize; function_calls=10000)
+# random_plugin_params = random_plugin(loss, initial_parameters, ParametersToOptimize; function_calls=10000)
 # writeout3(o, "Random_Plugin", random_plugin_params)
 # random_plugin_params
 #
 # @info "Running Gradient Descent..."
-# parameters = gradient_descent(nll, random_plugin_params, ParametersToOptimize; linebounds = (0, 100.0), linesearches = 10)
+# parameters = gradient_descent(loss, random_plugin_params, ParametersToOptimize; linebounds = (0, 100.0), linesearches = 10)
 # writeout3(o, "Gradient_Descent", parameters)
 # parameters
 
 @info "Running Nelder-Mead from Optim.jl..."
-parameters = nelder_mead(nll, initial_parameters, ParametersToOptimize)
+parameters = nelder_mead(loss, initial_parameters, ParametersToOptimize)
 writeout3(o, "Nelder_Mead", parameters)
 parameters
 
 @info "Running L-BFGS from Optim.jl..."
-parameters = l_bfgs(nll, initial_parameters, ParametersToOptimize)
+parameters = l_bfgs(loss, initial_parameters, ParametersToOptimize)
 writeout3(o, "L_BFGS", parameters)
 
 @info "Running Iterative Simulated Annealing..."
-prob = simulated_annealing(nll, initial_parameters; samples=1000, iterations=10)
+prob = simulated_annealing(loss, initial_parameters; samples=1000, iterations=10)
 parameters = Dao.optimal(prob.markov_chains[end]).param
 writeout3(o, "Annealing", parameters)
 
@@ -103,22 +103,22 @@ write(o, "$(best_parameters) \n")
 
 write(o, "Losses on Calibration Simulations: \n")
 for LEScase in values(LESdata)
-        case_nll, _ = custom_tke_calibration(LEScase, RelevantParameters, ParametersToOptimize)
-        write(o, "$(case_nll.data.name): $(case_nll(best_parameters)) \n")
+        case_loss, _ = custom_tke_calibration(LEScase, RelevantParameters, ParametersToOptimize)
+        write(o, "$(case_loss.data.name): $(case_loss(best_parameters)) \n")
 
-        p = visualize_realizations(case_nll.model, case_nll.data, 1:180:length(case_nll.data), best_parameters)
-        # PyPlot.savefig(directory*"Test/$(case_nll.data.name).png")
-        PyPlot.savefig(directory*"Train/$(case_nll.data.name).png")
+        p = visualize_realizations(case_loss.model, case_loss.data, 1:180:length(case_loss.data), best_parameters)
+        # PyPlot.savefig(directory*"Test/$(case_loss.data.name).png")
+        PyPlot.savefig(directory*"Train/$(case_loss.data.name).png")
 end
 
-write(o, "Loss on $(LESdata_validation) Validation Simulations: $(nll_validation(best_parameters))\n")
+write(o, "Loss on $(LESdata_validation) Validation Simulations: $(loss_validation(best_parameters))\n")
 write(o, "Losses on Validation Simulations: \n")
 for LEScase in values(LESdata_validation)
-        case_nll, _ = custom_tke_calibration(LEScase, RelevantParameters, ParametersToOptimize)
-        write(o, "$(case_nll.data.name): $(case_nll(best_parameters)) \n")
+        case_loss, _ = custom_tke_calibration(LEScase, RelevantParameters, ParametersToOptimize)
+        write(o, "$(case_loss.data.name): $(case_loss(best_parameters)) \n")
 
-        p = visualize_realizations(case_nll.model, case_nll.data, 1:180:length(case_nll.data), best_parameters)
-        PyPlot.savefig(directory*"Test/$(case_nll.data.name).png")
+        p = visualize_realizations(case_loss.model, case_loss.data, 1:180:length(case_loss.data), best_parameters)
+        PyPlot.savefig(directory*"Test/$(case_loss.data.name).png")
 end
 
 # Close output.txt

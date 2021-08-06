@@ -20,7 +20,7 @@ end
 
 function restart_extend_and_save!(calibration, chunks, path)
 
-    nll = calibration.negative_log_likelihood
+    loss = calibration.negative_log_likelihood
     previous_chain = calibration.markov_chains[end]
     covariance_estimate = cov(previous_chain)
     initial_link = optimal(previous_chain)
@@ -30,10 +30,10 @@ function restart_extend_and_save!(calibration, chunks, path)
     # L₀ = scale * chain[1]
     # Lnew = scale * optimal(chain)
     # => Lnew = L₀ / chain[1] * optimal(chain)
-    nll.scale *= optimal(previous_chain).error / previous_chain[1].error
+    loss.scale *= optimal(previous_chain).error / previous_chain[1].error
 
     println("Starting the first chain with chunksize $(chunks[1])...")
-    @time new_chain = MarkovChain(chunks[1], initial_link, nll, sampler)
+    @time new_chain = MarkovChain(chunks[1], initial_link, loss, sampler)
     push!(calibration.markov_chains, new_chain)
 
     status(new_chain)
@@ -72,12 +72,12 @@ function continuation(calibration, nearby_calibration, chunks, continuation_path
 
     # Re-estimate covariance
     calibration_chain = calibration.markov_chains[end]
-    nll = calibration.negative_log_likelihood
+    loss = calibration.negative_log_likelihood
     covariance_estimate = cov(calibration_chain)
-    initial_link = MarkovLink(nll, Cᵢ)
+    initial_link = MarkovLink(loss, Cᵢ)
 
     # Re-annealing
-    continued_calibration = anneal(nll, Cᵢ, covariance_estimate, calibration.perturbation,
+    continued_calibration = anneal(loss, Cᵢ, covariance_estimate, calibration.perturbation,
                                    calibration.perturbation_args...;
                                                samples = 4000, #calibration.samples,
                                             iterations = 3, #calibration.iterations,
@@ -158,12 +158,12 @@ function open_output_file(directory)
         return o
 end
 
-function writeout(o, name, nll, params)
+function writeout(o, name, loss, params)
         param_vect = [params...]
-        loss_value = nll(params)
+        loss_value = loss(params)
         write(o, "----------- \n")
         write(o, "$(name) \n")
         write(o, "Parameters: $(param_vect) \n")
         write(o, "Loss: $(loss_value) \n")
-        saveplot(params, name, nll)
+        saveplot(params, name, loss)
 end

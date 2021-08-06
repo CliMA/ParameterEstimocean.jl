@@ -53,17 +53,17 @@ using PyPlot
 # validation = dataset(merge(TwoDaySuite, SixDaySuite), p; relative_weights = relative_weight_options[relative_weight_option]);
 # ce = CalibrationExperiment(calibration, validation, p)
 #
-# nll = ce.calibration.nll_wrapper
-# nll_validation = ce.validation.nll_wrapper
+# loss = ce.calibration.loss
+# loss_validation = ce.validation.loss
 # initial_parameters = ce.calibration.default_parameters
 
-# nll_validation([initial_parameters...])
+# loss_validation([initial_parameters...])
 
 ce.parameters.RelevantParameters([initial_parameters...])
 propertynames(initial_parameters)
 
 function get_losses(pvalues, pname, loss)
-    defaults = TKECalibration2021.custom_defaults(ce.calibration.nll.batch[1].model, ce.parameters.RelevantParameters)
+    defaults = TKECalibration2021.custom_defaults(ce.calibration.loss.batch[1].model, ce.parameters.RelevantParameters)
     ℒvalues = []
     for pvalue in pvalues
         TKECalibration2021.set_if_present!(defaults, pname, pvalue)
@@ -77,7 +77,7 @@ end
 # pname = :Cᴬu
 # pvalues = range(0.0, stop=3.0, length=1000)
 # pvalues = range(0.001, stop=0.1, length=99)
-# loss = nll
+# loss = loss
 # a = get_losses(pvalues, pname, loss)
 # pvalues[argmin(a)]
 # Plots.plot(pvalues, a)
@@ -114,7 +114,7 @@ prior_means = [initial_parameters...]
 
 
 # first term (data misfit) of EKI objective = ℒ / obs_noise_level
-ℒ = ce.calibration.nll_wrapper(prior_means)
+ℒ = ce.calibration.loss(prior_means)
 println(ℒ)
 
 # second term (prior misfit) of EKI objective = || σ²s.^(-0.5) .* μs ||²
@@ -133,8 +133,8 @@ for i in 1:length(initial_parameters)
     pname = propertynames(initial_parameters)[i]
     pvalue_lims = (max(0.0, prior_means[i]-sqrt(prior_variances[i])), prior_means[i]+2*sqrt(prior_variances[i]))
     pvalues = range(pvalue_lims[1],stop=pvalue_lims[2],length=20)
-    losses_cal = get_losses(pvalues, pname, nll)
-    losses_val = get_losses(pvalues, pname, nll_validation) ./ 2
+    losses_cal = get_losses(pvalues, pname, loss)
+    losses_val = get_losses(pvalues, pname, loss_validation) ./ 2
 
     kwargs = (lw=4, xlims = pvalue_lims, xlabel = "$(parameter_latex_guide[pname])")
     distplot = StatsPlots.plot(LogNormal(μs[i], σ²s[i]); ylabel = L"P_{prior}(\theta)", label="", color=:red, kwargs...)

@@ -8,16 +8,16 @@ function visualize_and_save(ce, parameters, directory; include_tke=false)
 
         write(o, "------------ \n \n")
         default_parameters = ce.default_parameters
-        train_loss_default = ce.calibration.nll(default_parameters)
-        valid_loss_default = ce.validation.nll(default_parameters)
+        train_loss_default = ce.calibration.loss(default_parameters)
+        valid_loss_default = ce.validation.loss(default_parameters)
         write(o, "Default parameters: $(default_parameters) \n")
         write(o, "Loss on training: $(train_loss_default) \n")
         write(o, "Loss on validation: $(valid_loss_default) \n")
 
         write(o, "------------ \n \n")
         parameters = [parameters...]
-        train_loss = ce.calibration.nll_wrapper(parameters)
-        valid_loss = ce.validation.nll_wrapper(parameters)
+        train_loss = ce.calibration.loss(parameters)
+        valid_loss = ce.validation.loss(parameters)
         write(o, "Parameters: $(parameters) \n")
         write(o, "Loss on training: $(train_loss) \n")
         write(o, "Loss on validation: $(valid_loss) \n")
@@ -40,13 +40,13 @@ function visualize_and_save(ce, parameters, directory; include_tke=false)
         parameters = ce.parameters.ParametersToOptimize(parameters)
         function helper(ce, dataset)
                 for LEScase in values(dataset.LESdata)
-                        nll, _ = get_nll(LEScase, ce.parameters, dataset.relative_weights)
-                        OceanTurbulenceParameterEstimation.set!(nll.model, parameters)
-                        Nt = length(nll.data)
+                        loss, _ = get_loss(LEScase, ce.parameters, dataset.relative_weights)
+                        OceanTurbulenceParameterEstimation.set!(loss.model, parameters)
+                        Nt = length(loss.data)
 
-                        fields = include_tke ? nll.loss.fields : (f for f in nll.loss.fields if f != :e)
-                        p = visualize_realizations(nll.model, nll.data, 60:get_Δt(Nt):length(nll.data), parameters, fields = nll.loss.fields)
-                        PyPlot.savefig(path*"$(Nt)_$(nll.data.name).png")
+                        fields = include_tke ? loss.fields : (f for f in loss.fields if f != :e)
+                        p = visualize_realizations(loss.model, loss.data, 60:get_Δt(Nt):length(loss.data), parameters, fields = loss.fields)
+                        PyPlot.savefig(path*"$(Nt)_$(loss.data.name).png")
                 end
         end
 

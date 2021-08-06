@@ -11,7 +11,7 @@ dname = "calibrate_FourDaySuiteGeneralStrat"
 # TKEFreeConvectionConvectiveAdjustmentRiIndependent
 # TKEFreeConvectionRiIndependent
 
-nll, initial_parameters = custom_tke_calibration(LESdata, RelevantParameters, ParametersToOptimize)
+loss, initial_parameters = custom_tke_calibration(LESdata, RelevantParameters, ParametersToOptimize)
 
 directory = pwd() * "/TKECalibration2021Results/compare_calibration_algorithms/$(dname)/$(RelevantParameters)/"
 
@@ -29,16 +29,16 @@ function writeout2(o, name, params, loss)
         loss_dict[name] = loss
 end
 
-writeout2(o, "Default", initial_parameters, nll(initial_parameters))
+writeout2(o, "Default", initial_parameters, loss(initial_parameters))
 
 @info "Running Iterative Simulated Annealing..."
 
 global initial_parameters
 
-calibration = simulated_annealing(nll, initial_parameters; samples=1000, iterations=10)
+calibration = simulated_annealing(loss, initial_parameters; samples=1000, iterations=10)
 
-savename = @sprintf("tke_batch_calibration_convection_refine_dz%d_dt%d_2.jld2", batched_nll.batch[1].model.grid.Δc,
-                    batched_nll.batch[1].model.Δt / minute)
+savename = @sprintf("tke_batch_calibration_convection_refine_dz%d_dt%d_2.jld2", batched_loss.batch[1].model.grid.Δc,
+                    batched_loss.batch[1].model.Δt / minute)
 
 @save savename calibration
 
@@ -52,4 +52,4 @@ include("mega_batch_visualization.jl")
 
 opt = optimal(calibration.markov_chains[end])
 optimal_parameters = opt.param
-writeout2(o, "Annealing", optimal_parameters, nll(params))
+writeout2(o, "Annealing", optimal_parameters, loss(params))

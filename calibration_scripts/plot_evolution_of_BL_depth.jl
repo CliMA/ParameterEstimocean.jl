@@ -86,10 +86,10 @@ end
 # best_parameters = ParametersToOptimize([2.1638101987647502, 0.2172594537369187, 0.4522886369267623, 0.7534625713891345, 0.4477179760916435, 6.777679962252731, 1.2403584780163417, 1.9967245163343093])
 
 for LEScase in values(LESdata)
-    case_nll, _ = custom_tke_calibration(LEScase, RelevantParameters, ParametersToOptimize)
+    case_loss, _ = custom_tke_calibration(LEScase, RelevantParameters, ParametersToOptimize)
 
-    td = case_nll.data
-    md = case_nll.model
+    td = case_loss.data
+    md = case_loss.model
 
     ℱ = model_time_series(best_parameters, md, td)
     h2_les, h2_model = get_h2(ℱ, td; coarse_grain_data = false)

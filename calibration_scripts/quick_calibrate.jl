@@ -53,28 +53,28 @@ ce = CalibrationExperiment(calibration, validation, p);
 directory = "EKI/$(free_parameter_option)_$(relative_weight_option)/"
 isdir(directory) || mkpath(directory)
 
-nll = ce.calibration.nll_wrapper
-nll_validation = ce.validation.nll_wrapper
+loss = ce.calibration.loss
+loss_validation = ce.validation.loss
 initial_parameters = ce.default_parameters
 parameternames = propertynames(initial_parameters)
 
-@time nll([initial_parameters...])
+@time loss([initial_parameters...])
 # @time calibration = dataset(FourDaySuite, p; relative_weights = relative_weight_options["all_but_e"],
 #                                         grid_type=ZGrid,
 #                                         grid_size=64,
 #                                         Δt=60.0); # 12.140647 seconds (31.52 M allocations: 2.978 GiB, 4.28% gc time)
 
-# @time validation.nll_wrapper([initial_parameters...]) # 88.855043 seconds (184.61 M allocations: 85.167 GiB, 5.36% gc time, 35.72% compilation time) 
+# @time validation.loss([initial_parameters...]) # 88.855043 seconds (184.61 M allocations: 85.167 GiB, 5.36% gc time, 35.72% compilation time) 
 
 
 # using Profile
 # using PProf
-# @profile nll([initial_parameters...])
+# @profile loss([initial_parameters...])
 # pprof()
-@time nll([initial_parameters...]);
+@time loss([initial_parameters...]);
 
 using StatProfilerHTML
-@profilehtml nll([initial_parameters...]);
+@profilehtml loss([initial_parameters...]);
 
 include("calibration_scripts/visualize.jl")
 animate_LESbrary_suite(ce, "try_ocean/")
@@ -84,7 +84,7 @@ animate_LESbrary_suite(ce, "try_ocean/")
 set_prior_means_to_initial_parameters = true
 stds_within_bounds = 2.5
 
-# println("Initial validation loss: $(ce.validation.nll(initial_parameters))")
+# println("Initial validation loss: $(ce.validation.loss(initial_parameters))")
 # validation_loss_reduction(ce, initial_parameters)
 
 
@@ -94,7 +94,7 @@ stds_within_bounds = 2.5
 
 # Leads to negative values
 @info "Running Nelder-Mead from Optim.jl..."
-parameters = nelder_mead(nll, initial_parameters)
+parameters = nelder_mead(loss, initial_parameters)
 println(parameters)
 validation_loss_reduction(ce, calibration.parameters.ParametersToOptimize(parameters))
 
@@ -103,7 +103,7 @@ validation_loss_reduction(ce, calibration.parameters.ParametersToOptimize(parame
 ##########
 
 @info "Running BFGS from Optim.jl..."
-bfgs(nll, initial_parameters)
+bfgs(loss, initial_parameters)
 println(parameters)
 validation_loss_reduction(ce, calibration.parameters.ParametersToOptimize(parameters))
 
@@ -112,7 +112,7 @@ validation_loss_reduction(ce, calibration.parameters.ParametersToOptimize(parame
 #########################
 
 @info "Running Iterative Simulated Annealing..."
-prob = simulated_annealing(ce.calibration.nll, initial_parameters, ce.parameters.ParametersToOptimize; samples = 1000, iterations = 30,
+prob = simulated_annealing(ce.calibration.loss, initial_parameters, ce.parameters.ParametersToOptimize; samples = 1000, iterations = 30,
                                 initial_scale = 1e1,
                                 final_scale = 1e-2,
                                 set_prior_means_to_initial_parameters = set_prior_means_to_initial_parameters,
@@ -138,32 +138,32 @@ include("calibration_scripts/EKI_setup.jl")
 directory = "EKI/$(free_parameter_type)_$(relative_weight_option)/"
 isdir(directory) || mkpath(directory)
 
-plot_stds_within_bounds(nll, nll_validation, initial_parameters, directory, xrange=-3:0.25:5)
-v = plot_prior_variance(nll, nll_validation, initial_parameters, directory; xrange=0.1:0.05:1.0)
-plot_num_ensemble_members(nll, nll_validation, initial_parameters, directory; xrange=1:5:30)
-nl = plot_observation_noise_level(nll, nll_validation, initial_parameters, directory; xrange=-2.0:0.1:3.0)
+plot_stds_within_bounds(loss, loss_validation, initial_parameters, directory, xrange=-3:0.25:5)
+v = plot_prior_variance(loss, loss_validation, initial_parameters, directory; xrange=0.1:0.05:1.0)
+plot_num_ensemble_members(loss, loss_validation, initial_parameters, directory; xrange=1:5:30)
+nl = plot_observation_noise_level(loss, loss_validation, initial_parameters, directory; xrange=-2.0:0.1:3.0)
 
 v = 4
 # v = 0.8
 nl = 10^(-5.0)
-# v, nl = plot_prior_variance_and_obs_noise_level(nll, nll_validation, initial_parameters, directory)
-# params, losses, mean_vars = eki(nll, initial_parameters; N_ens=30, N_iter=20, noise_level=nl, stds_within_bounds=v)
-params = eki_better(ce.calibration.nll, ce.parameters.ParametersToOptimize, initial_parameters; N_ens=30, N_iter=20, noise_level=nl, stds_within_bounds=v, uninformed=false)
+# v, nl = plot_prior_variance_and_obs_noise_level(loss, loss_validation, initial_parameters, directory)
+# params, losses, mean_vars = eki(loss, initial_parameters; N_ens=30, N_iter=20, noise_level=nl, stds_within_bounds=v)
+params = eki_better(ce.calibration.loss, ce.parameters.ParametersToOptimize, initial_parameters; N_ens=30, N_iter=20, noise_level=nl, stds_within_bounds=v, uninformed=false)
 visualize_and_save(ce, ce.parameters.ParametersToOptimize(params), directory*"Visualize")
 visualize_and_save(ce, ce.parameters.ParametersToOptimize(initial_parameters), directory*"InitialParameters")
-run_multidimensional(kwargs) = eki_better(ce.calibration.nll, ce.parameters.ParametersToOptimize, initial_parameters; N_ens=25, N_iter=20, kwargs...)
+run_multidimensional(kwargs) = eki_better(ce.calibration.loss, ce.parameters.ParametersToOptimize, initial_parameters; N_ens=25, N_iter=20, kwargs...)
 params = run_multidimensional((noise_level=10.0^(-1.90), stds_within_bounds=4.0, uninformed=false))
 
-run_one_dimensional(kwargs) = eki(ce.calibration.nll_wrapper, initial_parameters; N_ens=30, N_iter=20, kwargs...)
-run_multidimensional(kwargs) = eki_better(ce.calibration.nll, ce.parameters.ParametersToOptimize, initial_parameters; N_ens=25, N_iter=10, kwargs...)
+run_one_dimensional(kwargs) = eki(ce.calibration.loss, initial_parameters; N_ens=30, N_iter=20, kwargs...)
+run_multidimensional(kwargs) = eki_better(ce.calibration.loss, ce.parameters.ParametersToOptimize, initial_parameters; N_ens=25, N_iter=10, kwargs...)
 
 noises = 10 .^ collect(-2.5:0.05:-1.8)
 l_cals = []
 l_vals = []
 for noise in noises
     params = run_one_dimensional((noise_level=noise, stds_within_bounds=0.7, uninformed=true))
-    l_cal = ce.calibration.nll_wrapper(params)
-    l_val = ce.validation.nll_wrapper(params)/2
+    l_cal = ce.calibration.loss(params)
+    l_val = ce.validation.loss(params)/2
     push!(l_cals, l_cal)
     push!(l_vals, l_val)
 end
@@ -176,8 +176,8 @@ l_cals = []
 l_vals = []
 for noise in noises
     params = run_one_dimensional((noise_level=1e-2, stds_within_bounds=noise, uninformed=true))
-    l_cal = ce.calibration.nll_wrapper(params)
-    l_val = ce.validation.nll_wrapper(params)/2
+    l_cal = ce.calibration.loss(params)
+    l_val = ce.validation.loss(params)/2
     push!(l_cals, l_cal)
     push!(l_vals, l_val)
 end
@@ -190,8 +190,8 @@ l_cals = []
 l_vals = []
 for noise in noises
     params = run_one_dimensional((noise_level=noise, stds_within_bounds=4.0, uninformed=false))
-    l_cal = ce.calibration.nll_wrapper(params)
-    l_val = ce.validation.nll_wrapper(params)/2
+    l_cal = ce.calibration.loss(params)
+    l_val = ce.validation.loss(params)/2
     push!(l_cals, l_cal)
     push!(l_vals, l_val)
 end
@@ -204,8 +204,8 @@ l_cals = []
 l_vals = []
 for noise in noises
     params = run_one_dimensional((noise_level=1e-2, stds_within_bounds=noise, uninformed=false))
-    l_cal = ce.calibration.nll_wrapper(params)
-    l_val = ce.validation.nll_wrapper(params)/2
+    l_cal = ce.calibration.loss(params)
+    l_val = ce.validation.loss(params)/2
     push!(l_cals, l_cal)
     push!(l_vals, l_val)
 end
@@ -214,10 +214,10 @@ println("CALIBRATE argmin: loss: $(l_cals[argmin(l_cals)])")
 println("VALIDATE argmin: $(noises[argmin(l_vals)]) loss: $(l_vals[argmin(l_vals)])")
 
 println(params)
-println(ce.calibration.nll(initial_parameters))
-println(ce.calibration.nll_wrapper(params))
-println(ce.validation.nll(initial_parameters))
-println(ce.validation.nll_wrapper(params))
+println(ce.calibration.loss(initial_parameters))
+println(ce.calibration.loss(params))
+println(ce.validation.loss(initial_parameters))
+println(ce.validation.loss(params))
 
 println(initial_parameters)
 println(params)
@@ -226,9 +226,9 @@ parameters = ce.default_parameters
 parameters = ce.parameters.ParametersToOptimize(params)
 Truth = Dict()
 CATKE = Dict()
-for mynll in ce.validation.nll.batch
-    Truth[mynll.data.name] = mynll.data
-    CATKE[mynll.data.name] = model_time_series(parameters, mynll)
+for myloss in ce.validation.loss.batch
+    Truth[myloss.data.name] = myloss.data
+    CATKE[myloss.data.name] = model_time_series(parameters, myloss)
 end
 
 include("calibration_scripts/visualize.jl")
@@ -314,13 +314,13 @@ function minslosses(file)
         end
     end
 
-    # losses = [ce.calibration.nll_wrapper(params) for params in B]
+    # losses = [ce.calibration.loss(params) for params in B]
     losses = []
     counter=0
     for params in B
         counter += 1
         println("$(counter)/$(length(B))")
-        push!(losses, ce.calibration.nll_wrapper(params))
+        push!(losses, ce.calibration.loss(params))
     end
 
     println(losses)

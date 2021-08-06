@@ -56,17 +56,17 @@ close("all")
 fig, axs = subplots(ncols=ncases, nrows=3, figsize=(18, 12))
 
 for i = 1:ncases
-    nll = calibration.negative_log_likelihood.batch[i]
+    loss = calibration.negative_log_likelihood.batch[i]
 
-    f = nll.model.constants.f
-    N² = nll.model.bcs.T.bottom.condition * nll.model.constants.α * nll.model.constants.g
-    Qᵇ = nll.model.bcs.T.top.condition * nll.model.constants.α * nll.model.constants.g
-    Qᵘ = nll.model.bcs.U.top.condition
+    f = loss.model.constants.f
+    N² = loss.model.bcs.T.bottom.condition * loss.model.constants.α * loss.model.constants.g
+    Qᵇ = loss.model.bcs.T.top.condition * loss.model.constants.α * loss.model.constants.g
+    Qᵘ = loss.model.bcs.U.top.condition
 
-    data = nll.data # data *should* be the same for tke and kpp
+    data = loss.data # data *should* be the same for tke and kpp
 
-    model = nll.model
-    loss = nll.loss
+    model = loss.model
+    loss = loss
 
     ji = loss.targets[1]
     jf = loss.targets[end]

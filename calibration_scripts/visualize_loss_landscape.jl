@@ -14,8 +14,8 @@ option = "all_T"
 name = L"[\varpi_U, \varpi_V, \varpi_T, \varpi_E] = [1,1,1,1]"
 calibration = dataset(FourDaySuite, p; relative_weights = relative_weight_options[option]);
 
-nll = calibration.nll
-# nll_validation = ce.validation.nll
+loss = calibration.loss
+# loss_validation = ce.validation.loss
 initial_parameters = calibration.default_parameters
 
 pvalues = Dict(
@@ -37,14 +37,14 @@ xc = []
 yc = []
 zc = []
 for i in 1:length(pvalues[:Cᴷe]), j in 1:length(pvalues[:Cᴬe])
-        initial_parameters = TKECalibration2021.custom_defaults(ce.calibration.nll.batch[1].model, ce.parameters.RelevantParameters)
+        initial_parameters = TKECalibration2021.custom_defaults(ce.calibration.loss.batch[1].model, ce.parameters.RelevantParameters)
         Cᴷe = pvalues[:Cᴷe][i]
         Cᴬe = pvalues[:Cᴬe][j]
         initial_parameters.Cᴷe = Cᴷe
         initial_parameters.Cᴬe = Cᴬe
         push!(xc, Cᴷe)
         push!(yc, Cᴬe)
-        push!(zc, nll(initial_parameters))
+        push!(zc, loss(initial_parameters))
 end
 myplot = Plots.plot(xc,yc,zc,st=:surface,camera=(-45,20))
 # p = Plots.plot(xc,yc,zc,st=:surface,camera=(-45,30))
@@ -57,7 +57,7 @@ println(xc[argmin(zc)], ", ", yc[argmin(zc)])
 # E : 0.11, 0.55
 
 ce = CalibrationExperiment(calibration, validation, p)
-initial_parameters = TKECalibration2021.custom_defaults(ce.calibration.nll.batch[1].model, ce.parameters.RelevantParameters)
+initial_parameters = TKECalibration2021.custom_defaults(ce.calibration.loss.batch[1].model, ce.parameters.RelevantParameters)
 initial_parameters.Cᴷe = 0.11
 initial_parameters.Cᴬe = 0.55
 visualize_and_save(ce, initial_parameters, "all_E")
@@ -68,12 +68,12 @@ visualize_and_save(ce, initial_parameters, "all_E")
 #
 #
 # for pname in keys(pvalues)
-#         defaults = TKECalibration2021.custom_defaults(ce.calibration.nll.batch[1].model, ce.parameters.RelevantParameters)
+#         defaults = TKECalibration2021.custom_defaults(ce.calibration.loss.batch[1].model, ce.parameters.RelevantParameters)
 #
 #         losses = Dict()
 #         for pvalue in pvalues[pname]
 #                 TKECalibration2021.set_if_present!(defaults, pname, pvalue)
-#                 losses[pvalue] = nll(defaults)
+#                 losses[pvalue] = loss(defaults)
 #         end
 #         Plots.plot(losses, size=(600,200), lw=4)
 #         Plots.savefig("$(pname).png")
@@ -82,7 +82,7 @@ visualize_and_save(ce, initial_parameters, "all_E")
 # losses = Dict()
 # for Cᴷe in Cᴷes
 #         initial_parameters.Cᴷe = Cᴷe
-#         losses[Cᴷe] = nll(initial_parameters)
+#         losses[Cᴷe] = loss(initial_parameters)
 # end
 # Plots.plot(losses)
 #
@@ -91,12 +91,12 @@ visualize_and_save(ce, initial_parameters, "all_E")
 # initial_parameters = ce.calibration.default_parameters
 # z = zeros((length(pvalues[:Cᴷe]), length(pvalues[:Cᴬe])))
 # for i in 1:length(pvalues[:Cᴷe]), j in 1:length(pvalues[:Cᴬe])
-#         initial_parameters = TKECalibration2021.custom_defaults(ce.calibration.nll.batch[1].model, ce.parameters.RelevantParameters)
+#         initial_parameters = TKECalibration2021.custom_defaults(ce.calibration.loss.batch[1].model, ce.parameters.RelevantParameters)
 #         Cᴷe = pvalues[:Cᴷe][i]
 #         Cᴬe = pvalues[:Cᴬe][j]
 #         initial_parameters.Cᴷe = Cᴷe
 #         initial_parameters.Cᴬe = Cᴬe
-#         z[i,j] = nll(initial_parameters)
+#         z[i,j] = loss(initial_parameters)
 # end
 # using GR
 # GR.surface(z)
@@ -107,14 +107,14 @@ visualize_and_save(ce, initial_parameters, "all_E")
 # yc = []
 # zc = []
 # for i in 1:length(pvalues[:Cᴷe]), j in 1:length(pvalues[:Cᴬe])
-#         initial_parameters = TKECalibration2021.custom_defaults(ce.calibration.nll.batch[1].model, ce.parameters.RelevantParameters)
+#         initial_parameters = TKECalibration2021.custom_defaults(ce.calibration.loss.batch[1].model, ce.parameters.RelevantParameters)
 #         Cᴷe = pvalues[:Cᴷe][i]
 #         Cᴬe = pvalues[:Cᴬe][j]
 #         initial_parameters.Cᴷe = Cᴷe
 #         initial_parameters.Cᴬe = Cᴬe
 #         push!(xc, Cᴷe)
 #         push!(yc, Cᴬe)
-#         push!(zc, nll(initial_parameters))
+#         push!(zc, loss(initial_parameters))
 # end
 # p = Plots.plot(xc,yc,zc,st=:surface,camera=(-45,20))
 # plot!(xlabel=parameter_latex_guide[:Cᴷe], ylabel=parameter_latex_guide[:Cᴬe], title="Loss Landscape", zlabel=L"\mathcal{L}(\theta)", linewidth=0)
@@ -135,7 +135,7 @@ visualize_and_save(ce, initial_parameters, "all_E")
 #         for j in 1:length(pvalues[:Cᴬe])
 #                 Cᴬe = pvalues[:Cᴬe][j]
 #                 initial_parameters.Cᴬe = Cᴬe
-#                 push!(losses, nll(initial_parameters))
+#                 push!(losses, loss(initial_parameters))
 #         end
 #
 #         push!(z, losses)

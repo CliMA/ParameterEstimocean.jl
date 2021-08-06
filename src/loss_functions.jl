@@ -2,15 +2,21 @@
 # A "master" loss function type
 #
 
+abstract type AbstractLossFunction <: Function end
+
+const ALOSS = AbstractLossFunction
+
 """
-    struct LossFunction{A, T, F, W, S, M}
+    struct LossFunction{M, D, R, F, W, T, P}
 
 A loss function for the analysis of single column models.
 """
-struct LossFunction{R, F, W, T, P}
+mutable struct LossFunction{M, D, R, F, W, T, P} <: ALOSS
+          model :: M
+           data :: D
         targets :: R
          fields :: F
-        weights :: W
+        weights :: W # field weights
     time_series :: T
         profile :: P
 end
@@ -22,12 +28,36 @@ function LossFunction(model, data; fields,
                           profile = ValueProfileAnalysis(model.grid)
                       )
 
-    return LossFunction(targets, fields, weights, time_series, profile)
+    return LossFunction(model, data, targets, fields, weights, time_series, profile)
 end
 
-function (loss::LossFunction)(parameters, model_plus_Δt, data)
-    evaluate!(loss, parameters, model_plus_Δt, data)
+function (loss::LossFunction)(θ)
+    evaluate!(loss, θ, loss.model, loss.data)
     return loss.time_series.analysis(loss.time_series.data, loss.time_series.time)
+end
+
+#
+# Batched loss function
+#
+
+mutable struct BatchedLossFunction{B, W, E} <: ALOSS
+      batch :: B
+    weights :: W # simulation weights
+      error :: E
+end
+
+function BatchedLossFunction(batch; weights=[1.0 for b in batch])
+    return BatchedLossFunction(batch, weights, zeros(length(batch)))
+end
+
+function (bl::BatchedLossFunction)(θ)
+    bl.error .= 0
+    @inbounds begin
+        Base.Threads.@threads for i = 1:length(bl.batch)
+            bl.error[i] = bl.weights[i] * bl.batch[i](θ)
+        end
+    end
+    return sum(bl.error)
 end
 
 #
@@ -250,14 +280,14 @@ function init_negative_log_likelihood(model::ParameterizedModel, data::TruthData
     profile_analysis = on_grid(profile_analysis, grid)
     weights = estimate_weights(profile_analysis, data, fields, targets, relative_weights)
 
-    # Create loss function and NegativeLogLikelihood
+    # Create loss function and LossFunction
     loss = LossFunction(model.model, data, fields=fields, targets=targets, weights=weights,
                         time_series = TimeSeriesAnalysis(data.t[targets], TimeAverage()),
                         profile = profile_analysis)
 
-    nll = NegativeLogLikelihood(model, data, loss)
+    loss = LossFunction(model, data, loss)
 
-    return nll
+    return loss
 end
 
 #

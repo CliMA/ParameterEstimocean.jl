@@ -33,7 +33,7 @@ function build_loss(model, tdata)
                                     profile = ValueProfileAnalysis(model.grid)
                                     )
         # This version of the loss runs the forward model internally
-        loss = NegativeLogLikelihood(model, tdata, loss_function)
+        loss = LossFunction(model, tdata, loss_function)
         return [loss_function, loss]
 end
 
