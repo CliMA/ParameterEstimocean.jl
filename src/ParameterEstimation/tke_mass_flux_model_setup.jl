@@ -35,12 +35,14 @@ function init_tke_calibration(datapath;
                                               # surface_model = surface_model,
                                         time_discretization = time_discretization
                                          )
-
+    
     set!(model, td, 1)
 
     return init_loss_function(model, td, first_target, last_target,
                                         fields, relative_weights)
 end
+
+
 
 tke_fields(datum) = !(datum.stressed) ? (:b, :e) :
                     !(datum.rotating) ? (:b, :u, :e) :
@@ -85,12 +87,12 @@ function dataset(LESdata, p::Parameters{UnionAll}; relative_weights = Dict(:b =>
             loss, default_parameters = get_loss(LEScase, p, relative_weights; grid_type=grid_type, grid_size=grid_size, Δt=Δt)
             push!(batch, loss)
         end
-        loss = BatchedLossFunction([loss for loss in batch],
+        loss = BatchedLossContainer([loss for loss in batch],
                                             weights=[1.0 for d in LESdata])
     end
 
-    loss(θ::Vector) = loss(p.ParametersToOptimize(θ))
-    loss(θ::FreeParameters) = loss(θ)
+    loss_wrapper(θ::Vector) = loss(p.ParametersToOptimize(θ))
+    loss_wrapper(θ::FreeParameters) = loss(θ)
 
-    return DataSet(LESdata, relative_weights, loss, default_parameters)
+    return DataSet(LESdata, relative_weights, loss_wrapper, default_parameters)
 end

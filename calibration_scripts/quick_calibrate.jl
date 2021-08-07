@@ -58,7 +58,6 @@ loss_validation = ce.validation.loss
 initial_parameters = ce.default_parameters
 parameternames = propertynames(initial_parameters)
 
-@time loss([initial_parameters...])
 # @time calibration = dataset(FourDaySuite, p; relative_weights = relative_weight_options["all_but_e"],
 #                                         grid_type=ZGrid,
 #                                         grid_size=64,
@@ -71,13 +70,14 @@ parameternames = propertynames(initial_parameters)
 # using PProf
 # @profile loss([initial_parameters...])
 # pprof()
-@time loss([initial_parameters...]);
+# @time loss([initial_parameters...]);
 
-using StatProfilerHTML
-@profilehtml loss([initial_parameters...]);
+# using StatProfilerHTML
+# @profilehtml loss([initial_parameters...]);
+@time loss([initial_parameters...])
 
-include("calibration_scripts/visualize.jl")
-animate_LESbrary_suite(ce, "try_ocean/")
+# include("calibration_scripts/visualize.jl")
+# animate_LESbrary_suite(ce, "try_ocean/")
 
 #=
 ## Small search

@@ -32,8 +32,8 @@ function build_loss(model, tdata)
                                     time_series = TimeSeriesAnalysis(tdata.t[targets], TimeAverage()),
                                     profile = ValueProfileAnalysis(model.grid)
                                     )
-        # This version of the loss runs the forward model internally
-        loss = LossFunction(model, tdata, loss_function)
+        loss = LossContainer(model, tdata, loss_function)
+        
         return [loss_function, loss]
 end
 

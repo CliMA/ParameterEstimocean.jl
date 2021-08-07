@@ -171,7 +171,7 @@ set_if_present!(obj, name, field) = name ∈ propertynames(obj) && setproperty!(
 
 function custom_defaults(model::ParameterizedModel, RelevantParameters)
     fields = fieldnames(RelevantParameters)
-    defaults = DefaultFreeParameters(model, RelevantParameters)
+    defaults = DefaultFreeParameters(model.closure, RelevantParameters)
 
     if RelevantParameters in keys(override_defaults)
         return RelevantParameters(override_defaults[RelevantParameters])

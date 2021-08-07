@@ -45,7 +45,7 @@ function simple_tke_model(constants;
                           kwargs...
                          )
 
-     closure = TKEBasedVerticalDiffusivity(Float32; kwargs...)
+     closure = TKEBasedVerticalDiffusivity(Float64; kwargs...)
 
      u★ = (Qᵘ^2 + Qᵛ^2)^(1/4)
      w★³ = Qᵇ * grid.Δz

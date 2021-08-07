@@ -93,6 +93,7 @@ function new_closure(closure::AbstractTurbulenceClosure, free_parameters)
     ClosureType = typeof(closure)
     args = [new_closure_kwargs[x] for x in fieldnames(ClosureType)]
     new_closure = ClosureType(args...)
+    # new_closure = TKEBasedVerticalDiffusivity(Float64; new_closure_kwargs...)
 
     # for (ptypename, new_value) in new_closure_kwargs
     #     setproperty!(closure, ptypename, new_value)

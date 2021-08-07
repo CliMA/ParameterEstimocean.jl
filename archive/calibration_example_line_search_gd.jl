@@ -49,8 +49,7 @@ loss_function = LossFunction(model, tdata,
                             profile = ValueProfileAnalysis(model.grid)
                             )
 
-# This version of the loss runs the forward model internally
-loss = LossFunction(model, tdata, loss_function)
+loss = LossContainer(model, tdata, loss_function)
 loss(default_parameters)
 
 # Run forward map and then compute loss from forward map output

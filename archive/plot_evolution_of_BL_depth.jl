@@ -60,7 +60,6 @@ function get_h2(model_time_series, tdata; coarse_grain_data = true)
 
         # model.model.constants.g * model.model.constants.α
 
-
         Qᵇ = 0.001962 * tdata.boundary_conditions.Qᶿ # les.α * les.g * les.top_T
         N² = 0.001962 * tdata.boundary_conditions.dθdz_bottom # les.α * les.g * dθdz_bottom
         Nt = length(tdata.t)

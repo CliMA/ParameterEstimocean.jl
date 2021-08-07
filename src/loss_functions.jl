@@ -2,18 +2,16 @@
 # A "master" loss function type
 #
 
-abstract type AbstractLossFunction <: Function end
+abstract type AbstractLossContainer <: Function end
 
-const ALOSS = AbstractLossFunction
+const ALC = AbstractLossContainer
 
 """
-    struct LossFunction{M, D, R, F, W, T, P}
+    struct LossFunction{R, F, W, T, P}
 
 A loss function for the analysis of single column models.
 """
-mutable struct LossFunction{M, D, R, F, W, T, P} <: ALOSS
-          model :: M
-           data :: D
+struct LossFunction{R, F, W, T, P}
         targets :: R
          fields :: F
         weights :: W # field weights
@@ -28,29 +26,37 @@ function LossFunction(model, data; fields,
                           profile = ValueProfileAnalysis(model.grid)
                       )
 
-    return LossFunction(model, data, targets, fields, weights, time_series, profile)
+    return LossFunction(targets, fields, weights, time_series, profile)
 end
 
-function (loss::LossFunction)(θ)
-    evaluate!(loss, θ, loss.model, loss.data)
+function (loss::LossFunction)(θ, model, data)
+    evaluate!(loss, θ, model, data)
     return loss.time_series.analysis(loss.time_series.data, loss.time_series.time)
 end
+
+mutable struct LossContainer{M<:ParameterizedModel, D<:TruthData, L<:LossFunction} <: ALC
+    model :: M
+     data :: D
+     loss :: L
+end
+
+(lc::LossContainer)(θ) = lc.loss(θ, lc.model, lc.data)
 
 #
 # Batched loss function
 #
 
-mutable struct BatchedLossFunction{B, W, E} <: ALOSS
+mutable struct BatchedLossContainer{B, W, E} <: ALC
       batch :: B
     weights :: W # simulation weights
       error :: E
 end
 
-function BatchedLossFunction(batch; weights=[1.0 for b in batch])
-    return BatchedLossFunction(batch, weights, zeros(length(batch)))
+function BatchedLossContainer(batch; weights=[1.0 for b in batch])
+    return BatchedLossContainer(batch, weights, zeros(length(batch)))
 end
 
-function (bl::BatchedLossFunction)(θ)
+function (bl::BatchedLossContainer)(θ)
     bl.error .= 0
     @inbounds begin
         Base.Threads.@threads for i = 1:length(bl.batch)
@@ -268,26 +274,24 @@ function estimate_weights(profile::GradientProfileAnalysis, data::TruthData, fie
     return weights
 end
 
-function init_negative_log_likelihood(model::ParameterizedModel, data::TruthData, first_target, last_target,
+function init_loss_function(model::ParameterizedModel, data::TruthData, first_target, last_target,
                                       fields, relative_weights)
 
     grid = model.model.grid
 
     profile_analysis = ValueProfileAnalysis(grid)
-    # Create loss function and negative-log-likelihood object
     last_target = last_target === nothing ? length(data) : last_target
     targets = first_target:last_target
     profile_analysis = on_grid(profile_analysis, grid)
     weights = estimate_weights(profile_analysis, data, fields, targets, relative_weights)
 
-    # Create loss function and LossFunction
-    loss = LossFunction(model.model, data, fields=fields, targets=targets, weights=weights,
+    loss_function = LossFunction(model, data, fields=fields, targets=targets, weights=weights,
                         time_series = TimeSeriesAnalysis(data.t[targets], TimeAverage()),
                         profile = profile_analysis)
 
-    loss = LossFunction(model, data, loss)
+    loss_container = LossContainer(model, data, loss_function)
 
-    return loss
+    return loss_container
 end
 
 #

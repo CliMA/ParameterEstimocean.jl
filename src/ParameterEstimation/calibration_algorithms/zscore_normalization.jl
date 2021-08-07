@@ -53,7 +53,7 @@ function get_normalization_functions_each_simulation(LESdata)
     return normalize_function
 end
 
-function get_normalization_functions(loss::BatchedLossFunction; data_indices = 28:126)
+function get_normalization_functions(loss::BatchedLossContainer; data_indices = 28:126)
     normalize_function = Dict()
     for simulation in ce.calibration.loss.batch
         data = simulation.data

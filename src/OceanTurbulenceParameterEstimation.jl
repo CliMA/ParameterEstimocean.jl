@@ -1,6 +1,5 @@
 module OceanTurbulenceParameterEstimation
 
-using Base: Float32
 export
     dictify,
     set_prognostic!,
@@ -52,12 +51,14 @@ export
     analyze_weighted_profile_discrepancy,
     VarianceWeights,
     LossFunction,
+    LossContainer,
+    BatchedLossContainer,
     TimeSeriesAnalysis,
     TimeAverage,
     ValueProfileAnalysis,
     GradientProfileAnalysis,
     on_grid,
-    init_negative_log_likelihood,
+    init_loss_function,
 
     # forward_map.jl
     ParameterizedModelTimeSeries,
@@ -85,7 +86,7 @@ import Oceananigans.Fields: interpolate
 using Oceananigans: AbstractModel, AbstractEddyViscosityClosure
 using Oceananigans.Fields: CenterField, AbstractDataField
 using Oceananigans.Grids: Face, Center, AbstractGrid
-using Oceananigans.TurbulenceClosures: TKEBasedVerticalDiffusivity
+using Oceananigans.TurbulenceClosures: TKEBasedVerticalDiffusivity, AbstractTurbulenceClosure
 
 using JLD2
 

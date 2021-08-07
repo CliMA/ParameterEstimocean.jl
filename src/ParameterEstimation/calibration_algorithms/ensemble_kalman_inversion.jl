@@ -134,7 +134,7 @@ function eki_unidimensional(loss, initial_parameters;
 end
 
 """
-function eki_multidimensional(loss::BatchedLossFunction, ParametersToOptimize, initial_parameters;
+function eki_multidimensional(loss::BatchedLossContainer, ParametersToOptimize, initial_parameters;
                                     set_prior_means_to_initial_parameters = true,
                                     noise_level = 10^(-2.0),
                                     N_ens = 10,
@@ -172,7 +172,7 @@ deviations `n` spanned by the parameter bounds where σᵢ = (θmaxᵢ - θmin�
     - parameter priors are set to desired mean and variances according to `initial_parameters`
     and `stds_within_bounds`
 """
-function eki_multidimensional(loss::BatchedLossFunction, ParametersToOptimize, initial_parameters;
+function eki_multidimensional(loss::BatchedLossContainer, ParametersToOptimize, initial_parameters;
                                     set_prior_means_to_initial_parameters = true,
                                     noise_level = 10^(-2.0),
                                     N_ens = 10,
