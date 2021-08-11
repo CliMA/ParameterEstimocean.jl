@@ -1,6 +1,7 @@
 # Calibration algorithms
 include("line_search_gradient_descent.jl")
 include("ensemble_kalman_inversion.jl")
+include("ensemble_kalman_inversion_many_columns.jl")
 include("simulated_annealing.jl")
 
 function nelder_mead(loss, initial_parameters)

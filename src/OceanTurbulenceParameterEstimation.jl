@@ -56,6 +56,7 @@ export
     LossFunction,
     LossContainer,
     BatchedLossContainer,
+    EnsembleLossContainer,
     TimeSeriesAnalysis,
     TimeAverage,
     ValueProfileAnalysis,
@@ -122,8 +123,8 @@ include("set_fields.jl")
 include("models_and_data.jl")
 include("free_parameters.jl")
 include("loss_function_utils.jl")
-include("loss_functions.jl")
 include("many_columns_utils.jl")
+include("loss_functions.jl")
 include("single_column_utils.jl")
 include("utils.jl")
 include("visualization.jl")

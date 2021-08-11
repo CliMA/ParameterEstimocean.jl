@@ -7,27 +7,19 @@ function get_loss(LEScase, td::Union{TruthData, BatchTruthData}, p::Parameters, 
                                         # ParameterizedModel
                                                             Δt = 10.0,
                                         # TKE-specific kwargs:
-                                                            Cᴰ = 2.91,
-                                                 mixing_length = MixingLength(),
-                                              surface_tke_flux = SurfaceTKEFlux(),
-                                           time_discretization = VerticallyImplicitTimeDiscretization(),
-                                                       warning = false
+                                        #                     Cᴰ = 2.91,
+                                        #          mixing_length = MixingLength(),
+                                        #       surface_tke_flux = SurfaceTKEFlux(),
+                                        #    time_discretization = VerticallyImplicitTimeDiscretization(),
+                                                       kwargs...
                                         )
 
-    model = TKEMassFluxModel.ParameterizedModel(td, Δt;
-                                        diffusivity_scaling = diffusivity_scaling,
-                                      dissipation_parameter = dissipation_parameter,
-                                    mixing_length_parameter = mixing_length_parameter,
-                                           surface_TKE_flux = surface_TKE_flux,
-                                        time_discretization = time_discretization
-                                         )
+    model = TKEMassFluxModel.ParameterizedModel(td, Δt; kwargs...)
     
     set!(model, td, 1)
 
     fields = tke_fields(LEScase)
-
     relative_weights = [relative_weights[field] for field in fields]
-
     loss_function = init_loss_function(model, td, LEScase.first, LEScase.last,
                                         fields, relative_weights)
 
@@ -89,15 +81,32 @@ function ensemble_dataset(LESdata, p::Parameters{UnionAll};
 
     td_batch = [TruthData(LEScase.filename; grid_type=ZGrid, Nz=Nz) for LEScase in values(LESdata)]
 
-    first_targets = getproperty.(LESdata, :first_target)
-    last_targets = getproperty.(LESdata, :last_target)
+    # first_targets = [LEScase.first_target for LEScase in values(LESdata)]
+    # last_targets = [LEScase.lastt_target for LEScase in values(LESdata)]
 
-    model = ParameterizedModel(td_batch, Δt; N_ens = ensemble_size, kwargs...)
+    model = ParameterizedModel(td_batch, Δt; N_ens = ensemble_size, 
+                                parameter_specific_kwargs[p.RelevantParameters]...)
+
+    first_targets = getproperty.(values(LESdata), :first)
+    last_targets = getproperty.(values(LESdata), :last)
+    fields = tke_fields.(values(LESdata))
 
     # Build loss container of type `EnsembleLossContainer`
-    loss = init_loss_function(model, td_batch, 
-                        first_targets, last_targets, fields, relative_weights; weights=[1.0 for b in batch])
+    loss_batch = init_loss_function(model, td_batch, 
+                        first_targets, last_targets, fields, relative_weights)
 
-    loss_wrapper(θ::Vector) = loss(p.ParametersToOptimize(θ))
-    loss_wrapper(θ::FreeParameters) = loss(θ)
+    loss = EnsembleLossContainer(model, td_batch, loss_batch; weights=[1.0 for td in td_batch])
+
+    # Set model to custom defaults
+    set!(loss.model, custom_defaults(loss.model, p.RelevantParameters))
+
+    default_parameters = custom_defaults(loss.model, p.ParametersToOptimize)
+
+    # loss_wrapper(θ::Vector{<:Number}) = loss(p.ParametersToOptimize(θ))
+    # loss_wrapper(θ::FreeParameters) = loss(θ)
+
+    loss_wrapper(θ::Vector{<:Vector}) = loss(p.ParametersToOptimize.(θ))
+    loss_wrapper(θ::Vector{<:FreeParameters}) = loss(θ)
+
+    return DataSet(LESdata, relative_weights, loss_wrapper, default_parameters)
 end

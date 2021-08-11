@@ -15,13 +15,24 @@ free_parameter_option = "TKEParametersRiDependent"
 p = Parameters(RelevantParameters = free_parameter_options[free_parameter_option],
                ParametersToOptimize = free_parameter_options[free_parameter_option])
 
-calibration = dataset(FourDaySuite, p; relative_weights = relative_weight_options["all_but_e"],
-                                        grid_type=ZGrid,
-                                        Nz=16,
+calibration = ensemble_dataset(FourDaySuite, p; 
+                         relative_weights = relative_weight_options["all_but_e"],
+                             ensemble_size=50,
+                                        Nz=32,
                                         Δt=10.0);
 
-validation = dataset(merge(TwoDaySuite, SixDaySuite), p;
-                                        relative_weights = relative_weight_options["all_but_e"],
-                                        grid_type=ZGrid,
-                                        Nz=16,
+validation = ensemble_dataset(merge(TwoDaySuite, SixDaySuite), p;
+                         relative_weights = relative_weight_options["all_but_e"],
+                             ensemble_size=50,
+                                        Nz=32,
                                         Δt=10.0);
+
+ce = CalibrationExperiment(calibration, validation, p);
+
+directory = "EKI/$(free_parameter_option)_$(relative_weight_option)/"
+isdir(directory) || mkpath(directory)
+
+loss = ce.calibration.loss
+loss_validation = ce.validation.loss
+initial_parameters = ce.default_parameters
+parameternames = propertynames(initial_parameters)

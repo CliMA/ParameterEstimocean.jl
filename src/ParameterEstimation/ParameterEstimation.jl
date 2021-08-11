@@ -10,7 +10,6 @@ using Dao: AdaptiveAlgebraicSchedule
 
 using EnsembleKalmanProcesses.EnsembleKalmanProcessModule
 using EnsembleKalmanProcesses.ParameterDistributionStorage
-using Oceananigans.TurbulenceClosures: RiDependentDiffusivityScaling, VerticallyImplicitTimeDiscretization
 using Oceananigans.Grids: Flat, Bounded, Periodic, RegularRectilinearGrid
 
 import ..OceanTurbulenceParameterEstimation: set!

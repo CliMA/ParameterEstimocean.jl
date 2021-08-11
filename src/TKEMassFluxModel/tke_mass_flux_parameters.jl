@@ -148,6 +148,8 @@ parameter_guide = Dict(
           bounds = (0.0, 2.0)),
 )
 
+Any[0.5, 0.5, 0.5, 0.72, 0.76, 0.15, 3.87, 0.4, 0.77, 0.13, 1.11, 2.91, 2.91, 1.16, 3.62, 1.31]
+
 # For scenarios involving stresses
 @free_parameters(TKEParametersRiDependent,
                  Cᵟu, Cᵟc, Cᵟe,
@@ -189,20 +191,18 @@ free_parameter_options = Dict(
 #     "TKEBCParameters" => TKEBCParameters,
 )
 
-using Oceananigans.TurbulenceClosures: MixingLength
-
 parameter_specific_kwargs = Dict(
-   TKEParametersRiDependent => (mixing_length = MixingLength(:Cᴬu=0.0, :Cᴬc=0.0, :Cᴬe=0.0),
+   TKEParametersRiDependent => (mixing_length = MixingLength(Cᴬu=0.0, Cᴬc=0.0, Cᴬe=0.0),
                                ),
-                               
-   TKEParametersRiIndependent => (mixing_length = MixingLength(:Cᴷuʳ=0.0, :Cᴷcʳ=0.0, :Cᴷcʳ=0.0,
-                                                                 :Cᴬu=0.0, :Cᴬc=0.0, :Cᴬe=0.0),
+
+   TKEParametersRiIndependent => (mixing_length = MixingLength(Cᴷuʳ=0.0, Cᴷcʳ=0.0, Cᴷeʳ=0.0,
+                                                                Cᴬu=0.0, Cᴬc=0.0, Cᴬe=0.0),
                                ),
 
    TKEParametersRiDependentConvectiveAdjustment => (mixing_length = MixingLength(),
                                ),
 
-   TKEParametersRiIndependentConvectiveAdjustment => (mixing_length = MixingLength(:Cᴷuʳ=0.0, :Cᴷcʳ=0.0, :Cᴷcʳ=0.0)
+   TKEParametersRiIndependentConvectiveAdjustment => (mixing_length = MixingLength(Cᴷuʳ=0.0, Cᴷcʳ=0.0, Cᴷeʳ=0.0),
                                ),
 
 #    TKEFreeConvection => (diffusivity_scaling = DD,
@@ -220,15 +220,18 @@ set_if_present!(obj, name, field) = name ∈ propertynames(obj) && setproperty!(
 
 function custom_defaults(model::ParameterizedModel, RelevantParameters)
     fields = fieldnames(RelevantParameters)
-    defaults = DefaultFreeParameters(model.closure, RelevantParameters)
 
-    if RelevantParameters in keys(override_defaults)
-        return RelevantParameters(override_defaults[RelevantParameters])
-    end
+    mc = model.closure
+    closure = typeof(mc) <: Matrix ? mc[1,1] : mc
+    defaults = DefaultFreeParameters(closure, RelevantParameters)
+
+    RelevantParameters ∈ keys(override_defaults) && return RelevantParameters(override_defaults[RelevantParameters])
 
     for (pname, info) in parameter_guide
           set_if_present!(defaults, pname, info.default)
     end
+
+    return defaults
 end
 
 function get_bounds_and_variance(default_parameters; stds_within_bounds = 5)

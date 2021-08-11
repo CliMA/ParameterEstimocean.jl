@@ -12,7 +12,7 @@ function get_free_parameters(closure::AbstractTurbulenceClosure)
             kw_params[pname] = p #e.g. kw_params[:Cᴰ] = 2.91
 
         # if pname ∈ [:surface_TKE_flux, :diffusivity_scaling]
-        elseif eltype(p) <: Number
+        elseif all(fieldtypes(typeof(p)) .<: Number)
             paramnames[pname] = propertynames(p) #e.g. paramnames[:surface_TKE_flux] = (:Cᵂu★, :CᵂwΔ)
             paramtypes[pname] = typeof(p) #e.g. paramtypes[:surface_TKE_flux] = TKESurfaceFlux{Float64}
 
@@ -104,8 +104,17 @@ end
 
 function set!(pm::ParameterizedModel, free_parameters::FreeParameters)
     closure = getproperty(pm.model, :closure)
-    new_ = new_closure(closure, free_parameters)
-    setproperty!(pm.model, :closure, new_)
+
+    if typeof(closure) <: AbstractTurbulenceClosure
+        new_ = new_closure(closure, free_parameters)
+        setproperty!(pm.model, :closure, new_)
+    else
+        new_ = new_closure(closure[1,1], free_parameters)
+
+        for i in eachindex(closure)
+            closure[i] = new_
+        end
+    end
 end
 
 function set!(pm::ParameterizedModel, free_parameters::Vector{<:FreeParameters})
@@ -113,15 +122,17 @@ function set!(pm::ParameterizedModel, free_parameters::Vector{<:FreeParameters})
     # Array of closures
     model_closure = getproperty(pm.model, :closure)
 
-    @inbounds begin
-        Base.Threads.@threads for i = 1:ensemble_size
+    N_ens = ensemble_size(pm)
 
-            free_parameters = θ[i]
+    @inbounds begin
+        Base.Threads.@threads for i = 1:N_ens
+
+            θ = free_parameters[i]
 
             # each thread accesses different elements in model.closure
             closure = model.closure[i, 1]
 
-            iᵗʰ_closure = new_closure(closure, free_parameters)
+            iᵗʰ_closure = new_closure(closure, θ)
 
             @view(model_closure[i,:]) .= iᵗʰ_closure
         end

@@ -4,8 +4,6 @@ export parameter_latex_guide
 
 using ..OceanTurbulenceParameterEstimation
 using LaTeXStrings
-using Oceananigans.TurbulenceClosures
-using Oceananigans.TurbulenceClosures: RiDependentDiffusivityScaling, VerticallyImplicitTimeDiscretization
 
 using Oceananigans.BoundaryConditions
 using Oceananigans.BuoyancyModels: BuoyancyTracer
@@ -13,13 +11,16 @@ using Oceananigans.Coriolis: FPlane
 using Oceananigans.Models: HydrostaticFreeSurfaceModel
 using Suppressor
 
-import Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
+using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities
+using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity,
+                MixingLength, SurfaceTKEFlux, VerticallyImplicitTimeDiscretization
 
 # CATKEVerticalDiffusivity{TD, A, B, C, D}(a::A, b::B, c::C, d::D) where {TD, A, B, C, D} = CATKEVerticalDiffusivity{TD}(a, b, c, d)
 
 export TKEParametersRiDependent,
-       TKEFreeConvection,
-       TKEBCParameters,
+       TKEParametersRiDependentConvectiveAdjustment,
+       TKEParametersRiIndependent,
+       TKEParametersRiIndependentConvectiveAdjustment,
 
        custom_defaults,
        parameter_latex_guide,

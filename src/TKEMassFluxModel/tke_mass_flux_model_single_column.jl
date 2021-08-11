@@ -1,27 +1,3 @@
-"""
-    function simple_tke_model(constants;
-                              grid, Qᵇ, Qᵘ, Qᵛ,
-                              dbdz_bottom, dudz_bottom,
-             diffusivity_scaling = RiDependentDiffusivityScaling(),
-           dissipation_parameter = 2.91,
-         mixing_length_parameter = 1.16,
-                   # surface_TKE_flux = TKESurfaceFlux(),
-             time_discretization = VerticallyImplicitTimeDiscretization()
-                         )
-
-Construct a model with `constants`, grid `grid`,
-bottom buoyancy gradient `dbdz`, bottom u-velocity gradient `dudz`,
-and forced by
-
-    - buoyancy flux `Qᶿ`
-    - x-momentum flux `Qᵘ`
-    - y-momentum flux `Qᵛ`.
-
-The keyword arguments `diffusivity_scaling`, `dissipation_parameter`,
-`mixing_length_parameter`, `surface_TKE_flux` and `time_discretization` set
-their respective components of the `CATKEVerticalDiffusivity` closure
-in Oceananigans.
-"""
 function ParameterizedModel(td::TruthData, Δt; kwargs...)
 
     αg = td.constants[:αg]
@@ -32,7 +8,7 @@ function ParameterizedModel(td::TruthData, Δt; kwargs...)
     dbdz_bottom = td.boundary_conditions.dθdz_bottom * αg
     dudz_bottom = td.boundary_conditions.dudz_bottom
 
-    closure = CATKEVerticalDiffusivity(Float64; kwargs...)
+    closure = CATKEVerticalDiffusivity(Float64; warning=false, kwargs...)
 
     # u★ = (Qᵘ^2 + Qᵛ^2)^(1/4)
     # w★³ = Qᵇ * grid.Δz

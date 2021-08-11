@@ -19,6 +19,10 @@ struct TimeAverage end
 # Profile analysis
 #
 
+# Returns a separate mean for each ensemble member along the x-axis in the many-columns scenario
+ensemble_mean(c::AbstractDataField) = c.grid.Nx == 1 ? mean(c) : 
+                                                       mean(c, dims = (2,3))
+
 """
     struct ValueProfileAnalysis{D, A}
 
