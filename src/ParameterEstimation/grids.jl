@@ -21,6 +21,16 @@ function ZGrid(datapath; size=nothing)
     return grid
 end
 
+function ManyColumnsGrid(datapath; size = (1,1,64))
+
+      _, _, Nz, _, _, Lz = get_grid_params(datapath)
+
+      sz = ColumnEnsembleSize(Nz=Nz, ensemble=(ensemble_size, length(LESdata)))
+      halo = ColumnEnsembleSize(Nz=Nz)
+
+      grid = RegularRectilinearGrid(size=sz, halo=halo, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
+end
+
 """
   XYZGrid(N)
 

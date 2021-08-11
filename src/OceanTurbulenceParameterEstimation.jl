@@ -11,9 +11,7 @@ export
     mean_std,
     profile_mean,
     max_gradient_variance,
-    initialize_forward_run!,
     simple_safe_save,
-    run_until!,
 
     # file_wrangling.jl
     get_iterations,
@@ -25,6 +23,8 @@ export
     # models_and_data.jl
     TruthData,
     ParameterizedModel,
+    run_until!,
+    initialize_forward_run!,
 
     # free_parameters.jl
     DefaultFreeParameters,
@@ -32,7 +32,10 @@ export
     FreeParameters,
     @free_parameters,
 
-    # free_parameters.jl and set_fields.jl
+    # free_parameters.jl / 
+    # set_fields.jl / 
+    # single_column_utils.jl / 
+    # many_columns_utils.jl
     set!,
 
     # visualization.jl
@@ -59,6 +62,8 @@ export
     GradientProfileAnalysis,
     on_grid,
     init_loss_function,
+    BatchTruthData,
+    BatchLossFunction,
 
     # forward_map.jl
     ParameterizedModelTimeSeries,
@@ -109,13 +114,19 @@ Base.show(io::IO, p::FreeParameters) = print(io, "$(typeof(p)):", '\n',
 
 dictify(p) = Dict((k, getproperty(p, k)) for k in propertynames(p))
 
+# Temporary
+include("to_import.jl")
+
 include("file_wrangling.jl")
 include("set_fields.jl")
 include("models_and_data.jl")
 include("free_parameters.jl")
+include("loss_function_utils.jl")
+include("loss_functions.jl")
+include("many_columns_utils.jl")
+include("single_column_utils.jl")
 include("utils.jl")
 include("visualization.jl")
-include("loss_functions.jl")
 include("forward_map.jl")
 
 include("TKEMassFluxModel/TKEMassFluxModel.jl")

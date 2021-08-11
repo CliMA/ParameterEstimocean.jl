@@ -3,10 +3,10 @@ height(c::AbstractDataField) = c.grid.Lz
 length(c::AbstractDataField) = c.grid.Nz
 Δz(g::RegularRectilinearGrid, i::Int) = g.Δz
 
-function integrate_range(c::AbstractDataField, i₁::Int, i₂::Int)
+function integrate_range(c, cgrid, i₁::Int, i₂::Int)
     total = 0
     for i = i₁:i₂
-        @inbounds total += c[i] * Δz(c.grid, i)
+        @inbounds total += c[i] * Δz(cgrid, i)
     end
     return total
 end
@@ -23,7 +23,7 @@ function integral(c::AbstractDataField, z₋, z₊=0)
     if i₂ ≠ i₁
         # Calculate interior integral, recalling that the
         # top interior cell has index i₂-2.
-        total = integrate_range(c, i₁+1, i₂-1)
+        total = integrate_range(c, c.grid, i₁+1, i₂-1)
 
         # Add contribution to integral from fractional bottom part,
         # if that region is a part of the grid.
@@ -40,6 +40,35 @@ function integral(c::AbstractDataField, z₋, z₊=0)
     return total
 end
 
+function integral(c, cgrid, z₋, z₊=0)
+
+    @assert z₊ > cgrid.zF[1] "Integration region lies outside the domain."
+    @assert z₊ > z₋ "Invalid integration range: upper limit greater than lower limit."
+
+    # Find region bounded by the face ≤ z₊ and the face ≤ z₁
+    i₁ = searchsortedfirst(cgrid.zF, z₋) - 1
+    i₂ = searchsortedfirst(cgrid.zF, z₊) - 1
+
+    if i₂ ≠ i₁
+        # Calculate interior integral, recalling that the
+        # top interior cell has index i₂-2.
+        total = integrate_range(c, cgrid, i₁+1, i₂-1)
+
+        # Add contribution to integral from fractional bottom part,
+        # if that region is a part of the grid.
+        if i₁ > 0
+            total += c[i₁] * (cgrid.zF[i₁+1] - z₋)
+        end
+
+        # Add contribution to integral from fractional top part
+        total += c[i₂] * (z₊ - cgrid.zF[i₂])
+    else
+        total = c[i₁] * (z₊ - z₋)
+    end
+
+    return total
+end
+
 # Set to an array
 function set!(c::AbstractDataField, data::AbstractArray)
     for i in eachindex(data)
@@ -48,20 +77,33 @@ function set!(c::AbstractDataField, data::AbstractArray)
     return nothing
 end
 
+import Base.size
+extent(grid::Oceananigans.Grids.AbstractGrid) = (grid.Lx, grid.Ly, grid.Lz)
+size(grid::Oceananigans.Grids.AbstractGrid) = (grid.Nx, grid.Ny, grid.Nz)
+
 # Set two fields to one another... some shenanigans
 #
 _set_similar_fields!(c::AbstractDataField{Ac, G}, d::AbstractDataField{Ad, G}) where {Ac, Ad, G} = 
     c.data .= convert(typeof(c.data), d.data)
 
 function interp_and_set!(c1::AbstractDataField{A1, G1}, c2::AbstractDataField{A2, G2}) where {A1, A2, G1, G2}
-    @assert height(c1) == height(c2) "Physical domains differ between the two fields."
-    for i in eachindex(c1.data)
-        @inbounds c1[i] = integral(c2, c1.grid.zF[i], c1.grid.zF[i+1]) / Δz(c1.grid, i)
+
+    grid1 = c1.grid
+    grid2 = c2.grid
+
+    @assert extent(grid1) == extent(grid2) "Physical domains differ between the two fields."
+
+    for j in 1:grid1.Ny, i in 1:grid1.Nx
+        for k in 1:grid1.Nz
+            @inbounds c1[i,j,k] = integral(c2[i,j,:], grid2, grid1.zF[k], grid1.zF[k+1]) / Δz(grid1, i)
+        end
     end
+
     return nothing
 end
 
-## This implementation does not accommodate 3D grids that are not columns
+## This implementation accommodates 3D grids whose topology is (Flat, Flat, Bounded).
+## It does not does not accommodate 3D grids with dependent columns.
 function set!(c::AbstractDataField{Ac, G}, d::AbstractDataField{Ad, G}) where {Ac, Ad, G}
     if height(c) == height(d) && length(c) == length(d)
         return _set_similar_fields!(c, d)

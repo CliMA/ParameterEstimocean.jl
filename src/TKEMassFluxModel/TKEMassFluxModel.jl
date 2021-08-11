@@ -15,7 +15,7 @@ using Suppressor
 
 import Oceananigans.TurbulenceClosures: TKEBasedVerticalDiffusivity
 
-TKEBasedVerticalDiffusivity{TD, A, B, C, D}(a::A, b::B, c::C, d::D) where {TD, A, B, C, D} = TKEBasedVerticalDiffusivity{TD}(a, b, c, d)
+# TKEBasedVerticalDiffusivity{TD, A, B, C, D}(a::A, b::B, c::C, d::D) where {TD, A, B, C, D} = TKEBasedVerticalDiffusivity{TD}(a, b, c, d)
 
 export TKEParametersRiDependent,
        TKEFreeConvection,
@@ -28,6 +28,7 @@ export TKEParametersRiDependent,
        parameter_specific_kwargs
 
 include("tke_mass_flux_parameters.jl")
-include("tke_mass_flux_models.jl")
+include("tke_mass_flux_model_single_column.jl")
+include("tke_mass_flux_model_many_columns.jl")
 
 end # module

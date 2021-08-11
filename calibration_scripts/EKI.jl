@@ -41,8 +41,8 @@ isdir(directory) || mkpath(directory)
 p = Parameters(RelevantParameters = free_parameter_options[free_parameter_option],
                ParametersToOptimize = free_parameter_options[free_parameter_option])
 
-calibration = dataset(FourDaySuite, p; relative_weights = relative_weight_options["all_but_e"], grid_type=ZGrid, grid_size=64, Δt=10.0);
-validation = dataset(merge(TwoDaySuite, SixDaySuite), p; relative_weights = relative_weight_options["all_but_e"], grid_type=ZGrid, grid_size=64, Δt=10.0);
+calibration = dataset(FourDaySuite, p; relative_weights = relative_weight_options["all_but_e"], grid_type=ZGrid, Nz=64, Δt=10.0);
+validation = dataset(merge(TwoDaySuite, SixDaySuite), p; relative_weights = relative_weight_options["all_but_e"], grid_type=ZGrid, Nz=64, Δt=10.0);
 ce = CalibrationExperiment(calibration, validation, p);
 
 loss = ce.calibration.loss

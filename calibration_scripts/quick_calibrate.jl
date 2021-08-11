@@ -39,13 +39,13 @@ p = Parameters(RelevantParameters = free_parameter_options[free_parameter_option
 
 calibration = dataset(FourDaySuite, p; relative_weights = relative_weight_options["all_but_e"],
                                         grid_type=ZGrid,
-                                        grid_size=16,
+                                        Nz=16,
                                         Δt=10.0);
 
 validation = dataset(merge(TwoDaySuite, SixDaySuite), p;
                                         relative_weights = relative_weight_options["all_but_e"],
                                         grid_type=ZGrid,
-                                        grid_size=16,
+                                        Nz=16,
                                         Δt=10.0);
 
 ce = CalibrationExperiment(calibration, validation, p);
@@ -60,7 +60,7 @@ parameternames = propertynames(initial_parameters)
 
 # @time calibration = dataset(FourDaySuite, p; relative_weights = relative_weight_options["all_but_e"],
 #                                         grid_type=ZGrid,
-#                                         grid_size=64,
+#                                         Nz=64,
 #                                         Δt=60.0); # 12.140647 seconds (31.52 M allocations: 2.978 GiB, 4.28% gc time)
 
 # @time validation.loss([initial_parameters...]) # 88.855043 seconds (184.61 M allocations: 85.167 GiB, 5.36% gc time, 35.72% compilation time) 

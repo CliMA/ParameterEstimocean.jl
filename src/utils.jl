@@ -53,36 +53,6 @@ function mean_variance(data::TruthData, field_name; targets=eachindex(data.t))
     return total_variance / length(targets)
 end
 
-function time_step!(model, Δt, Nt)
-    for step = 1:Nt
-        time_step!(model, Δt)
-    end
-    return nothing
-end
-
-time(model) = model.clock.time
-iteration(model) = model.clock.iteration
-
-"""
-    run_until!(model, Δt, tfinal)
-Run `model` until `tfinal` with time-step `Δt`.
-"""
-function run_until!(model, Δt, tfinal)
-    Nt = floor(Int, (tfinal - time(model))/Δt)
-    time_step!(model, Δt, Nt)
-
-    last_Δt = tfinal - time(model)
-    last_Δt == 0 || time_step!(model, last_Δt)
-
-    return nothing
-end
-
-# function initialize_and_run_until!(model, data, parameters, initial, target)
-#     initialize_forward_run!(model, data, parameters, initial)
-#     run_until!(model.model, model.Δt, data.t[target])
-#     return nothing
-# end
-
 nan2inf(err) = isnan(err) ? Inf : err
 
 function trapz(f, t)
@@ -95,12 +65,6 @@ function trapz(f, t)
     return integral
 end
 
-function initialize_forward_run!(model, data, params, index)
-    set!(model, params)
-    set!(model, data, index)
-    model.clock.iteration = 0
-    return nothing
-end
 
 struct VarianceWeights{F, D, T, V}
        fields :: F

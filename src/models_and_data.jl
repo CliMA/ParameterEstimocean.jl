@@ -16,9 +16,9 @@ Base.getproperty(m::ParameterizedModel, p::Symbol) = getproperty(m, Val(p))
 
 function Base.getproperty(m::ParameterizedModel, ::Val{p}) where p
 
-    p ∈ [:b, :e] && return m.model.tracers[p]
+    p ∈ propertynames(m.model.tracers) && return m.model.tracers[p]
 
-    p ∈ [:u, :v, :w] && return m.model.velocities[p]
+    p ∈ propertynames(m.model.velocities) && return m.model.velocities[p]
 
     return getproperty(m.model, p)
 
@@ -50,10 +50,10 @@ end
 """
     TruthData(datapath)
 
-Construct SimData from a time-series of Oceananigans LES data saved at `datapath`.
+Construct TruthData from a time-series of Oceananigans LES data saved at `datapath`.
 """
 function TruthData(datapath; grid_type=ZGrid,
-                             grid_size=32)
+                             Nz=32)
 
     # For now, we assume salinity-less LES data.
     file = jldopen(datapath, "r")
@@ -112,7 +112,7 @@ function TruthData(datapath; grid_type=ZGrid,
                       simulation_grid, constants, (ν=background_ν, κ=background_κ),
                       u, v, b, e, t, name)
 
-    model_grid = grid_type(datapath; size=grid_size)
+    model_grid = grid_type(datapath; size=Nz)
 
     # Return TruthData with grid and variables coarse_grained to model resolution
     td_coarse = TruthData(td, model_grid)
@@ -165,19 +165,39 @@ end
 
 length(td::TruthData) = length(td.t)
 
-function set!(model::Oceananigans.AbstractModel,
-              td::TruthData, i)
+function time_step!(model, Δt, Nt)
+    for step = 1:Nt
+        time_step!(model, Δt)
+    end
+    return nothing
+end
 
-    set!(model, b = td.b[i],
-                u = td.u[i],
-                v = td.v[i],
-                e = td.e[i]
-        )
+time(model) = model.clock.time
+iteration(model) = model.clock.iteration
 
-    model.clock.time = td.t[i]
+"""
+    run_until!(model, Δt, tfinal)
+Run `model` until `tfinal` with time-step `Δt`.
+"""
+function run_until!(model, Δt, tfinal)
+    Nt = floor(Int, (tfinal - time(model))/Δt)
+    time_step!(model, Δt, Nt)
+
+    last_Δt = tfinal - time(model)
+    last_Δt == 0 || time_step!(model, last_Δt)
 
     return nothing
 end
 
-set!(pm::ParameterizedModel, td::TruthData, i) = set!(pm.model, td, i)
+function initialize_forward_run!(model, data, params, index)
+    set!(model, params)
+    set!(model, data, index)
+    model.clock.iteration = 0
+    return nothing
+end
 
+# function initialize_and_run_until!(model, data, parameters, initial, target)
+#     initialize_forward_run!(model, data, parameters, initial)
+#     run_until!(model.model, model.Δt, data.t[target])
+#     return nothing
+# end

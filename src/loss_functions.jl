@@ -48,7 +48,7 @@ end
 
 mutable struct BatchedLossContainer{B, W, E} <: ALC
       batch :: B
-    weights :: W # simulation weights
+    weights :: W # scenario weights
       error :: E
 end
 
@@ -56,7 +56,7 @@ function BatchedLossContainer(batch; weights=[1.0 for b in batch])
     return BatchedLossContainer(batch, weights, zeros(length(batch)))
 end
 
-function (bl::BatchedLossContainer)(θ)
+function (bl::BatchedLossContainer)(θ::FreeParameters)
     bl.error .= 0
     @inbounds begin
         Base.Threads.@threads for i = 1:length(bl.batch)
@@ -67,49 +67,61 @@ function (bl::BatchedLossContainer)(θ)
 end
 
 #
-# Time analysis
+# Ensemble loss function
 #
 
-struct TimeSeriesAnalysis{T, D, A}
-        time :: T
-        data :: D
-    analysis :: A
+# set!(model, parameters, ensemble)
+# Ensemble calibration
+# `Batch` here refers to all of the physical scenarios to be calibrated to
+const BatchTruthData = Vector{<:TruthData}
+const BatchLossFunction = Vector{<:LossFunction}
+
+mutable struct EnsembleLossContainer{D, W, M, L, E} <: ALC
+    data_batch :: D
+       weights :: W # scenario weights
+         model :: M
+    loss_batch :: L
+         error :: E
 end
 
-TimeSeriesAnalysis(time, analysis) = TimeSeriesAnalysis(time, zeros(length(time)), analysis)
-
-struct TimeAverage end
-
-# Use trapz integral to compute time average of data in case times are not evenly spaced
-@inline (::TimeAverage)(data, time) = trapz(data, time) / (time[end] - time[1])
-
-#
-# Profile analysis
-#
-
-"""
-    struct ValueProfileAnalysis{D, A}
-
-A type for doing analyses on a discrepancy profile located
-at cell centers. Defaults to taking the mean square difference between
-the model and data coarse-grained to the model grid.
-"""
-struct ValueProfileAnalysis{D, A}
-    discrepancy :: D
-       analysis :: A
+function EnsembleLossContainer(model, data_batch, loss_batch; weights=[1.0 for b in batch])
+    return EnsembleLossContainer(batch, weights, zeros(length(batch)))
 end
 
-ValueProfileAnalysis(grid; analysis=mean) = ValueProfileAnalysis(CenterField(grid), analysis)
-ValueProfileAnalysis(; analysis=mean) = ValueProfileAnalysis(nothing, analysis)
-on_grid(profile::ValueProfileAnalysis, grid) = ValueProfileAnalysis(grid; analysis=profile.analysis)
+function (el::EnsembleLossContainer)(θ::Vector{<:FreeParameters})
+
+    set!(el.model, θ)
+
+    # iterate the model
+
+    ensemble_size = ensemble_size(model)
+    el.error .= 0
+
+    @inbounds begin
+        Base.Threads.@threads for j = 1:length(el.data_batch)
+
+            # mean error across all ensemble members for this data case
+
+            evaluate!(loss, θ, model, data)
+            return loss.time_series.analysis(loss.time_series.data, loss.time_series.time)
+
+            el.error[i] = el.weights[i] * el.batch[i](θ)
+        end
+    end
+    return sum(el.error)
+end
 
 function calculate_value_discrepancy!(value, model_field, data_field)
-    coarse_grained = discrepancy = value.discrepancy
-    set!(coarse_grained, data_field)
+    discrepancy = value.discrepancy
 
-    for i in eachindex(discrepancy)
-        @inbounds discrepancy[i] = (coarse_grained[i] - model_field[i])^2
-    end
+    centered_data = CenterField(model_field.grid)
+    set!(centered_data, data_field)
+
+    centered_model = CenterField(model_field.grid)
+    set!(centered_model, model_field)
+
+    interior(discrepancy) .= (interior(centered_data) .- interior(centered_model)) .^ 2
+
     return nothing
 end
 
@@ -122,36 +134,6 @@ analysis of the discrepancy profile.
 function analyze_profile_discrepancy(value, model_field, data_field)
     calculate_value_discrepancy!(value, model_field, data_field)
     return value.analysis(value.discrepancy)
-end
-
-"""
-    struct GradientProfileAnalysis{D, A}
-
-A type for combining discreprancy between the fields and field gradients.
-Defaults to taking the mean square difference between
-the model and data coarse-grained to the model grid.
-"""
-mutable struct GradientProfileAnalysis{D, G, F, W, A}
-     ϵ :: D
-    ∇ϵ :: G
-    ∇ϕ :: F
-    gradient_weight :: W
-    value_weight :: W
-    analysis :: A
-end
-
-GradientProfileAnalysis(grid; analysis=mean, gradient_weight=1.0, value_weight=1.0) =
-    GradientProfileAnalysis(CenterField(grid), FaceField(grid), FaceField(grid),
-                            gradient_weight, value_weight, analysis)
-
-GradientProfileAnalysis(; analysis=mean, gradient_weight=1.0, value_weight=1.0) =
-    GradientProfileAnalysis(nothing, nothing, nothing, gradient_weight, value_weight, analysis)
-
-function on_grid(profile::GradientProfileAnalysis, grid)
-    return GradientProfileAnalysis(grid;
-                                          analysis = profile.analysis,
-                                   gradient_weight = profile.gradient_weight,
-                                      value_weight = profile.value_weight)
 end
 
 function calculate_gradient_discrepancy!(prof, model_field, data_field)
@@ -197,7 +179,7 @@ end
 @inline get_weight(::Nothing, field_index) = 1
 @inline get_weight(weights, field_index) = @inbounds weights[field_index]
 
-function analyze_weighted_profile_discrepancy(loss, model, data, target)
+function analyze_weighted_profile_discrepancy(loss, model, data::TruthData, target)
     total_discrepancy = zero(eltype(model.grid))
     field_names = Tuple(loss.fields)
 
@@ -277,7 +259,7 @@ end
 function init_loss_function(model::ParameterizedModel, data::TruthData, first_target, last_target,
                                       fields, relative_weights)
 
-    grid = model.model.grid
+    grid = model.grid
 
     profile_analysis = ValueProfileAnalysis(grid)
     last_target = last_target === nothing ? length(data) : last_target
@@ -289,9 +271,15 @@ function init_loss_function(model::ParameterizedModel, data::TruthData, first_ta
                         time_series = TimeSeriesAnalysis(data.t[targets], TimeAverage()),
                         profile = profile_analysis)
 
-    loss_container = LossContainer(model, data, loss_function)
+    return loss_function
+end
 
-    return loss_container
+function init_loss_function(model::ParameterizedModel, data_batch::BatchTruthData, 
+                            first_targets, last_targets, fields, relative_weights; weights=[1.0 for b in batch])
+
+    loss_batch = [init_loss_function(model, data, first_target, last_target, fields, relative_weights) for data in data_batch]
+
+    return EnsembleLossContainer(model, data_batch, loss_batch; weights=weights)
 end
 
 #

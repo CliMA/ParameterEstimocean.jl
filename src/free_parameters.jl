@@ -102,8 +102,29 @@ function new_closure(closure::AbstractTurbulenceClosure, free_parameters)
     return new_closure
 end
 
-function set!(pm::ParameterizedModel, free_parameters)
+function set!(pm::ParameterizedModel, free_parameters::FreeParameters)
     closure = getproperty(pm.model, :closure)
     new_ = new_closure(closure, free_parameters)
     setproperty!(pm.model, :closure, new_)
+end
+
+function set!(pm::ParameterizedModel, free_parameters::Vector{<:FreeParameters})
+
+    # Array of closures
+    model_closure = getproperty(pm.model, :closure)
+
+    @inbounds begin
+        Base.Threads.@threads for i = 1:ensemble_size
+
+            free_parameters = θ[i]
+
+            # each thread accesses different elements in model.closure
+            closure = model.closure[i, 1]
+
+            iᵗʰ_closure = new_closure(closure, free_parameters)
+
+            @view(model_closure[i,:]) .= iᵗʰ_closure
+        end
+    end
+
 end

@@ -23,10 +23,10 @@ export
        relative_weight_options,
        set!,
 
-       # tke_utils.jl
+       # tke_mass_flux_model_setup.jl
        get_loss,
-       init_tke_calibration,
        dataset,
+       ensemble_dataset,
 
        # grids.jl
        ZGrid,

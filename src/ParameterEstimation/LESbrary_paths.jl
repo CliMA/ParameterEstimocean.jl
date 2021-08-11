@@ -166,7 +166,7 @@ TwoDaySuite = OrderedDict(
                            last = nothing),
                 )
 
-# https://engaging-web.mit.edu/~alir/lesbrary/2DaySuite/
+# https://engaging-web.mit.edu/~alir/lesbrary/6DaySuite/
 SixDaySuite_path = "/Users/adelinehillier/.julia/dev/6DaySuite/"
 SixDaySuite = OrderedDict(
                  "6d_free_convection" => (
