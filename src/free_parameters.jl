@@ -4,17 +4,18 @@ function get_free_parameters(closure::AbstractTurbulenceClosure)
     paramnames = Dict()
     paramtypes = Dict()
     kw_params = Dict() # for parameters that are not contained in structs but rather as explicit keyword arguments in `pm.model.closure`
-    for pname in propertynames(closure) # e.g. :surface_model
+    for pname in propertynames(closure) # e.g. :surface_TKE_flux
         p = getproperty(closure, pname) # e.g. p = TKESurfaceFlux{Float64}(3.62, 1.31)
 
-        if pname ∈ [:surface_model, :diffusivity_scaling]
-        # if typeof(p) <: Union{Oceananigans.TurbulenceClosures.RiDependentDiffusivityScaling, Oceananigans.TurbulenceClosures.TKESurfaceFlux}
-            paramnames[pname] = propertynames(p) #e.g. paramnames[:surface_model] = (:Cᵂu★, :CᵂwΔ)
-            paramtypes[pname] = typeof(p) #e.g. paramtypes[:surface_model] = TKESurfaceFlux{Float64}
+        # if pname ∈ [:dissipation_parameter, :mixing_length_parameter]
+        if typeof(p) <: Number
+            kw_params[pname] = p #e.g. kw_params[:Cᴰ] = 2.91
 
-        elseif pname ∈ [:dissipation_parameter, :mixing_length_parameter]
-        # elseif typeof(p) <: Number
-            kw_params[pname] = p #e.g. kw_params[:dissipation_parameter] = 2.91
+        # if pname ∈ [:surface_TKE_flux, :diffusivity_scaling]
+        elseif eltype(p) <: Number
+            paramnames[pname] = propertynames(p) #e.g. paramnames[:surface_TKE_flux] = (:Cᵂu★, :CᵂwΔ)
+            paramtypes[pname] = typeof(p) #e.g. paramtypes[:surface_TKE_flux] = TKESurfaceFlux{Float64}
+
         end
     end
 
@@ -23,9 +24,9 @@ end
  
 function DefaultFreeParameters(closure::AbstractTurbulenceClosure, freeparamtype)
     paramnames, paramtypes, kw_params = get_free_parameters(closure)
-    #e.g. paramnames[:surface_model] = (:Cᵂu★, :CᵂwΔ);
-    #     paramtypes[:surface_model] = TKESurfaceFlux{Float64}
-    #     kw_params[:dissipation_parameter] = 2.91
+    #e.g. paramnames[:surface_TKE_flux] = (:Cᵂu★, :CᵂwΔ);
+    #     paramtypes[:surface_TKE_flux] = TKESurfaceFlux{Float64}
+    #     kw_params[:Cᴰ] = 2.91
 
     alldefaults = (ptype() for ptype in values(paramtypes))
 
@@ -33,8 +34,7 @@ function DefaultFreeParameters(closure::AbstractTurbulenceClosure, freeparamtype
     for pname in fieldnames(freeparamtype) # e.g. :Cᵂu★
         for ptype in alldefaults # e.g. TKESurfaceFlux{Float64}(3.62, 1.31)
             pname ∈ propertynames(ptype) && (push!(freeparams, getproperty(ptype, pname)); break)
-            pname == :Cᴰ && (push!(freeparams, kw_params[:dissipation_parameter]); break)
-            pname == :Cᴸᵇ && (push!(freeparams, kw_params[:mixing_length_parameter]); break)
+            pname ∈ keys(kw_params) && (push!(freeparams, kw_params[pname]); break)
         end
     end
 
@@ -54,15 +54,15 @@ end
 function new_closure(closure::AbstractTurbulenceClosure, free_parameters)
 
     paramnames, paramtypes, kw_params = get_free_parameters(closure)
-    #e.g. paramnames[:surface_model] = (:Cᵂu★, :CᵂwΔ)
-    #e.g. paramtypes[:surface_model] = TKESurfaceFlux{Float64}
-    #e.g. kw_params[:dissipation_parameter] = 2.91
+    #e.g. paramnames[:surface_TKE_flux] = (:Cᵂu★, :CᵂwΔ)
+    #e.g. paramtypes[:surface_TKE_flux] = TKESurfaceFlux{Float64}
+    #e.g. kw_params[:Cᴰ] = 2.91
 
     # All keyword arguments to be passed in when defining the new closure
     new_closure_kwargs = kw_params
 
     # Populate paramdicts with the new values for each parameter name `pname` under `ptypename`
-    for ptypename in keys(paramtypes) # e.g. :diffusivity_scaling, :surface_model
+    for ptypename in keys(paramtypes) # e.g. :diffusivity_scaling, :surface_TKE_flux
 
         existing_parameters = getproperty(closure, ptypename)
 
@@ -93,7 +93,7 @@ function new_closure(closure::AbstractTurbulenceClosure, free_parameters)
     ClosureType = typeof(closure)
     args = [new_closure_kwargs[x] for x in fieldnames(ClosureType)]
     new_closure = ClosureType(args...)
-    # new_closure = TKEBasedVerticalDiffusivity(Float64; new_closure_kwargs...)
+    # new_closure = CATKEVerticalDiffusivity(Float64; new_closure_kwargs...)
 
     # for (ptypename, new_value) in new_closure_kwargs
     #     setproperty!(closure, ptypename, new_value)

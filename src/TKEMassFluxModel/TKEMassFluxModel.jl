@@ -13,9 +13,9 @@ using Oceananigans.Coriolis: FPlane
 using Oceananigans.Models: HydrostaticFreeSurfaceModel
 using Suppressor
 
-import Oceananigans.TurbulenceClosures: TKEBasedVerticalDiffusivity
+import Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 
-# TKEBasedVerticalDiffusivity{TD, A, B, C, D}(a::A, b::B, c::C, d::D) where {TD, A, B, C, D} = TKEBasedVerticalDiffusivity{TD}(a, b, c, d)
+# CATKEVerticalDiffusivity{TD, A, B, C, D}(a::A, b::B, c::C, d::D) where {TD, A, B, C, D} = CATKEVerticalDiffusivity{TD}(a, b, c, d)
 
 export TKEParametersRiDependent,
        TKEFreeConvection,

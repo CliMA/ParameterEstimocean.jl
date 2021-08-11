@@ -91,7 +91,7 @@ import Oceananigans.Fields: interpolate
 using Oceananigans: AbstractModel, AbstractEddyViscosityClosure
 using Oceananigans.Fields: CenterField, AbstractDataField
 using Oceananigans.Grids: Face, Center, AbstractGrid
-using Oceananigans.TurbulenceClosures: TKEBasedVerticalDiffusivity, AbstractTurbulenceClosure
+using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, AbstractTurbulenceClosure
 
 using JLD2
 

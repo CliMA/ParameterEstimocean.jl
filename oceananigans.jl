@@ -2,7 +2,7 @@
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.TimeSteppers: time_step!
-using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, TKEBasedVerticalDiffusivity
+using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, CATKEVerticalDiffusivity
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 
 using BenchmarkTools
@@ -13,7 +13,7 @@ halo = ColumnEnsembleSize(Nz=sz.Nz)
 
 grid = RegularRectilinearGrid(size=sz, halo=halo, z=(-128, 0), topology=(Flat, Flat, Bounded))
 
-closure = [TKEBasedVerticalDiffusivity() for i=1:Ex, j=1:Ey]
+closure = [CATKEVerticalDiffusivity() for i=1:Ex, j=1:Ey]
                                       
 Qᵇ = [+1e-8 for i=1:Ex, j=1:Ey]
 Qᵘ = [-1e-4 for i=1:Ex, j=1:Ey]

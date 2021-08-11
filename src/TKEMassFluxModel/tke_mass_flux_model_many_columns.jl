@@ -2,7 +2,7 @@
 
 function ParameterizedModel(td_batch::Vector{<:TruthData}, Δt; N_ens = 50, kwargs...)
 
-    closure = [TKEBasedVerticalDiffusivity(Float64; kwargs...) for i=1:N_ens, j=1:length(td_batch)]
+    closure = [CATKEVerticalDiffusivity(Float64; kwargs...) for i=1:N_ens, j=1:length(td_batch)]
 
     ensemble(f) = [f(td) for i = 1:N_ens, td in td_batch]
 

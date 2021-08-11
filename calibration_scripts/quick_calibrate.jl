@@ -1,6 +1,6 @@
 """
 Run this script to learn how to use OceanTurbulenceParameterEstimation.ParameterEstimation functions to calibrate
-the free parameters of the TKEBasedVerticalDiffusivity closure from Oceananigans.jl to the Large Eddy simulation
+the free parameters of the CATKEVerticalDiffusivity closure from Oceananigans.jl to the Large Eddy simulation
 ground truth generated via LESbrary.jl.
 """
 

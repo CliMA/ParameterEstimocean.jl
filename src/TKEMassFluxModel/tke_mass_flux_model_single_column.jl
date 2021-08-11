@@ -5,7 +5,7 @@
              diffusivity_scaling = RiDependentDiffusivityScaling(),
            dissipation_parameter = 2.91,
          mixing_length_parameter = 1.16,
-                   # surface_model = TKESurfaceFlux(),
+                   # surface_TKE_flux = TKESurfaceFlux(),
              time_discretization = VerticallyImplicitTimeDiscretization()
                          )
 
@@ -18,8 +18,8 @@ and forced by
     - y-momentum flux `Qᵛ`.
 
 The keyword arguments `diffusivity_scaling`, `dissipation_parameter`,
-`mixing_length_parameter`, `surface_model` and `time_discretization` set
-their respective components of the `TKEBasedVerticalDiffusivity` closure
+`mixing_length_parameter`, `surface_TKE_flux` and `time_discretization` set
+their respective components of the `CATKEVerticalDiffusivity` closure
 in Oceananigans.
 """
 function ParameterizedModel(td::TruthData, Δt; kwargs...)
@@ -32,11 +32,11 @@ function ParameterizedModel(td::TruthData, Δt; kwargs...)
     dbdz_bottom = td.boundary_conditions.dθdz_bottom * αg
     dudz_bottom = td.boundary_conditions.dudz_bottom
 
-    closure = TKEBasedVerticalDiffusivity(Float64; kwargs...)
+    closure = CATKEVerticalDiffusivity(Float64; kwargs...)
 
     # u★ = (Qᵘ^2 + Qᵛ^2)^(1/4)
     # w★³ = Qᵇ * grid.Δz
-    # Qᵉ = - closure.dissipation_parameter * (closure.surface_model.CᵂwΔ * w★³ + closure.surface_model.Cᵂu★ * u★^3)
+    # Qᵉ = - closure.dissipation_parameter * (closure.surface_TKE_flux.CᵂwΔ * w★³ + closure.surface_TKE_flux.Cᵂu★ * u★^3)
 
     u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ), bottom = GradientBoundaryCondition(dudz_bottom))
     v_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵛ))

@@ -7,17 +7,18 @@ function get_loss(LEScase, td::Union{TruthData, BatchTruthData}, p::Parameters, 
                                         # ParameterizedModel
                                                             Δt = 10.0,
                                         # TKE-specific kwargs:
-                                            diffusivity_scaling = RiDependentDiffusivityScaling(),
-                                        dissipation_parameter = 2.91,
-                                        mixing_length_parameter = 1.16,
-                                            time_discretization = VerticallyImplicitTimeDiscretization()
+                                                            Cᴰ = 2.91,
+                                                 mixing_length = MixingLength(),
+                                              surface_tke_flux = SurfaceTKEFlux(),
+                                           time_discretization = VerticallyImplicitTimeDiscretization(),
+                                                       warning = false
                                         )
 
     model = TKEMassFluxModel.ParameterizedModel(td, Δt;
                                         diffusivity_scaling = diffusivity_scaling,
                                       dissipation_parameter = dissipation_parameter,
                                     mixing_length_parameter = mixing_length_parameter,
-                                              # surface_model = surface_model,
+                                           surface_TKE_flux = surface_TKE_flux,
                                         time_discretization = time_discretization
                                          )
     

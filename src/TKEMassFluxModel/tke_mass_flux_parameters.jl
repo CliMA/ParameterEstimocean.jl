@@ -29,6 +29,27 @@ parameter_guide = Dict(
           latex = L"C^{\ell}_b",
           default = 1.1612,
           bounds = (0.0, 7.0)),
+     
+     :Cᵟu => (
+          name = "Ratio of mixing length to grid spacing",
+          latex = L"C^{\delta}u",
+          default = 0.5,
+          bounds = (0.0, 2.0),
+     ),
+
+     :Cᵟc => (
+          name = "Ratio of mixing length to grid spacing",
+          latex = L"C^{\delta}c",
+          default = 0.5,
+          bounds = (0.0, 2.0),
+     ),
+
+     :Cᵟe => (
+          name = "Ratio of mixing length to grid spacing",
+          latex = L"C^{\delta}e",
+          default = 0.5,
+          bounds = (0.0, 2.0),
+     ),
 
      :Cᵂu★  => (
           name = "Mixing length parameter",
@@ -43,13 +64,13 @@ parameter_guide = Dict(
           bounds = (0.0, 5.0)),
 
      :CᴷRiʷ  => (
-          name = "Convective adjustment parameter",
+          name = "Stability function parameter",
           latex = L"C^KRi^w",
           default = 0.7213,
           bounds = (0.0, 6.0)),
 
      :CᴷRiᶜ  => (
-          name = "Convective adjustment parameter",
+          name = "Stability function parameter",
           latex = L"C^KRi^c",
           default = 0.7588,
           bounds = (-1.5, 4.0)),
@@ -129,42 +150,70 @@ parameter_guide = Dict(
 
 # For scenarios involving stresses
 @free_parameters(TKEParametersRiDependent,
+                 Cᵟu, Cᵟc, Cᵟe,
                  CᴷRiʷ, CᴷRiᶜ,
-                 Cᴷu⁻, Cᴷuʳ,
-                 Cᴷc⁻, Cᴷcʳ,
-                 Cᴷe⁻, Cᴷeʳ,
+                 Cᴷu⁻, Cᴷuʳ, Cᴷc⁻, Cᴷcʳ, Cᴷe⁻, Cᴷeʳ,
+                 Cᴰ, Cᴸᵇ, Cᵂu★, CᵂwΔ)
+
+@free_parameters(TKEParametersRiIndependent,
+                 Cᵟu, Cᵟc, Cᵟe,
+                 Cᴷu⁻, Cᴷc⁻, Cᴷe⁻,
+                 Cᴰ, Cᴸᵇ, Cᵂu★, CᵂwΔ)
+
+@free_parameters(TKEParametersRiDependentConvectiveAdjustment,
+                 Cᵟu, Cᵟc, Cᵟe,
+                 CᴷRiʷ, CᴷRiᶜ,
+                 Cᴬu, Cᴬc, Cᴬe,
+                 Cᴷu⁻, Cᴷuʳ, Cᴷc⁻, Cᴷcʳ, Cᴷe⁻, Cᴷeʳ,
+                 Cᴰ, Cᴸᵇ, Cᵂu★, CᵂwΔ)
+
+@free_parameters(TKEParametersRiIndependentConvectiveAdjustment,
+                 Cᵟu, Cᵟc, Cᵟe,
+                 Cᴷu⁻, Cᴷc⁻, Cᴷe⁻,
+                 Cᴬu, Cᴬc, Cᴬe,
                  Cᴰ, Cᴸᵇ, Cᵂu★, CᵂwΔ)
 
 # For purely convective scenarios
-@free_parameters(TKEFreeConvection,
-                    CᴷRiʷ, CᴷRiᶜ,
-                    Cᴷc⁻, Cᴷcʳ,
-                    Cᴷe⁻, Cᴷeʳ,
-                    Cᴰ, Cᴸᵇ, CᵂwΔ)
+# @free_parameters(TKEFreeConvection,
+#                  Cᵟu, Cᵟc, Cᵟe,
+#                  CᴷRiʷ, CᴷRiᶜ,
+#                  Cᴷc⁻, Cᴷcʳ,
+#                  Cᴷe⁻, Cᴷeʳ,
+#                  Cᴰ, Cᴸᵇ, CᵂwΔ)
 
-@free_parameters(TKEBCParameters, Cᵂu★, CᵂwΔ)
+# @free_parameters(TKEBCParameters, Cᵂu★, CᵂwΔ)
 
 free_parameter_options = Dict(
     "TKEParametersRiDependent" => TKEParametersRiDependent,
-    "TKEFreeConvection" => TKEFreeConvection,
-    "TKEBCParameters" => TKEBCParameters,
+#     "TKEFreeConvection" => TKEFreeConvection,
+#     "TKEBCParameters" => TKEBCParameters,
 )
 
-DD = RiDependentDiffusivityScaling()
+using Oceananigans.TurbulenceClosures: MixingLength
 
 parameter_specific_kwargs = Dict(
-   TKEParametersRiDependent => (diffusivity_scaling = DD,
+   TKEParametersRiDependent => (mixing_length = MixingLength(:Cᴬu=0.0, :Cᴬc=0.0, :Cᴬe=0.0),
+                               ),
+                               
+   TKEParametersRiIndependent => (mixing_length = MixingLength(:Cᴷuʳ=0.0, :Cᴷcʳ=0.0, :Cᴷcʳ=0.0,
+                                                                 :Cᴬu=0.0, :Cᴬc=0.0, :Cᴬe=0.0),
                                ),
 
-   TKEFreeConvection => (diffusivity_scaling = DD,
+   TKEParametersRiDependentConvectiveAdjustment => (mixing_length = MixingLength(),
                                ),
 
-   TKEBCParameters => (diffusivity_scaling = DD,
+   TKEParametersRiIndependentConvectiveAdjustment => (mixing_length = MixingLength(:Cᴷuʳ=0.0, :Cᴷcʳ=0.0, :Cᴷcʳ=0.0)
                                ),
+
+#    TKEFreeConvection => (diffusivity_scaling = DD,
+#                                ),
+
+#    TKEBCParameters => (diffusivity_scaling = DD,
+#                                ),
 )
 
 override_defaults = Dict(
-    TKEParametersRiDependent => [0.6487, 1.9231, 0.2739, 5.7999, 0.2573, 4.8146, 0.2941, 3.7099, 3.0376, 1.6998, 3.5992, 1.8507],
+#     TKEParametersRiDependent => [0.6487, 1.9231, 0.2739, 5.7999, 0.2573, 4.8146, 0.2941, 3.7099, 3.0376, 1.6998, 3.5992, 1.8507],
 )
 
 set_if_present!(obj, name, field) = name ∈ propertynames(obj) && setproperty!(obj, name, field)
