@@ -134,6 +134,8 @@ function (el::EnsembleLossContainer)(θ::Vector{<:FreeParameters})
     return error
 end
 
+(el::EnsembleLossContainer)(θ::FreeParameters) = el([θ for data in el.data_batch])
+
 function calculate_value_discrepancy!(value, model_field, data_field)
     discrepancy = value.discrepancy
 
