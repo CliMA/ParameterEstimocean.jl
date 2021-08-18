@@ -127,6 +127,8 @@ function set!(pm::ParameterizedModel, free_parameters::Vector{<:FreeParameters})
     # Array of closures
     model_closure = getproperty(pm.model, :closure)
 
+    @info size(model_closure)
+
     N_ens = ensemble_size(pm)
 
     @inbounds begin
@@ -135,11 +137,13 @@ function set!(pm::ParameterizedModel, free_parameters::Vector{<:FreeParameters})
             θ = free_parameters[i]
 
             # each thread accesses different elements in model.closure
-            closure = model.closure[i, 1]
+            closure = pm.closure[i, 1]
 
             iᵗʰ_closure = new_closure(closure, θ)
 
-            @view(model_closure[i,:]) .= iᵗʰ_closure
+            for j in 1:N_ens
+                model_closure[i,j] = iᵗʰ_closure
+            end
         end
     end
 
