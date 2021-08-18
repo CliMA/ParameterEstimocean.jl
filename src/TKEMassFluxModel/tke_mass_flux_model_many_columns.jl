@@ -1,12 +1,12 @@
 """
-ParameterizedModel(td_batch::Vector{<:TruthData}, Δt; N_ens = 50, kwargs...)
+    ParameterizedModel(td_batch::Vector{<:TruthData}, grid, Δt; kwargs...)
 
 Build a `ParameterizedModel` container for an Oceananigans `HydrostaticFreeSurfaceModel` with 
 many independent columns. The model grid is given by the data in `td_batch`, and the
 dynamics in each column is attached to its own `CATKEVerticalDiffusivity` closure stored in 
-an `(Nx, Ny)` Matrix of closures. `Δt` is the model time step, `N_ens = 50` is the 
-desired count of ensemble members for calibration with Ensemble Kalman Inversion (EKI), and the 
-remaining keyword arguments `kwargs` define the default closure across all columns.
+an `(Nx, Ny)` Matrix of closures, where `Nx` is the desired count of ensemble members for 
+calibration with Ensemble Kalman Inversion (EKI). `Δt` is the model time step, and the 
+keyword arguments `kwargs` define the default closure across all columns.
 
 In the "many columns" configuration, we run the model on a 3D grid with `(Flat, Flat, Bounded)` boundary 
 conditions so that many independent columns can be evolved at once with much of the computational overhead
@@ -15,9 +15,10 @@ whose attached parameter value (updated at each iteration of EKI) sets the diffu
 used to predict the model solution for the `Ny` physical scenarios described by the simulation-specific 
 `TruthData` objects in `td_batch`.
 """
-function ParameterizedModel(td_batch::Vector{<:TruthData}, Δt; N_ens = 50, kwargs...)
+function ParameterizedModel(td_batch::Vector{<:TruthData}, grid, Δt; kwargs...)
 
-    grid = td_batch[1].grid
+    N_ens, N_cases, Nz = size(grid)
+
     closure = [CATKEVerticalDiffusivity(Float64; warning=false, kwargs...) for i=1:N_ens, j=1:length(td_batch)]
 
     # coriolis = [td.constants[:f] for i=1:N_ens, td in td_batch]
