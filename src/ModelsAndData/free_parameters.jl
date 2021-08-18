@@ -127,8 +127,6 @@ function set!(pm::ParameterizedModel, free_parameters::Vector{<:FreeParameters})
     # Array of closures
     model_closure = getproperty(pm.model, :closure)
 
-    @info size(model_closure)
-
     N_ens = ensemble_size(pm)
 
     @inbounds begin
