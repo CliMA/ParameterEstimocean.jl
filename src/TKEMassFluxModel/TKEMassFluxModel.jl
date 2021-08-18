@@ -3,6 +3,9 @@ module TKEMassFluxModel
 export parameter_latex_guide
 
 using ..OceanTurbulenceParameterEstimation
+using ..OceanTurbulenceParameterEstimation.ModelsAndData
+import ..OceanTurbulenceParameterEstimation.ModelsAndData: ParameterizedModel
+
 using LaTeXStrings
 
 using Oceananigans.BoundaryConditions

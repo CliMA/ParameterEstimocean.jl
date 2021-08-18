@@ -1,16 +1,16 @@
+#
+# Use this script to plot the evolution of the boundary layer depth
+#
+
 ## Plotting mixed layer depth
-using TKECalibration2021
 using Plots, PyPlot
-using OceanTurbulenceParameterEstimation: visualize_realizations, model_time_series
 using Dao
 
-             LESdata = GeneralStrat
-  RelevantParameters = TKEParametersConvectiveAdjustmentRiIndependent
-ParametersToOptimize = TKEParametersConvectiveAdjustmentRiIndependent
+using OceanTurbulenceParameterEstimation
+using OceanTurbulenceParameterEstimation.TKEMassFluxModel
+using OceanTurbulenceParameterEstimation.ParameterEstimation
 
-dname = "calibrate_FourDaySuite_validate_GeneralStrat"
-directory = pwd() * "/TKECalibration2021Results/compare_calibration_algorithms/$(dname)/$(RelevantParameters)/"
-isdir(directory) || mkpath(directory)
+using OceanTurbulenceParameterEstimation: visualize_realizations, model_time_series
 
 # les analysis
 # derivative function
@@ -23,93 +23,109 @@ function δ(z, Φ)
     return Φz
 end
 
-function get_h2(model_time_series, tdata; coarse_grain_data = true)
+"""
+Approximates the mixed layer depth for pure convection.
+"""
+function approximate_mixed_layer_depth(model_time_series, data::TruthData; coarse_grain_data = false)
 
-        # model.model.constants.g * model.model.constants.α
-
+        data.constants[:αg]
         Qᵇ = 0.001962 * tdata.boundary_conditions.Qᶿ # les.α * les.g * les.top_T
         N² = 0.001962 * tdata.boundary_conditions.dθdz_bottom # les.α * les.g * dθdz_bottom
         Nt = length(tdata.t)
 
         if coarse_grain_data
-            Nz = model_time_series.T[1].grid.N
-            z = model_time_series.T[1].grid.zc
+            Nz = model_time_series.b[1].grid.Nz
+            z = model_time_series.b[1].grid.zC
         else
-            Nz = tdata.grid.N
-            z = tdata.grid.zc
+            Nz = tdata.grid.Nz
+            z = tdata.grid.zC
         end
 
         # For the LES solution
         h2_les = randn(Nt)
-        for i in 1:Nt
+        for i in 1:Nt-20
 
             if coarse_grain_data
-                T = CellField(model_time_series.T[i].grid)
-                set!(T, tdata.T[i])
-                T = T.data[1:Nz]
+                b = CenterField(model_time_series.b[i].grid)
+                set!(b, tdata.b[i])
+                b = b.data[1:Nz]
             else
-                T = tdata.T[i].data[1:Nz] # remove halos
+                b = tdata.b[i].data[1:Nz] # remove halos
             end
 
-            B = 0.001962 * T
-            Bz = δ([z...], [B...])
+            Bz = δ([z...], [b...])
             mBz = maximum(Bz)
             tt = (2*N² + mBz)/3
             bools = Bz .> tt
-            zA = (z[1:(end-1)] + z[2:end] )./2
-            h2_les[i] = -minimum(zA[bools])
+            zA = (z[1:(Nz-1)] .+ z[2:Nz] ) ./ 2
+
+            h2_les[i] = any(bools) ? -minimum(zA[bools]) : model_time_series.b[1].grid.Lz
         end
 
+        @info Nt
         # For the model solution
         h2_model = randn(Nt)
-        z = model_time_series.T[1].grid.zc
-        Nz = model_time_series.T[1].grid.N
-        for i in 1:Nt
-            B = 0.001962 * model_time_series.T[i].data
+        z = model_time_series.b[1].grid.zC
+        Nz = model_time_series.b[1].grid.Nz
+        for i in 1:Nt-20
+            B = model_time_series.b[i].data
             B = B[1:Nz]
             Bz = δ([z...], [B...])
             mBz = maximum(Bz)
             tt = (2*N² + mBz)/3
             bools = Bz .> tt
-            zA = (z[1:(end-1)] + z[2:end] )./2
-
-            if 1 in bools
-                h2_model[i] = -minimum(zA[bools])
-            else
-                h2_model[i] = model_time_series.T[1].grid.H # mixed layer reached the bottom
-            end
+            zA = (z[1:(Nz-1)] + z[2:Nz] )./2
+    
+            h2_model[i] = any(bools) ? -minimum(zA[bools]) : 
+                                        model_time_series.b[1].grid.Lz # mixed layer reached the bottom
         end
 
     return [h2_les, h2_model]
 end
 
-# best_parameters = ParametersToOptimize([2.1638101987647502, 0.2172594537369187, 0.4522886369267623, 0.7534625713891345, 0.4477179760916435, 6.777679962252731, 1.2403584780163417, 1.9967245163343093])
+LESdata = FourDaySuite
 
-for LEScase in values(LESdata)
-    case_loss, _ = custom_tke_calibration(LEScase, RelevantParameters, ParametersToOptimize)
+ParametersToOptimize = TKEParametersRiIndependentConvectiveAdjustment
+RelevantParameters = TKEParametersRiIndependentConvectiveAdjustment
 
-    td = case_loss.data
-    md = case_loss.model
+params = Parameters(RelevantParameters = RelevantParameters,
+               ParametersToOptimize = ParametersToOptimize)
 
-    ℱ = model_time_series(best_parameters, md, td)
-    h2_les, h2_model = get_h2(ℱ, td; coarse_grain_data = false)
+function make_all_the_plots(params)
 
-    days = @. td.t / 86400
-    first = LEScase.first
-    last = LEScase.last
-    if LEScase.last == nothing
-        last = length(td.t)
+    directory = pwd() * "/Results/plotFourDaySuite_default_parameters/$(RelevantParameters)/"
+    isdir(directory) || mkpath(directory)
+
+    for (i, LEScase) in enumerate(values(LESdata))
+
+        td = TruthData(LEScase.filename; grid_type=ManyIndependentColumns, Nz=64)
+
+        relative_weights = Dict(:b => 1.0, :u => 1.0, :v => 1.0, :e => 1.0)
+
+        # Single simulation
+        case_loss, default_parameters = get_loss(LEScase, td, params, relative_weights; Δt=10.0, 
+                                                parameter_specific_kwargs[params.RelevantParameters]...)
+
+
+        ℱ = model_time_series(default_parameters, case_loss)
+        h2_les, h2_model = get_h2(ℱ, td; coarse_grain_data = false)
+
+        days = @. td.t / 86400
+        first = LEScase.first
+        last = isnothing(LEScase.last) ? length(td.t) : LEScase.last
+
+        toplot = LEScase.first:last
+        Plots.plot(days[toplot], h2_les[toplot], label = "LES mixed layer depth", linewidth = 3 , color = :red, grid = true, gridstyle = :dash, gridalpha = 0.25, framestyle = :box , title=td.name, ylabel = "Depth [meters]", xlabel = "days", legend = :topleft)
+        p = plot!(days[toplot], h2_model[toplot], color = :purple, label = "TKE mixed layer depth", linewidth = 3 )
+        Plots.savefig(p, directory*td.name*"_mixed_layer_depth.pdf")
+
+        Plots.plot(days[toplot], h2_les[toplot], label = "LES mixed layer depth", linewidth = 3 , color = :red, grid = true, gridstyle = :dash, gridalpha = 0.25, framestyle = :box , title=td.name, ylabel = "Depth [meters]", xlabel = "days", yscale = :log10, xscale = :log10, legend = :topleft)
+        p = plot!(days[toplot], h2_model[toplot], color = :purple, label = "TKE mixed layer depth", linewidth = 3 )
+        Plots.savefig(p, directory*td.name*"_mixed_layer_depth_log10.pdf")
+
+        # p = visualize_realizations(md, td, 1:180:length(td), best_parameters)
+        # PyPlot.savefig(directory*td.name*".png")
     end
-
-    toplot = LEScase.first:last
-    Plots.plot(days[toplot], h2_les[toplot], label = "LES mixed layer depth", linewidth = 3 , color = :red, grid = true, gridstyle = :dash, gridalpha = 0.25, framestyle = :box , title=td.name, ylabel = "Depth [meters]", xlabel = "days", legend = :topleft)
-    p = plot!(days[toplot], h2_model[toplot], color = :purple, label = "TKE mixed layer depth", linewidth = 3 )
-    Plots.savefig(p, directory*td.name*"_mixed_layer_depth.pdf")
-
-    Plots.plot(days[toplot], h2_les[toplot], label = "LES mixed layer depth", linewidth = 3 , color = :red, grid = true, gridstyle = :dash, gridalpha = 0.25, framestyle = :box , title=td.name, ylabel = "Depth [meters]", xlabel = "days", yscale = :log10, xscale = :log10, legend = :topleft)
-    p = plot!(days[toplot], h2_model[toplot], color = :purple, label = "TKE mixed layer depth", linewidth = 3 )
-    Plots.savefig(p, directory*td.name*"_mixed_layer_depth_log10.pdf")
-
-    p = visualize_realizations(md, td, 1:180:length(td), best_parameters)
-    PyPlot.savefig(directory*td.name*".png")
 end
+
+make_all_the_plots(params)

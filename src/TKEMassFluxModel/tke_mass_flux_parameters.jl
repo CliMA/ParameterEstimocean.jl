@@ -148,8 +148,6 @@ parameter_guide = Dict(
           bounds = (0.0, 2.0)),
 )
 
-Any[0.5, 0.5, 0.5, 0.72, 0.76, 0.15, 3.87, 0.4, 0.77, 0.13, 1.11, 2.91, 2.91, 1.16, 3.62, 1.31]
-
 # For scenarios involving stresses
 @free_parameters(TKEParametersRiDependent,
                  Cᵟu, Cᵟc, Cᵟe,

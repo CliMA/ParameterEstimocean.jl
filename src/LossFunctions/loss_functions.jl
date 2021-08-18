@@ -75,40 +75,63 @@ end
 # `Batch` here refers to all of the physical scenarios to be calibrated to
 const BatchLossFunction = Vector{<:LossFunction}
 
-mutable struct EnsembleLossContainer{D, W, M, L, E} <: ALC
+mutable struct EnsembleLossContainer{D, F, FT, LT, M, T, L} <: ALC
     data_batch :: D
-       weights :: W # scenario weights
+ field_weights :: F # scenario weights
+ first_targets :: FT
+  last_targets :: LT
          model :: M
-    loss_batch :: L
-         error :: E
+   time_series :: T
+       profile :: L
 end
 
-function EnsembleLossContainer(model, data_batch, loss_batch; weights=[1.0 for b in batch])
-    return EnsembleLossContainer(data_batch, weights, model, loss_batch, zeros(length(data_batch)))
+function EnsembleLossContainer(model, data_batch, fields, LESdata; data_weights=[1.0 for b in data_batch], relative_weights)
+
+    last_target(data, last) = isnothing(last) ? length(data) : last_target 
+
+    first_targets = getproperty.(values(LESdata), :first)
+    last_targets = getproperty.(values(LESdata), :last)
+    last_targets = last_target.(data_batch, last_targets)
+    all_targets = [first_targets[i]:last_targets[i] for i in 1:length(first_targets)]
+    
+    profile = ValueProfileAnalysis(model.grid, analysis = column_mean)
+
+    field_weights = Dict(f => [] for f in [:u, :v, :b, :e])
+    for (i, data) in enumerate(data_batch)
+        data_fields = fields[i] # e.g. (:b, :e)
+        targets = first_targets[i]:last_targets[i]
+        rw = [relative_weights[f] for f in data_fields]
+        weights = estimate_weights(profile, data, data_fields, targets, rw) # e.g. (1.0, 0.5)
+
+        for (j, field_name) in enumerate(data_fields)
+            push!(field_weights[field_name], weights[j] * data_weights[i])
+        end
+
+        for field_name in keys(field_weights)
+            field_name ∉ data_fields &&
+                push!(field_weights[field_name], 0)
+        end 
+    end
+
+    time_series = [EnsembleTimeSeriesAnalysis(data_batch[i].t[all_targets[i]], model.grid.Nx) for i in 1:length(data_batch)]
+
+    return EnsembleLossContainer(data_batch, field_weights, first_targets, last_targets, model, time_series, profile)
 end
 
 function (el::EnsembleLossContainer)(θ::Vector{<:FreeParameters})
 
     set!(el.model, θ)
 
-    # iterate the model
+    # iterate the model and record discrepancy summary in `time_series`
+    evaluate!(el, θ, el.model, el.data_batch)
 
-    ensemble_size = ensemble_size(el.model)
-    el.error .= 0
-
-    # @inbounds begin
-    #     Base.Threads.@threads for j = 1:length(el.data_batch)
-
-            # mean error across all ensemble members for this data case
-
-    evaluate!(el, θ, el.model, data_batch)
+    error = zeros(model.grid.Nx)
     
-    loss.time_series.analysis(loss.time_series.data, loss.time_series.time) / ensemble_size
+    for ts in el.time_series
+        error .+= ts.analysis(ts.data) / ensemble_size
+    end
 
-        #     el.error[i] = el.weights[i] * el.batch[i](θ)
-        # end
-    # end
-    return sum(el.error)
+    return error
 end
 
 function calculate_value_discrepancy!(value, model_field, data_field)
@@ -119,8 +142,6 @@ function calculate_value_discrepancy!(value, model_field, data_field)
 
     centered_model = CenterField(model_field.grid)
     set!(centered_model, model_field)
-
-    N_ens = model_field.grid.Nx
 
     interior(discrepancy) .= (interior(centered_data) .- interior(centered_model)) .^ 2
 
@@ -135,7 +156,7 @@ analysis of the discrepancy profile.
 """
 function analyze_profile_discrepancy(value, model_field, data_field)
     calculate_value_discrepancy!(value, model_field, data_field) # MSE for each grid element
-    return value.analysis(value.discrepancy) # e.g. mean or ensemble_mean of discrepancy field
+    return value.analysis(value.discrepancy) # e.g.column_mean of discrepancy field
 end
 
 function calculate_gradient_discrepancy!(prof, model_field, data_field)
@@ -199,8 +220,6 @@ function analyze_weighted_profile_discrepancy(loss, model, data::TruthData, targ
     return nan2inf(total_discrepancy)
 end
 
-
-
 function new_field(field_name, field_data, grid)
 
     field_name == :u && return XFaceField(simulation_grid, field_data)
@@ -210,25 +229,24 @@ function new_field(field_name, field_data, grid)
 
 end
 
-function analyze_weighted_profile_discrepancy(loss, model, data_batch::BatchTruthData, target)
+function analyze_weighted_profile_discrepancy(loss::EnsembleLossContainer, model, data_batch::BatchTruthData)
 
-    N_ens = ensemble_size(model)
-    total_discrepancy = zeros(N_ens)
+    total_discrepancy = zeros(model.grid.Nx, model.grid.Ny, 1)
 
-    field_names = Tuple(loss.fields)
-
-    for (field_index, field_name) in enumerate(field_names)
+    for field_name in [:u, :v, :b, :e]
         model_field = getproperty(model, field_name)
-        # data_field = getproperty(data, field_name)[target]
 
-        field_data = many_columns_interior(td_batch, field_name, target, N_ens)
+        # compensate for setting model time index 1 to to index `first_target` in data.
+        data_indices = target .+ el.first_targets .- 1
+
+        field_data = column_ensemble_interior(td_batch, field_name, data_indices, N_ens)
         data_field = new_field(field_name, field_data, model_field.grid)
 
-        # Calculate the per-field profile-based disrepancy
+        # Calculate the per-field profile-based discrepancy
         field_discrepancy = analyze_profile_discrepancy(loss.profile, model_field, data_field)
 
-        # Accumulate weighted profile-based disrepancies in the total discrepancyor
-        total_discrepancy .+= get_weight(loss.weights, field_index) * field_discrepancy # accumulate discrepancyor
+        # Accumulate weighted profile-based discrepancies in the total discrepancyor
+        total_discrepancy += el.field_weights[field_name]' .* field_discrepancy # accumulate discrepancyor
     end
 
     return nan2inf.(total_discrepancy)
@@ -238,6 +256,7 @@ function evaluate!(loss, parameters, model_plus_Δt, data::TruthData)
 
     # Initialize
     initialize_forward_run!(model_plus_Δt, data, parameters, loss.targets[1])
+
     @inbounds loss.time_series.data[1] = analyze_weighted_profile_discrepancy(loss, model_plus_Δt, data, loss.targets[1])
 
     # Calculate a loss function time-series
@@ -251,29 +270,43 @@ function evaluate!(loss, parameters, model_plus_Δt, data::TruthData)
     return nothing
 end
 
-function evaluate!(loss, parameters, model_plus_Δt, data_batch::BatchTruthData)
+allsame(x) = all(y -> y ≈ first(x), x)
+Δt(data) = data.t[2:end] .- data.t[1:end-1]
+
+function evaluate!(el, parameters, model_plus_Δt, data_batch::BatchTruthData)
+
+    @assert all([allsame(Δt(data)) for data in data_batch]) "Simulation time steps are not uniformly spaced."
+    @assert allsame([Δt(data)[1] for data in data_batch]) "Time step differs between simulations."
 
     # Initialize
-    initialize_forward_run!(model_plus_Δt, data, parameters, loss.targets[1])
-    @inbounds loss.time_series.data[1] = analyze_weighted_profile_discrepancy(loss, model_plus_Δt, data, loss.targets[1])
+    initialize_forward_run!(model_plus_Δt, data_batch, parameters, el.first_targets)
+    
+    simulation_lengths = length.(el.targets)
 
     # Calculate a loss function time-series
-    for (i, target) in enumerate(loss.targets)
-        run_until!(model_plus_Δt.model, model_plus_Δt.Δt, data.t[target])
+    for (i, target) in 1:maximum(simulation_lengths)
+    
+        run_until!(model_plus_Δt.model, model_plus_Δt.Δt, data_batch[1].t[target])
 
-        @inbounds loss.time_series.data[i] =
-            analyze_weighted_profile_discrepancy(loss, model_plus_Δt, data, target)
+        discrepancy = analyze_weighted_profile_discrepancy(el, model_plus_Δt, data_batch, target)
+
+        for (j, ts) in enumerate(el.time_series)
+            if target <= length(ts.time)
+                # `ts.data` is N_ensemble x N_timesteps; `discrepancy` is N_ensemble x N_cases x 1
+                ts.data[:, i] .= discrepancy[:, j, 1]
+            end
+        end
+
     end
 
     return nothing
 end
 
-
 function estimate_weights(profile::ValueProfileAnalysis, data::TruthData, fields, targets, relative_weights)
-    max_variances = [mean_variance(data, field; targets=targets) for field in fields]
-    weights = [1/σ for σ in max_variances]
+    mean_variances = [mean_variance(data, field; targets=targets) for field in fields]
+    weights = [1/σ for σ in mean_variances]
 
-    if relative_weights != nothing
+    if !isnothing(relative_weights)
         weights .*= relative_weights
     end
 
@@ -291,7 +324,7 @@ function estimate_weights(profile::GradientProfileAnalysis, data::TruthData, fie
     #max_gradient_variances = [max_gradient_variance(data, field, targets) for field in fields]
 
     weights = zeros(length(fields))
-    for i in length(fields)
+    for i in 1:length(fields)
         σ = max_variances[i]
         #ς = max_gradient_variances[i]
         weights[i] = 1/σ * (value_weight + gradient_weight / height(data.grid))
@@ -304,7 +337,7 @@ function estimate_weights(profile::GradientProfileAnalysis, data::TruthData, fie
     max_variances = [max_variance(data, field, targets) for field in fields]
     weights = [1/σ for σ in max_variances]
 
-    if relative_weights != nothing
+    if !isnothing(relative_weights)
         weights .*= relative_weights
     end
 
@@ -327,19 +360,6 @@ function init_loss_function(model::ParameterizedModel, data::TruthData, first_ta
                         profile = profile_analysis)
 
     return loss_function
-end
-
-function init_loss_function(model::ParameterizedModel, data_batch::BatchTruthData, 
-                            first_targets, last_targets, fields, relative_weights)
-
-    loss_batch = [init_loss_function(model, data_batch[i], 
-                            first_targets[i], 
-                            last_targets[i], 
-                            fields[i], 
-                            [relative_weights[fld] for fld in fields[i]];
-                            analysis = ensemble_mean) for i in eachindex(data_batch)]
-
-    return loss_batch
 end
 
 #

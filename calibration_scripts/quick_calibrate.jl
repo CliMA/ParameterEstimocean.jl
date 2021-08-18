@@ -22,6 +22,7 @@ free_parameter_type = args["free_parameters"]
 
 using OceanTurbulenceParameterEstimation
 using OceanTurbulenceParameterEstimation.TKEMassFluxModel
+using OceanTurbulenceParameterEstimation.ModelsAndData
 using OceanTurbulenceParameterEstimation.ParameterEstimation
 using Statistics
 using Plots
@@ -38,13 +39,13 @@ p = Parameters(RelevantParameters = free_parameter_options[free_parameter_option
                ParametersToOptimize = free_parameter_options[free_parameter_option])
 
 calibration = dataset(FourDaySuite, p; relative_weights = relative_weight_options["all_but_e"],
-                                        grid_type=ZGrid,
+                                        grid_type=ColumnEnsembleGrid,
                                         Nz=16,
                                         Δt=10.0);
 
 validation = dataset(merge(TwoDaySuite, SixDaySuite), p;
                                         relative_weights = relative_weight_options["all_but_e"],
-                                        grid_type=ZGrid,
+                                        grid_type=ColumnEnsembleGrid,
                                         Nz=16,
                                         Δt=10.0);
 
@@ -59,7 +60,7 @@ initial_parameters = ce.default_parameters
 parameternames = propertynames(initial_parameters)
 
 # @time calibration = dataset(FourDaySuite, p; relative_weights = relative_weight_options["all_but_e"],
-#                                         grid_type=ZGrid,
+#                                         grid_type=ColumnEnsembleGrid,
 #                                         Nz=64,
 #                                         Δt=60.0); # 12.140647 seconds (31.52 M allocations: 2.978 GiB, 4.28% gc time)
 

@@ -1,18 +1,19 @@
 module ParameterEstimation
 
-using JLD2, FileIO, Printf, PyPlot, Optim, Random,
-        Statistics, Distributions, LinearAlgebra, OrderedCollections
-using PyPlot, Optim, OrderedCollections
-using ..OceanTurbulenceParameterEstimation
-using ..OceanTurbulenceParameterEstimation.TKEMassFluxModel
-using Dao
+using FileIO, Optim, Random, Dao,
+        Statistics, Distributions, LinearAlgebra,
+        PyPlot, Optim, Printf
 using Dao: AdaptiveAlgebraicSchedule
+
+using ..OceanTurbulenceParameterEstimation
+using ..OceanTurbulenceParameterEstimation.ModelsAndData
+using ..OceanTurbulenceParameterEstimation.TKEMassFluxModel
+using ..OceanTurbulenceParameterEstimation.LossFunctions
 
 using EnsembleKalmanProcesses.EnsembleKalmanProcessModule
 using EnsembleKalmanProcesses.ParameterDistributionStorage
-using Oceananigans.Grids: Flat, Bounded, Periodic, RegularRectilinearGrid
 
-import ..OceanTurbulenceParameterEstimation: set!
+import ..OceanTurbulenceParameterEstimation.ModelsAndData: set!
 
 export
        Parameters,
@@ -26,17 +27,6 @@ export
        get_loss,
        dataset,
        ensemble_dataset,
-
-       # grids.jl
-       ZGrid,
-       XYZGrid,
-
-       # LESbrary_paths.jl
-       LESbrary,
-       TwoDaySuite,
-       FourDaySuite,
-       SixDaySuite,
-       GeneralStrat,
 
        # visuals.jl
        visualize_and_save,
@@ -54,14 +44,16 @@ export
        random_plugin,
        gradient_descent,
 
-       # TKECalibration2021
-       custom_tke_calibration,
-
-       # OceanTurbulenceParameterEstimation
+       # visualization.jl
+       defaultcolors,
+       removespine,
+       removespines,
+       plot_data!,
+       format_axs!,
        visualize_realizations,
-       FreeParameters,
-       @free_parameters,
-       set!
+       visualize_loss_function,
+       visualize_markov_chain!,
+       plot_loss_function
 
 relative_weight_options = Dict(
                 "all_e"     => Dict(:b => 0.0, :u => 0.0, :v => 0.0, :e => 1.0),
@@ -110,8 +102,7 @@ function validation_loss_reduction(ce::CalibrationExperiment, parameters::FreePa
     return validation_loss_reduction
 end
 
-include("LESbrary_paths.jl")
-include("grids.jl")
+include("visualization.jl")
 include("utils.jl")
 include("tke_mass_flux_model_setup.jl")
 include("calibration_algorithms/calibration_algorithms.jl")

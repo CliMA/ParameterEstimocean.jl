@@ -1,4 +1,5 @@
-import Oceananigans.Models.HydrostaticFreeSurfaceModels: validate_test, validate_halo, time_discretization
+import Oceananigans.Grids: validate_size, validate_halo
+import Oceananigans.TurbulenceClosures: time_discretization
 
 struct ColumnEnsembleSize{C<:Tuple{Int, Int}}
     ensemble :: C

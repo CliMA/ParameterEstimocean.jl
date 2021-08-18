@@ -1,27 +1,12 @@
 #
-# Time analysis
-#
-
-struct TimeSeriesAnalysis{T, D, A}
-        time :: T
-        data :: D
-    analysis :: A
-end
-
-TimeSeriesAnalysis(time, analysis) = TimeSeriesAnalysis(time, zeros(length(time)), analysis)
-
-struct TimeAverage end
-
-# Use trapz integral to compute time average of data in case times are not evenly spaced
-@inline (::TimeAverage)(data, time) = trapz(data, time) / (time[end] - time[1])
-
-#
 # Profile analysis
 #
 
 # Returns a separate mean for each ensemble member along the x-axis in the many-columns scenario
-ensemble_mean(c::AbstractDataField) = c.grid.Nx == 1 ? mean(c) : 
-                                                       mean(c, dims = (2,3))
+# ensemble_mean(c::AbstractDataField) = mean(c, dims = (2,3))
+
+# Mean along the z-axis
+column_mean(c::AbstractDataField) = mean(c, dims = 3)
 
 """
     struct ValueProfileAnalysis{D, A}

@@ -16,7 +16,7 @@ function model_time_series(parameters, loss)
     # Nt = length(data.t)
 
     # start = 1
-    start = loss.targets[1]
+    start = loss.loss.targets[1]
     Nt = length(data.t) - start + 1
 
     initialize_forward_run!(model_plus_Δt, data, parameters, start)

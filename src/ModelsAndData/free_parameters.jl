@@ -1,4 +1,20 @@
-# pm.model.closure
+abstract type FreeParameters{N, T} <: FieldVector{N, T} end
+
+Base.show(io::IO, p::FreeParameters) = print(io, "$(typeof(p)):", '\n',
+                                             @sprintf("% 24s: ", "parameter names"),
+                                             (@sprintf("%-8s", n) for n in propertynames(p))..., '\n',
+                                             @sprintf("% 24s: ", "values"),
+                                             (@sprintf("%-8.4f", pᵢ) for pᵢ in p)...)
+
+macro free_parameters(GroupName, parameter_names...)
+    N = length(parameter_names)
+    parameter_exprs = [:($name :: T; ) for name in parameter_names]
+    return esc(quote
+        Base.@kwdef mutable struct $GroupName{T} <: FreeParameters{$N, T}
+            $(parameter_exprs...)
+        end
+    end)
+end
 
 function get_free_parameters(closure::AbstractTurbulenceClosure)
     paramnames = Dict()
@@ -39,16 +55,6 @@ function DefaultFreeParameters(closure::AbstractTurbulenceClosure, freeparamtype
     end
 
     return eval(Expr(:call, freeparamtype, freeparams...)) # e.g. ParametersToOptimize([1.0,2.0,3.0])
-end
-
-macro free_parameters(GroupName, parameter_names...)
-    N = length(parameter_names)
-    parameter_exprs = [:($name :: T; ) for name in parameter_names]
-    return esc(quote
-        Base.@kwdef mutable struct $GroupName{T} <: FreeParameters{$N, T}
-            $(parameter_exprs...)
-        end
-    end)
 end
 
 function new_closure(closure::AbstractTurbulenceClosure, free_parameters)
@@ -93,7 +99,6 @@ function new_closure(closure::AbstractTurbulenceClosure, free_parameters)
     ClosureType = typeof(closure)
     args = [new_closure_kwargs[x] for x in fieldnames(ClosureType)]
     new_closure = ClosureType(args...)
-    # new_closure = CATKEVerticalDiffusivity(Float64; new_closure_kwargs...)
 
     # for (ptypename, new_value) in new_closure_kwargs
     #     setproperty!(closure, ptypename, new_value)

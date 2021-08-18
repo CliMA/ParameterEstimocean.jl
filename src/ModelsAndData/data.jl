@@ -1,30 +1,4 @@
 #####
-##### ParameterizedModel
-#####
-
-mutable struct ParameterizedModel{M<:AbstractModel, T}
-    model :: M
-       Δt :: T
-end
-
-run_until!(pm::ParameterizedModel, time) = run_until!(pm.model, pm.Δt, time)
-
-Base.getproperty(m::ParameterizedModel, ::Val{:Δt}) = getfield(m, :Δt)
-Base.getproperty(m::ParameterizedModel, ::Val{:model}) = getfield(m, :model)
-Base.getproperty(m::ParameterizedModel, p::Symbol) = getproperty(m, Val(p))
-# Base.getproperty(m::ParameterizedModel, ::Val{p}) where p = getproperty(m.model, p)
-
-function Base.getproperty(m::ParameterizedModel, ::Val{p}) where p
-
-    p ∈ propertynames(m.model.tracers) && return m.model.tracers[p]
-
-    p ∈ propertynames(m.model.velocities) && return m.model.velocities[p]
-
-    return getproperty(m.model, p)
-
-end
-
-#####
 ##### TruthData
 #####
 
@@ -52,7 +26,7 @@ end
 
 Construct TruthData from a time-series of Oceananigans LES data saved at `datapath`.
 """
-function TruthData(datapath; grid_type=ZGrid,
+function TruthData(datapath; grid_type=ColumnEnsembleGrid,
                              Nz=32)
 
     # For now, we assume salinity-less LES data.
@@ -62,9 +36,9 @@ function TruthData(datapath; grid_type=ZGrid,
 
     constants[:α] = file["buoyancy/equation_of_state/α"]
     constants[:g] = file["buoyancy/gravitational_acceleration"]
-    constants[:αg] = constants[:α] * constants[:g]
+    constants[:αg] = αg = constants[:α] * constants[:g]
     # constants[:β] = 0.0 #file["buoyancy/equation_of_state/β"]
-
+ 
     constants[:f] = 0.0
     try
         constants[:f] = file["coriolis/f"]
@@ -76,10 +50,12 @@ function TruthData(datapath; grid_type=ZGrid,
     Qᵘ = get_parameter(datapath, "parameters", "boundary_condition_u_top", 0.0)
     Qᵛ = get_parameter(datapath, "parameters", "boundary_conditions_v_top", 0.0)
     Qᶿ = get_parameter(datapath, "parameters", "boundary_condition_θ_top", 0.0)
+    Qᵇ = Qᶿ * αg
 
     # Bottom gradients
-    dθdz_bottom = get_parameter(datapath, "parameters", "boundary_condition_θ_bottom", 0.0)
     dudz_bottom = get_parameter(datapath, "parameters", "boundary_condition_u_bottom", 0.0)
+    dθdz_bottom = get_parameter(datapath, "parameters", "boundary_condition_θ_bottom", 0.0)
+    dbdz_bottom = dθdz_bottom * αg
 
     name = get_parameter(datapath, "parameters", "name", "")
 
@@ -108,11 +84,12 @@ function TruthData(datapath; grid_type=ZGrid,
 
     t = get_times(datapath)
 
-    td = TruthData((Qᶿ=Qᶿ, Qᵘ=Qᵘ, Qᵛ=Qᵛ, Qᵉ=0.0, dθdz_bottom=dθdz_bottom, dudz_bottom=dudz_bottom),
+    td = TruthData((Qᶿ=Qᶿ, Qᵇ=Qᵇ, Qᵘ=Qᵘ, Qᵛ=Qᵛ, Qᵉ=0.0, 
+                      dθdz_bottom=dθdz_bottom, dbdz_bottom=dbdz_bottom, dudz_bottom=dudz_bottom),
                       simulation_grid, constants, (ν=background_ν, κ=background_κ),
                       u, v, b, e, t, name)
 
-    model_grid = grid_type(datapath; size=Nz)
+    model_grid = grid_type(datapath; size=(1,1,Nz))
 
     # Return TruthData with grid and variables coarse_grained to model resolution
     td_coarse = TruthData(td, model_grid)
@@ -163,41 +140,6 @@ function TruthData(datapath, grid::AbstractGrid)
     return TruthData(td, grid)
 end
 
+const BatchTruthData = Vector{<:TruthData}
+
 length(td::TruthData) = length(td.t)
-
-function time_step!(model, Δt, Nt)
-    for step = 1:Nt
-        time_step!(model, Δt)
-    end
-    return nothing
-end
-
-time(model) = model.clock.time
-iteration(model) = model.clock.iteration
-
-"""
-    run_until!(model, Δt, tfinal)
-Run `model` until `tfinal` with time-step `Δt`.
-"""
-function run_until!(model, Δt, tfinal)
-    Nt = floor(Int, (tfinal - time(model))/Δt)
-    time_step!(model, Δt, Nt)
-
-    last_Δt = tfinal - time(model)
-    last_Δt == 0 || time_step!(model, last_Δt)
-
-    return nothing
-end
-
-function initialize_forward_run!(model, data, params, index)
-    set!(model, params)
-    set!(model, data, index)
-    model.clock.iteration = 0
-    return nothing
-end
-
-# function initialize_and_run_until!(model, data, parameters, initial, target)
-#     initialize_forward_run!(model, data, parameters, initial)
-#     run_until!(model.model, model.Δt, data.t[target])
-#     return nothing
-# end

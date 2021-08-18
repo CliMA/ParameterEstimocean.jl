@@ -1,73 +1,5 @@
 
-height(c::AbstractDataField) = c.grid.Lz
-length(c::AbstractDataField) = c.grid.Nz
-Δz(g::RegularRectilinearGrid, i::Int) = g.Δz
-
-function integrate_range(c, cgrid, i₁::Int, i₂::Int)
-    total = 0
-    for i = i₁:i₂
-        @inbounds total += c[i] * Δz(cgrid, i)
-    end
-    return total
-end
-
-function integral(c::AbstractDataField, z₋, z₊=0)
-
-    @assert z₊ > c.grid.zF[1] "Integration region lies outside the domain."
-    @assert z₊ > z₋ "Invalid integration range: upper limit greater than lower limit."
-
-    # Find region bounded by the face ≤ z₊ and the face ≤ z₁
-    i₁ = searchsortedfirst(c.grid.zF, z₋) - 1
-    i₂ = searchsortedfirst(c.grid.zF, z₊) - 1
-
-    if i₂ ≠ i₁
-        # Calculate interior integral, recalling that the
-        # top interior cell has index i₂-2.
-        total = integrate_range(c, c.grid, i₁+1, i₂-1)
-
-        # Add contribution to integral from fractional bottom part,
-        # if that region is a part of the grid.
-        if i₁ > 0
-            total += c[i₁] * (c.grid.zF[i₁+1] - z₋)
-        end
-
-        # Add contribution to integral from fractional top part
-        total += c[i₂] * (z₊ - c.grid.zF[i₂])
-    else
-        total = c[i₁] * (z₊ - z₋)
-    end
-
-    return total
-end
-
-function integral(c, cgrid, z₋, z₊=0)
-
-    @assert z₊ > cgrid.zF[1] "Integration region lies outside the domain."
-    @assert z₊ > z₋ "Invalid integration range: upper limit greater than lower limit."
-
-    # Find region bounded by the face ≤ z₊ and the face ≤ z₁
-    i₁ = searchsortedfirst(cgrid.zF, z₋) - 1
-    i₂ = searchsortedfirst(cgrid.zF, z₊) - 1
-
-    if i₂ ≠ i₁
-        # Calculate interior integral, recalling that the
-        # top interior cell has index i₂-2.
-        total = integrate_range(c, cgrid, i₁+1, i₂-1)
-
-        # Add contribution to integral from fractional bottom part,
-        # if that region is a part of the grid.
-        if i₁ > 0
-            total += c[i₁] * (cgrid.zF[i₁+1] - z₋)
-        end
-
-        # Add contribution to integral from fractional top part
-        total += c[i₂] * (z₊ - cgrid.zF[i₂])
-    else
-        total = c[i₁] * (z₊ - z₋)
-    end
-
-    return total
-end
+include("set_fields_utils.jl")
 
 # Set to an array
 function set!(c::AbstractDataField, data::AbstractArray)
@@ -79,7 +11,8 @@ end
 
 import Base.size
 extent(grid::Oceananigans.Grids.AbstractGrid) = (grid.Lx, grid.Ly, grid.Lz)
-size(grid::Oceananigans.Grids.AbstractGrid) = (grid.Nx, grid.Ny, grid.Nz)
+# size(grid::Oceananigans.Grids.AbstractGrid) = (grid.Nx, grid.Ny, grid.Nz)
+horizontal_size(grid::Oceananigans.Grids.AbstractGrid) = (grid.Nx, grid.Ny)
 
 # Set two fields to one another... some shenanigans
 #
@@ -102,14 +35,35 @@ function interp_and_set!(c1::AbstractDataField{A1, G1}, c2::AbstractDataField{A2
     return nothing
 end
 
-## This implementation accommodates 3D grids whose topology is (Flat, Flat, Bounded).
-## It does not does not accommodate 3D grids with dependent columns.
+topology(grid::RegularRectilinearGrid) = Tuple(typeof(grid).parameters[2:4])
+
+independent_columns(grid::RegularRectilinearGrid) = topology(grid) == (Flat, Flat, Bounded)
+
+"""
+    set!(c::AbstractDataField{Ac, G}, d::AbstractDataField{Ad, G}) where {Ac, Ad, G}
+
+Set the data of field `c` to the data of field `d`, adjusted to field `c`'s grid. 
+
+The columns are assumed to be independent and thus the fields must have the same 
+horizontal resolution. This implementation does not accommodate 3D grids with 
+dependent columns.
+"""
 function set!(c::AbstractDataField{Ac, G}, d::AbstractDataField{Ad, G}) where {Ac, Ad, G}
+
+    s1 = horizontal_size(c.grid)
+    s2 = horizontal_size(d.grid)
+    @assert s1 == s2 "Field grids have a different number of columns."
+
+    if s1 != (1, 1)
+        @assert independent_columns(c.grid) && independent_columns(d.grid) "Field has dependent columns."
+    end
+
     if height(c) == height(d) && length(c) == length(d)
         return _set_similar_fields!(c, d)
     else
         return interp_and_set!(c, d)
     end
+
 end
 
 """
@@ -143,7 +97,86 @@ function set!(model; kwargs...)
         set!(ϕ, value)
     end
 
+    return nothing
 end
+
+function get_interior(td, field_name, time_index)
+
+    field = getproperty(td, field_name)
+
+    # If `time_index` is beyond the range recorded in the simulation output, 
+    # then the data for this time step will be ignored down the line, so return zeros
+    # ans = time_index > length(td) ? zeros(size(interior(field[1]))) :
+    #                                 interior(field[time_index])
+    ans = time_index < length(td) ? zeros(size(interior(field[1]))) :
+                                    interior(field[time_index])
+
+    return ans
+end
+
+function column_ensemble_interior(td_batch::BatchTruthData, field_name, time_indices::Vector, N_ens)
+    batch = @. get_interior(td_batch, field_name, time_indices)
+    batch = cat(batch..., dims = 2) # (N_cases, Nz)
+    return cat([batch for i = 1:N_ens]..., dims = 1) # (N_ens, N_cases, Nz)
+end
+
+"""
+    set!(model::Oceananigans.AbstractModel,
+                data::TruthData, i)
+
+Set the fields of `model` to the fields of `data` at time step `i`,
+and adjust the model clock time accordingly.
+"""
+function set!(model, data::TruthData, i)
+
+    set!(model, b = data.b[i],
+                u = data.u[i],
+                v = data.v[i],
+                e = data.e[i]
+        )
+
+    model.clock.time = data.t[i]
+
+    return nothing
+end
+
+"""
+set!(model::Oceananigans.AbstractModel,
+              td_batch::BatchTruthData, time_index)
+
+
+"""
+function set!(model::Oceananigans.AbstractModel,
+              td_batch::BatchTruthData, time_index::Vector)
+
+    ensemble(x) = column_ensemble_interior(td_batch, x, time_index, model.grid.Nx)
+
+    set!(model, b = ensemble(:b), 
+                u = ensemble(:u),
+                v = ensemble(:v),
+                e = ensemble(:e)
+        )
+end
+
+set!(model::Oceananigans.AbstractModel, td_batch::BatchTruthData, time_index) = set!(model, td_batch, [time_index for i in td_batch])
+
+# function set!(model::ParameterizedModel, td_batch::BatchTruthData, time_index)
+
+#     # Set the model fields column by column.
+#     # There's probably a better way to do this.
+#     for fieldname in [:b, :u, :v, :e]
+
+#         for i = 1:ensemble_size(model)
+#             for j = 1:batch_size(model)
+#                 new_field = getproperty(td_batch[j], fieldname)[time_index]
+#                 old_field = getproperty(model, fieldname)
+#                 @view(old_field[i,j,:]) .= new_field
+#             end
+#         end
+
+#     end
+# end
+
 
 ## BELOW: interpolation functionality that allows multi-dimensional grids but doesn't preserve field budgets
 

@@ -2,7 +2,7 @@ using Dao
 
 Dao.optimal(result::Dao.AnnealingProblem) = optimal(result.markov_chains[end])
 
-OceanTurbulenceParameterEstimation.visualize_realizations(result::Dao.AnnealingProblem, params; kwargs...) =
+visualize_realizations(result::Dao.AnnealingProblem, params; kwargs...) =
        visualize_realizations(result.negative_log_likelihood.model,
                               result.negative_log_likelihood.data,
                               result.negative_log_likelihood.loss.targets[[1, end]], params; kwargs...)

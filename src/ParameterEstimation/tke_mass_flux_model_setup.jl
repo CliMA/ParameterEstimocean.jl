@@ -3,7 +3,7 @@ tke_fields(datum) = !(datum.stressed) ? (:b, :e) :
                     !(datum.rotating) ? (:b, :u, :e) :
                                         (:b, :u, :v, :e)
 
-function get_loss(LEScase, td::Union{TruthData, BatchTruthData}, p::Parameters, relative_weights;
+function get_loss(LEScase, td::TruthData, p::Parameters, relative_weights;
                                         # ParameterizedModel
                                                             Δt = 10.0,
                                         # TKE-specific kwargs:
@@ -35,7 +35,7 @@ end
 
 function dataset(LESdata, p::Parameters{UnionAll}; 
                         relative_weights = Dict(:b => 1.0, :u => 1.0, :v => 1.0, :e => 1.0), 
-                               grid_type = ZGrid, 
+                               grid_type = ColumnEnsembleGrid, 
                                       Nz = 64,
                                       Δt = 60.0)
 
@@ -43,7 +43,7 @@ function dataset(LESdata, p::Parameters{UnionAll};
 
         # TruthData object containing LES data coarse-grained to a grid of size `N`
         # Coarse-graining the data at this step saves having to coarse-grain each time the loss is calculated
-        td = TruthData(LEScase.filename; grid_type=grid_type, Nz=Nz)
+        td = TruthData(LESdata.filename; grid_type=grid_type, Nz=Nz)
 
         # Single simulation
         loss, default_parameters = get_loss(LESdata, td, p, relative_weights; Δt=Δt, 
@@ -79,7 +79,7 @@ function ensemble_dataset(LESdata, p::Parameters{UnionAll};
                                               Nz = 64, 
                                               Δt = 60.0)
 
-    td_batch = [TruthData(LEScase.filename; grid_type=ZGrid, Nz=Nz) for LEScase in values(LESdata)]
+    td_batch = [TruthData(LEScase.filename; grid_type=ColumnEnsembleGrid, Nz=Nz) for LEScase in values(LESdata)]
 
     # first_targets = [LEScase.first_target for LEScase in values(LESdata)]
     # last_targets = [LEScase.lastt_target for LEScase in values(LESdata)]
@@ -87,23 +87,18 @@ function ensemble_dataset(LESdata, p::Parameters{UnionAll};
     model = ParameterizedModel(td_batch, Δt; N_ens = ensemble_size, 
                                 parameter_specific_kwargs[p.RelevantParameters]...)
 
-    first_targets = getproperty.(values(LESdata), :first)
-    last_targets = getproperty.(values(LESdata), :last)
     fields = tke_fields.(values(LESdata))
 
-    # Build loss container of type `EnsembleLossContainer`
-    loss_batch = init_loss_function(model, td_batch, 
-                        first_targets, last_targets, fields, relative_weights)
-
-    loss = EnsembleLossContainer(model, td_batch, loss_batch; weights=[1.0 for td in td_batch])
+    loss = EnsembleLossContainer(model, td_batch, fields, LESdata; data_weights=[1.0 for td in td_batch],
+                                                           relative_weights)
 
     # Set model to custom defaults
     set!(loss.model, custom_defaults(loss.model, p.RelevantParameters))
 
     default_parameters = custom_defaults(loss.model, p.ParametersToOptimize)
 
-    # loss_wrapper(θ::Vector{<:Number}) = loss(p.ParametersToOptimize(θ))
-    # loss_wrapper(θ::FreeParameters) = loss(θ)
+    loss_wrapper(θ::Vector{<:Number}) = loss(p.ParametersToOptimize(θ))
+    loss_wrapper(θ::FreeParameters) = loss(θ)
 
     loss_wrapper(θ::Vector{<:Vector}) = loss(p.ParametersToOptimize.(θ))
     loss_wrapper(θ::Vector{<:FreeParameters}) = loss(θ)
