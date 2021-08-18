@@ -84,7 +84,7 @@ function ensemble_dataset(LESdata, p::Parameters{UnionAll};
     # first_targets = [LEScase.first_target for LEScase in values(LESdata)]
     # last_targets = [LEScase.lastt_target for LEScase in values(LESdata)]
 
-    grid = ColumnEnsembleGrid(size = (N_ens, length(td_batch), Nz))
+    grid = ColumnEnsembleGrid(size = (ensemble_size, length(td_batch), Nz))
     model = ParameterizedModel(td_batch, grid, Δt; parameter_specific_kwargs[p.RelevantParameters]...)
 
     fields = tke_fields.(values(LESdata))
