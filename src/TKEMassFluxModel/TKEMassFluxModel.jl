@@ -17,6 +17,7 @@ using Suppressor
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity,
                 MixingLength, SurfaceTKEFlux, VerticallyImplicitTimeDiscretization
+using Oceananigans.Architectures
 
 # CATKEVerticalDiffusivity{TD, A, B, C, D}(a::A, b::B, c::C, d::D) where {TD, A, B, C, D} = CATKEVerticalDiffusivity{TD}(a, b, c, d)
 
