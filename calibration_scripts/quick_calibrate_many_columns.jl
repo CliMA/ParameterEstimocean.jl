@@ -22,18 +22,18 @@ calibration = ensemble_dataset(FourDaySuite, p;
                          relative_weights = relative_weight_options["all_but_e"],
                              args...)
 
-validation = ensemble_dataset(merge(TwoDaySuite, SixDaySuite), p;
-                         relative_weights = relative_weight_options["all_but_e"],
-                             args...)
+# validation = ensemble_dataset(merge(TwoDaySuite, SixDaySuite), p;
+#                          relative_weights = relative_weight_options["all_but_e"],
+#                              args...)
 
-ce = CalibrationExperiment(calibration, validation, p);
+# ce = CalibrationExperiment(calibration, validation, p);
 
-directory = "EKI/$(free_parameter_option)_$(relative_weight_option)/"
-isdir(directory) || mkpath(directory)
+# directory = "EKI/$(free_parameter_option)_$(relative_weight_option)/"
+# isdir(directory) || mkpath(directory)
 
-loss = ce.calibration.loss
-# loss_validation = ce.validation.loss
-initial_parameters = ce.default_parameters
-parameternames = propertynames(initial_parameters)
+# loss = ce.calibration.loss
+# # loss_validation = ce.validation.loss
+# initial_parameters = ce.default_parameters
+# parameternames = propertynames(initial_parameters)
 
-loss(calibration.default_parameters)
+calibration.loss(calibration.default_parameters)

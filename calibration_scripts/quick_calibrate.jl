@@ -30,6 +30,8 @@ using Dao
 using PyPlot
 using Dates
 
+include("visualize.jl")
+
 # directory = Dates.format(Dates.now(), "yyyy-mm-dd_HH:MM:SS")
 
 relative_weight_option = "all_but_e"
@@ -75,10 +77,9 @@ parameternames = propertynames(initial_parameters)
 
 # using StatProfilerHTML
 # @profilehtml loss([initial_parameters...]);
-@time loss([initial_parameters...])
+# @time loss([initial_parameters...])
 
-# include("calibration_scripts/visualize.jl")
-# animate_LESbrary_suite(ce, "try_ocean/")
+animate_LESbrary_suite(ce, "try_ocean/")
 
 #=
 ## Small search

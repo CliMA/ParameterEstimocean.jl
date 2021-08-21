@@ -43,6 +43,7 @@ export
 
        # set_fields.jl
        set!,
+       column_ensemble_interior,
 
        # free_parameters.jl
        DefaultFreeParameters,

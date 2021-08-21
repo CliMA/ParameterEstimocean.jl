@@ -128,6 +128,7 @@ function set!(pm::ParameterizedModel, free_parameters::Vector{<:FreeParameters})
     model_closure = getproperty(pm.model, :closure)
 
     N_ens = ensemble_size(pm)
+    N_cases = batch_size(pm)
 
     @inbounds begin
         Base.Threads.@threads for i = 1:N_ens
@@ -139,7 +140,7 @@ function set!(pm::ParameterizedModel, free_parameters::Vector{<:FreeParameters})
 
             iᵗʰ_closure = new_closure(closure, θ)
 
-            for j in 1:N_ens
+            for j in 1:N_cases
                 model_closure[i,j] = iᵗʰ_closure
             end
         end

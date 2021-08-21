@@ -2,6 +2,9 @@
 ### Grids
 ###
 
+# get_grid_params(grid::RegularRectilinearGrid) = getproperty.(grid, [:Nx, :Ny, :Nz, :Lx, :Ly, :Lz])
+get_grid_params(grid::RegularRectilinearGrid) = [grid.Nx, grid.Ny, grid.Nz, grid.Lx, grid.Ly, grid.Lz]
+
 """
   ColumnEnsembleGrid(datapath; ensemble_size = (1,1), Nz = nothing)
 

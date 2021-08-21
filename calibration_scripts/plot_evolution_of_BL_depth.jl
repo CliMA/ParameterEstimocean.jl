@@ -9,8 +9,9 @@ using Dao
 using OceanTurbulenceParameterEstimation
 using OceanTurbulenceParameterEstimation.TKEMassFluxModel
 using OceanTurbulenceParameterEstimation.ParameterEstimation
-
-using OceanTurbulenceParameterEstimation: visualize_realizations, model_time_series
+using OceanTurbulenceParameterEstimation.LossFunctions
+using OceanTurbulenceParameterEstimation.ModelsAndData
+using Oceananigans.Fields: interior
 
 # les analysis
 # derivative function
@@ -26,32 +27,22 @@ end
 """
 Approximates the mixed layer depth for pure convection.
 """
-function approximate_mixed_layer_depth(model_time_series, data::TruthData; coarse_grain_data = false)
+function approximate_mixed_layer_depth(model_time_series, data::TruthData, targets)
 
         data.constants[:αg]
-        Qᵇ = 0.001962 * tdata.boundary_conditions.Qᶿ # les.α * les.g * les.top_T
-        N² = 0.001962 * tdata.boundary_conditions.dθdz_bottom # les.α * les.g * dθdz_bottom
-        Nt = length(tdata.t)
+        Qᵇ = data.boundary_conditions.Qᵇ 
+        N² = data.boundary_conditions.dbdz_bottom 
 
-        if coarse_grain_data
-            Nz = model_time_series.b[1].grid.Nz
-            z = model_time_series.b[1].grid.zC
-        else
-            Nz = tdata.grid.Nz
-            z = tdata.grid.zC
-        end
+        Nz = data.grid.Nz
+        z = data.grid.zC
+        Lz = data.grid.Lz
+        Nt = length(data.t)
 
         # For the LES solution
         h2_les = randn(Nt)
-        for i in 1:Nt-20
+        for i in targets
 
-            if coarse_grain_data
-                b = CenterField(model_time_series.b[i].grid)
-                set!(b, tdata.b[i])
-                b = b.data[1:Nz]
-            else
-                b = tdata.b[i].data[1:Nz] # remove halos
-            end
+            b = interior(data.b[i]) # remove halos
 
             Bz = δ([z...], [b...])
             mBz = maximum(Bz)
@@ -59,46 +50,41 @@ function approximate_mixed_layer_depth(model_time_series, data::TruthData; coars
             bools = Bz .> tt
             zA = (z[1:(Nz-1)] .+ z[2:Nz] ) ./ 2
 
-            h2_les[i] = any(bools) ? -minimum(zA[bools]) : model_time_series.b[1].grid.Lz
+            h2_les[i] = any(bools) ? -minimum(zA[bools]) : Lz
         end
 
-        @info Nt
         # For the model solution
         h2_model = randn(Nt)
-        z = model_time_series.b[1].grid.zC
-        Nz = model_time_series.b[1].grid.Nz
-        for i in 1:Nt-20
-            B = model_time_series.b[i].data
-            B = B[1:Nz]
+        for i in 1:Nt-1
+            B = interior(model_time_series.b[i])
             Bz = δ([z...], [B...])
             mBz = maximum(Bz)
             tt = (2*N² + mBz)/3
             bools = Bz .> tt
             zA = (z[1:(Nz-1)] + z[2:Nz] )./2
     
-            h2_model[i] = any(bools) ? -minimum(zA[bools]) : 
-                                        model_time_series.b[1].grid.Lz # mixed layer reached the bottom
+            h2_model[i] = any(bools) ? -minimum(zA[bools]) : Lz # mixed layer reached the bottom
         end
 
     return [h2_les, h2_model]
 end
 
-LESdata = FourDaySuite
+LESdata = GeneralStrat
 
-ParametersToOptimize = TKEParametersRiIndependentConvectiveAdjustment
-RelevantParameters = TKEParametersRiIndependentConvectiveAdjustment
+ParametersToOptimize = TKEParametersRiDependent
+RelevantParameters = ParametersToOptimize
 
 params = Parameters(RelevantParameters = RelevantParameters,
                ParametersToOptimize = ParametersToOptimize)
 
 function make_all_the_plots(params)
 
-    directory = pwd() * "/Results/plotFourDaySuite_default_parameters/$(RelevantParameters)/"
+    directory = pwd() * "/Results/plotGeneralStrat_default_parameters/$(RelevantParameters)/"
     isdir(directory) || mkpath(directory)
 
     for (i, LEScase) in enumerate(values(LESdata))
 
-        td = TruthData(LEScase.filename; grid_type=ManyIndependentColumns, Nz=64)
+        td = TruthData(LEScase.filename; grid_type=ColumnEnsembleGrid, Nz=32)
 
         relative_weights = Dict(:b => 1.0, :u => 1.0, :v => 1.0, :e => 1.0)
 
@@ -106,21 +92,21 @@ function make_all_the_plots(params)
         case_loss, default_parameters = get_loss(LEScase, td, params, relative_weights; Δt=10.0, 
                                                 parameter_specific_kwargs[params.RelevantParameters]...)
 
+        targets = case_loss.loss.targets
 
         ℱ = model_time_series(default_parameters, case_loss)
-        h2_les, h2_model = get_h2(ℱ, td; coarse_grain_data = false)
+        h2_les, h2_model = approximate_mixed_layer_depth(ℱ, td, targets)
 
-        days = @. td.t / 86400
+        days = td.t[targets] ./ 86400
         first = LEScase.first
         last = isnothing(LEScase.last) ? length(td.t) : LEScase.last
 
-        toplot = LEScase.first:last
-        Plots.plot(days[toplot], h2_les[toplot], label = "LES mixed layer depth", linewidth = 3 , color = :red, grid = true, gridstyle = :dash, gridalpha = 0.25, framestyle = :box , title=td.name, ylabel = "Depth [meters]", xlabel = "days", legend = :topleft)
-        p = plot!(days[toplot], h2_model[toplot], color = :purple, label = "TKE mixed layer depth", linewidth = 3 )
+        Plots.plot(days, h2_les, label = "LES mixed layer depth", linewidth = 3 , color = :red, grid = true, gridstyle = :dash, gridalpha = 0.25, framestyle = :box , title=td.name, ylabel = "Depth [meters]", xlabel = "days", legend = :topleft)
+        p = plot!(days, h2_model, color = :purple, label = "TKE mixed layer depth", linewidth = 3 )
         Plots.savefig(p, directory*td.name*"_mixed_layer_depth.pdf")
 
-        Plots.plot(days[toplot], h2_les[toplot], label = "LES mixed layer depth", linewidth = 3 , color = :red, grid = true, gridstyle = :dash, gridalpha = 0.25, framestyle = :box , title=td.name, ylabel = "Depth [meters]", xlabel = "days", yscale = :log10, xscale = :log10, legend = :topleft)
-        p = plot!(days[toplot], h2_model[toplot], color = :purple, label = "TKE mixed layer depth", linewidth = 3 )
+        Plots.plot(days, h2_les, label = "LES mixed layer depth", linewidth = 3 , color = :red, grid = true, gridstyle = :dash, gridalpha = 0.25, framestyle = :box , title=td.name, ylabel = "Depth [meters]", xlabel = "days", yscale = :log10, xscale = :log10, legend = :topleft)
+        p = plot!(days, h2_model, color = :purple, label = "TKE mixed layer depth", linewidth = 3 )
         Plots.savefig(p, directory*td.name*"_mixed_layer_depth_log10.pdf")
 
         # p = visualize_realizations(md, td, 1:180:length(td), best_parameters)

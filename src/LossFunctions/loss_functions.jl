@@ -75,17 +75,23 @@ end
 # `Batch` here refers to all of the physical scenarios to be calibrated to
 const BatchLossFunction = Vector{<:LossFunction}
 
-mutable struct EnsembleLossContainer{D, F, FT, LT, M, T, L} <: ALC
-    data_batch :: D
- field_weights :: F # scenario weights
- first_targets :: FT
-  last_targets :: LT
-         model :: M
-   time_series :: T
-       profile :: L
+mutable struct EnsembleLossContainer{D, F, FT, ML, M, T, L} <: ALC
+             data_batch :: D
+          field_weights :: F # scenario weights
+          first_targets :: FT
+  max_simulation_length :: ML
+                  model :: M
+            time_series :: T
+                profile :: L
 end
 
+allsame(x) = all(y -> y ≈ first(x), x)
+Δt(data) = data.t[2:end] .- data.t[1:end-1]
+
 function EnsembleLossContainer(model, data_batch, fields, LESdata; data_weights=[1.0 for b in data_batch], relative_weights)
+
+    @assert all([allsame(Δt(data)) for data in data_batch]) "Simulation time steps are not uniformly spaced."
+    @assert allsame([Δt(data)[1] for data in data_batch]) "Time step differs between simulations."
 
     last_target(data, last) = isnothing(last) ? length(data) : last_target 
 
@@ -93,6 +99,7 @@ function EnsembleLossContainer(model, data_batch, fields, LESdata; data_weights=
     last_targets = getproperty.(values(LESdata), :last)
     last_targets = last_target.(data_batch, last_targets)
     all_targets = [first_targets[i]:last_targets[i] for i in 1:length(first_targets)]
+    max_simulation_length = maximum(length.(all_targets))
     
     profile = ValueProfileAnalysis(model.grid, analysis = column_mean)
 
@@ -115,7 +122,7 @@ function EnsembleLossContainer(model, data_batch, fields, LESdata; data_weights=
 
     time_series = [EnsembleTimeSeriesAnalysis(data_batch[i].t[all_targets[i]], model.grid.Nx) for i in 1:length(data_batch)]
 
-    return EnsembleLossContainer(data_batch, field_weights, first_targets, last_targets, model, time_series, profile)
+    return EnsembleLossContainer(data_batch, field_weights, first_targets, max_simulation_length, model, time_series, profile)
 end
 
 function (el::EnsembleLossContainer)(θ::Vector{<:FreeParameters})
@@ -125,16 +132,20 @@ function (el::EnsembleLossContainer)(θ::Vector{<:FreeParameters})
     # iterate the model and record discrepancy summary in `time_series`
     evaluate!(el, θ, el.model, el.data_batch)
 
-    error = zeros(model.grid.Nx)
+    N_ens = el.model.grid.Nx
+    error = zeros(N_ens)
+
+    @info size(el.time_series[1].analysis(el.time_series[1].data))
     
     for ts in el.time_series
-        error .+= ts.analysis(ts.data) / ensemble_size
+        data_error = ts.analysis(ts.data) / N_ens
+        error .+= [data_error...]
     end
 
     return error
 end
 
-(el::EnsembleLossContainer)(θ::FreeParameters) = el([θ for data in el.data_batch])
+(el::EnsembleLossContainer)(θ::FreeParameters) = el([θ for i in 1:el.model.grid.Nx])
 
 function calculate_value_discrepancy!(value, model_field, data_field)
     discrepancy = value.discrepancy
@@ -224,14 +235,14 @@ end
 
 function new_field(field_name, field_data, grid)
 
-    field_name == :u && return XFaceField(simulation_grid, field_data)
-    field_name == :v && return YFaceField(simulation_grid, field_data)
-    field_name == :b && return CenterField(simulation_grid, field_data)
-    field_name == :e && return CenterField(simulation_grid, field_data)
+    field_name == :u && return XFaceField(grid, field_data)
+    field_name == :v && return YFaceField(grid, field_data)
+    field_name == :b && return CenterField(grid, field_data)
+    field_name == :e && return CenterField(grid, field_data)
 
 end
 
-function analyze_weighted_profile_discrepancy(loss::EnsembleLossContainer, model, data_batch::BatchTruthData)
+function analyze_weighted_profile_discrepancy(el::EnsembleLossContainer, model, data_batch::BatchTruthData, target)
 
     total_discrepancy = zeros(model.grid.Nx, model.grid.Ny, 1)
 
@@ -241,14 +252,14 @@ function analyze_weighted_profile_discrepancy(loss::EnsembleLossContainer, model
         # compensate for setting model time index 1 to to index `first_target` in data.
         data_indices = target .+ el.first_targets .- 1
 
-        field_data = column_ensemble_interior(td_batch, field_name, data_indices, N_ens)
+        field_data = column_ensemble_interior(data_batch, field_name, data_indices, model.grid.Nx)
         data_field = new_field(field_name, field_data, model_field.grid)
 
         # Calculate the per-field profile-based discrepancy
-        field_discrepancy = analyze_profile_discrepancy(loss.profile, model_field, data_field)
+        field_discrepancy = analyze_profile_discrepancy(el.profile, model_field, data_field)
 
         # Accumulate weighted profile-based discrepancies in the total discrepancyor
-        total_discrepancy += el.field_weights[field_name]' .* field_discrepancy # accumulate discrepancyor
+        total_discrepancy .+= el.field_weights[field_name]' .* field_discrepancy # accumulate discrepancyor
     end
 
     return nan2inf.(total_discrepancy)
@@ -272,21 +283,13 @@ function evaluate!(loss, parameters, model_plus_Δt, data::TruthData)
     return nothing
 end
 
-allsame(x) = all(y -> y ≈ first(x), x)
-Δt(data) = data.t[2:end] .- data.t[1:end-1]
-
 function evaluate!(el, parameters, model_plus_Δt, data_batch::BatchTruthData)
-
-    @assert all([allsame(Δt(data)) for data in data_batch]) "Simulation time steps are not uniformly spaced."
-    @assert allsame([Δt(data)[1] for data in data_batch]) "Time step differs between simulations."
 
     # Initialize
     initialize_forward_run!(model_plus_Δt, data_batch, parameters, el.first_targets)
     
-    simulation_lengths = length.(el.targets)
-
     # Calculate a loss function time-series
-    for (i, target) in 1:maximum(simulation_lengths)
+    for target in 1:el.max_simulation_length
     
         run_until!(model_plus_Δt.model, model_plus_Δt.Δt, data_batch[1].t[target])
 
@@ -295,7 +298,7 @@ function evaluate!(el, parameters, model_plus_Δt, data_batch::BatchTruthData)
         for (j, ts) in enumerate(el.time_series)
             if target <= length(ts.time)
                 # `ts.data` is N_ensemble x N_timesteps; `discrepancy` is N_ensemble x N_cases x 1
-                ts.data[:, i] .= discrepancy[:, j, 1]
+                ts.data[:, target] .= discrepancy[:, j, 1]
             end
         end
 

@@ -49,9 +49,12 @@ function dataset(LESdata, p::Parameters{UnionAll};
         loss, default_parameters = get_loss(LESdata, td, p, relative_weights; Δt=Δt, 
                                                 parameter_specific_kwargs[p.RelevantParameters]...)
 
+        data = [td]
+        model = [loss.model]
+
     else
 
-        td_batch = [TruthData(LEScase.filename; grid_type=grid_type, Nz=Nz) for LEScase in values(LESdata)]
+        data = [TruthData(LEScase.filename; grid_type=grid_type, Nz=Nz) for LEScase in values(LESdata)]
 
         # Batched
         batch = []
@@ -59,18 +62,22 @@ function dataset(LESdata, p::Parameters{UnionAll};
 
         for (i, LEScase) in enumerate(values(LESdata))
  
-            loss, default_parameters = get_loss(LEScase, td_batch[i], p, relative_weights; Δt=Δt, 
+            loss, default_parameters = get_loss(LEScase, data[i], p, relative_weights; Δt=Δt, 
                                                     parameter_specific_kwargs[p.RelevantParameters]...)
             push!(batch, loss)
+
         end
+
         loss = BatchedLossContainer([loss for loss in batch],
                                             weights=[1.0 for d in LESdata])
+        model = [b.model for b in loss.batch]
+
     end
 
     loss_wrapper(θ::Vector) = loss(p.ParametersToOptimize(θ))
     loss_wrapper(θ::FreeParameters) = loss(θ)
 
-    return DataSet(LESdata, relative_weights, loss_wrapper, default_parameters)
+    return DataSet(LESdata, data, model, relative_weights, loss_wrapper, default_parameters)
 end
 
 function ensemble_dataset(LESdata, p::Parameters{UnionAll}; 
@@ -81,11 +88,8 @@ function ensemble_dataset(LESdata, p::Parameters{UnionAll};
 
     td_batch = [TruthData(LEScase.filename; grid_type=ColumnEnsembleGrid, Nz=Nz) for LEScase in values(LESdata)]
 
-    # first_targets = [LEScase.first_target for LEScase in values(LESdata)]
-    # last_targets = [LEScase.lastt_target for LEScase in values(LESdata)]
-
-    grid = ColumnEnsembleGrid(size = (ensemble_size, length(td_batch), Nz))
-    model = ParameterizedModel(td_batch, grid, Δt; parameter_specific_kwargs[p.RelevantParameters]...)
+    model = ParameterizedModel(td_batch, Δt; N_ens=ensemble_size, 
+                                            parameter_specific_kwargs[p.RelevantParameters]...)
 
     fields = tke_fields.(values(LESdata))
 
@@ -103,5 +107,5 @@ function ensemble_dataset(LESdata, p::Parameters{UnionAll};
     loss_wrapper(θ::Vector{<:Vector}) = loss(p.ParametersToOptimize.(θ))
     loss_wrapper(θ::Vector{<:FreeParameters}) = loss(θ)
 
-    return DataSet(LESdata, relative_weights, loss_wrapper, default_parameters)
+    return DataSet(LESdata, loss.data_batch, loss.model, relative_weights, loss_wrapper, default_parameters)
 end

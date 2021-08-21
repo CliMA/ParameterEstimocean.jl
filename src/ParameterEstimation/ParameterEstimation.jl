@@ -69,8 +69,10 @@ Base.@kwdef struct Parameters{T <: UnionAll}
     ParametersToOptimize::T
 end
 
-struct DataSet{LD, RW, NLL, FP}
+struct DataSet{LD, DB, PM, RW, NLL, FP}
         LESdata::LD
+        data_batch::DB
+        model::PM
         relative_weights::RW # field weights
         loss::NLL
         default_parameters::FP

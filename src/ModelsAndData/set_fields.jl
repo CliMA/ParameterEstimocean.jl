@@ -3,8 +3,9 @@ include("set_fields_utils.jl")
 
 # Set to an array
 function set!(c::AbstractDataField, data::AbstractArray)
+
     for i in eachindex(data)
-        @inbounds c[i] = data[i]
+        c[i] = data[i]
     end
     return nothing
 end
@@ -141,12 +142,12 @@ function set!(model, data::TruthData, i)
 end
 
 """
-set!(model::Oceananigans.AbstractModel,
+set!(model::AbstractModel,
               td_batch::BatchTruthData, time_index)
 
 
 """
-function set!(model::Oceananigans.AbstractModel,
+function set!(model::ParameterizedModel,
               td_batch::BatchTruthData, time_index::Vector)
 
     ensemble(x) = column_ensemble_interior(td_batch, x, time_index, model.grid.Nx)
