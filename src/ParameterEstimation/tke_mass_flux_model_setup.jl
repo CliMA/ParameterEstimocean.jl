@@ -1,10 +1,6 @@
 
-relevant_fields(datum) = !(datum.stressed) ? (:b, :e) :
-                         !(datum.rotating) ? (:b, :u, :e) :
-                                             (:b, :u, :v, :e)
 
 function get_loss(td::TruthData, p::Parameters, relative_weights;
-                                                        fields = [:u, :v, :b, :e],
                                         # ParameterizedModel
                                                             Δt = 10.0,
                                         # TKE-specific kwargs:
@@ -19,9 +15,8 @@ function get_loss(td::TruthData, p::Parameters, relative_weights;
     
     set!(model, td, 1)
 
-    relative_weights = [relative_weights[field] for field in fields]
-    loss_function = init_loss_function(model, td, fields, relative_weights)
-
+    relative_weights = [relative_weights[field] for field in td.relevant_fields]
+    loss_function = init_loss_function(model, td, relative_weights)
     
     loss = LossContainer(model, td, loss_function)
 
@@ -42,10 +37,10 @@ function dataset(LESdata, p::Parameters{UnionAll};
 
         # TruthData object containing LES data coarse-grained to a grid of size `N`
         # Coarse-graining the data at this step saves having to coarse-grain each time the loss is calculated
-        td = TruthData(LESdata.filename; grid_type=grid_type, Nz=Nz, first_target=LESdata.first, last_target=LESdata.last)
+        td = TruthData(LESdata; grid_type=grid_type, Nz=Nz)
 
         # Single simulation
-        loss, default_parameters = get_loss(td, p, relative_weights; Δt=Δt, fields=relevant_fields(LESdata),
+        loss, default_parameters = get_loss(td, p, relative_weights; Δt=Δt,
                                                 parameter_specific_kwargs[p.RelevantParameters]...)
 
         data = [td]
@@ -53,7 +48,7 @@ function dataset(LESdata, p::Parameters{UnionAll};
 
     else
 
-        data = [TruthData(LEScase.filename; grid_type=grid_type, Nz=Nz, first_target=LEScase.first, last_target=LEScase.last) for LEScase in values(LESdata)]
+        data = [TruthData(LEScase; grid_type=grid_type, Nz=Nz) for LEScase in values(LESdata)]
 
         # Batched
         batch = []
@@ -61,7 +56,7 @@ function dataset(LESdata, p::Parameters{UnionAll};
 
         for (i, LEScase) in enumerate(values(LESdata))
  
-            loss, default_parameters = get_loss(data[i], p, relative_weights; Δt=Δt, fields=relevant_fields(LEScase),
+            loss, default_parameters = get_loss(data[i], p, relative_weights; Δt=Δt,
                                                     parameter_specific_kwargs[p.RelevantParameters]...)
             push!(batch, loss)
 
@@ -90,9 +85,7 @@ function ensemble_dataset(LESdata, p::Parameters{UnionAll};
     model = ParameterizedModel(td_batch, Δt; N_ens=ensemble_size, 
                                             parameter_specific_kwargs[p.RelevantParameters]...)
 
-    fields = relevant_fields.(values(LESdata))
-
-    loss = EnsembleLossContainer(model, td_batch, fields, LESdata; data_weights=[1.0 for td in td_batch],
+    loss = EnsembleLossContainer(model, td_batch; data_weights=[1.0 for td in td_batch],
                                                            relative_weights)
 
     # Set model to custom defaults

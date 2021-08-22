@@ -8,7 +8,7 @@
 A time series of horizontally-averaged observational or LES data
 gridded as Oceananigans fields.
 """
-struct TruthData{F, G, C, D, UU, VV, BΘ, EE, TT, NN, TG}
+struct TruthData{F, G, C, D, UU, VV, BΘ, EE, TT, NN, TG, RF}
    boundary_conditions :: F
                   grid :: G
              constants :: C
@@ -20,6 +20,7 @@ struct TruthData{F, G, C, D, UU, VV, BΘ, EE, TT, NN, TG}
                      t :: TT
                   name :: NN
                targets :: TG
+       relevant_fields :: RF
 end
 
 """
@@ -27,10 +28,10 @@ end
 
 Construct TruthData from a time-series of Oceananigans LES data saved at `datapath`.
 """
-function TruthData(datapath; grid_type=ColumnEnsembleGrid,
-                             Nz=32,
-                             first_target=1,
-                             last_target=nothing)
+function TruthData(LEScase; grid_type=ColumnEnsembleGrid,
+                             Nz=32)
+
+    datapath = LEScase.datapath
 
     # For now, we assume salinity-less LES data.
     file = jldopen(datapath, "r")
@@ -86,13 +87,16 @@ function TruthData(datapath; grid_type=ColumnEnsembleGrid,
 
     t = get_times(datapath)
 
-    last_target = isnothing(last_target) ? length(t) : last_target 
-    targets = first_target:last_target
+    last_target = isnothing(LEScase.last) ? length(t) : LEScase.last 
+    targets = LEScase.first:last_target
+    relevant_fields = !(datum.stressed) ? (:b, :e) :
+                      !(datum.rotating) ? (:b, :u, :e) :
+                                          (:b, :u, :v, :e)
 
     td = TruthData((Qᶿ=Qᶿ, Qᵇ=Qᵇ, Qᵘ=Qᵘ, Qᵛ=Qᵛ, Qᵉ=0.0, 
                       dθdz_bottom=dθdz_bottom, dbdz_bottom=dbdz_bottom, dudz_bottom=dudz_bottom),
                       simulation_grid, constants, (ν=background_ν, κ=background_κ),
-                      u, v, b, e, t, name, targets)
+                      u, v, b, e, t, name, targets, relevant_fields)
 
     model_grid = grid_type(datapath; size=(1,1,Nz))
 
@@ -132,7 +136,8 @@ function TruthData(td::TruthData, grid::AbstractGrid)
                       E,
                       td.t,
                       td.name,
-                      td.targets)
+                      td.targets,
+                      td.relevant_fields)
 end
 
 """

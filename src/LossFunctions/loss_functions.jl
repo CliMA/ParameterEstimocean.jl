@@ -19,14 +19,13 @@ struct LossFunction{R, F, W, T, P}
         profile :: P
 end
 
-function LossFunction(model, data; fields,
-                          targets = 1:length(data.t),
+function LossFunction(model, data; 
                           weights = nothing,
                       time_series = TimeSeriesAnalysis(data.t[targets], TimeAverage()),
                           profile = ValueProfileAnalysis(model.grid)
                       )
 
-    return LossFunction(targets, fields, weights, time_series, profile)
+    return LossFunction(data.targets, data.relevant_fields, weights, time_series, profile)
 end
 
 function (loss::LossFunction)(θ, model, data)
@@ -88,7 +87,7 @@ end
 allsame(x) = all(y -> y ≈ first(x), x)
 Δt(data) = data.t[2:end] .- data.t[1:end-1]
 
-function EnsembleLossContainer(model, data_batch, fields, LESdata; data_weights=[1.0 for b in data_batch], relative_weights)
+function EnsembleLossContainer(model, data_batch; data_weights=[1.0 for b in data_batch], relative_weights)
 
     @assert all([allsame(Δt(data)) for data in data_batch]) "Simulation time steps are not uniformly spaced."
     @assert allsame([Δt(data)[1] for data in data_batch]) "Time step differs between simulations."
@@ -101,7 +100,7 @@ function EnsembleLossContainer(model, data_batch, fields, LESdata; data_weights=
 
     field_weights = Dict(f => [] for f in [:u, :v, :b, :e])
     for (i, data) in enumerate(data_batch)
-        data_fields = fields[i] # e.g. (:b, :e)
+        data_fields = data.relevant_fields # e.g. (:b, :e)
         targets = first_targets[i]:last_targets[i]
         rw = [relative_weights[f] for f in data_fields]
         weights = estimate_weights(profile, data, data_fields, targets, rw) # e.g. (1.0, 0.5)
@@ -346,14 +345,14 @@ function estimate_weights(profile::GradientProfileAnalysis, data::TruthData, fie
 end
 
 function init_loss_function(model::ParameterizedModel, data::TruthData,
-                                      fields, relative_weights; analysis = mean)
+                                      relative_weights; analysis = mean)
 
     grid = model.grid
     profile_analysis = ValueProfileAnalysis(grid, analysis = analysis)
     profile_analysis = on_grid(profile_analysis, grid)
     weights = estimate_weights(profile_analysis, data, fields, targets, relative_weights)
 
-    loss_function = LossFunction(model, data, fields=fields, targets=data.targets, weights=weights,
+    loss_function = LossFunction(model, data, weights=weights,
                         time_series = TimeSeriesAnalysis(data.t[targets], TimeAverage()),
                         profile = profile_analysis)
 
