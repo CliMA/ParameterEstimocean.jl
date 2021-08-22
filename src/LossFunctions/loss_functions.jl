@@ -93,12 +93,8 @@ function EnsembleLossContainer(model, data_batch, fields, LESdata; data_weights=
     @assert all([allsame(Δt(data)) for data in data_batch]) "Simulation time steps are not uniformly spaced."
     @assert allsame([Δt(data)[1] for data in data_batch]) "Time step differs between simulations."
 
-    last_target(data, last) = isnothing(last) ? length(data) : last_target 
-
-    first_targets = getproperty.(values(LESdata), :first)
-    last_targets = getproperty.(values(LESdata), :last)
-    last_targets = last_target.(data_batch, last_targets)
-    all_targets = [first_targets[i]:last_targets[i] for i in 1:length(first_targets)]
+    all_targets = getproperty.(data_batch, :targets)
+    first_targets = getindex.(all_targets, 1)
     max_simulation_length = maximum(length.(all_targets))
     
     profile = ValueProfileAnalysis(model.grid, analysis = column_mean)
@@ -349,18 +345,15 @@ function estimate_weights(profile::GradientProfileAnalysis, data::TruthData, fie
     return weights
 end
 
-function init_loss_function(model::ParameterizedModel, data::TruthData, first_target, last_target,
+function init_loss_function(model::ParameterizedModel, data::TruthData,
                                       fields, relative_weights; analysis = mean)
 
     grid = model.grid
-
     profile_analysis = ValueProfileAnalysis(grid, analysis = analysis)
-    last_target = last_target === nothing ? length(data) : last_target
-    targets = first_target:last_target
     profile_analysis = on_grid(profile_analysis, grid)
     weights = estimate_weights(profile_analysis, data, fields, targets, relative_weights)
 
-    loss_function = LossFunction(model, data, fields=fields, targets=targets, weights=weights,
+    loss_function = LossFunction(model, data, fields=fields, targets=data.targets, weights=weights,
                         time_series = TimeSeriesAnalysis(data.t[targets], TimeAverage()),
                         profile = profile_analysis)
 

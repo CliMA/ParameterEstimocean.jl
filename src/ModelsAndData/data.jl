@@ -8,7 +8,7 @@
 A time series of horizontally-averaged observational or LES data
 gridded as Oceananigans fields.
 """
-struct TruthData{F, G, C, D, UU, VV, BΘ, EE, TT, NN}
+struct TruthData{F, G, C, D, UU, VV, BΘ, EE, TT, NN, TG}
    boundary_conditions :: F
                   grid :: G
              constants :: C
@@ -19,6 +19,7 @@ struct TruthData{F, G, C, D, UU, VV, BΘ, EE, TT, NN}
                      e :: EE
                      t :: TT
                   name :: NN
+               targets :: TG
 end
 
 """
@@ -27,7 +28,9 @@ end
 Construct TruthData from a time-series of Oceananigans LES data saved at `datapath`.
 """
 function TruthData(datapath; grid_type=ColumnEnsembleGrid,
-                             Nz=32)
+                             Nz=32,
+                             first_target=1,
+                             last_target=nothing)
 
     # For now, we assume salinity-less LES data.
     file = jldopen(datapath, "r")
@@ -65,29 +68,31 @@ function TruthData(datapath; grid_type=ColumnEnsembleGrid,
     iters = get_iterations(datapath)
 
     simulation_grid = grid_type(datapath)
-    u = [  XFaceField(simulation_grid, get_data("u", datapath, iter)) for iter in iters ]
-    v = [  YFaceField(simulation_grid, get_data("v", datapath, iter)) for iter in iters ]
-    b = [ CenterField(simulation_grid, get_data("T", datapath, iter) .* constants[:αg]) for iter in iters ]
-    e = [ CenterField(simulation_grid, get_data("e", datapath, iter)) for iter in iters ]
+    u = [ new_field(XFaceField, simulation_grid, get_data("u", datapath, iter)) for iter in iters ] 
+    v = [ new_field(YFaceField, simulation_grid, get_data("v", datapath, iter)) for iter in iters ] 
+    b = [ new_field(CenterField, simulation_grid, get_data("T", datapath, iter) .* constants[:αg]) for iter in iters ] 
+    e = [ new_field(CenterField, simulation_grid, get_data("e", datapath, iter)) for iter in iters ] 
 
-    for (i, iter) in enumerate(iters)
-        u² = XFaceField(simulation_grid, get_data("uu", datapath, iter))
-        v² = YFaceField(simulation_grid, get_data("vv", datapath, iter))
-        w² = ZFaceField(simulation_grid, get_data("ww", datapath, iter))
+    # Manually calculating E
+    # for (i, iter) in enumerate(iters)
+    #     u² = XFaceField(simulation_grid, get_data("uu", datapath, iter))
+    #     v² = YFaceField(simulation_grid, get_data("vv", datapath, iter))
+    #     w² = ZFaceField(simulation_grid, get_data("ww", datapath, iter))
 
-        N = simulation_grid.Nz
-        # e_interior = interior(e[i])
-        # @. e_interior = ( interior(u²) - interior(u[i])^2 + interior(v²) - interior(v[i])^2 + interior(w²) ) / 2
-        @. e[i].data[1:N] = ( u²[1:N] - u[i][1:N]^2 + v²[1:N] - v[i][1:N]^2
-                                + 1/2 * (w²[1:N] + w²[2:N+1]) ) / 2
-    end
+    #     N = simulation_grid.Nz
+    #     @. e[i].data[1:N] = ( u²[1:N] - u[i][1:N]^2 + v²[1:N] - v[i][1:N]^2
+    #                             + 1/2 * (w²[1:N] + w²[2:N+1]) ) / 2
+    # end
 
     t = get_times(datapath)
+
+    last_target = isnothing(last_target) ? length(t) : last_target 
+    targets = first_target:last_target
 
     td = TruthData((Qᶿ=Qᶿ, Qᵇ=Qᵇ, Qᵘ=Qᵘ, Qᵛ=Qᵛ, Qᵉ=0.0, 
                       dθdz_bottom=dθdz_bottom, dbdz_bottom=dbdz_bottom, dudz_bottom=dudz_bottom),
                       simulation_grid, constants, (ν=background_ν, κ=background_κ),
-                      u, v, b, e, t, name)
+                      u, v, b, e, t, name, targets)
 
     model_grid = grid_type(datapath; size=(1,1,Nz))
 
@@ -126,7 +131,8 @@ function TruthData(td::TruthData, grid::AbstractGrid)
                       B,
                       E,
                       td.t,
-                      td.name)
+                      td.name,
+                      td.targets)
 end
 
 """
