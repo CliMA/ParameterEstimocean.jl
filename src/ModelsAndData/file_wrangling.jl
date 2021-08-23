@@ -47,6 +47,19 @@ function get_data(varname, datapath, iter; reversed=false)
     return var
 end
 
+function new_field(fieldtype, simulation_grid, data)
+
+    newfield = fieldtype(simulation_grid)
+
+    # Reshape `data` to the size of `newfield`'s interior
+    d = reshape(data, size(newfield))
+
+    # Sets the interior of `newfield` to values of `data`
+    newfield .= d
+
+    return newfield
+end
+
 function get_grid_params(datapath::String)
     file = jldopen(datapath, "r")
 

@@ -4,10 +4,12 @@ include("set_fields_utils.jl")
 # Set to an array
 function set!(c::AbstractDataField, data::AbstractArray)
 
-    for i in eachindex(data)
-        c[i] = data[i]
-    end
-    return nothing
+    # Reshape `data` to the size of `c`'s interior
+    d = reshape(data, size(c))
+
+    # Sets the interior of field `c` to values of `data`
+    c .= d
+
 end
 
 import Base.size

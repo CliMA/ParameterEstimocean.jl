@@ -100,7 +100,7 @@ function eki_unidimensional(loss, initial_parameters;
     G(u) = sqrt(loss(transform_unconstrained_to_constrained(prior, u)))
     # println(loss([initial_parameters...]))
 
-    # model_time_series(parameters, loss)
+    # model_time_series(parameters, loss.model, loss.data)
 
     # ℒ = ce.calibration.loss(prior_means)
     # println("approx. scale of L in first term (data misfit) of EKI obj:", ℒ)
@@ -235,7 +235,7 @@ function eki_multidimensional(loss::BatchedLossContainer, ParametersToOptimize, 
         parameters = ParametersToOptimize(transform_unconstrained_to_constrained(prior, u))
         for simulation in loss.batch
             data = simulation.data
-            output = model_time_series(parameters, simulation)
+            output = model_time_series(parameters, simulation.model, simulation.data)
 
             # println(parameters)
             # println(output.T[end])
