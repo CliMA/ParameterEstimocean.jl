@@ -8,18 +8,12 @@ mutable struct ParameterizedModelTimeSeries{UU, VV, BΘ, EE}
                      e :: EE
 end
 
-function model_time_series(parameters, loss)
+function model_time_series(parameters, model, data)
 
-    model_plus_Δt = loss.model
-    data = loss.data
-
-    # Nt = length(data.t)
-
-    # start = 1
     start = loss.loss.targets[1]
     Nt = length(data.t) - start + 1
 
-    initialize_forward_run!(model_plus_Δt, data, parameters, start)
+    initialize_forward_run!(model, data, parameters, start)
 
     grid = model_plus_Δt.grid
 
@@ -28,14 +22,13 @@ function model_time_series(parameters, loss)
                              [CenterField(grid) for i = 1:Nt],
                              [CenterField(grid) for i = 1:Nt])
 
-    u = getproperty(model_plus_Δt, :u)
-    v = getproperty(model_plus_Δt, :v)
-    b = getproperty(model_plus_Δt, :b)
-    e = getproperty(model_plus_Δt, :e)
-    # e = 0
+    u = getproperty(model, :u)
+    v = getproperty(model, :v)
+    b = getproperty(model, :b)
+    e = getproperty(model, :e)
 
     for i in 1:Nt
-        run_until!(model_plus_Δt.model, model_plus_Δt.Δt, data.t[i + start - 1])
+        run_until!(model.model, model.Δt, data.t[i + start - 1])
 
         u_snapshot = output.u[i].data
         v_snapshot = output.v[i].data
@@ -51,55 +44,12 @@ function model_time_series(parameters, loss)
     return output
 end
 
-
-# function model_time_series(parameters, model_plus_Δt, data)
-#
-#     Nt = length(data.t)
-#
-#     targets[1]
-#
-#     initialize_forward_run!(model_plus_Δt, data, parameters, 1)
-#
-#     grid = model_plus_Δt.grid
-#
-#     output = ParameterizedModelTimeSeries([CenterField(grid) for i = 1:Nt],
-#                               [CenterField(grid) for i = 1:Nt],
-#                               [CenterField(grid) for i = 1:Nt],
-#                               [CenterField(grid) for i = 1:Nt],
-#                               [CenterField(grid) for i = 1:Nt])
-#
-#     U = model_plus_Δt.solution.U
-#     V = model_plus_Δt.solution.V
-#     T = model_plus_Δt.solution.T
-#     S = model_plus_Δt.solution.S
-#     e = model_plus_Δt.solution.e
-#
-#     for i in 1:Nt
-#         run_until!(model_plus_Δt.model, model_plus_Δt.Δt, data.t[i])
-#
-#         U_snapshot = output.U[i].data
-#         V_snapshot = output.V[i].data
-#         T_snapshot = output.T[i].data
-#         S_snapshot = output.S[i].data
-#         e_snapshot = output.e[i].data
-#
-#         U_snapshot .= U.data
-#         V_snapshot .= V.data
-#         T_snapshot .= T.data
-#         S_snapshot .= S.data
-#         e_snapshot .= e.data
-#     end
-#
-#     return output
-# end
-
 # Evaluate loss function AFTER the forward map rather than during
 function analyze_weighted_profile_discrepancy(loss, forward_map_output::ParameterizedModelTimeSeries, data, target)
     total_discrepancy = zero(eltype(data.grid))
     field_names = Tuple(loss.fields)
 
     # target = loss.targets[index]
-
     for (field_index, field_name) in enumerate(field_names)
         model_field = getproperty(forward_map_output, field_name)[target]
         data_field = getproperty(data, field_name)[target]
