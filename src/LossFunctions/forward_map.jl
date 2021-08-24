@@ -10,15 +10,15 @@ end
 
 function model_time_series(parameters, model, data)
 
-    start = loss.loss.targets[1]
+    start = data.targets[1]
     Nt = length(data.t) - start + 1
 
     initialize_forward_run!(model, data, parameters, start)
 
-    grid = model_plus_Δt.grid
+    grid = model.grid
 
-    output = ParameterizedModelTimeSeries([CenterField(grid) for i = 1:Nt],
-                             [CenterField(grid) for i = 1:Nt],
+    output = ParameterizedModelTimeSeries([XFaceField(grid) for i = 1:Nt],
+                             [YFaceField(grid) for i = 1:Nt],
                              [CenterField(grid) for i = 1:Nt],
                              [CenterField(grid) for i = 1:Nt])
 
@@ -28,7 +28,9 @@ function model_time_series(parameters, model, data)
     e = getproperty(model, :e)
 
     for i in 1:Nt
-        run_until!(model.model, model.Δt, data.t[i + start - 1])
+        run_until!(model, data.t[i + start - 1])
+
+        i < 3 && @info "$i,: $([interior(model.b)...])"
 
         u_snapshot = output.u[i].data
         v_snapshot = output.v[i].data
