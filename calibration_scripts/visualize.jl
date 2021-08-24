@@ -13,7 +13,7 @@ function animate_LESbrary_suite(ce, directory; parameters=ce.default_parameters,
     model = Dict()
     for myloss in ce.validation.loss.loss.batch
         truth[myloss.data.name] = myloss.data
-        model[myloss.data.name] = model_time_series(parameters, myloss)
+        model[myloss.data.name] = model_time_series(parameters, myloss.model, myloss.data)
     end
 
     function plot_(name, file, t)

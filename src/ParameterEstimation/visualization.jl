@@ -1,82 +1,33 @@
-styles = ("--", ":", "-.", "o-", "^--")
-defaultcolors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+field_guide = Dict(
+    :u => (
+        axis_args = (ylabel="z (m)", xlabel="U velocity (dm/s)"),
+        scaling = 1e1,
+    ),
 
-# Default kwargs for plot routines
-default_modelkwargs = Dict(:linewidth=>2, :alpha=>0.8)
-default_datakwargs = Dict(:linewidth=>3, :alpha=>0.6)
-default_legendkwargs = Dict(:fontsize=>10, :loc=>"lower right", :frameon=>true, :framealpha=>0.5)
+    :v => (
+        axis_args = (xlabel="V velocity (dm/s)",),
+        scaling = 1e1,
+    ),
 
-removespine(side) = gca().spines[side].set_visible(false)
-removespines(sides...) = [removespine(side) for side in sides]
+    :b => (
+        axis_args = (xlabel="Buoyancy (cN/kg)",),
+        scaling = 1e2,
+    ),
 
-function plot_data!(axs, data, targets, fields; datastyle="-", datakwargs...)
-    for (iplot, i) in enumerate(targets)
-        lbl = iplot == 1 ? "LES, " : ""
-        lbl *= @sprintf("\$ t = %0.2f \$ hours", data.t[i]/hour)
+    :e => (
+        axis_args = (ylabel="z (m)", xlabel="TKE (cm²/s²)"),
+        scaling = 1e4,
+    )
+)
 
-        for (ipanel, field) in enumerate(fields)
-            sca(axs[ipanel])
-            dfld = getproperty(data, field)[i]
-            plot(dfld, datastyle; label=lbl, color=defaultcolors[iplot], datakwargs...)
-        end
-    end
-    return nothing
+function tostring(num)
+    num == 0 && return "0"
+    om = Int(floor(log10(abs(num))))
+    num /= 10.0^om
+    num = num%1 ≈ 0 ? Int(num) : round(num; digits=2)
+    return "$(num)e$om"
 end
 
-function label_ax!(ax, field)
-    if field === :U
-        sca(ax)
-        xlabel("\$ U \$ velocity \$ \\mathrm{(m \\, s^{-1})} \$")
-    end
-
-    if field === :V
-        sca(ax)
-        xlabel("\$ V \$ velocity \$ \\mathrm{(m \\, s^{-1})} \$")
-    end
-
-    if field === :T
-        sca(ax)
-        xlabel("Temperature (Celsius)")
-    end
-
-    if field === :S
-        sca(ax)
-        xlabel("Salinity (psu)")
-    end
-
-    if field === :e
-        sca(ax)
-        xlabel("\$ e \$ \$ \\mathrm{(m^2 \\, s^{-2})} \$")
-    end
-
-    return nothing
-end
-
-
-function format_axs!(axs, fields; legendkwargs...)
-    sca(axs[1])
-    removespines("top", "right")
-    ylabel(L"z \, \mathrm{(meters)}")
-    legend(; legendkwargs...)
-
-    for iax in 2:length(axs)-1
-        sca(axs[iax])
-        removespines("top", "right", "left")
-        axs[iax].tick_params(left=false, labelleft=false)
-    end
-
-    if length(fields) > 1
-        sca(axs[end])
-        axs[end].yaxis.set_label_position("right")
-        axs[end].tick_params(left=false, labelleft=false, right=true, labelright=true)
-        removespines("top", "left")
-        ylabel(L"z \, \mathrm{(meters)}")
-    end
-
-    [label_ax!(ax, fields[i]) for (i, ax) in enumerate(axs)]
-
-    return nothing
-end
 
 """
     visualize_realizations(data, model, params...)
@@ -84,186 +35,120 @@ end
 Visualize the data alongside several realizations of `column_model`
 for each set of parameters in `params`.
 """
-function visualize_realizations(column_model, column_data, targets, params::FreeParameters...;
-                                                    fig = nothing,
-                                                figsize = (10, 4),
-                                plot_first_model_target = false,
-                                            paramlabels = ["" for p in params], datastyle="-",
-                                            modelkwargs = Dict(),
-                                             datakwargs = Dict(),
-                                           legendkwargs = Dict(),
-                                                 fields = (:U, :V, :T)
+function visualize_realizations(model, data_batch, parameters::FreeParameters;
+                                                 fields = [:b, :u, :v, :e],
+                                                 filename = "realizations.png"
                                 )
+        
+    fig = Figure(resolution = (200*(length(fields)+1), 200*length(data_batch)), font = "CMU Serif")
+    colors = [:black, :red, :blue]
 
-    # Merge defaults with user-specified options
-     modelkwargs = merge(default_modelkwargs, modelkwargs)
-      datakwargs = merge(default_datakwargs, datakwargs)
-    legendkwargs = merge(default_legendkwargs, legendkwargs)
-
-    #
-    # Make plot
-    #
-
-    if fig === nothing
-        fig, axs = subplots(ncols=length(fields), figsize=figsize, sharey=true)
-    else
-        axs = fig._get_axes()
-        for ax in axs
-            sca(ax)
-            cla()
-        end
+    function empty_plot!(fig_position)
+        ax = fig_position = Axis(fig_position)
+        hidedecorations!(ax)
+        hidespines!(ax, :t, :b, :l, :r)
     end
 
-    for (iparam, param) in enumerate(params)
-        set!(column_model, param)
-        set!(column_model, column_data, targets[1])
+    for (i, data) in enumerate(data_batch)
 
-        for (iplot, i) in enumerate(targets)
-            run_until!(column_model.model, column_model.Δt, column_data.t[i])
+        targets = data.targets
+        snapshots = round.(Int, range(targets[1], targets[end], length=3))
+        bcs = data.boundary_conditions
 
-            if iplot == length(targets)
-                lbl =  @sprintf("%s ParameterizedModel, \$ t = %0.2f \$ hours",
-                                paramlabels[iparam], column_data.t[i]/hour)
-            else
-                lbl = ""
-            end
+        empty_plot!(fig[i,1])
+        text!(fig[i,1], "Qᵇ = $(tostring(bcs.Qᵇ)) m⁻¹s⁻³\nQᵘ = $(tostring(bcs.Qᵘ)) m⁻¹s⁻²\nf = $(tostring(data.constants[:f])) s⁻¹", 
+                    position = (0, 0), 
+                    align = (:center, :center), 
+                    textsize = 15,
+                    justification = :left)
 
-            if iplot > 1 || plot_first_model_target
-                for (ipanel, field) in enumerate(fields)
-                    sca(axs[ipanel])
-                    model_field = getproperty(column_model.model, field)
-                    plot(model_field, styles[iparam]; color=defaultcolors[iplot], label=lbl, modelkwargs...)
+        model_predictions = model_time_series(parameters, model, data)
+
+        for (j, field) in enumerate(fields)
+            middle = j > 1 && j < length(fields)
+            remove_spines = j == 1 ? (:t, :r) : j == length(fields) ? (:t, :l) : (:t, :l, :r)
+            axis_position = j == length(fields) ? (ylabelposition=:right, yaxisposition=:right) : NamedTuple()
+
+            j += 1 # reserve the first column for row labels
+
+            info = field_guide[field]
+
+            # field data for each time step
+            truth = getproperty(data, field)
+            prediction = getproperty(model_predictions, field)
+
+            z = field ∈ [:u, :v] ? data.grid.zF[1:data.grid.Nz] : data.grid.zC[1:data.grid.Nz]
+
+            to_plot = field ∈ data.relevant_fields
+
+            if to_plot
+
+                ax = Axis(fig[i,j]; xlabelpadding=0, xtickalign=1, ytickalign=1, 
+                                            merge(axis_position, info.axis_args)...)
+
+                hidespines!(ax, remove_spines...)
+
+                middle && hideydecorations!(ax, grid=false)
+
+                lins = []
+                for (color_index, target) in enumerate(snapshots)
+                    l = lines!([interior(truth[target]) .* info.scaling ...], z; color = (colors[color_index], 0.4))
+                    push!(lins, l)
+                    l = lines!([interior(prediction[target - snapshots[1] + 1]) .* info.scaling ...], z; color = (colors[color_index], 1.0), linestyle = :dash)
+                    push!(lins, l)
                 end
+
+                times = @. round((data.t[snapshots] - data.t[snapshots[1]]) / 86400, sigdigits=2)
+                Legend(fig[1,3:4], lins, [["LES, t = $time days" for time in times]; ["Model, t = $time days" for time in times]], nbanks=2)
+                lins = []
+            else
+                
+                empty_plot!(fig[i,j])
             end
         end
     end
 
-    plot_data!(axs, column_data, targets, fields; datastyle=datastyle, datakwargs...)
-    format_axs!(axs, fields; legendkwargs...)
-
-    return fig, axs
+    save(filename, fig, px_per_unit = 2.0)
 end
 
-function plot_loss_function(loss, model, data, params...;
-                            labels=["Parameter set $i" for i = 1:length(params)],
-                            time_norm=:second)
+function visualize_and_save(ce, parameters, directory; fields=[:b, :u, :v, :e])
 
-    numerical_time_norm = eval(time_norm)
+        # o = open_output_file(directory*"/result.txt")
+        # write(o, "Training relative weights: $(ce.calibration.relative_weights) \n")
+        # write(o, "Validation relative weights: $(ce.validation.relative_weights) \n")
+        # write(o, "Training default parameters: $(ce.validation.default_parameters) \n")
+        # write(o, "Validation default parameters: $(ce.validation.default_parameters) \n")
 
-    fig, axs = subplots()
+        # write(o, "------------ \n \n")
+        # default_parameters = ce.default_parameters
+        # train_loss_default = ce.calibration.loss(default_parameters)
+        # valid_loss_default = ce.validation.loss(default_parameters)
+        # write(o, "Default parameters: $(default_parameters) \nLoss on training: $(train_loss_default) \nLoss on validation: $(valid_loss_default) \n------------ \n \n")
 
-    for (i, param) in enumerate(params)
-        evaluate!(loss, param, model, data)
-        plot(loss.time_series.time / numerical_time_norm, loss.time_series.data, label=labels[i])
-    end
+        # train_loss = ce.calibration.loss(parameters)
+        # valid_loss = ce.validation.loss(parameters)
+        # write(o, "Parameters: $(parameters) \nLoss on training: $(train_loss) \nLoss on validation: $(valid_loss) \n------------ \n \n")
 
-    removespines("top", "right")
+        # write(o, "Training loss reduction: $(train_loss/train_loss_default) \n")
+        # write(o, "Validation loss reduction: $(valid_loss/valid_loss_default) \n")
+        # close(o)
 
-    time_units = string(time_norm, "s")
-    xlabel("Time ($time_units)")
-    ylabel("Time-resolved loss function")
-    legend()
+        parameters = ce.parameters.ParametersToOptimize(parameters)
 
-    return fig, axs
-end
+        for dataset in [ce.calibration, ce.validation]
 
-function calculate_error!(error, model, data)
-    set!(error, data)
-    for i in eachindex(error)
-        @inbounds error[i] = (model[i] - data[i])^2
-    end
-    return nothing
-end
+            all_data = dataset.data_batch
+            model = dataset.model
+            set!(model, parameters)
 
-function visualize_loss_function(loss, model, data, target_index, params...;
-                                 labels=["Parameter set $i" for i = 1:length(params)],
-                                 figsize=(10, 4),
-                                 legendkwargs=Dict())
+            for data_length in Set(length.(all_data))
 
-    target = loss.targets[target_index]
-    ϕerror = loss.profile.discrepency
-    legendkwargs = merge(default_legendkwargs, legendkwargs)
+                data_batch = [d for d in all_data if length(d) == data_length]
+                days = data_batch[1].t[end]/86400
 
-    # Some shenanigans so things like 'enumerate' work good.
-    fields = loss.fields isa Symbol ? (loss.fields,) : loss.fields
-
-    fig, axs = subplots(nrows=2, ncols=length(fields), figsize=figsize, sharey=true)
-
-    for (iparam, param) in enumerate(params)
-        initialize_forward_run!(model, data, param, loss.targets[1])
-        run_until!(model.model, model.Δt, data.t[target])
-        evaluate!(loss, param, model, data)
-
-        for (i, field) in enumerate(fields)
-            ϕmodel = getproperty(model, field)
-            ϕdata = getproperty(data, field)[target]
-            calculate_discrepency!(loss.profile, ϕmodel, ϕdata)
-
-            if iparam == 1
-                sca(axs[1, i])
-                plot(ϕdata; linestyle="-", color=defaultcolors[iparam])
+                visualize_realizations(model, data_batch, parameters;
+                                                 fields = fields,
+                                                 filename = joinpath(directory, "$(days)_day_simulations.png"))
             end
-
-            sca(axs[1, i])
-            plot(ϕmodel; linestyle="--", color=defaultcolors[iparam],
-                    label="ParameterizedModel, " * labels[iparam])
-
-            sca(axs[2, i])
-            error_label = @sprintf("Loss = %.2e, %s", loss.profile.analysis(loss.profile.discrepency),
-                                   labels[iparam])
-
-            plot(ϕerror; linestyle="-", color=defaultcolors[iparam], label=error_label)
         end
-    end
-
-    pause(0.1)
-    format_axs!(axs[1, :], loss.fields; legendkwargs...)
-
-    pause(0.1)
-    format_axs!(axs[2, :], loss.fields; legendkwargs...)
-
-    return nothing
-end
-
-function visualize_markov_chain!(ax, chain, parameter; after=1, bins=100, alpha=0.6, density=true,
-                                 facecolor="b")
-
-    parameters = propertynames(chain[1].param)
-    samples = Dao.params(chain, after=after)
-
-    C = map(x->getproperty(x, parameter), samples)
-
-    sca(ax)
-    ρ, _, _ = plt.hist(C, bins=bins, alpha=alpha, density=density, facecolor=facecolor)
-    removespines("left", "right", "top")
-    ax.tick_params(left=false, labelleft=false)
-
-    ρmax = maximum(ρ)
-
-    C_optimal = getproperty(optimal(chain).param, parameter)
-    C_median = median(C)
-    C_mean = mean(C)
-
-    plot(C_optimal, 1.2ρmax, "*"; mfc="None", mec=facecolor, linestyle="-", markersize=8)
-    plot(C_median , 1.2ρmax, "o"; mfc="None", mec=facecolor, linestyle="-", markersize=8)
-    plot(C_mean   , 1.2ρmax, "^"; mfc="None", mec=facecolor, linestyle="-", markersize=8)
-
-    pause(0.1)
-
-    return ρ
-end
-
-function visualize_markov_chain!(chain; figsize=(8, 12), parameter_latex_guide=nothing, kwargs...)
-    nparameters = length(chain[1].param)
-    ρ = []
-    fig, axs = subplots(nrows=nparameters, figsize=figsize)
-
-    for (i, p) in enumerate(propertynames(chain[1].param))
-        ax = axs[i]
-        ρᵢ = visualize_markov_chain!(ax, chain, p; kwargs...)
-        push!(ρ, ρᵢ)
-        parameter_latex_guide != nothing && xlabel(parameter_latex_guide[p])
-    end
-
-    return fig, axs, ρ
 end

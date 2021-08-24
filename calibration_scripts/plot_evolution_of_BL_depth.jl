@@ -89,12 +89,12 @@ function make_all_the_plots(params)
         relative_weights = Dict(:b => 1.0, :u => 1.0, :v => 1.0, :e => 1.0)
 
         # Single simulation
-        case_loss, default_parameters = get_loss(LEScase, td, params, relative_weights; Δt=10.0, 
+        case_loss, default_parameters = get_loss(LEScase, td, params, relative_weights; Δt=10.0, fields=relevant_fields(LEScase),
                                                 parameter_specific_kwargs[params.RelevantParameters]...)
 
         targets = case_loss.loss.targets
 
-        ℱ = model_time_series(default_parameters, case_loss)
+        ℱ = model_time_series(default_parameters, case_loss.model, case_loss.data)
         h2_les, h2_model = approximate_mixed_layer_depth(ℱ, td, targets)
 
         days = td.t[targets] ./ 86400
