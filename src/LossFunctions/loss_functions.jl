@@ -103,7 +103,7 @@ function EnsembleLossContainer(model, data_batch; data_weights=[1.0 for b in dat
         data_fields = data.relevant_fields # e.g. (:b, :e)
         targets = first_targets[i]:last_targets[i]
         rw = [relative_weights[f] for f in data_fields]
-        weights = estimate_weights(profile, data, data_fields, targets, rw) # e.g. (1.0, 0.5)
+        weights = estimate_weights(profile, data, rw) # e.g. (1.0, 0.5)
 
         for (j, field_name) in enumerate(data_fields)
             push!(field_weights[field_name], weights[j] * data_weights[i])
@@ -302,8 +302,8 @@ function evaluate!(el, parameters, model_plus_Δt, data_batch::BatchTruthData)
     return nothing
 end
 
-function estimate_weights(profile::ValueProfileAnalysis, data::TruthData, fields, targets, relative_weights)
-    mean_variances = [mean_variance(data, field; targets=targets) for field in fields]
+function estimate_weights(profile::ValueProfileAnalysis, data::TruthData, relative_weights)
+    mean_variances = [mean_variance(data, field) for field in data.relevant_fields]
     weights = [1/σ for σ in mean_variances]
 
     if !isnothing(relative_weights)
@@ -313,15 +313,17 @@ function estimate_weights(profile::ValueProfileAnalysis, data::TruthData, fields
     return weights
 end
 
-function estimate_weights(profile::GradientProfileAnalysis, data::TruthData, fields, targets, relative_weights)
+function estimate_weights(profile::GradientProfileAnalysis, data::TruthData, relative_weights)
     gradient_weight = profile.gradient_weight
     value_weight = profile.value_weight
 
     @warn "Dividing the gradient weight of profile by height(data.grid) = $(height(data.grid))"
     gradient_weight = profile.gradient_weight = gradient_weight / height(data.grid)
 
-    max_variances = [max_variance(data, field, targets) for field in fields]
-    #max_gradient_variances = [max_gradient_variance(data, field, targets) for field in fields]
+    fields = data.relevant_fields
+
+    max_variances = [max_variance(data, field) for field in fields]
+    #max_gradient_variances = [max_gradient_variance(data, field) for field in fields]
 
     weights = zeros(length(fields))
     for i in 1:length(fields)
@@ -334,7 +336,7 @@ function estimate_weights(profile::GradientProfileAnalysis, data::TruthData, fie
         weights .*= relative_weights
     end
 
-    max_variances = [max_variance(data, field, targets) for field in fields]
+    max_variances = [max_variance(data, field) for field in fields]
     weights = [1/σ for σ in max_variances]
 
     if !isnothing(relative_weights)
@@ -350,10 +352,10 @@ function init_loss_function(model::ParameterizedModel, data::TruthData,
     grid = model.grid
     profile_analysis = ValueProfileAnalysis(grid, analysis = analysis)
     profile_analysis = on_grid(profile_analysis, grid)
-    weights = estimate_weights(profile_analysis, data, fields, targets, relative_weights)
+    weights = estimate_weights(profile_analysis, data, relative_weights)
 
     loss_function = LossFunction(model, data, weights=weights,
-                        time_series = TimeSeriesAnalysis(data.t[targets], TimeAverage()),
+                        time_series = TimeSeriesAnalysis(data.t[data.targets], TimeAverage()),
                         profile = profile_analysis)
 
     return loss_function
@@ -363,19 +365,21 @@ end
 # Miscellanea
 #
 
-function max_variance(data, loss::LossFunction)
-    max_variances = zeros(length(loss.fields))
-    for (ifield, field) in enumerate(loss.fields)
-        max_variances[ifield] = get_weight(loss.weights, ifield) * max_variance(data, field, loss.targets)
+function max_variance(data)
+    fields = data.relevant_fields
+    max_variances = zeros(length(fields))
+    for (i, field) in enumerate(fields)
+        max_variances[i] = get_weight(loss.weights, i) * max_variance(data, field)
     end
     return max_variances
 end
 
 
-function mean_variance(data, loss::LossFunction)
-    mean_variance = zeros(length(loss.fields))
-    for (ifield, field) in enumerate(loss.fields)
-        mean_variance[ifield] = get_weight(loss.weights, ifield) * mean_variance(data, field, loss.targets)
+function mean_variance(data)
+    fields = data.relevant_fields
+    mean_variance = zeros(length(fields))
+    for (i, field) in enumerate(fields)
+        mean_variance[i] = get_weight(loss.weights, i) * mean_variance(data, field)
     end
     return mean_variances
 end

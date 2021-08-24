@@ -15,25 +15,25 @@ function variance(field::AbstractDataField{X, Y, Z, A, G, T, N} where {X, Y, Z, 
     return variance / length(data)
 end
 
-function profile_mean(data, field_name; targets = eachindex(data.t))
+function profile_mean(data, field_name)
     total_mean = 0.0
     fields = getproperty(data, field_name)
     data = Oceananigans.Fields.interior(field)
 
-    for target in targets
+    for target in data.targets
         field = fields[target]
         field_mean = mean(data)
         total_mean += field_mean
     end
 
-    return total_mean / length(targets)
+    return total_mean / length(data.targets)
 end
 
-function max_variance(data::TruthData, field_name; targets=eachindex(data.t))
+function max_variance(data::TruthData, field_name)
     maximum_variance = 0.0
     fields = getproperty(data, field_name)
 
-    for target in targets
+    for target in data.targets
         field = fields[target]
         maximum_variance = max(maximum_variance, variance(field))
     end
@@ -41,16 +41,16 @@ function max_variance(data::TruthData, field_name; targets=eachindex(data.t))
     return maximum_variance
 end
 
-function mean_variance(data::TruthData, field_name; targets=eachindex(data.t))
+function mean_variance(data::TruthData, field_name)
     total_variance = 0.0
     fields = getproperty(data, field_name)
 
-    for target in targets
+    for target in data.targets
         field = fields[target]
         total_variance += variance(field)
     end
 
-    return total_variance / length(targets)
+    return total_variance / length(data.targets)
 end
 
 nan2inf(err) = isnan(err) ? Inf : err
