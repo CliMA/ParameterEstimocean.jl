@@ -6,7 +6,7 @@ import ..OceanTurbulenceParameterEstimation.ModelsAndData: set!
 
 using Oceananigans
 using Oceananigans.Grids: RegularRectilinearGrid
-using Oceananigans.Fields: CenterField, AbstractDataField
+using Oceananigans.Fields: CenterField, AbstractDataField, interior
 
 using Statistics
 

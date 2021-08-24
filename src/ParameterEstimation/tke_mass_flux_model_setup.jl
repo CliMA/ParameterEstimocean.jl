@@ -64,7 +64,7 @@ function dataset(LESdata, p::Parameters{UnionAll};
 
         loss = BatchedLossContainer([loss for loss in batch],
                                             weights=[1.0 for d in LESdata])
-        model = [b.model for b in loss.batch]
+        model = loss.batch[1].model
 
     end
 

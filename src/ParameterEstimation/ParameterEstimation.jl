@@ -2,7 +2,7 @@ module ParameterEstimation
 
 using FileIO, Optim, Random, Dao,
         Statistics, Distributions, LinearAlgebra,
-        PyPlot, Optim, Printf
+        PyPlot, Optim, Printf, LaTeXStrings, CairoMakie
 using Dao: AdaptiveAlgebraicSchedule
 
 using ..OceanTurbulenceParameterEstimation
@@ -14,6 +14,9 @@ using EnsembleKalmanProcesses.EnsembleKalmanProcessModule
 using EnsembleKalmanProcesses.ParameterDistributionStorage
 
 import ..OceanTurbulenceParameterEstimation.ModelsAndData: set!
+
+using Oceananigans.Fields: interior
+using CairoMakie: Figure
 
 export
        Parameters,
@@ -27,9 +30,6 @@ export
        get_loss,
        dataset,
        ensemble_dataset,
-
-       # visuals.jl
-       visualize_and_save,
 
        # utils.jl
        open_output_file,
@@ -45,15 +45,8 @@ export
        gradient_descent,
 
        # visualization.jl
-       defaultcolors,
-       removespine,
-       removespines,
-       plot_data!,
-       format_axs!,
        visualize_realizations,
-       visualize_loss_function,
-       visualize_markov_chain!,
-       plot_loss_function
+       visualize_and_save
 
 relative_weight_options = Dict(
                 "all_e"     => Dict(:b => 0.0, :u => 0.0, :v => 0.0, :e => 1.0),
@@ -69,12 +62,12 @@ Base.@kwdef struct Parameters{T <: UnionAll}
     ParametersToOptimize::T
 end
 
-struct DataSet{LD, DB, PM, RW, NLL, FP}
+struct DataSet{LD, DB, PM, RW, LC, FP}
         LESdata::LD
         data_batch::DB
         model::PM
         relative_weights::RW # field weights
-        loss::NLL
+        loss::LC
         default_parameters::FP
 end
 
@@ -104,10 +97,9 @@ function validation_loss_reduction(ce::CalibrationExperiment, parameters::FreePa
     return validation_loss_reduction
 end
 
-include("visualization.jl")
 include("utils.jl")
 include("tke_mass_flux_model_setup.jl")
 include("calibration_algorithms/calibration_algorithms.jl")
-include("visuals.jl")
+include("visualization.jl")
 
 end # module

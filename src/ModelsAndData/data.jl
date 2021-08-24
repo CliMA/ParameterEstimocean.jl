@@ -31,7 +31,7 @@ Construct TruthData from a time-series of Oceananigans LES data saved at `datapa
 function TruthData(LEScase; grid_type=ColumnEnsembleGrid,
                              Nz=32)
 
-    datapath = LEScase.datapath
+    datapath = LEScase.filename
 
     # For now, we assume salinity-less LES data.
     file = jldopen(datapath, "r")
@@ -43,7 +43,7 @@ function TruthData(LEScase; grid_type=ColumnEnsembleGrid,
     constants[:αg] = αg = constants[:α] * constants[:g]
     # constants[:β] = 0.0 #file["buoyancy/equation_of_state/β"]
  
-    constants[:f] = 0.0
+    constants[:f] = 0.0 
     try
         constants[:f] = file["coriolis/f"]
     catch end
@@ -89,8 +89,8 @@ function TruthData(LEScase; grid_type=ColumnEnsembleGrid,
 
     last_target = isnothing(LEScase.last) ? length(t) : LEScase.last 
     targets = LEScase.first:last_target
-    relevant_fields = !(datum.stressed) ? (:b, :e) :
-                      !(datum.rotating) ? (:b, :u, :e) :
+    relevant_fields = !(LEScase.stressed) ? (:b, :e) :
+                      !(LEScase.rotating) ? (:b, :u, :e) :
                                           (:b, :u, :v, :e)
 
     td = TruthData((Qᶿ=Qᶿ, Qᵇ=Qᵇ, Qᵘ=Qᵘ, Qᵛ=Qᵛ, Qᵉ=0.0, 
