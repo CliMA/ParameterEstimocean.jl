@@ -42,13 +42,13 @@ p = Parameters(RelevantParameters = free_parameter_options[free_parameter_option
 
 calibration = dataset(FourDaySuite, p; relative_weights = relative_weight_options["all_but_e"],
                                         grid_type=ColumnEnsembleGrid,
-                                        Nz=16,
+                                        Nz=64,
                                         Δt=10.0);
 
 validation = dataset(merge(TwoDaySuite, SixDaySuite), p;
                                         relative_weights = relative_weight_options["all_but_e"],
                                         grid_type=ColumnEnsembleGrid,
-                                        Nz=16,
+                                        Nz=64,
                                         Δt=10.0);
 
 ce = CalibrationExperiment(calibration, validation, p);
@@ -60,6 +60,8 @@ loss = ce.calibration.loss
 loss_validation = ce.validation.loss
 initial_parameters = ce.default_parameters
 parameternames = propertynames(initial_parameters)
+
+visualize_and_save(ce, initial_parameters, pwd())
 
 # @time calibration = dataset(FourDaySuite, p; relative_weights = relative_weight_options["all_but_e"],
 #                                         grid_type=ColumnEnsembleGrid,
@@ -79,7 +81,7 @@ parameternames = propertynames(initial_parameters)
 # @profilehtml loss([initial_parameters...]);
 # @time loss([initial_parameters...])
 
-animate_LESbrary_suite(ce, "try_ocean/")
+# animate_LESbrary_suite(ce, "try_ocean/")
 
 #=
 ## Small search
@@ -127,7 +129,7 @@ validation_loss_reduction(ce, parameters)
 #########################
 
 # Run forward map and then compute loss from forward map output
-ℱ = model_time_series(default_parameters, model, tdata, loss_function)
+ℱ = model_time_series(default_parameters, model, tdata)
 myloss(ℱ) = loss_function(ℱ, tdata)
 myloss(ℱ)
 initial_parameters = ce.parameters.ParametersToOptimize(initial_parameters)
