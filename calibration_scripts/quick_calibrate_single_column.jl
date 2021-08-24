@@ -23,4 +23,6 @@ validation = dataset(merge(TwoDaySuite, SixDaySuite), p;
 
 ce = CalibrationExperiment(calibration, validation, p);
 
-visualize_and_save(ce, ce.default_parameters, pwd())
+output = model_time_series(ce.default_parameters, ce.calibration.model, ce.calibration.data_batch[1])
+
+# visualize_and_save(ce, ce.default_parameters, pwd())
