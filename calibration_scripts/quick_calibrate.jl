@@ -21,7 +21,7 @@ free_parameter_type = args["free_parameters"]
 =#
 
 using OceanTurbulenceParameterEstimation
-using OceanTurbulenceParameterEstimation.TKEMassFluxModel
+using OceanTurbulenceParameterEstimation.CATKEVerticalDiffusivityModel
 using OceanTurbulenceParameterEstimation.ModelsAndData
 using OceanTurbulenceParameterEstimation.ParameterEstimation
 using Statistics

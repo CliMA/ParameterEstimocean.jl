@@ -11,7 +11,7 @@ function get_loss(td::TruthData, p::Parameters, relative_weights;
                                                        kwargs...
                                         )
 
-    model = TKEMassFluxModel.HydrostaticFreeSurfaceModel(td; kwargs...)
+    model = CATKEVerticalDiffusivityModel.HydrostaticFreeSurfaceModel(td; kwargs...)
     
     set!(model, td, 1)
 

@@ -1,5 +1,5 @@
 using OceanTurbulenceParameterEstimation
-using OceanTurbulenceParameterEstimation.TKEMassFluxModel
+using OceanTurbulenceParameterEstimation.CATKEVerticalDiffusivityModel
 using OceanTurbulenceParameterEstimation.ModelsAndData
 using OceanTurbulenceParameterEstimation.ParameterEstimation
 using Statistics, Plots, Dao, PyPlot, Dates

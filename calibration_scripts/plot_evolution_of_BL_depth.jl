@@ -7,7 +7,7 @@ using Plots, PyPlot
 using Dao
 
 using OceanTurbulenceParameterEstimation
-using OceanTurbulenceParameterEstimation.TKEMassFluxModel
+using OceanTurbulenceParameterEstimation.CATKEVerticalDiffusivityModel
 using OceanTurbulenceParameterEstimation.ParameterEstimation
 using OceanTurbulenceParameterEstimation.LossFunctions
 using OceanTurbulenceParameterEstimation.ModelsAndData

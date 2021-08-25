@@ -1,5 +1,5 @@
 using OceanTurbulenceParameterEstimation
-using OceanTurbulenceParameterEstimation.TKEMassFluxModel
+using OceanTurbulenceParameterEstimation.CATKEVerticalDiffusivityModel
 using OceanTurbulenceParameterEstimation.ParameterEstimation
 
 using EnsembleKalmanProcesses.EnsembleKalmanProcessModule

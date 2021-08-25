@@ -1,6 +1,6 @@
 using OceanTurbulenceParameterEstimation
 using OceanTurbulenceParameterEstimation.ModelsAndData
-using OceanTurbulenceParameterEstimation.TKEMassFluxModel
+using OceanTurbulenceParameterEstimation.CATKEVerticalDiffusivityModel
 using OceanTurbulenceParameterEstimation.ParameterEstimation
 using Statistics
 using Plots

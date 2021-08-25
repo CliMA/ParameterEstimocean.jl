@@ -1,4 +1,4 @@
-module TKEMassFluxModel
+module CATKEVerticalDiffusivityModel
 
 export parameter_latex_guide
 
@@ -19,8 +19,6 @@ using Oceananigans.Architectures
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel
 
-# CATKEVerticalDiffusivity{TD, A, B, C, D}(a::A, b::B, c::C, d::D) where {TD, A, B, C, D} = CATKEVerticalDiffusivity{TD}(a, b, c, d)
-
 export TKEParametersRiDependent,
        TKEParametersRiDependentConvectiveAdjustment,
        TKEParametersRiIndependent,
@@ -33,8 +31,8 @@ export TKEParametersRiDependent,
        get_bounds_and_variance,
        parameter_specific_kwargs
 
-include("tke_mass_flux_parameters.jl")
-include("tke_mass_flux_model_single_column.jl")
-include("tke_mass_flux_model_many_columns.jl")
+include("catke_vertical_diffusivity_parameters.jl")
+include("catke_vertical_diffusivity_model_single_column.jl")
+include("catke_vertical_diffusivity_model_many_columns.jl")
 
 end # module

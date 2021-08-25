@@ -54,14 +54,14 @@ export
 
     # modules
     ModelsAndData,
-    TKEMassFluxModel,
+    CATKEVerticalDiffusivityModel,
     ParameterEstimation
 
 # Temporary
 include("to_import.jl")
 
 include("ModelsAndData/ModelsAndData.jl")
-include("TKEMassFluxModel/TKEMassFluxModel.jl")
+include("CATKEVerticalDiffusivityModel/CATKEVerticalDiffusivityModel.jl")
 include("LossFunctions/LossFunctions.jl")
 include("ParameterEstimation/ParameterEstimation.jl")
 

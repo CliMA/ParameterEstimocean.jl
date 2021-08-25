@@ -8,7 +8,7 @@ using Dao: AdaptiveAlgebraicSchedule
 
 using ..OceanTurbulenceParameterEstimation
 using ..OceanTurbulenceParameterEstimation.ModelsAndData
-using ..OceanTurbulenceParameterEstimation.TKEMassFluxModel
+using ..OceanTurbulenceParameterEstimation.CATKEVerticalDiffusivityModel
 using ..OceanTurbulenceParameterEstimation.LossFunctions
 
 using EnsembleKalmanProcesses.EnsembleKalmanProcessModule
@@ -27,7 +27,7 @@ export
        relative_weight_options,
        set!,
 
-       # tke_mass_flux_model_setup.jl
+       # catke_vertical_diffusivity_model_setup.jl
        get_loss,
        dataset,
        ensemble_dataset,
@@ -99,7 +99,7 @@ function validation_loss_reduction(ce::CalibrationExperiment, parameters::FreePa
 end
 
 include("utils.jl")
-include("tke_mass_flux_model_setup.jl")
+include("catke_vertical_diffusivity_model_setup.jl")
 include("calibration_algorithms/calibration_algorithms.jl")
 include("visualization.jl")
 
