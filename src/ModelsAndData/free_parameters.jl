@@ -24,7 +24,7 @@ function get_free_parameters(closure::AbstractTurbulenceClosure)
         p = getproperty(closure, pname) # e.g. p = TKESurfaceFlux{Float64}(3.62, 1.31)
 
         # if pname ∈ [:dissipation_parameter, :mixing_length_parameter]
-        if typeof(p) <: Number
+        if p isa Number
             kw_params[pname] = p #e.g. kw_params[:Cᴰ] = 2.91
 
         # if pname ∈ [:surface_TKE_flux, :diffusivity_scaling]
@@ -110,7 +110,7 @@ end
 function set!(m::AbstractModel, free_parameters::FreeParameters)
     closure = getproperty(m.model, :closure)
 
-    if typeof(closure) <: AbstractTurbulenceClosure
+    if closure isa AbstractTurbulenceClosure
         new_ = new_closure(closure, free_parameters)
         setproperty!(m.model, :closure, new_)
     else

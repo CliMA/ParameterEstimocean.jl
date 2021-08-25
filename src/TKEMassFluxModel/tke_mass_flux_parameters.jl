@@ -220,7 +220,7 @@ function custom_defaults(model::AbstractModel, RelevantParameters)
     fields = fieldnames(RelevantParameters)
 
     mc = model.closure
-    closure = typeof(mc) <: Matrix ? mc[1,1] : mc
+    closure = mc isa Matrix ? mc[1,1] : mc
     defaults = DefaultFreeParameters(closure, RelevantParameters)
 
     RelevantParameters ∈ keys(override_defaults) && return RelevantParameters(override_defaults[RelevantParameters])

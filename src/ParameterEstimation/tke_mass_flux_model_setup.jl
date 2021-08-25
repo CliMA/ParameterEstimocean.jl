@@ -33,7 +33,7 @@ function dataset(LESdata, p::Parameters{UnionAll};
                                       Nz = 64,
                                       Δt = 60.0)
 
-    if typeof(LESdata) <: NamedTuple
+    if LESdata isa NamedTuple
 
         # TruthData object containing LES data coarse-grained to a grid of size `N`
         # Coarse-graining the data at this step saves having to coarse-grain each time the loss is calculated

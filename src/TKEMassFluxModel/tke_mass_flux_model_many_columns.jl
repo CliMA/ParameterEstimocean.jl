@@ -32,7 +32,7 @@ function HydrostaticFreeSurfaceModel(td_batch::Vector{<:TruthData}; architecture
     dbdz_bottom = bc_matrix(bc -> bc.dbdz_bottom)
     dudz_bottom = bc_matrix(bc -> bc.dudz_bottom)
 
-    if typeof(architecture) <: GPU
+    if architecture isa GPU
         closure = CuArray(closure)
         Qᵇ = CuArray(Qᵇ)
         Qᵘ = CuArray(Qᵘ)
