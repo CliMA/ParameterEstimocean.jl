@@ -4,20 +4,20 @@ export parameter_latex_guide
 
 using ..OceanTurbulenceParameterEstimation
 using ..OceanTurbulenceParameterEstimation.ModelsAndData
-import ..OceanTurbulenceParameterEstimation.ModelsAndData: ParameterizedModel
 
+using Suppressor
 using LaTeXStrings
 
 using Oceananigans.BoundaryConditions
 using Oceananigans.BuoyancyModels: BuoyancyTracer
 using Oceananigans.Coriolis: FPlane
 using Oceananigans.Models: HydrostaticFreeSurfaceModel
-using Suppressor
-
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity,
                 MixingLength, SurfaceTKEFlux, VerticallyImplicitTimeDiscretization
 using Oceananigans.Architectures
+
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel
 
 # CATKEVerticalDiffusivity{TD, A, B, C, D}(a::A, b::B, c::C, d::D) where {TD, A, B, C, D} = CATKEVerticalDiffusivity{TD}(a, b, c, d)
 
@@ -26,6 +26,7 @@ export TKEParametersRiDependent,
        TKEParametersRiIndependent,
        TKEParametersRiIndependentConvectiveAdjustment,
 
+       HydrostaticFreeSurfaceModel,
        custom_defaults,
        parameter_latex_guide,
        free_parameter_options,

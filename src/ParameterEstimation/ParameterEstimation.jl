@@ -1,5 +1,6 @@
 module ParameterEstimation
 
+using Distributions: delta
 using FileIO, Optim, Random, Dao,
         Statistics, Distributions, LinearAlgebra,
         PyPlot, Optim, Printf, LaTeXStrings, CairoMakie

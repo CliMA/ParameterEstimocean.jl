@@ -12,7 +12,7 @@ using Statistics
 
 export
     # forward_map.jl
-    ParameterizedModelTimeSeries,
+    ModelTimeSeries,
     model_time_series,
     
     # loss_functions.jl

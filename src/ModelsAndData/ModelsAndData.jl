@@ -4,6 +4,8 @@ using ..OceanTurbulenceParameterEstimation
 
 import Oceananigans.TimeSteppers: time_step!
 import Oceananigans.Fields: interpolate
+import Oceananigans.Models: AbstractModel
+import Oceananigans.Models: HydrostaticFreeSurfaceModel
 import Base: length
 import StaticArrays: FieldVector
 
@@ -37,7 +39,7 @@ export
        BatchTruthData,
 
        # model.jl
-       ParameterizedModel,
+       HydrostaticFreeSurfaceModel,
        run_until!,
        initialize_forward_run!,
 
@@ -54,13 +56,15 @@ export
 function initialize_forward_run!(model, data, params, time_index)
     set!(model, params)
     set!(model, data, time_index)
+    model.clock.time = data.t[time_index]
     model.clock.iteration = 0
     return nothing
 end
 
-function initialize_forward_run!(model, data_batch, params, time_indices::Vector)
+function initialize_forward_run!(model, data_batch::BatchTruthData, params, time_indices::Vector)
     set!(model, params)
     set!(model, data_batch, time_indices)
+    model.clock.time = 0.0
     model.clock.iteration = 0
     return nothing
 end
@@ -75,11 +79,5 @@ include("data.jl")
 include("model.jl")
 include("set_fields.jl")
 include("free_parameters.jl")
-
-# function initialize_and_run_until!(model, data, parameters, initial, target)
-#     initialize_forward_run!(model, data, parameters, initial)
-#     run_until!(model.model, model.Δt, data.t[target])
-#     return nothing
-# end
 
 end #module

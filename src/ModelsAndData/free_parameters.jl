@@ -19,7 +19,7 @@ end
 function get_free_parameters(closure::AbstractTurbulenceClosure)
     paramnames = Dict()
     paramtypes = Dict()
-    kw_params = Dict() # for parameters that are not contained in structs but rather as explicit keyword arguments in `pm.model.closure`
+    kw_params = Dict() # for parameters that are not contained in structs but rather as explicit keyword arguments in `m.model.closure`
     for pname in propertynames(closure) # e.g. :surface_TKE_flux
         p = getproperty(closure, pname) # e.g. p = TKESurfaceFlux{Float64}(3.62, 1.31)
 
@@ -107,12 +107,12 @@ function new_closure(closure::AbstractTurbulenceClosure, free_parameters)
     return new_closure
 end
 
-function set!(pm::ParameterizedModel, free_parameters::FreeParameters)
-    closure = getproperty(pm.model, :closure)
+function set!(m::AbstractModel, free_parameters::FreeParameters)
+    closure = getproperty(m.model, :closure)
 
     if typeof(closure) <: AbstractTurbulenceClosure
         new_ = new_closure(closure, free_parameters)
-        setproperty!(pm.model, :closure, new_)
+        setproperty!(m.model, :closure, new_)
     else
         new_ = new_closure(closure[1,1], free_parameters)
 
@@ -122,13 +122,13 @@ function set!(pm::ParameterizedModel, free_parameters::FreeParameters)
     end
 end
 
-function set!(pm::ParameterizedModel, free_parameters::Vector{<:FreeParameters})
+function set!(m::AbstractModel, free_parameters::Vector{<:FreeParameters})
 
     # Array of closures
-    model_closure = getproperty(pm.model, :closure)
+    model_closure = getproperty(m.model, :closure)
 
-    N_ens = ensemble_size(pm)
-    N_cases = batch_size(pm)
+    N_ens = ensemble_size(m)
+    N_cases = batch_size(m)
 
     @inbounds begin
         Base.Threads.@threads for i = 1:N_ens
@@ -136,7 +136,7 @@ function set!(pm::ParameterizedModel, free_parameters::Vector{<:FreeParameters})
             θ = free_parameters[i]
 
             # each thread accesses different elements in model.closure
-            closure = pm.closure[i, 1]
+            closure = m.closure[i, 1]
 
             iᵗʰ_closure = new_closure(closure, θ)
 

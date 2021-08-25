@@ -20,7 +20,6 @@ export
     
     # ModelsAndData
     TruthData,
-    ParameterizedModel,
     run_until!,
     initialize_forward_run!,
     DefaultFreeParameters,
@@ -50,7 +49,7 @@ export
     init_loss_function,
     BatchTruthData,
     BatchLossFunction,
-    ParameterizedModelTimeSeries,
+    ModelTimeSeries,
     model_time_series,
 
     # modules

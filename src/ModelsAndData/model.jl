@@ -1,22 +1,8 @@
 #####
-##### ParameterizedModel
+##### AbstractModel extension
 #####
 
-mutable struct ParameterizedModel{M<:AbstractModel, T}
-    model :: M
-       Δt :: T
-end
-
-#
-# Accessing model fields
-#
-
-Base.getproperty(m::ParameterizedModel, ::Val{:Δt}) = getfield(m, :Δt)
-Base.getproperty(m::ParameterizedModel, ::Val{:model}) = getfield(m, :model)
-Base.getproperty(m::ParameterizedModel, p::Symbol) = getproperty(m, Val(p))
-# Base.getproperty(m::ParameterizedModel, ::Val{p}) where p = getproperty(m.model, p)
-
-function Base.getproperty(m::ParameterizedModel, ::Val{p}) where p
+function Base.getproperty(m::AbstractModel, ::Val{p}) where p
 
     p ∈ propertynames(m.model.tracers) && return m.model.tracers[p]
 
@@ -57,5 +43,3 @@ function run_until!(model, Δt, tfinal)
 
     return nothing
 end
-
-run_until!(pm::ParameterizedModel, time) = run_until!(pm.model, pm.Δt, time)

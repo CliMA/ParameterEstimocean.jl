@@ -1,7 +1,7 @@
 
 
 function get_loss(td::TruthData, p::Parameters, relative_weights;
-                                        # ParameterizedModel
+                                        # Simulation
                                                             Δt = 10.0,
                                         # TKE-specific kwargs:
                                         #                     Cᴰ = 2.91,
@@ -11,14 +11,14 @@ function get_loss(td::TruthData, p::Parameters, relative_weights;
                                                        kwargs...
                                         )
 
-    model = TKEMassFluxModel.ParameterizedModel(td, Δt; kwargs...)
+    model = TKEMassFluxModel.HydrostaticFreeSurfaceModel(td; kwargs...)
     
     set!(model, td, 1)
 
     relative_weights = [relative_weights[field] for field in td.relevant_fields]
     loss_function = init_loss_function(model, td, relative_weights)
     
-    loss = LossContainer(model, td, loss_function)
+    loss = LossContainer(model, td, loss_function, Δt)
 
     # Set model to custom defaults
     set!(loss.model, custom_defaults(loss.model, p.RelevantParameters))
@@ -82,10 +82,10 @@ function ensemble_dataset(LESdata, p::Parameters{UnionAll};
 
     td_batch = [TruthData(LEScase.filename; grid_type=ColumnEnsembleGrid, Nz=Nz) for LEScase in values(LESdata)]
 
-    model = ParameterizedModel(td_batch, Δt; N_ens=ensemble_size, 
+    model = HydrostaticFreeSurfaceModel(td_batch; N_ens=ensemble_size, 
                                             parameter_specific_kwargs[p.RelevantParameters]...)
 
-    loss = EnsembleLossContainer(model, td_batch; data_weights=[1.0 for td in td_batch],
+    loss = EnsembleLossContainer(model, td_batch, Δt; data_weights=[1.0 for td in td_batch],
                                                            relative_weights)
 
     # Set model to custom defaults

@@ -139,7 +139,7 @@ function set!(model, data::TruthData, i)
         )
 
     model.clock.time = data.t[i]
-
+simulation = Simulation(model, Δt=Δt, stop_iteration=1)
     return nothing
 end
 
@@ -149,7 +149,7 @@ set!(model::AbstractModel,
 
 
 """
-function set!(model::ParameterizedModel,
+function set!(model::AbstractModel,
               td_batch::BatchTruthData, time_index::Vector)
 
     ensemble(x) = column_ensemble_interior(td_batch, x, time_index, model.grid.Nx)
@@ -163,7 +163,7 @@ end
 
 set!(model::Oceananigans.AbstractModel, td_batch::BatchTruthData, time_index) = set!(model, td_batch, [time_index for i in td_batch])
 
-# function set!(model::ParameterizedModel, td_batch::BatchTruthData, time_index)
+# function set!(model::AbstractModel, td_batch::BatchTruthData, time_index)
 
 #     # Set the model fields column by column.
 #     # There's probably a better way to do this.

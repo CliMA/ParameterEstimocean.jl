@@ -216,7 +216,7 @@ override_defaults = Dict(
 
 set_if_present!(obj, name, field) = name ∈ propertynames(obj) && setproperty!(obj, name, field)
 
-function custom_defaults(model::ParameterizedModel, RelevantParameters)
+function custom_defaults(model::AbstractModel, RelevantParameters)
     fields = fieldnames(RelevantParameters)
 
     mc = model.closure

@@ -1,14 +1,14 @@
 using Oceananigans: CenterField
 
 # Evaluate loss function AFTER the forward map rather than during
-mutable struct ParameterizedModelTimeSeries{UU, VV, BΘ, EE}
+mutable struct ModelTimeSeries{UU, VV, BΘ, EE}
                      u :: UU
                      v :: VV
                      b :: BΘ
                      e :: EE
 end
 
-function model_time_series(parameters, model, data)
+function model_time_series(parameters, model, data, Δt)
 
     start = data.targets[1]
     Nt = length(data.t) - start + 1
@@ -17,7 +17,7 @@ function model_time_series(parameters, model, data)
 
     grid = model.grid
 
-    output = ParameterizedModelTimeSeries([XFaceField(grid) for i = 1:Nt],
+    output = ModelTimeSeries([XFaceField(grid) for i = 1:Nt],
                              [YFaceField(grid) for i = 1:Nt],
                              [CenterField(grid) for i = 1:Nt],
                              [CenterField(grid) for i = 1:Nt])
@@ -28,7 +28,7 @@ function model_time_series(parameters, model, data)
     e = getproperty(model, :e)
 
     for i in 1:Nt
-        run_until!(model, data.t[i + start - 1])
+        run_until!(model, Δt, data.t[i + start - 1])
 
         i < 3 && @info "$i,: $([interior(model.b)...])"
 
@@ -47,7 +47,7 @@ function model_time_series(parameters, model, data)
 end
 
 # Evaluate loss function AFTER the forward map rather than during
-function analyze_weighted_profile_discrepancy(loss, forward_map_output::ParameterizedModelTimeSeries, data, target)
+function analyze_weighted_profile_discrepancy(loss, forward_map_output::ModelTimeSeries, data, target)
     total_discrepancy = zero(eltype(data.grid))
     field_names = Tuple(loss.fields)
 
@@ -70,7 +70,7 @@ function analyze_weighted_profile_discrepancy(loss, forward_map_output::Paramete
 end
 
 # Evaluate loss function AFTER the forward map rather than during
-function (loss::LossFunction)(forward_map_output::ParameterizedModelTimeSeries, data)
+function (loss::LossFunction)(forward_map_output::ModelTimeSeries, data)
     @inbounds loss.time_series.data[1] = analyze_weighted_profile_discrepancy(loss, forward_map_output, data, loss.targets[1])
 
     # Calculate a loss function time-series

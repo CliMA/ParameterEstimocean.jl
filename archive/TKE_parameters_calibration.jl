@@ -20,7 +20,7 @@ Base.@kwdef struct EquilibriumMixingLength{T} <: AbstractParameters
     Cᴸᵇ :: T = 1.664
 end
 
-## Wall ParameterizedModels
+## Wall models
 
 Base.@kwdef struct PrescribedSurfaceTKEFlux{T} <: AbstractParameters
     # Cʷu★ :: T = 1.3717

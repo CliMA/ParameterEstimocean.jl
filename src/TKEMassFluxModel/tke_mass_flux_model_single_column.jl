@@ -1,21 +1,21 @@
 """
-ParameterizedModel(td::TruthData, Δt; kwargs...)
+HydrostaticFreeSurfaceModel(td::TruthData; kwargs...)
 
-Build a `ParameterizedModel` container for an Oceananigans `HydrostaticFreeSurfaceModel` with 
-many independent columns. The model grid is given by the data in `td_batch`, and the
-dynamics in each column is attached to its own `CATKEVerticalDiffusivity` closure stored in 
-an `(Nx, Ny)` Matrix of closures. `Δt` is the model time step, `ensemble_size = 50` is the 
-desired count of ensemble members for calibration with Ensemble Kalman Inversion (EKI), and the 
+Build a `HydrostaticFreeSurfaceModel` with many independent columns. 
+The model grid is given by the data in `td_batch`, and the dynamics in each column 
+is attached to its own `CATKEVerticalDiffusivity` closure stored in an `(Nx, Ny)` 
+Matrix of closures. `ensemble_size = 50` is the desired 
+count of ensemble members for calibration with Ensemble Kalman Inversion (EKI), and the 
 remaining keyword arguments `kwargs` define the default closure across all columns.
 
-In the "many columns" configuration, we run the model on a 3D grid with `(Flat, Flat, Bounded)` boundary 
-conditions so that many independent columns can be evolved at once with much of the computational overhead
-split among the columns. The `Nx` rows of vertical columns are each reserved for an "ensemble" member
-whose attached parameter value (updated at each iteration of EKI) sets the diffusivity closure
-used to predict the model solution for the `Ny` physical scenarios described by the simulation-specific 
-`TruthData` objects in `td_batch`.
+In the "many columns" configuration, we run the model on a 3D grid with `(Flat, Flat, Bounded)` 
+boundary conditions so that many independent columns can be evolved at once with much of the 
+computational overhead split among the columns. The `Nx` rows of vertical columns are each 
+reserved for an "ensemble" member whose attached parameter value (updated at each iteration of EKI) 
+sets the diffusivity closure used to predict the model solution for the `Ny` physical scenarios 
+described by the simulation-specific `TruthData` objects in `td_batch`.
 """
-function ParameterizedModel(td::TruthData, Δt; kwargs...)
+function HydrostaticFreeSurfaceModel(td::TruthData; kwargs...)
 
     grid = td.grid
     Qᵇ = td.boundary_conditions.Qᵇ
@@ -37,5 +37,5 @@ function ParameterizedModel(td::TruthData, Δt; kwargs...)
                                          boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
                                          closure = closure)
 
-    return ParameterizedModel(model, Δt)
+    return model
 end

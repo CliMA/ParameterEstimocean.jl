@@ -1,10 +1,10 @@
 """
-ParameterizedModel(td_batch::Vector{<:TruthData}, Δt; N_ens = 50, kwargs...)
+HydrostaticFreeSurfaceModel(td_batch::Vector{<:TruthData}, Δt; N_ens = 50, kwargs...)
 
-Build a `ParameterizedModel` container for an Oceananigans `HydrostaticFreeSurfaceModel` with 
-many independent columns. The model grid is given by the data in `td_batch`, and the
+Build an Oceananigans `HydrostaticFreeSurfaceModel` with many independent 
+columns. The model grid is given by the data in `td_batch`, and the
 dynamics in each column is attached to its own `CATKEVerticalDiffusivity` closure stored in 
-an `(Nx, Ny)` Matrix of closures. `Δt` is the model time step, `N_ens = 50` is the 
+an `(Nx, Ny)` Matrix of closures. `N_ens = 50` is the 
 desired count of ensemble members for calibration with Ensemble Kalman Inversion (EKI), and the 
 remaining keyword arguments `kwargs` define the default closure across all columns.
 
@@ -15,7 +15,7 @@ whose attached parameter value (updated at each iteration of EKI) sets the diffu
 used to predict the model solution for the `Ny` physical scenarios described by the simulation-specific 
 `TruthData` objects in `td_batch`.
 """
-function ParameterizedModel(td_batch::Vector{<:TruthData}, Δt; architecture = CPU(), N_ens = 50, kwargs...)
+function HydrostaticFreeSurfaceModel(td_batch::Vector{<:TruthData}; architecture = CPU(), N_ens = 50, kwargs...)
 
     data_grid = td_batch[1].grid
     grid = ColumnEnsembleGrid(data_grid; size=(N_ens, length(td_batch), data_grid.Nz))
@@ -53,5 +53,5 @@ function ParameterizedModel(td_batch::Vector{<:TruthData}, Δt; architecture = C
                                          boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
                                          closure = closure)
 
-    return ParameterizedModel(model, Δt)
+    return model
 end

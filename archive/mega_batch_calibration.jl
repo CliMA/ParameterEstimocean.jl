@@ -38,7 +38,7 @@ global initial_parameters
 calibration = simulated_annealing(loss, initial_parameters; samples=1000, iterations=10)
 
 savename = @sprintf("tke_batch_calibration_convection_refine_dz%d_dt%d_2.jld2", batched_loss.batch[1].model.grid.Δc,
-                    batched_loss.batch[1].model.Δt / minute)
+                    batched_loss.batch[1].Δt / minute)
 
 @save savename calibration
 

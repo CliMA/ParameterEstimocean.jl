@@ -28,7 +28,6 @@ function tostring(num)
     return "$(num)e$om"
 end
 
-
 """
     visualize_realizations(data, model, params...)
 

@@ -28,18 +28,19 @@ function LossFunction(model, data;
     return LossFunction(data.targets, data.relevant_fields, weights, time_series, profile)
 end
 
-function (loss::LossFunction)(θ, model, data)
+function (loss::LossFunction)(θ, model, data, Δt)
     evaluate!(loss, θ, model, data)
     return loss.time_series.analysis(loss.time_series.data, loss.time_series.time)
 end
 
-mutable struct LossContainer{M<:ParameterizedModel, D<:TruthData, L<:LossFunction} <: ALC
+mutable struct LossContainer{M<:AbstractModel, D<:TruthData, L<:LossFunction, Δ} <: ALC
     model :: M
      data :: D
      loss :: L
+       Δt :: Δ
 end
 
-(lc::LossContainer)(θ) = lc.loss(θ, lc.model, lc.data)
+(lc::LossContainer)(θ) = lc.loss(θ, lc.model, lc.data, lc.Δt)
 
 #
 # Batched loss function
@@ -74,12 +75,13 @@ end
 # `Batch` here refers to all of the physical scenarios to be calibrated to
 const BatchLossFunction = Vector{<:LossFunction}
 
-mutable struct EnsembleLossContainer{D, F, FT, ML, M, T, L} <: ALC
+mutable struct EnsembleLossContainer{D, F, FT, ML, M, Δ, T, L} <: ALC
              data_batch :: D
           field_weights :: F # scenario weights
           first_targets :: FT
   max_simulation_length :: ML
                   model :: M
+                     Δt :: Δ
             time_series :: T
                 profile :: L
 end
@@ -87,7 +89,7 @@ end
 allsame(x) = all(y -> y ≈ first(x), x)
 Δt(data) = data.t[2:end] .- data.t[1:end-1]
 
-function EnsembleLossContainer(model, data_batch; data_weights=[1.0 for b in data_batch], relative_weights)
+function EnsembleLossContainer(model, data_batch, Δt; data_weights=[1.0 for b in data_batch], relative_weights)
 
     @assert all([allsame(Δt(data)) for data in data_batch]) "Simulation time steps are not uniformly spaced."
     @assert allsame([Δt(data)[1] for data in data_batch]) "Time step differs between simulations."
@@ -117,7 +119,7 @@ function EnsembleLossContainer(model, data_batch; data_weights=[1.0 for b in dat
 
     time_series = [EnsembleTimeSeriesAnalysis(data_batch[i].t[all_targets[i]], model.grid.Nx) for i in 1:length(data_batch)]
 
-    return EnsembleLossContainer(data_batch, field_weights, first_targets, max_simulation_length, model, time_series, profile)
+    return EnsembleLossContainer(data_batch, field_weights, first_targets, max_simulation_length, model, Δt, time_series, profile)
 end
 
 function (el::EnsembleLossContainer)(θ::Vector{<:FreeParameters})
@@ -269,7 +271,7 @@ function evaluate!(loss, parameters, model_plus_Δt, data::TruthData)
 
     # Calculate a loss function time-series
     for (i, target) in enumerate(loss.targets)
-        run_until!(model_plus_Δt.model, model_plus_Δt.Δt, data.t[target])
+        run_until!(model_plus_Δt.model, loss.Δt, data.t[target])
 
         @inbounds loss.time_series.data[i] =
             analyze_weighted_profile_discrepancy(loss, model_plus_Δt, data, target)
@@ -286,7 +288,7 @@ function evaluate!(el, parameters, model_plus_Δt, data_batch::BatchTruthData)
     # Calculate a loss function time-series
     for target in 1:el.max_simulation_length
     
-        run_until!(model_plus_Δt.model, model_plus_Δt.Δt, data_batch[1].t[target])
+        run_until!(model_plus_Δt.model, el.Δt, data_batch[1].t[target])
 
         discrepancy = analyze_weighted_profile_discrepancy(el, model_plus_Δt, data_batch, target)
 
@@ -346,7 +348,7 @@ function estimate_weights(profile::GradientProfileAnalysis, data::TruthData, rel
     return weights
 end
 
-function init_loss_function(model::ParameterizedModel, data::TruthData,
+function init_loss_function(model::AbstractModel, data::TruthData,
                                       relative_weights; analysis = mean)
 
     grid = model.grid
