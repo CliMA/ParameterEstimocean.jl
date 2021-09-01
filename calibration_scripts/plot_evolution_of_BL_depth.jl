@@ -4,7 +4,6 @@
 
 ## Plotting mixed layer depth
 using Plots, PyPlot
-using Dao
 
 using OceanTurbulenceParameterEstimation
 using OceanTurbulenceParameterEstimation.CATKEVerticalDiffusivityModel

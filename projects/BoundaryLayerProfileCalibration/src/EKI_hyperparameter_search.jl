@@ -1,30 +1,29 @@
+using Plots
 
-function loss_reduction(loss, loss_validation, initial_parameters, kwargs)
-    params, losses, mean_vars = eki_unidimensional(loss, initial_parameters; kwargs...)
-    # println(losses[end])
-    valid_loss_start = loss_validation([initial_parameters...])
-    valid_loss_final = loss_validation([params...])
-    println(params)
-    println(losses[end] / losses[1])
+#
+# Hyperparameter search
+#
+
+function loss_reduction(calibration, validation, initial_parameters, kwargs)
+    params, losses, mean_vars = eki_unidimensional(calibration, initial_parameters; kwargs...)
+    valid_loss_start = validation(initial_parameters)
+    valid_loss_final = validation(params)
+
+    @info "parameters: $params"
+    @info "final loss / initial loss: $(losses[end] / losses[1])"
 
     train_loss_reduction = losses[end] / losses[1]
     valid_loss_reduction = valid_loss_final / valid_loss_start
     return train_loss_reduction, valid_loss_reduction
 end
 
-function loss_reduction(params, losses)
-    validation_loss_start = loss_validation([initial_parameters...])
-    validation_loss_final = loss_validation([initial_parameters...])
-end
-
-
 ## Stds within bounds
 
-function plot_stds_within_bounds(loss, loss_validation, initial_parameters, directory; xrange=-3:0.25:5)
+function plot_stds_within_bounds(calibration, validation, initial_parameters, directory; xrange=-3:0.25:5)
     loss_reductions = Dict()
     val_loss_reductions = Dict()
     for stds_within_bounds in xrange
-        train_loss_reduction, val_loss_reduction = loss_reduction(loss, loss_validation, initial_parameters, (stds_within_bounds = stds_within_bounds,))
+        train_loss_reduction, val_loss_reduction = loss_reduction(calibration, validation, initial_parameters, (stds_within_bounds = stds_within_bounds,))
         loss_reductions[stds_within_bounds] = train_loss_reduction
         val_loss_reductions[stds_within_bounds] = val_loss_reduction
     end
@@ -36,11 +35,11 @@ function plot_stds_within_bounds(loss, loss_validation, initial_parameters, dire
 end
 
 ## Prior Variance
-function plot_prior_variance(loss, loss_validation, initial_parameters, directory; xrange=0.1:0.1:1.0)
+function plot_prior_variance(calibration, validation, initial_parameters, directory; xrange=0.1:0.1:1.0)
     loss_reductions = Dict()
     val_loss_reductions = Dict()
     for variance = xrange
-        train_loss_reduction, val_loss_reduction = loss_reduction(loss, loss_validation, initial_parameters, (stds_within_bounds = variance,))
+        train_loss_reduction, val_loss_reduction = loss_reduction(calibration, validation, initial_parameters, (stds_within_bounds = variance,))
         loss_reductions[variance] = train_loss_reduction
         val_loss_reductions[variance] = val_loss_reduction
     end
@@ -55,11 +54,11 @@ end
 
 ## Number of ensemble members
 
-function plot_num_ensemble_members(loss, loss_validation, initial_parameters, directory; xrange=1:5:30)
+function plot_num_ensemble_members(calibration, validation, initial_parameters, directory; xrange=1:5:30)
     loss_reductions = Dict()
     val_loss_reductions = Dict()
     for N_ens = xrange
-        train_loss_reduction, val_loss_reduction = loss_reduction(loss, loss_validation, initial_parameters, (N_ens = N_ens,))
+        train_loss_reduction, val_loss_reduction = loss_reduction(calibration, validation, initial_parameters, (N_ens = N_ens,))
         loss_reductions[N_ens] = train_loss_reduction
         val_loss_reductions[N_ens] = val_loss_reduction
     end
@@ -71,11 +70,11 @@ end
 
 ## Observation noise level
 
-function plot_observation_noise_level(loss, loss_validation, initial_parameters, directory; xrange=-2.0:0.2:3.0)
+function plot_observation_noise_level(calibration, validation, initial_parameters, directory; xrange=-2.0:0.2:3.0)
     loss_reductions = Dict()
     val_loss_reductions = Dict()
     for log_noise_level = xrange
-        train_loss_reduction, val_loss_reduction = loss_reduction(loss, loss_validation, initial_parameters, (noise_level = 10.0^log_noise_level,))
+        train_loss_reduction, val_loss_reduction = loss_reduction(calibration, validation, initial_parameters, (noise_level = 10.0^log_noise_level,))
         loss_reductions[log_noise_level] = train_loss_reduction
         val_loss_reductions[log_noise_level] = val_loss_reduction
     end
@@ -88,7 +87,7 @@ function plot_observation_noise_level(loss, loss_validation, initial_parameters,
     return 10^nl
 end
 
-function plot_prior_variance_and_obs_noise_level(loss, loss_validation, initial_parameters, directory; vrange=0.40:0.025:0.90, nlrange=-2.5:0.1:0.5)
+function plot_prior_variance_and_obs_noise_level(calibration, validation, initial_parameters, directory; vrange=0.40:0.025:0.90, nlrange=-2.5:0.1:0.5)
     Γθs = collect(vrange)
     Γys = 10 .^ collect(nlrange)
     losses = zeros((length(Γθs), length(Γys)))
@@ -99,7 +98,7 @@ function plot_prior_variance_and_obs_noise_level(loss, loss_validation, initial_
             println("progress $(counter)/$(countermax)")
             Γθ = Γθs[i]
             Γy = Γys[j]
-            train_loss_reduction, val_loss_reduction = loss_reduction(loss, loss_validation, initial_parameters, (stds_within_bounds=Γθ, noise_level=Γy, N_iter=10, N_ens=10, informed_priors=false))
+            train_loss_reduction, val_loss_reduction = loss_reduction(calibration, validation, initial_parameters, (stds_within_bounds=Γθ, noise_level=Γy, N_iter=10, N_ens=10, informed_priors=false))
             losses[i, j] = val_loss_reduction
             counter += 1
         end

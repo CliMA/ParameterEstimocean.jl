@@ -8,9 +8,6 @@ using EnsembleKalmanProcesses.ParameterDistributionStorage
 using Distributions
 using LinearAlgebra
 using Random
-using Dao
-using Plots
-using PyPlot
 using ArgParse
 
 #=
@@ -33,7 +30,7 @@ free_parameter_type = "TKEParametersRiDependent"
 
 relative_weight = Dict(:T => 1.0, :U => 0.5, :V => 0.5, :e => 0.0)
 
-include("calibration_scripts/EKI_setup.jl")
+include("calibration_scripts/EKI_hyperparameter_search.jl")
 
 directory = "EKI/$(free_parameter_type)_$(relative_weight_option)/"
 isdir(directory) || mkpath(directory)

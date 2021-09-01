@@ -3,7 +3,7 @@ module ParameterEstimation
 using Distributions: delta
 using FileIO, Optim, Random,
         Statistics, Distributions, LinearAlgebra,
-        PyPlot, Optim, Printf, LaTeXStrings, CairoMakie
+        Optim, Printf, LaTeXStrings, CairoMakie
 
 using ..OceanTurbulenceParameterEstimation
 using ..OceanTurbulenceParameterEstimation.ModelsAndData

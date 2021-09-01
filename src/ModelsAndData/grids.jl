@@ -2,7 +2,7 @@
 ### Grids
 ###
 
-get_grid_params(g::RegularRectilinearGrid) = [g.Nx, g.Ny, g.Nz, g.Lx, g.Ly, g.Lz]
+get_grid_params(g::Abstract) = [size(g); extent(g)]
 
 """
   ColumnEnsembleGrid(datapath; ensemble_size = (1,1), Nz = nothing)

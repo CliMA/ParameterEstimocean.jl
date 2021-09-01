@@ -8,14 +8,16 @@ calibration = DataSet(FourDaySuite, p; relative_weights = relative_weight_option
                                        Nz = 64,
                                        Δt = 10.0);
 
-# validation = DataSet(merge(TwoDaySuite, SixDaySuite), p;
-#                                         relative_weights = relative_weight_options["all_but_e"],
-#                                         ensemble_size = 10,
-#                                         Nz = 64,
-#                                         Δt = 10.0);
+#=
+
+validation = DataSet(merge(TwoDaySuite, SixDaySuite), p;
+                                        relative_weights = relative_weight_options["all_but_e"],
+                                        ensemble_size = 10,
+                                        Nz = 64,
+                                        Δt = 10.0);
 
 # Loss on default parameters
-# l0 = calibration()
+l0 = calibration()
 
 # Example parameters
 θ = calibration.default_parameters
@@ -28,7 +30,9 @@ calibration = DataSet(FourDaySuite, p; relative_weights = relative_weight_option
 #   4. or a vector of FreeParameter objects (one for each ensemble member)
 # If (1) or (2), the ensemble members are redundant and the loss is computed for just the one parameter set.
 
-# lθ = calibration(θ)
+lθ = calibration(θ)
+
+=#
 
 output = model_time_series(calibration, θ)
 
