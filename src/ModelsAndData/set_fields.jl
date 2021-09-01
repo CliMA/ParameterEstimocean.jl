@@ -13,7 +13,6 @@ function set!(c::AbstractField, data::AbstractArray)
 end
 
 extent(grid::AbstractGrid) = (grid.Lx, grid.Ly, grid.Lz)
-size(grid::AbstractGrid) = (grid.Nx, grid.Ny, grid.Nz)
 horizontal_size(grid::AbstractGrid) = (grid.Nx, grid.Ny)
 
 # Set two fields to one another... some shenanigans

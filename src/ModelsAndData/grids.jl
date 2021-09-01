@@ -1,3 +1,7 @@
+
+
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
+
 ###
 ### Grids
 ###
@@ -23,7 +27,6 @@ function ColumnEnsembleGrid(datapath; size = (1,1,nothing))
 
       sz = ColumnEnsembleSize(Nz=Nz, ensemble=size[1:2])
       halo = ColumnEnsembleSize(Nz=Nz)
-
       grid = RegularRectilinearGrid(size=sz, halo=halo, z=(-Lz_, 0), topology=(Flat, Flat, Bounded))
 end
 

@@ -1,4 +1,11 @@
 using OceanTurbulenceParameterEstimation
+using OceanTurbulenceParameterEstimation.ParameterEstimation
+using OceanTurbulenceParameterEstimation.ModelsAndData
+
+using OceanTurbulenceParameterEstimation.LossFunctions: t_interval, allsame
+
+using OceanTurbulenceParameterEstimation.ModelsAndData: FourDaySuite
+using OceanTurbulenceParameterEstimation.CATKEVerticalDiffusivityModel: TKEParametersRiDependent
 
 p = Parameters(RelevantParameters = TKEParametersRiDependent,
                ParametersToOptimize = TKEParametersRiDependent)
