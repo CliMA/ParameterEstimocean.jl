@@ -17,7 +17,7 @@ function get_times(datapath)
         end
     end
 
-    @assert issorted(times)
+    @assert issorted(times) "Simulation data i"
 
     return times
 end
