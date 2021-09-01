@@ -4,7 +4,7 @@
 
 # https://engaging-web.mit.edu/~alir/lesbrary/4DaySuite/
 #FourDaySuite_path = "/Users/adelinehillier/.julia/dev/4DaySuite/"
-FourDaySuite_path = "/Users/gregorywagner/Projects/OceanTurbulenceParameterEstimation/data"
+FourDaySuite_path = "/Users/gregorywagner/Projects/OceanTurbulenceParameterEstimation/data/"
 
 FourDaySuite = OrderedDict(
                     "4d_free_convection" => (

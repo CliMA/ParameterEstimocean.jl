@@ -1,5 +1,7 @@
 module BoundaryLayerProfileCalibration
 
+pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..", ".."))
+
 using OceanTurbulenceParameterEstimation
 using Plots, LaTeXStrings, OrderedCollections
 

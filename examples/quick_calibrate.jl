@@ -1,5 +1,5 @@
-pushfirst!(LOAD_PATH, joinpath(".."))
-pushfirst!(LOAD_PATH, joinpath("..", "projects", "BoundaryLayerProfileCalibration"))
+pushfirst!(LOAD_PATH, joinpath(@__DIR__, ".."))
+pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..", "projects", "BoundaryLayerProfileCalibration"))
 
 using OceanTurbulenceParameterEstimation
 using OceanTurbulenceParameterEstimation.ModelsAndData
@@ -17,7 +17,7 @@ p = Parameters(
 calibration = DataSet(FourDaySuite, p; relative_weights = relative_weight_options["all_but_e"],
                                        ensemble_size = 10,
                                        Nz = 64,
-                                       Δt = 10.0);
+                                       Δt = 10.0)
 
 #=
 

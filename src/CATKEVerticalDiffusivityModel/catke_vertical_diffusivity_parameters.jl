@@ -153,12 +153,6 @@ parameter_specific_kwargs = Dict(
 
    TKEParametersRiIndependentConvectiveAdjustment => (mixing_length = MixingLength(Cᴷuʳ=0.0, Cᴷcʳ=0.0, Cᴷeʳ=0.0),
                                ),
-
-#    TKEFreeConvection => (diffusivity_scaling = DD,
-#                                ),
-
-#    TKEBCParameters => (diffusivity_scaling = DD,
-#                                ),
 )
 
 override_defaults = Dict(
