@@ -22,7 +22,6 @@ export
        initialize_forward_run!,
        EnsembleModel, EnsembleGrid,
        ensemble_size, batch_size,
-    #    getproperty,
        get_model_field,
 
        # LESbrary_paths.jl
@@ -54,16 +53,6 @@ function get_model_field(m::AbstractModel, p)
     p ∈ propertynames(m.velocities) && return m.velocities[p]
     @error "$p is not a valid field name"
 end
-
-# function Base.getproperty(m::AbstractModel, ::Val{p}) where p
-
-#     p ∈ propertynames(m.tracers) && return m.tracers[p]
-
-#     p ∈ propertynames(m.velocities) && return m.velocities[p]
-
-#     return getproperty(m, p)
-
-# end
 
 const EnsembleGrid = RegularRectilinearGrid{<:Any, Flat, Flat, Bounded}
 const EnsembleModel = HydrostaticFreeSurfaceModel{TS, E, A, S, <:EnsembleGrid, T, V, B, R, F, P, U, C, Φ, K, AF} where {TS, E, A, S, T, V, B, R, F, P, U, C, Φ, K, AF}
