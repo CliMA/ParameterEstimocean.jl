@@ -74,17 +74,6 @@ function TruthData(LEScase; grid_type=ColumnEnsembleGrid,
     b = [ new_field(CenterField, simulation_grid, get_data("T", datapath, iter) .* constants[:αg]) for iter in iters ] 
     e = [ new_field(CenterField, simulation_grid, get_data("e", datapath, iter)) for iter in iters ] 
 
-    # Manually calculating E
-    # for (i, iter) in enumerate(iters)
-    #     u² = XFaceField(simulation_grid, get_data("uu", datapath, iter))
-    #     v² = YFaceField(simulation_grid, get_data("vv", datapath, iter))
-    #     w² = ZFaceField(simulation_grid, get_data("ww", datapath, iter))
-
-    #     N = simulation_grid.Nz
-    #     @. e[i].data[1:N] = ( u²[1:N] - u[i][1:N]^2 + v²[1:N] - v[i][1:N]^2
-    #                             + 1/2 * (w²[1:N] + w²[2:N+1]) ) / 2
-    # end
-
     t = get_times(datapath)
 
     last_target = isnothing(LEScase.last) ? length(t) : LEScase.last 

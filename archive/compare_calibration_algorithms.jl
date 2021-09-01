@@ -1,130 +1,189 @@
 ## Optimizing TKE parameters
+using TKECalibration2021
+using Plots
 
-using Statistics, Distributions, PyPlot, Plots
-using OceanTurb, OceanTurbulenceParameterEstimation, Dao
-using OceanTurbulenceParameterEstimation.TKEMassFluxOptimization
-using OceanTurbulenceParameterEstimation.TKEMassFluxOptimization: ParameterizedModel
-using Optim
+@free_parameters(ConvectiveAdjustmentParameters,
+                 Cᴬu, Cᴬc, Cᴬe)
 
-to_calibrate = "/Users/adelinehillier/.julia/dev/inst_to_transfer/three_layer_constant_fluxes_linear_hr96_Qu0.0e+00_Qb8.0e-08_f1.0e-04_Nh256_Nz128_free_convection/instantaneous_statistics.jld2"
-to_test = ["/Users/adelinehillier/.julia/dev/Data/three_layer_constant_fluxes_linear_hr48_Qu0.0e+00_Qb1.2e-07_f1.0e-04_Nh256_Nz128_free_convection/instantaneous_statistics.jld2",
-        "/Users/adelinehillier/.julia/dev/Data/three_layer_constant_fluxes_linear_hr48_Qu1.0e-03_Qb0.0e+00_f1.0e-04_Nh256_Nz128_strong_wind/instantaneous_statistics.jld2",
-        "/Users/adelinehillier/.julia/dev/Data/three_layer_constant_fluxes_linear_hr48_Qu2.0e-04_Qb0.0e+00_f0.0e+00_Nh256_Nz128_strong_wind_no_rotation/instantaneous_statistics.jld2",
-        "/Users/adelinehillier/.julia/dev/Data/three_layer_constant_fluxes_linear_hr48_Qu3.0e-04_Qb1.0e-07_f1.0e-04_Nh256_Nz128_weak_wind_strong_cooling/instantaneous_statistics.jld2",
-        "/Users/adelinehillier/.julia/dev/Data/three_layer_constant_fluxes_linear_hr48_Qu8.0e-04_Qb3.0e-08_f1.0e-04_Nh256_Nz128_strong_wind_weak_cooling/instantaneous_statistics.jld2",
-        "/Users/adelinehillier/.julia/dev/Data/three_layer_constant_fluxes_linear_hr48_Qu1.0e-03_Qb-4.0e-08_f1.0e-04_Nh256_Nz128_strong_wind_weak_heating/instantaneous_statistics.jld2"]
+include("compare_calibration_algorithms_setup.jl")
 
-include("my_models.jl")
-build_model = tke_free_convection_independent_diffusivities
-# build_model = conv_adj_ri_dependent_diffusivites
+p = Parameters(RelevantParameters = TKEParametersRiDependent,
+               ParametersToOptimize = TKEParametersRiDependent
+              )
+rw = relative_weight_options["all_e"]
+rw = Dict(:T => 1.0, :U => 0.5, :V => 0.5, :e => 0.0)
 
-mymodel = build_model(to_calibrate);
-tdata = mymodel.tdata
-model = mymodel.model
-get_free_parameters(model)
-ParametersToOptimize = mymodel.ParametersToOptimize
-default_parameters = mymodel.default_parameters
-bounds = mymodel.bounds
-loss_function, loss = build_loss(model, tdata)
-loss(default_parameters)
+calibration = dataset(FourDaySuite, p; relative_weights = rw, N=64, Δt=10.0);
+validation = dataset(merge(TwoDaySuite, SixDaySuite), p; relative_weights = relative_weight_options["all_but_e"], N=64, Δt=10.0);
 
-fieldnames(ParametersToOptimize)
-default_parameters
-set!(model, default_parameters)
-model
-@free_parameters testing Cᴰ Cᴷc
-set!(model, testing([1.0,2.0]))
-model
+ce = CalibrationExperiment(calibration, validation, p)
 
-# Run forward map and then compute loss from forward map output
-ℱ = model_time_series(default_parameters, model, tdata, loss_function)
-myloss(ℱ) = loss_function(ℱ, tdata)
-myloss(ℱ)
+initial_parameters = ce.default_parameters
+
+ce.validation.loss(initial_parameters)
+
+loss = calibration.loss
+
+# @time ce.validation.loss([initial_parameters...])
+# @time ce.calibration.loss([initial_parameters...])
+# single = dataset(FourDaySuite["4d_free_convection"], p; relative_weights = relative_weight_options["all_e"]);
+# @time single.loss([initial_parameters...])
+
+validation_loss_reduction(ce, initial_parameters)
+ce.validation.loss(initial_parameters)
+
+## Large search
+# set_prior_means_to_initial_parameters = false
+# stds_within_bounds = 5
+# dname = "calibrate_FourDaySuite_validate_TwoDaySuiteSixDaySuite/prior_mean_center_bounds/$(relative_weights_option)_weights"
+
+## Small search
+set_prior_means_to_initial_parameters = true
+stds_within_bounds = 3
+# dname = "calibrate_FourDaySuite_validate_TwoDaySuiteSixDaySuite/prior_mean_optimal/$(relative_weights_option)_weights"
+
+# xs = collect(0.001:0.001:0.025)
+# ll = Dict()
+# for x in xs
+#         initial_parameters.Cᴬc = 0.6706
+#         ll[x] = loss_validation(initial_parameters)
+# end
+# Plots.plot(ll, yscale = :log10)
+# argmin(ll)
 
 ##
-
-directory = pwd() * "/compare_calibration_methods/calibrate_$(tdata.name)_$(length(tdata.t))/$(build_model)/"
-isdir(directory) || mkdir(directory)
-file = directory*"output.txt"
-touch(file)
-o = open(file, "w")
-write(o, "Calibrating $(tdata.name) scenario \n")
-
-@info "Output statistics will be written to: $(file)"
-
-function saveplot(params, name)
-        p = visualize_realizations(model, tdata, 1:180:length(tdata), params)
-        PyPlot.savefig(directory*name*".png")
-end
-
-params_dict = Dict()
-loss_dict = Dict()
-function writeout(o, name, params)
-        param_vect = [params...]
-        loss_value = loss(params)
-        write(o, "----------- \n")
-        write(o, "$(name) \n")
-        write(o, "Parameters: $(param_vect) \n")
-        write(o, "Loss: $(loss_value) \n")
-        saveplot(params, name)
-        params_dict[name] = param_vect
-        loss_dict[name] = loss_value
-end
-writeout(o, "Default", default_parameters)
-
-@info "Running Nelder-Mead from Optim.jl..."
-
-loss_wrapper(param_vec) = loss(ParametersToOptimize(param_vec))
-r = Optim.optimize(loss_wrapper, [default_parameters...])
-params = ParametersToOptimize(Optim.minimizer(r))
-writeout(o, "Nelder_Mead", params)
-
-@info "Running L-BFGS from Optim.jl..."
-
-loss_wrapper(param_vec) = loss(ParametersToOptimize(param_vec))
-r = Optim.optimize(loss_wrapper, [default_parameters...], LBFGS())
-params = ParametersToOptimize(Optim.minimizer(r))
-writeout(o, "L_BFGS", params)
-
-@info "Running Random Plugin..."
-
-include("../examples/line_search_gradient_descent.jl")
-priors = [Uniform(b...) for b in bounds]
-functioncalls = 1000
-method = RandomPlugin(priors, functioncalls)
-minparam = optimize(loss, method);
-writeout(o, "Random_Plugin", minparam)
-
-@info "Running Gradient Descent..."
-
-∇loss(params) = gradient(loss, params) # numerical gradient
-method  = RandomLineSearch(linebounds = (0, 100.0), linesearches = 100)
-bestparam = optimize(loss, ∇loss, minparam, method);
-writeout(o, "Gradient_Descent", bestparam)
-
+# directory = pwd() * "/TKECalibration2021Results/compare_calibration_algorithms/$(dname)/$(RelevantParameters)/"
+#
+# o = open_output_file(directory)
+#
+# params_dict = Dict()
+# loss_dict = Dict()
+# function writeout2(o, name, params, loss, loss_validation)
+#         param_vect = [params...]
+#         write(o, "----------- \n")
+#         write(o, "$(name) \n")
+#         write(o, "Parameters: $(param_vect) \n")
+#         write(o, "Loss on training: $(loss) \n")
+#         write(o, "Loss on validation: $(loss_validation) \n")
+#         params_dict[name] = param_vect
+#         loss_dict[name] = loss_validation
+# end
+# writeout3(o, name, params) = writeout2(o, name, params, loss(params), loss_validation(params))
+#
+# @info "Output statistics will be written to: $(directory)"
+#
+# writeout3(o, "Default", initial_parameters)
+#
+# @info "Running Random Plugin..."
+# random_plugin_params = random_plugin(loss, initial_parameters; function_calls=1000)
+# writeout3(o, "Random_Plugin", random_plugin_params)
+# println("Random Plugin", random_plugin_params)
+#
+# @info "Running Gradient Descent..."
+# parameters = gradient_descent(loss, random_plugin_params; linebounds = (0, 100.0), linesearches = 10)
+# writeout3(o, "Gradient_Descent", parameters)
+# println("Gradient_Descent", parameters)
+#
+#
+# @info "Running Nelder-Mead from Optim.jl..."
+# parameters = nelder_mead(loss, initial_parameters)
+# writeout3(o, "Nelder_Mead", parameters)
+# println(parameters)
+# println(validation_loss_reduction(ce, ce.parameters.ParametersToOptimize(parameters)))
+#
+# loss(initial_parameters)
+# loss([parameters...])
+# loss_validation(initial_parameters)
+# loss_validation([parameters...])
+#
+# @info "Running L-BFGS from Optim.jl..."
+# parameters = l_bfgs(loss, initial_parameters)
+# writeout3(o, "L_BFGS", parameters)
+#
+# stds_within_bounds = 5
 @info "Running Iterative Simulated Annealing..."
+prob = simulated_annealing(loss, initial_parameters; samples = 10, iterations = 3,
+                                initial_scale = 1e1,
+                                final_scale = 1e-1,
+                                set_prior_means_to_initial_parameters = set_prior_means_to_initial_parameters,
+                                stds_within_bounds = stds_within_bounds)
+parameters = Dao.optimal(prob.markov_chains[end]).param
+writeout3(o, "Annealing", parameters)
+println([parameters...])
+println(validation_loss_reduction(ce, ce.parameters.ParametersToOptimize(parameters)))
 
-variance = Array(ParametersToOptimize((0.1 * bound[2] for bound in bounds)...))
-prob = anneal(loss, default_parameters, variance, BoundedNormalPerturbation, bounds;
-             iterations = 10,
-                samples = 1000,
-     annealing_schedule = AdaptiveExponentialSchedule(initial_scale=100.0, final_scale=1e-3, convergence_rate=1.0),
-    covariance_schedule = AdaptiveExponentialSchedule(initial_scale=1.0,   final_scale=1e-3, convergence_rate=0.1),
-);
-params = optimal(prob.markov_chains[end]).param
-writeout(o, "Annealing", params)
+# initial_parameters = ParametersToOptimize([0.029469308779054255, 31.6606181722508, 416.89781702903394])
+# propertynames(initial_parameters)
+# loss(initial_parameters)
+# loss_validation(initial_parameters)
+# loss(ParametersToOptimize(parameters))
+# loss_validation(ParametersToOptimize(parameters))
+# println([parameters...])
+#
+# @info "Running Ensemble Kalman Inversion..."
 
+throw(exception)
+
+parameters = ensemble_kalman_inversion(loss, initial_parameters; N_ens = 50, N_iter = 10,
+                                set_prior_means_to_initial_parameters = set_prior_means_to_initial_parameters,
+                                stds_within_bounds = 10)
+# writeout3(o, "EKI", ParametersToOptimize(parameters))
+
+validation_losses = Dict()
+initial_validation_loss = loss_validation(initial_parameters)
+for x = 0.0:0.1:1.0
+        println(x)
+        relative_weights = Dict(:T => 1.0, :U => x, :V => x, :e => x)
+        loss, _ = custom_tke_calibration(LESdata, RelevantParameters, ParametersToOptimize;
+                                        loss_closure = loss_closure,
+                                        relative_weights = relative_weights)
+        prob = simulated_annealing(loss, initial_parameters; samples = 100, iterations = 3,
+                                        initial_scale = 1e0,
+                                        set_prior_means_to_initial_parameters = set_prior_means_to_initial_parameters,
+                                        stds_within_bounds = stds_within_bounds)
+        parameters = Dao.optimal(prob.markov_chains[end]).param
+        println(parameters)
+        loss_reduction =  loss_validation(ParametersToOptimize(parameters)) / initial_validation_loss
+        validation_losses[x] = loss_reduction
+        println(loss_reduction)
+end
+p = Plots.plot(validation_losses, ylabel="Validation loss reduction (Final / Initial)", xlabel="relative weight for U, V, e (where T -> 1)", title = "Loss reduction vs. U, V, e relative weight", legend=false, lw=3)
+Plots.savefig(p, "____relative_weight_UVe.pdf")
+
+
+
+prob = simulated_annealing(loss, initial_parameters; samples = 500, iterations = 3,
+                                initial_scale = 1e1,
+                                set_prior_means_to_initial_parameters = set_prior_means_to_initial_parameters,
+                                stds_within_bounds = stds_within_bounds)
+parameters = Dao.optimal(prob.markov_chains[end]).param
+
+
+propertynames(ParametersToOptimize(initial_parameters))
+
+loss(initial_parameters)
+loss_validation(initial_parameters)
+println(parameters)
+loss(parameters)
+loss_validation(parameters)
+
+initial_parameters = ParametersToOptimize([0.0057, 0.005, 0.005])
+
+best_parameters = ParametersToOptimize(initial_parameters)
+directory = "TKECalibration2021Results/annealing_visuals_smaller_CA/"
+
+
+##
 @info "Visualizing final parameter values for each calibration method..."
-
 methodnames = [keys(params_dict)...]
-
+parameters
 # x-axis: sort calibration method names by the loss, highest to lowest (theoretically Default should come first)
 sort_key(methodname) = loss_dict[methodname]
 methodnames = sort([keys(loss_dict)...], by=sort_key, rev=true)
 
 isdir(directory*"Parameters/") || mkdir(directory*"Parameters/")
-for i in 1:length(params)
-        paramname = propertynames(params)
+for i in 1:length(parameters)
+        paramname = propertynames(parameters)
         parameter_vals = [params_dict[name][i] for name in methodnames]
         p = Plots.plot(methodnames, parameter_vals, size=(600,150), linewidth=3, xrotation = 60, label=parameter_latex_guide[paramname[i]])
         Plots.savefig(directory*"Parameters/$(parameter_latex_guide[paramname[i]]).pdf")
@@ -142,26 +201,44 @@ Plots.savefig(directory*"losses.png")
 best_method = argmin(loss_dict)
 best_parameters = ParametersToOptimize(params_dict[best_method])
 
+# best_method = "Nelder_Mead"
+# best_parameters = ParametersToOptimize([0.494343889780388, 0.5671815040873687, 0.8034339015426114, 0.40412711476911073, 0.23935082563117294, 7.594543282811973, 0.19964793087118093, 3.01077631309058])
+
 isdir(directory*"Test/") || mkdir(directory*"Test/")
+isdir(directory*"Train/") || mkdir(directory*"Train/")
 write(o, " \n")
 write(o, "Best method: $(best_method)\n")
 write(o, "Best loss: $(loss_dict[best_method])\n")
 write(o, "Best parameters: \n")
 write(o, "$(best_parameters) \n")
-write(o, "Losses on 2-Day Suite Simulations: \n")
-for test_file in to_test
 
-        mymodel_test = build_model(test_file);
-        tdata_test = mymodel_test.tdata
-        model_test = mymodel_test.model
-        loss = build_loss(model_test, tdata_test)
+write(o, "Losses on Calibration Simulations: \n")
+for LEScase in values(LESdata)
+        case_loss, _ = custom_tke_calibration(LEScase, RelevantParameters, ParametersToOptimize)
+        write(o, "$(case_loss.data.name): $(case_loss(best_parameters)) \n")
 
-        write(o, "$(tdata.name): $(loss(params)) \n")
-
-        p = visualize_realizations(model_test, tdata_test, 1:90:length(tdata_test), best_parameters)
-        PyPlot.savefig(directory*"Test/$(tdata_test.name).png")
+        p = visualize_realizations(case_loss.model, case_loss.data, 12:180:length(case_loss.data), best_parameters)
+        PyPlot.savefig(directory*"Train/$(case_loss.data.name).png")
 end
 
+write(o, "Loss on $(LESdata_validation) Validation Simulations: $(loss_validation(best_parameters))\n")
+write(o, "Losses on Validation Simulations: \n")
+for LEScase in values(LESdata_validation)
+        case_loss, _ = custom_tke_calibration(LEScase, RelevantParameters, ParametersToOptimize)
+        write(o, "$(case_loss.data.name): $(case_loss(best_parameters)) \n")
+
+        p = visualize_realizations(case_loss.model, case_loss.data, 12:180:length(case_loss.data), best_parameters)
+        PyPlot.savefig(directory*"Test/$(case_loss.data.name).png")
+end
 
 # Close output.txt
 close(o)
+
+##
+# initial_parameters = ParametersToOptimize([2.3923033609398985, 0.20312574763086733, 0.46858459323259577,
+#                                            0.4460275753651033, 0.5207833999203864, 5.368922290345999,
+#                                            1.1855706525110876, 2.6304133954266207])
+
+# using above initial parameters, Nelder-Mead finds:
+# initial_parameters = ParametersToOptimize([2.1638101987647502, 0.2172594537369187, 0.4522886369267623, 0.7534625713891345, 0.4477179760916435,
+#         6.777679962252731, 1.2403584780163417, 1.9967245163343093])

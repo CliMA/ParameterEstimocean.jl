@@ -1,8 +1,8 @@
 """
-HydrostaticFreeSurfaceModel(td_batch::Vector{<:TruthData}, Δt; N_ens = 50, kwargs...)
+    EnsembleModel(data_batch::BatchTruthData; architecture = CPU(), N_ens = 50, kwargs...)
 
 Build an Oceananigans `HydrostaticFreeSurfaceModel` with many independent 
-columns. The model grid is given by the data in `td_batch`, and the
+columns. The model grid is given by the data in `data_batch`, and the
 dynamics in each column is attached to its own `CATKEVerticalDiffusivity` closure stored in 
 an `(Nx, Ny)` Matrix of closures. `N_ens = 50` is the 
 desired count of ensemble members for calibration with Ensemble Kalman Inversion (EKI), and the 
@@ -13,19 +13,18 @@ conditions so that many independent columns can be evolved at once with much of 
 split among the columns. The `Nx` rows of vertical columns are each reserved for an "ensemble" member
 whose attached parameter value (updated at each iteration of EKI) sets the diffusivity closure
 used to predict the model solution for the `Ny` physical scenarios described by the simulation-specific 
-`TruthData` objects in `td_batch`.
+`TruthData` objects in `data_batch`.
 """
-function HydrostaticFreeSurfaceModel(td_batch::Vector{<:TruthData}; architecture = CPU(), N_ens = 50, kwargs...)
+function EnsembleModel(data_batch::BatchTruthData; architecture = CPU(), N_ens = 50, kwargs...)
 
-    data_grid = td_batch[1].grid
-    grid = ColumnEnsembleGrid(data_grid; size=(N_ens, length(td_batch), data_grid.Nz))
+    data_grid = data_batch[1].grid
+    grid = ColumnEnsembleGrid(data_grid; size=(N_ens, length(data_batch), data_grid.Nz))
 
-    closure = [CATKEVerticalDiffusivity(Float64; warning=false, kwargs...) for i=1:N_ens, j=1:length(td_batch)]
+    closure = [CATKEVerticalDiffusivity(Float64; warning=false, kwargs...) for i=1:N_ens, j=1:length(data_batch)]
 
-    # coriolis = [td.constants[:f] for i=1:N_ens, td in td_batch]
-    coriolis = td_batch[1].constants[:f]
+    coriolis = [FPlane(f=td.constants[:f]) for i=1:N_ens, td in data_batch]
 
-    bc_matrix(f) = [f(td.boundary_conditions) for i = 1:N_ens, td in td_batch]
+    bc_matrix(f) = [f(td.boundary_conditions) for i = 1:N_ens, td in data_batch]
     Qᵇ = bc_matrix(bc -> bc.Qᵇ)
     Qᵘ = bc_matrix(bc -> bc.Qᵘ)
     Qᵛ = bc_matrix(bc -> bc.Qᵛ)
@@ -49,7 +48,7 @@ function HydrostaticFreeSurfaceModel(td_batch::Vector{<:TruthData}; architecture
                                          grid = grid,
                                          tracers = (:b, :e),
                                          buoyancy = BuoyancyTracer(),
-                                         coriolis = FPlane(f=coriolis),
+                                         coriolis = coriolis,
                                          boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
                                          closure = closure)
 

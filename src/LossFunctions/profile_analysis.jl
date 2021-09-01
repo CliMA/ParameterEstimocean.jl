@@ -3,9 +3,8 @@
 #
 
 # Returns a separate mean for each ensemble member along the x-axis in the many-columns scenario
-# ensemble_mean(c::AbstractDataField) = mean(c, dims = (2,3))
+ensemble_mean(c::AbstractDataField) = mean(c, dims = (2,3))
 
-# Mean along the z-axis
 column_mean(c::AbstractDataField) = mean(c, dims = 3)
 
 """

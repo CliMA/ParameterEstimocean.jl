@@ -19,7 +19,7 @@ end
 function get_free_parameters(closure::AbstractTurbulenceClosure)
     paramnames = Dict()
     paramtypes = Dict()
-    kw_params = Dict() # for parameters that are not contained in structs but rather as explicit keyword arguments in `m.model.closure`
+    kw_params = Dict() # for parameters that are not contained in structs but rather as explicit keyword arguments in `m.closure`
     for pname in propertynames(closure) # e.g. :surface_TKE_flux
         p = getproperty(closure, pname) # e.g. p = TKESurfaceFlux{Float64}(3.62, 1.31)
 
@@ -100,19 +100,15 @@ function new_closure(closure::AbstractTurbulenceClosure, free_parameters)
     args = [new_closure_kwargs[x] for x in fieldnames(ClosureType)]
     new_closure = ClosureType(args...)
 
-    # for (ptypename, new_value) in new_closure_kwargs
-    #     setproperty!(closure, ptypename, new_value)
-    # end
-
     return new_closure
 end
 
-function set!(m::AbstractModel, free_parameters::FreeParameters)
-    closure = getproperty(m.model, :closure)
+function set!(m::EnsembleModel, free_parameters::FreeParameters)
+    closure = getproperty(m, :closure)
 
     if closure isa AbstractTurbulenceClosure
         new_ = new_closure(closure, free_parameters)
-        setproperty!(m.model, :closure, new_)
+        setproperty!(m, :closure, new_)
     else
         new_ = new_closure(closure[1,1], free_parameters)
 
@@ -122,10 +118,10 @@ function set!(m::AbstractModel, free_parameters::FreeParameters)
     end
 end
 
-function set!(m::AbstractModel, free_parameters::Vector{<:FreeParameters})
+function set!(m::EnsembleModel, free_parameters::Vector{<:FreeParameters})
 
     # Array of closures
-    model_closure = getproperty(m.model, :closure)
+    model_closure = getproperty(m, :closure)
 
     N_ens = ensemble_size(m)
     N_cases = batch_size(m)

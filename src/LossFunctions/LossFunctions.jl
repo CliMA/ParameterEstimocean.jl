@@ -1,39 +1,34 @@
 module LossFunctions
 
+using Oceananigans: AbstractModel
 using ..OceanTurbulenceParameterEstimation
 using ..OceanTurbulenceParameterEstimation.ModelsAndData
-import ..OceanTurbulenceParameterEstimation.ModelsAndData: set!
+import ..OceanTurbulenceParameterEstimation.ModelsAndData: set!, get_model_field
 
 using Oceananigans
 using Oceananigans.Grids: RegularRectilinearGrid
-using Oceananigans.Fields: CenterField, AbstractDataField, interior
+using Oceananigans.Fields: CenterField, AbstractField, AbstractDataField, interior
 
 using Statistics
 
 export
-    # forward_map.jl
-    ModelTimeSeries,
+    # forward_run.jl
     model_time_series,
-    
+
     # loss_functions.jl
-    evaluate!,
     LossFunction,
-    LossContainer,
-    BatchedLossContainer,
-    EnsembleLossContainer,
     TimeSeriesAnalysis,
     TimeAverage,
     ValueProfileAnalysis,
     GradientProfileAnalysis,
-    on_grid,
-    init_loss_function,
-    BatchTruthData,
-    BatchLossFunction
+    evaluate!,
+    on_grid
 
 include("utils.jl")
-include("time_series_analysis.jl")
+include("time_analysis.jl")
 include("profile_analysis.jl")
+include("field_weights.jl")
 include("loss_functions.jl")
-include("forward_map.jl")
+include("forward_run.jl")
 
 end # module

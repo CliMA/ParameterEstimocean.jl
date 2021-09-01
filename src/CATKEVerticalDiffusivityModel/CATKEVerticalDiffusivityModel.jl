@@ -9,22 +9,20 @@ using Suppressor
 using LaTeXStrings
 
 using Oceananigans.BoundaryConditions
+using Oceananigans.Models: AbstractModel
 using Oceananigans.BuoyancyModels: BuoyancyTracer
 using Oceananigans.Coriolis: FPlane
-using Oceananigans.Models: HydrostaticFreeSurfaceModel
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity,
                 MixingLength, SurfaceTKEFlux, VerticallyImplicitTimeDiscretization
 using Oceananigans.Architectures
-
-import Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel
 
 export TKEParametersRiDependent,
        TKEParametersRiDependentConvectiveAdjustment,
        TKEParametersRiIndependent,
        TKEParametersRiIndependentConvectiveAdjustment,
 
-       HydrostaticFreeSurfaceModel,
        custom_defaults,
        parameter_latex_guide,
        free_parameter_options,
@@ -32,7 +30,6 @@ export TKEParametersRiDependent,
        parameter_specific_kwargs
 
 include("catke_vertical_diffusivity_parameters.jl")
-include("catke_vertical_diffusivity_model_single_column.jl")
-include("catke_vertical_diffusivity_model_many_columns.jl")
+include("catke_vertical_diffusivity_model.jl")
 
 end # module

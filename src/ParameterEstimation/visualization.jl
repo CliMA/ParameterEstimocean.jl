@@ -34,7 +34,7 @@ end
 Visualize the data alongside several realizations of `column_model`
 for each set of parameters in `params`.
 """
-function visualize_realizations(model, data_batch, parameters::FreeParameters;
+function visualize_realizations(model, data_batch, parameters::FreeParameters, Δt;
                                                  fields = [:b, :u, :v, :e],
                                                  filename = "realizations.png"
                                 )
@@ -47,6 +47,8 @@ function visualize_realizations(model, data_batch, parameters::FreeParameters;
         hidedecorations!(ax)
         hidespines!(ax, :t, :b, :l, :r)
     end
+
+    predictions_batch = model_time_series(parameters, model, data_batch, Δt)
 
     for (i, data) in enumerate(data_batch)
 
@@ -61,8 +63,6 @@ function visualize_realizations(model, data_batch, parameters::FreeParameters;
                     textsize = 15,
                     justification = :left)
 
-        model_predictions = model_time_series(parameters, model, data)
-
         for (j, field) in enumerate(fields)
             middle = j > 1 && j < length(fields)
             remove_spines = j == 1 ? (:t, :r) : j == length(fields) ? (:t, :l) : (:t, :l, :r)
@@ -74,7 +74,7 @@ function visualize_realizations(model, data_batch, parameters::FreeParameters;
 
             # field data for each time step
             truth = getproperty(data, field)
-            prediction = getproperty(model_predictions, field)
+            prediction = getproperty(predictions_batch[i], field)
 
             z = field ∈ [:u, :v] ? data.grid.zF[1:data.grid.Nz] : data.grid.zC[1:data.grid.Nz]
 
@@ -98,7 +98,9 @@ function visualize_realizations(model, data_batch, parameters::FreeParameters;
                 end
 
                 times = @. round((data.t[snapshots] - data.t[snapshots[1]]) / 86400, sigdigits=2)
-                Legend(fig[1,3:4], lins, [["LES, t = $time days" for time in times]; ["Model, t = $time days" for time in times]], nbanks=2)
+
+                legendlabel(time) = ["LES, t = $time days", "Model, t = $time days"]
+                Legend(fig[1,3:4], lins, vcat([legendlabel(time) for time in times]...), nbanks=2)
                 lins = []
             else
                 
@@ -110,31 +112,31 @@ function visualize_realizations(model, data_batch, parameters::FreeParameters;
     save(filename, fig, px_per_unit = 2.0)
 end
 
-function visualize_and_save(ce, parameters, directory; fields=[:b, :u, :v, :e])
+function visualize_and_save(calibration, validation, parameters, directory; fields=[:b, :u, :v, :e])
 
-        # o = open_output_file(directory*"/result.txt")
-        # write(o, "Training relative weights: $(ce.calibration.relative_weights) \n")
-        # write(o, "Validation relative weights: $(ce.validation.relative_weights) \n")
-        # write(o, "Training default parameters: $(ce.validation.default_parameters) \n")
-        # write(o, "Validation default parameters: $(ce.validation.default_parameters) \n")
+        o = open_output_file(directory*"/result.txt")
+        write(o, "Training relative weights: $(calibration.relative_weights) \n")
+        write(o, "Validation relative weights: $(validation.relative_weights) \n")
+        write(o, "Training default parameters: $(validation.default_parameters) \n")
+        write(o, "Validation default parameters: $(validation.default_parameters) \n")
 
-        # write(o, "------------ \n \n")
-        # default_parameters = ce.default_parameters
-        # train_loss_default = ce.calibration.loss(default_parameters)
-        # valid_loss_default = ce.validation.loss(default_parameters)
-        # write(o, "Default parameters: $(default_parameters) \nLoss on training: $(train_loss_default) \nLoss on validation: $(valid_loss_default) \n------------ \n \n")
+        write(o, "------------ \n \n")
+        default_parameters = ce.default_parameters
+        train_loss_default = calibration.loss(default_parameters)
+        valid_loss_default = validation.loss(default_parameters)
+        write(o, "Default parameters: $(default_parameters) \nLoss on training: $(train_loss_default) \nLoss on validation: $(valid_loss_default) \n------------ \n \n")
 
-        # train_loss = ce.calibration.loss(parameters)
-        # valid_loss = ce.validation.loss(parameters)
-        # write(o, "Parameters: $(parameters) \nLoss on training: $(train_loss) \nLoss on validation: $(valid_loss) \n------------ \n \n")
+        train_loss = calibration.loss(parameters)
+        valid_loss = validation.loss(parameters)
+        write(o, "Parameters: $(parameters) \nLoss on training: $(train_loss) \nLoss on validation: $(valid_loss) \n------------ \n \n")
 
-        # write(o, "Training loss reduction: $(train_loss/train_loss_default) \n")
-        # write(o, "Validation loss reduction: $(valid_loss/valid_loss_default) \n")
-        # close(o)
+        write(o, "Training loss reduction: $(train_loss/train_loss_default) \n")
+        write(o, "Validation loss reduction: $(valid_loss/valid_loss_default) \n")
+        close(o)
 
         parameters = ce.parameters.ParametersToOptimize(parameters)
 
-        for dataset in [ce.calibration, ce.validation]
+        for dataset in [calibration, validation]
 
             all_data = dataset.data_batch
             model = dataset.model
@@ -145,7 +147,7 @@ function visualize_and_save(ce, parameters, directory; fields=[:b, :u, :v, :e])
                 data_batch = [d for d in all_data if length(d) == data_length]
                 days = data_batch[1].t[end]/86400
 
-                visualize_realizations(model, data_batch, parameters;
+                visualize_realizations(model, data_batch, parameters, dataset.Δt;
                                                  fields = fields,
                                                  filename = joinpath(directory, "$(days)_day_simulations.png"))
             end

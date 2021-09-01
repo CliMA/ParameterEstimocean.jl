@@ -15,22 +15,21 @@ using EnsembleKalmanProcesses.EnsembleKalmanProcessModule
 using EnsembleKalmanProcesses.ParameterDistributionStorage
 
 import ..OceanTurbulenceParameterEstimation.ModelsAndData: set!
+import ..OceanTurbulenceParameterEstimation.LossFunctions: model_time_series
 
 using Oceananigans.Fields: interior
 using CairoMakie: Figure
 
 export
        Parameters,
-       DataSet,
        CalibrationExperiment,
        validation_loss_reduction,
        relative_weight_options,
        set!,
+       model_time_series,
 
        # catke_vertical_diffusivity_model_setup.jl
-       get_loss,
-       dataset,
-       ensemble_dataset,
+       DataSet,
 
        # utils.jl
        open_output_file,
@@ -63,32 +62,22 @@ Base.@kwdef struct Parameters{T <: UnionAll}
     ParametersToOptimize::T
 end
 
-struct DataSet{LD, DB, PM, RW, LC, FP}
-        LESdata::LD
+struct DataSet{DB, PM, RW, LF, FP}
         data_batch::DB
         model::PM
         relative_weights::RW # field weights
-        loss::LC
+        loss::LF
         default_parameters::FP
 end
 
-struct CalibrationExperiment{DS, PP, FP}
-        calibration::DS
-        validation::DS
-        parameters::PP
-        default_parameters::FP
-end
+(ds::DataSet)(θ=ds.default_parameters) = ds.loss(ds.model, ds.data_batch, θ)
 
-function CalibrationExperiment(calibration, validation, parameters)
-    CalibrationExperiment(calibration, validation, parameters, calibration.default_parameters)
-end
+function validation_loss_reduction(calibration::DataSet, validation::DataSet, parameters::FreeParameters)
+    validation_loss = validation.loss(parameters)
+    calibration_loss = calibration.loss(parameters)
 
-function validation_loss_reduction(ce::CalibrationExperiment, parameters::FreeParameters)
-    validation_loss = ce.validation.loss(parameters)
-    calibration_loss = ce.calibration.loss(parameters)
-
-    default_validation_loss = ce.validation.loss(ce.default_parameters)
-    default_calibration_loss = ce.calibration.loss(ce.default_parameters)
+    default_validation_loss = validation.loss(ce.default_parameters)
+    default_calibration_loss = calibration.loss(ce.default_parameters)
 
     validation_loss_reduction = validation_loss/default_validation_loss
     println("Parameters: $([parameters...])")
@@ -100,7 +89,10 @@ end
 
 include("utils.jl")
 include("catke_vertical_diffusivity_model_setup.jl")
-include("calibration_algorithms/calibration_algorithms.jl")
+include("EKI/EKI.jl")
 include("visualization.jl")
+
+model_time_series(ds::DataSet, parameters) = model_time_series(parameters, ds.model, ds.data_batch, ds.loss.Δt)
+visualize_realizations(ds::DataSet, parameters) = visualize_realizations(ds.model, ds.data_batch, parameters, ds.loss.Δt)
 
 end # module
