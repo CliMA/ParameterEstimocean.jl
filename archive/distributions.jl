@@ -1,81 +1,154 @@
-function normalized_counts(normal; bin_width=0.05, bin_range=(-10,10))
-    bins = [bin_width*x for x=Int(10/bin_range[1]):Int(10/bin_range[2])]
-    counts = Dict(x => 0 for x in bins)
+using TKECalibration2021
+using StatsPlots
+using Distributions
+using LinearAlgebra
+using Random
+using EnsembleKalmanProcesses.EnsembleKalmanProcessModule
+using EnsembleKalmanProcesses.ParameterDistributionStorage
+using ArgParse
+using OceanTurbulenceParameterEstimation
+using Plots
+using Dao
+using PyPlot
 
-    for x in normal
-        bin = ceil(x/bin_width)*bin_width
-        if bin in keys(counts)
-            counts[bin] += 1
-        end
+# using StatsPlots
+# pl = StatsPlots.plot(label=0.4, xlims=(0.0,4), title="Parameter Priors")
+# for x in 0.3:0.3:1.5
+#     StatsPlots.plot!(LogNormal(0.0,x), label="$(x)", lw=4, la=0.7, size=(375,250), palette = :darkrainbow, legendtitle=L"\Gamma_\theta", xlabel=L"\theta^{(i)}", ylabel=L"p_{prior}(\theta^{(i)})")
+# end
+# plot!(annotation=(1.9,1.0,L"lnN(0, \Gamma_\theta)"))
+# pl
+# StatsPlots.savefig("priors.pdf")
+
+# s = ArgParseSettings()
+#
+# @add_arg_table! s begin
+#     "--relative_weight_option"
+#         help = ""
+#         default = "all_but_e"
+#         arg_type = String
+# end
+# relative_weight_option = parse_args(s)["relative_weight_option"]
+#
+# directory = "Distributions/TKEParametersConvectiveAdjustmentRiDependent/"
+# isdir(directory) || mkdir(directory)
+#
+# # @free_parameters(ConvectiveAdjustmentParameters,
+# #                  Cᴬu, Cᴬc, Cᴬe)
+#
+# relative_weight_options = Dict(
+#                 "all_e" => Dict(:T => 0.0, :U => 0.0, :V => 0.0, :e => 1.0),
+#                 "all_T" => Dict(:T => 1.0, :U => 0.0, :V => 0.0, :e => 0.0),
+#                 "uniform" => Dict(:T => 1.0, :U => 1.0, :V => 1.0, :e => 1.0),
+#                 "all_but_e" => Dict(:T => 1.0, :U => 1.0, :V => 1.0, :e => 0.0),
+#                 "all_uv" => Dict(:T => 0.0, :U => 1.0, :V => 1.0, :e => 0.0)
+# )
+#
+# p = Parameters(RelevantParameters = TKEParametersConvectiveAdjustmentRiIndependent,
+#                ParametersToOptimize = TKEParametersConvectiveAdjustmentRiIndependent
+#               )
+#
+# # relative_weight_option = "uniform"
+# calibration = dataset(FourDaySuite, p; relative_weights = relative_weight_options[relative_weight_option]);
+# validation = dataset(merge(TwoDaySuite, SixDaySuite), p; relative_weights = relative_weight_options[relative_weight_option]);
+# ce = CalibrationExperiment(calibration, validation, p)
+#
+# loss = ce.calibration.loss
+# loss_validation = ce.validation.loss
+# initial_parameters = ce.calibration.default_parameters
+
+# loss_validation([initial_parameters...])
+
+ce.parameters.RelevantParameters([initial_parameters...])
+propertynames(initial_parameters)
+
+function get_losses(pvalues, pname, loss)
+    defaults = TKECalibration2021.custom_defaults(ce.calibration.loss.batch[1].model, ce.parameters.RelevantParameters)
+    ℒvalues = []
+    for pvalue in pvalues
+        TKECalibration2021.set_if_present!(defaults, pname, pvalue)
+        # println(defaults)
+        push!(ℒvalues, loss([defaults...]))
     end
-
-    area = sum(values(counts))*bin_width
-    normalized = Dict(x => 0.0 for x in bins)
-    for (bin, count) in counts
-        normalized[bin] = count/area
-    end
-
-    return normalized
+    return ℒvalues
 end
 
-constrained_dist = Normal(7,1)
-lognormal = log.([x for x in rand(constrained_dist,1000000) if x>0.0]);
-lognormal_dist = fit(LogNormal, lognormal)
-normal = exp.(rand(lognormal_dist, 1000000));
+
+# pname = :Cᴬu
+# pvalues = range(0.0, stop=3.0, length=1000)
+# pvalues = range(0.001, stop=0.1, length=99)
+# loss = loss
+# a = get_losses(pvalues, pname, loss)
+# pvalues[argmin(a)]
+# Plots.plot(pvalues, a)
+
+function lognormal_μ_σ²(mean, variance)
+    k = variance / mean^2 + 1
+    μ = log(mean / sqrt(k))
+    σ² = log(k)
+    return μ, σ²
+end
+
+function get_μ_σ²(mean, variance, bounds)
+    if bounds[1] == 0.0
+        return lognormal_μ_σ²(mean, variance)
+    end
+    return mean, variance
+end
+
+function get_constraint(bounds)
+    if bounds[1] == 0.0
+        return bounded_below(0.0)
+    end
+    return no_constraint()
+end
+
+initial_parameters = ParametersToOptimize(initial_parameters)
+bounds, prior_variances = get_bounds_and_variance(initial_parameters; stds_within_bounds = 3);
+prior_means = [initial_parameters...]
+# μs, σ²s = lognormal_μ_σ²(prior_means, prior_variances)
 
 
-constrained_dist = Normal(0.001,0.1)
-plot(constrained_dist, label="N(μ=0.001, σ=0.1)")
-
-lognormal = [x for x in rand(constrained_dist,1000000) if x>0.0];
-constrained_dist = fit(LogNormal, lognormal)
-plot!(constrained_dist, label="lnN(μ=-2.93, σ=1.11)")
-
-normal = log.([x for x in rand(constrained_dist,1000000) if x>0.0]);
-normal_dist = fit(Normal, normal)
-
-julia> mean(constrained_dist)
-0.09840050052320308
-
-julia> std(constrained_dist)
-0.15290416640333576
+μs = [get_μ_σ²(prior_means[i], prior_variances[i], bounds[i])[1] for i in eachindex(prior_means)]
+σ²s = [get_μ_σ²(prior_means[i], prior_variances[i], bounds[i])[2] for i in eachindex(prior_means)]
 
 
-plot!(normal_dist, label="N(-0.71,0.21)")
+# first term (data misfit) of EKI objective = ℒ / obs_noise_level
+ℒ = ce.calibration.loss(prior_means)
+println(ℒ)
 
-# lognormal = exp.(rand(normal_dist,1000000));
-# normal_dist = fit(Normal, lognormal)
+# second term (prior misfit) of EKI objective = || σ²s.^(-0.5) .* μs ||²
+pr = norm((σ²s.^(-1/2)) .* μs)^2
+println(pr)
 
+# for equal weighting of data misfit and prior misfit in EKI objective, let obs noise level be about
+obs_noise_level = ℒ / pr
 
+# obs = 1e-3
+# ℒ / (obs*pr) = 100
+# obs = ℒ / (100 * pr)
 
-plot(constrained_dist, label = "normal N(7,1)")
-plot!(normalized_counts(lognormal, bin_width=0.05), label = "log.(normal N(7,1))")
-plot!(lognormal_dist, label = "lognormal N(0.657,0.078)")
-plot!(normalized_counts(normal, bin_width=0.05), label="exp.(lognormal N(0.657,0.078))", legend=:topright)
+all_plots = []
+for i in 1:length(initial_parameters)
+    pname = propertynames(initial_parameters)[i]
+    pvalue_lims = (max(0.0, prior_means[i]-sqrt(prior_variances[i])), prior_means[i]+2*sqrt(prior_variances[i]))
+    pvalues = range(pvalue_lims[1],stop=pvalue_lims[2],length=20)
+    losses_cal = get_losses(pvalues, pname, loss)
+    losses_val = get_losses(pvalues, pname, loss_validation) ./ 2
 
+    kwargs = (lw=4, xlims = pvalue_lims, xlabel = "$(parameter_latex_guide[pname])")
+    distplot = StatsPlots.plot(LogNormal(μs[i], σ²s[i]); ylabel = L"P_{prior}(\theta)", label="", color=:red, kwargs...)
+    plot!([prior_means[i]], linetype = :vline, linestyle=:dash, color=:red, label="mean")
 
+    lossplot = Plots.plot(pvalues, log.(losses_val), label="val", color=:blue, lw=4, la=0.5)
+    plot!(pvalues, log.(losses_cal);  xlabel="$(parameter_latex_guide[pname])", color=:purple, la=0.5, label="cal", ylabel = L"\log_{10}\mathcal{L}(\theta)", kwargs...)
+    plot!([pvalues[argmin(losses_cal)]], linetype = :vline, linestyle=:dash, color=:purple, la=0.5, label="min")
+    plot!([pvalues[argmin(losses_val)]], linetype = :vline, linestyle=:dash, color=:blue, la=0.5, label="min")
 
-
-constrained_dist = Normal(0.7,1)
-lognormal = exp.([x for x in rand(constrained_dist,1000000) if x>0.0]);
-lognormal_dist = fit(LogNormal, lognormal)
-normal = log.(rand(lognormal_dist, 1000000));
-
-plot(constrained_dist, label = "normal N(7,1)")
-plot!(normalized_counts(lognormal, bin_width=0.05), label = "log.(normal N(7,1))")
-plot!(lognormal_dist, label = "lognormal N(0.657,0.078)")
-plot!(normalized_counts(normal, bin_width=0.05), label="exp.(lognormal N(0.657,0.078))", legend=:topright)
-
-
-
-
-
-histogram(exp.rand(a, 100000))
-
-constrained_prior = fit(LogNormal, log.(rand(Normal(5,1),10000)))
-
-
-fit(LogNormal, rand(Normal(5,1),10000))
-exp(5 + 0.5)
-
-using StatsPlot
+    layout = @layout [a;b]
+    pplot = Plots.plot(distplot, lossplot; layout=layout, framestyle=:box)
+    Plots.savefig(directory*"$(pname)_$(relative_weight_option).png")
+    push!(all_plots, pplot)
+end
+Plots.plot(all_plots..., layout=(3,5), size=(1600,1200), left_margin=10*Plots.mm, bottom_margin=10*Plots.mm)
+Plots.savefig(directory*"parameters_$(relative_weight_option).pdf")

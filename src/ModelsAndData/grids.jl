@@ -2,8 +2,7 @@
 ### Grids
 ###
 
-# get_grid_params(grid::RegularRectilinearGrid) = getproperty.(grid, [:Nx, :Ny, :Nz, :Lx, :Ly, :Lz])
-get_grid_params(grid::RegularRectilinearGrid) = [grid.Nx, grid.Ny, grid.Nz, grid.Lx, grid.Ly, grid.Lz]
+get_grid_params(g::RegularRectilinearGrid) = [g.Nx, g.Ny, g.Nz, g.Lx, g.Ly, g.Lz]
 
 """
   ColumnEnsembleGrid(datapath; ensemble_size = (1,1), Nz = nothing)
@@ -28,22 +27,22 @@ function ColumnEnsembleGrid(datapath; size = (1,1,nothing))
       grid = RegularRectilinearGrid(size=sz, halo=halo, z=(-Lz_, 0), topology=(Flat, Flat, Bounded))
 end
 
-"""
-  XYZGrid(N)
+# """
+#   XYZGrid(N)
 
-  Construct a 3D grid of type `Oceananigans.RegularRectilinearGrid` 
-  with size `size` = (Nx, Ny, Nz) and the same extent as the that
-  of the LES simulation stored in `datapath`. 
-  `size` defaults to the simulation resolution.
-"""
-function XYZGrid(datapath; size=nothing)
+#   Construct a 3D grid of type `Oceananigans.RegularRectilinearGrid` 
+#   with size `size` = (Nx, Ny, Nz) and the same extent as the that
+#   of the LES simulation stored in `datapath`. 
+#   `size` defaults to the simulation resolution.
+# """
+# function XYZGrid(datapath; size=nothing)
 
-    Nx, Ny, Nz, Lx, Ly, Lz = get_grid_params(datapath)
+#     Nx, Ny, Nz, Lx, Ly, Lz = get_grid_params(datapath)
 
-    size = isnothing(size) ? (Nx, Ny, Nz) : size
+#     size = isnothing(size) ? (Nx, Ny, Nz) : size
 
-    @assert all( size .<= (Nx, Ny, Nz) ) "Desired grid resolution exceeds the simulation resolution!"
+#     @assert all( size .<= (Nx, Ny, Nz) ) "Desired grid resolution exceeds the simulation resolution!"
 
-    grid = RegularRectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz), topology=(Periodic, Periodic, Bounded))
-    return grid
-end
+#     grid = RegularRectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz), topology=(Periodic, Periodic, Bounded))
+#     return grid
+# end

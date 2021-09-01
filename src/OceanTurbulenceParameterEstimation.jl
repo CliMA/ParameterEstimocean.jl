@@ -37,19 +37,12 @@ export
 
     # ParameterEstimation
     visualize_realizations,
+    visualize_and_save,
 
     # LossFunctions
     evaluate!,
-    LossFunction,
-    LossContainer,
-    BatchedLossContainer,
-    EnsembleLossContainer,
     TimeSeriesAnalysis,
     TimeAverage,
-    init_loss_function,
-    BatchTruthData,
-    BatchLossFunction,
-    ModelTimeSeries,
     model_time_series,
 
     # modules
