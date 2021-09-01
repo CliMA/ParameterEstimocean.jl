@@ -30,3 +30,4 @@ Results/
 *.txt
 
 *.swp
+*.DS_Store
