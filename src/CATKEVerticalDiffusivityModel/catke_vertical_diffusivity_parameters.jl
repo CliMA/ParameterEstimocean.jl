@@ -6,24 +6,6 @@ parameter_guide = Dict(
           default = 2.9079,
           bounds = (0.0, 10.0)),
 
-     :Cᴷu  => (
-          name = "Velocity diffusivity (defunct)",
-          latex = L"C^K_U",
-          default = 0.1243,
-          bounds = (0.0, 3.0)),
-
-     :Cᴷc  => (
-          name = "Tracer diffusivity (defunct)",
-          latex = L"C^K_C",
-          default = 0.09518,
-          bounds = (0.0, 3.0)),
-
-     :Cᴷe  => (
-          name = "TKE diffusivity (defunct)",
-          latex = L"C^K_E",
-          default = 0.055,
-          bounds = (0.0, 3.0)),
-
      :Cᴸᵇ  => (
           name = "Mixing length parameter",
           latex = L"C^{\ell}_b",
@@ -34,22 +16,19 @@ parameter_guide = Dict(
           name = "Ratio of mixing length to grid spacing",
           latex = L"C^{\delta}u",
           default = 0.5,
-          bounds = (0.0, 2.0),
-     ),
+          bounds = (0.0, 2.0)),
 
      :Cᵟc => (
           name = "Ratio of mixing length to grid spacing",
           latex = L"C^{\delta}c",
           default = 0.5,
-          bounds = (0.0, 2.0),
-     ),
+          bounds = (0.0, 2.0)),
 
      :Cᵟe => (
           name = "Ratio of mixing length to grid spacing",
           latex = L"C^{\delta}e",
           default = 0.5,
-          bounds = (0.0, 2.0),
-     ),
+          bounds = (0.0, 2.0)),
 
      :Cᵂu★  => (
           name = "Mixing length parameter",
@@ -81,12 +60,6 @@ parameter_guide = Dict(
           default = 0.1513,
           bounds = (0.0, 1.0)),
 
-     :Cᴷu⁺  => (
-          name = "Velocity diffusivity UB (defunct)",
-          latex = L"C^Ku^+",
-          default = 0.7337,
-          bounds = (0.0, 5.0)),
-
      :Cᴷuʳ  => (
           name = "Velocity diffusivity (UB-LB)/LB",
           latex = L"C^Ku^r",
@@ -99,12 +72,6 @@ parameter_guide = Dict(
           default = 0.3977,
           bounds = (0.0, 3.0)),
 
-     :Cᴷc⁺  => (
-          name = "Velocity diffusivity UB (defunct)",
-          latex = L"C^Kc^+",
-          default = 1.7738,
-          bounds = (0.0, 3.0)),
-
      :Cᴷcʳ  => (
           name = "Velocity diffusivity (UB-LB)/LB",
           latex = L"C^Kc^r",
@@ -115,12 +82,6 @@ parameter_guide = Dict(
           name = "Velocity diffusivity LB",
           latex = L"C^Ke^-",
           default = 0.1334,
-          bounds = (0.0, 3.0)),
-
-     :Cᴷe⁺  => (
-          name = "Velocity diffusivity UB (defunct)",
-          latex = L"C^Ke^+",
-          default = 1.2247,
           bounds = (0.0, 3.0)),
 
      :Cᴷeʳ  => (
@@ -172,16 +133,6 @@ parameter_guide = Dict(
                  Cᴷu⁻, Cᴷc⁻, Cᴷe⁻,
                  Cᴬu, Cᴬc, Cᴬe,
                  Cᴰ, Cᴸᵇ, Cᵂu★, CᵂwΔ)
-
-# For purely convective scenarios
-# @free_parameters(TKEFreeConvection,
-#                  Cᵟu, Cᵟc, Cᵟe,
-#                  CᴷRiʷ, CᴷRiᶜ,
-#                  Cᴷc⁻, Cᴷcʳ,
-#                  Cᴷe⁻, Cᴷeʳ,
-#                  Cᴰ, Cᴸᵇ, CᵂwΔ)
-
-# @free_parameters(TKEBCParameters, Cᵂu★, CᵂwΔ)
 
 free_parameter_options = Dict(
     "TKEParametersRiDependent" => TKEParametersRiDependent,

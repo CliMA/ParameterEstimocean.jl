@@ -41,7 +41,7 @@ export
        nelder_mead,
        l_bfgs,
        random_plugin,
-       gradient_descent,
+       gradient_descent
 
 relative_weight_options = Dict(
                 "all_e"     => Dict(:b => 0.0, :u => 0.0, :v => 0.0, :e => 1.0),

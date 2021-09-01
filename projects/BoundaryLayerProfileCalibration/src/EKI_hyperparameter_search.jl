@@ -4,7 +4,7 @@
 #
 
 function loss_reduction(calibration, validation, initial_parameters, kwargs)
-    params, losses, mean_vars = eki_unidimensional(calibration, initial_parameters; kwargs...)
+    params, losses, mean_vars = eki(calibration, initial_parameters; kwargs...)
     valid_loss_start = validation(initial_parameters)
     valid_loss_final = validation(params)
 

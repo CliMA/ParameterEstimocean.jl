@@ -3,10 +3,8 @@ module EKI
 using ..ParameterEstimation
 using OceanTurbulenceParameterEstimation.LossFunctions: mean_std
 
-export 
-    eki_unidimensional,
-    eki_multidimensional
+export eki
 
-include("eki_unidimensional.jl")
+include("run.jl")
 
 end #module

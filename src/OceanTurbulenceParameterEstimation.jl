@@ -5,8 +5,7 @@ using Oceananigans,
       Statistics,
       StaticArrays
 
-using Plots,
-      Printf,
+using Printf,
       FileIO,
       JLD2,
       OffsetArrays
@@ -48,9 +47,6 @@ export
     ModelsAndData,
     CATKEVerticalDiffusivityModel,
     ParameterEstimation
-
-# Temporary
-include("to_import.jl")
 
 include("ModelsAndData/ModelsAndData.jl")
 include("CATKEVerticalDiffusivityModel/CATKEVerticalDiffusivityModel.jl")

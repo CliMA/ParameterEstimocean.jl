@@ -1,3 +1,6 @@
+using OceanTurbulenceParameterEstimation.ModelsAndData: FreeParameters
+using OceanTurbulenceParameterEstimation.ParameterEstimation: DataSet
+
 field_guide = Dict(
     :u => (
         axis_args = (ylabel="z (m)", xlabel="U velocity (dm/s)"),
