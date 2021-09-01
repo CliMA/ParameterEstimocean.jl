@@ -1,10 +1,9 @@
 module ParameterEstimation
 
 using Distributions: delta
-using FileIO, Optim, Random, Dao,
+using FileIO, Optim, Random,
         Statistics, Distributions, LinearAlgebra,
         PyPlot, Optim, Printf, LaTeXStrings, CairoMakie
-using Dao: AdaptiveAlgebraicSchedule
 
 using ..OceanTurbulenceParameterEstimation
 using ..OceanTurbulenceParameterEstimation.ModelsAndData

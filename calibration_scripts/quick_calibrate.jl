@@ -1,16 +1,12 @@
 using OceanTurbulenceParameterEstimation
-using OceanTurbulenceParameterEstimation.CATKEVerticalDiffusivityModel
-using OceanTurbulenceParameterEstimation.ModelsAndData
-using OceanTurbulenceParameterEstimation.ParameterEstimation
-using Statistics, Plots, Dao, PyPlot, Dates
 
 p = Parameters(RelevantParameters = TKEParametersRiDependent,
                ParametersToOptimize = TKEParametersRiDependent)
 
 calibration = DataSet(FourDaySuite, p; relative_weights = relative_weight_options["all_but_e"],
-                                        ensemble_size = 10,
-                                        Nz = 64,
-                                        Δt = 10.0);
+                                       ensemble_size = 10,
+                                       Nz = 64,
+                                       Δt = 10.0);
 
 # validation = DataSet(merge(TwoDaySuite, SixDaySuite), p;
 #                                         relative_weights = relative_weight_options["all_but_e"],

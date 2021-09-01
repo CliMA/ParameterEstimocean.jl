@@ -3,8 +3,7 @@ module OceanTurbulenceParameterEstimation
 using Oceananigans,
       Oceananigans.Units,
       Statistics,
-      StaticArrays,
-      Dao
+      StaticArrays
 
 using Plots,
       Printf,

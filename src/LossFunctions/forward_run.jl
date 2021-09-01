@@ -2,10 +2,10 @@
 # Certain 
 
 mutable struct ModelTimeSeries{UU, VV, BΘ, EE}
-                     u :: UU
-                     v :: VV
-                     b :: BΘ
-                     e :: EE
+    u :: UU
+    v :: VV
+    b :: BΘ
+    e :: EE
 end
 
 ModelTimeSeries(grid, targets) = ModelTimeSeries([XFaceField(grid) for i = targets],
@@ -31,10 +31,11 @@ function model_time_series(parameters, model, data_batch, Δt)
     t = data_batch[1].t # times starting from zero
 
     simulation = Simulation(model; Δt=Δt, stop_time = 0.0)
+    pop!(simulation.diagnostics, :nan_checker)
 
     for i in 1:max_simulation_length
 
-        setproperty!(simulation, :stop_time, t[i])
+        simulation.stop_time = t[i]
         run!(simulation)
 
         for (dataindex, data, start, output) in zip(eachindex(data_batch), data_batch, starts, outputs)
@@ -45,10 +46,10 @@ function model_time_series(parameters, model, data_batch, Δt)
                 b_snapshot = output.b[i].data
                 e_snapshot = output.e[i].data
 
-                u_snapshot .= u.data[1:1,dataindex:dataindex,:]
-                v_snapshot .= v.data[1:1,dataindex:dataindex,:]
-                b_snapshot .= b.data[1:1,dataindex:dataindex,:]
-                e_snapshot .= e.data[1:1,dataindex:dataindex,:]
+                u_snapshot .= u.data[1:1, dataindex:dataindex, :]
+                v_snapshot .= v.data[1:1, dataindex:dataindex, :]
+                b_snapshot .= b.data[1:1, dataindex:dataindex, :]
+                e_snapshot .= e.data[1:1, dataindex:dataindex, :]
             end
         end
     end

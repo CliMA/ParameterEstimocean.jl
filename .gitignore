@@ -29,3 +29,5 @@ statprof/
 Results/
 *.png
 *.txt
+
+*.swp
