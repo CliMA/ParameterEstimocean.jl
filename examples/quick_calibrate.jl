@@ -1,5 +1,5 @@
 pushfirst!(LOAD_PATH, joinpath(@__DIR__, ".."))
-pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..", "projects", "BoundaryLayerProfileCalibration"))
+pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..", "projects", "OceanBoundaryLayerParameterizations", "src"))
 
 using OceanTurbulenceParameterEstimation
 using OceanTurbulenceParameterEstimation.ModelsAndData
@@ -7,7 +7,7 @@ using OceanTurbulenceParameterEstimation.ParameterEstimation
 using OceanTurbulenceParameterEstimation.LossFunctions
 using OceanTurbulenceParameterEstimation.CATKEVerticalDiffusivityModel
 
-using BoundaryLayerProfileCalibration
+using OceanBoundaryLayerParameterizations
 
 p = Parameters(
     RelevantParameters = TKEParametersRiDependent,  # Parameters that are used in CATKE

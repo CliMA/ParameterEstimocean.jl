@@ -1,4 +1,4 @@
-module BoundaryLayerProfileCalibration
+module OceanBoundaryLayerParameterizations
 
 pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..", ".."))
 
