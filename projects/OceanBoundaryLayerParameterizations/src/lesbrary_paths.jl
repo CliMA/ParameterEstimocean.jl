@@ -28,12 +28,13 @@ FourDaySuite = OrderedDict(
                            first = 13,
                             last = nothing),
 
-                     "4d_strong_wind_weak_cooling" => (
-                        filename = FourDaySuite_path*"strong_wind_weak_cooling/instantaneous_statistics.jld2",
-                        stressed = true,
-                        rotating = true,
-                           first = 13,
-                            last = nothing),
+                     # This file is currently corrupted (on tartarus? on engaging?) and may need to be regenerated     
+                     # "4d_strong_wind_weak_cooling" => (
+                     #    filename = FourDaySuite_path*"strong_wind_weak_cooling/instantaneous_statistics.jld2",
+                     #    stressed = true,
+                     #    rotating = true,
+                     #       first = 13,
+                     #        last = nothing),
 
                      "4d_weak_wind_strong_cooling" => (
                         filename = FourDaySuite_path*"weak_wind_strong_cooling/instantaneous_statistics.jld2",

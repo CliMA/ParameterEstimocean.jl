@@ -18,7 +18,7 @@ function (loss::LossFunction)(model, data_batch, θ::Vector{<:FreeParameters})
     evaluate!(loss, θ, model, data_batch)
 
     N_ens = ensemble_size(model)
-    error = zeros((N_ens,1))
+    error = zeros((N_ens, 1))
     
     for ts in loss.time_series
         data_error = ts.analysis(ts.data) / N_ens

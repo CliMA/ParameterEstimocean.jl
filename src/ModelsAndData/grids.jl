@@ -1,3 +1,5 @@
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
+
 ###
 ### Grids
 ###
