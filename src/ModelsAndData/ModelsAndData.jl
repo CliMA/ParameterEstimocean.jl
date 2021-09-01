@@ -24,10 +24,6 @@ export
        ensemble_size, batch_size,
        get_model_field,
 
-       # LESbrary_paths.jl
-       LESbrary,
-       TwoDaySuite, FourDaySuite, SixDaySuite, GeneralStrat,
-
        # grids.jl
        ColumnEnsembleGrid, XYZGrid,
 
@@ -61,7 +57,6 @@ ensemble_size(model::EnsembleModel) = model.grid.Nx
 batch_size(model::EnsembleModel) = model.grid.Ny
 
 include("file_wrangling.jl")
-include("lesbrary_paths.jl")
 include("grids.jl")
 include("data.jl")
 include("set_fields.jl")

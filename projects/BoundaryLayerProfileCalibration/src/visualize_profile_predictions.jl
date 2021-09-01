@@ -112,6 +112,8 @@ function visualize_realizations(model, data_batch, parameters::FreeParameters, Î
     save(filename, fig, px_per_unit = 2.0)
 end
 
+visualize_realizations(ds::DataSet, parameters) = visualize_realizations(ds.model, ds.data_batch, ds.loss.ParametersToOptimize(parameters), ds.loss.Î”t)
+
 function visualize_and_save(calibration, validation, parameters, directory; fields=[:b, :u, :v, :e])
 
         o = open_output_file(directory*"/result.txt")

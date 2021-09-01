@@ -19,19 +19,91 @@ function get_constraint(bounds)
     return no_constraint()
 end
 
+#
+# Forward map output
+#
+
+abstract type AbstractForwardMapOutput end
+
 """
-eki_unidimensional(loss::DataSet, initial_parameters;
-                                    set_prior_means_to_initial_parameters = true,
-                                    noise_level = 10^(-2.0),
-                                    N_ens = 10,
-                                    N_iter = 15,
-                                    stds_within_bounds = 0.6,
-                                    informed_priors=true
+In the unidimensional formulation of EKI, we let the forward map output G be the square root of the
+evaluation of the loss function on θ.
+"""
+struct SqrtLossForwardMapOutput{P} <: AbstractForwardMapOutput
+    prior :: P
+
+    SqrtLossForwardMapOutput(dataset, prior) = new(prior)
+end
+
+# Loss function minimum
+observation(G::SqrtLossForwardMapOutput) = [0.0]
+
+(G::SqrtLossForwardMapOutput)(u) = @. sqrt(loss(transform_unconstrained_to_constrained(G.prior, u)))
+
+"""
+In this multidimensional formulation of EKI, we let the forward map output G compute the concatenated final 
+profiles for the predicted `u`, `v`, `b`, and `e` at the final timestep. Thus the truth y corresponds to the 
+concatenated final profiles of the ground truth simulation data.
+"""
+struct ConcatenatedProfilesForwardMapOutput{DS, NF, PR} <: AbstractForwardMapOutput
+    dataset :: DS
+    normalize_functions :: NF
+    prior :: PR
+
+    ConcatenatedProfilesForwardMapOutput(dataset, prior) = new(dataset, get_normalization_functions(dataset), prior)
+end
+
+# Concatenated profiles at the final timestep
+function (G::ConcatenatedProfilesForwardMapOutput)(u)
+    all = []
+    parameters = transform_unconstrained_to_constrained(G.prior, u)
+    outputs = model_time_series(G.dataset, parameters)
+    data_batch = G.dataset.data_batch
+    for (dataindex, data, output) in zip(eachindex(data_batch), data_batch, outputs)
+        last = data.targets[end]
+        for fieldname in data.relevant_fields
+            model_field = getproperty(output, fieldname)[last]
+            zscore_normalize = G.normalize_functions[data.name][fieldname]
+            model_profile = zscore_normalize(interior(model_field))
+            push!(all, model_profile...)
+        end
+    end
+    return hcat(all...)
+end
+
+# Concatenated profiles at the final timestep according to 
+function observation(G::ConcatenatedProfilesForwardMapOutput)
+    y  = []
+    for data in G.dataset.data_batch
+        for fieldname in data.relevant_fields
+            last = data.targets[end]
+            data_field = getproperty(data, fieldname)[last]
+            zscore_normalize = normalize_function[data.name][fieldname]
+            obs = zscore_normalize(interior(data_field))
+            push!(y, obs...)
+        end
+    end
+    return y
+end
+
+"""
+    eki(dataset::DataSet, initial_parameters;
+                    set_prior_means_to_initial_parameters = true,
+                    noise_level = 10^(-2.0),
+                    N_iter = 15,
+                    stds_within_bounds = 0.6,
+                    informed_priors = false,
+                    forward_map_output_type = SqrtLossForwardMapOutput
+                )
 
 Given y = G(θ) + η where η ∼ N(0, Γy), Ensemble Kalman Inversion solves the inverse problem: to search for
 the unknown θ that minimize the distance between the observation y and the prediction G(θ).
-In this ``unidimensional" formulation of EKI, we let the forward map output G be the square root of the
-evaluation of the loss function on θ directly.
+The "forward map output" `G` can have many interpretations.
+The specific statistics that `G` computes have to be selected for each use 
+case to provide a concise summary of the complex model solution that contains the values that 
+we would most like to match to the corresponding truth values `y`. In the OSBL context, this summary 
+could be, for example, a vector of concatenated `u`, `v`, `b`, `e` profiles at all or some time steps
+ of the CATKE solution.
 
 Arguments
 - `loss`: function `f(θ::Vector)` that evaluates the loss on the training data
@@ -42,8 +114,7 @@ Keyword Arguments
 - `set_prior_means_to_initial_parameters`: (bool)   If `informed` is true, this argument sets whether
 to set the parameter prior means to the center of the parameter bounds or to given initial_parameters
 - `noise_level`: (Float) Observation noise level γy where Γy = γy*I
-- `N_ens`: (Int) Number of ensemble members, J
-- `N_iter`: (Int) Number of EKI iterations, Ns
+- `N_iter`: (Int) Number of EKI iterations
 - `stds_within_bounds`: (Float) If `informed` is `true`, sets the number of (prior) standard
 deviations `n` spanned by the parameter bounds where σᵢ = (θmaxᵢ - θminᵢ)/n.
 - `variance`: (Float) If `informed` is `false`, sets the prior variance γ.
@@ -57,20 +128,23 @@ deviations `n` spanned by the parameter bounds where σᵢ = (θmaxᵢ - θmin�
     - parameter priors are set to desired mean and variances according to `initial_parameters`
     and `stds_within_bounds`
 """
-function eki_unidimensional(loss::DataSet, initial_parameters;
-                                    set_prior_means_to_initial_parameters = true,
-                                    noise_level = 10^(-2.0),
-                                    N_iter = 15,
-                                    stds_within_bounds = 0.6,
-                                    informed_priors = false,
-                                    objective_scale_info = false
-                                    )
+function eki(dataset::DataSet, initial_parameters;
+                set_prior_means_to_initial_parameters = true,
+                noise_level = 10^(-2.0),
+                N_iter = 15,
+                stds_within_bounds = 0.6,
+                informed_priors = false,
+                forward_map_output_type = SqrtLossForwardMapOutput
+            )
 
-    N_ens = ensemble_size(loss.model)
+    N_ens = ensemble_size(dataset.model)
 
     bounds, prior_variances = get_bounds_and_variance(initial_parameters; stds_within_bounds = stds_within_bounds);
+
     prior_means = set_prior_means_to_initial_parameters ? [initial_parameters...] : mean.(bounds)
+
     prior_distns = [Parameterized(Normal([get_μ_σ²(prior_means[i], prior_variances[i], bounds[i])...]...)) for i in 1:length(bounds)]
+
     constraints = Array([Array([get_constraint(b),]) for b in bounds])
 
     if informed_priors
@@ -79,38 +153,35 @@ function eki_unidimensional(loss::DataSet, initial_parameters;
     end
 
     # Seed for pseudo-random number generator for reproducibility
-    rng_seed = 41
-    Random.seed!(rng_seed)
+    Random.seed!(41)
 
     # Define Prior
     prior_names = String.([propertynames(initial_parameters)...])
     prior = ParameterDistribution(prior_distns, constraints, prior_names)
 
-    # Loss Function Minimum
-    y_obs  = [0.0]
+    G = forward_map_output_type(dataset, prior)
+
+    # Loss function minimum
+    y  = observation(G) # (dim(G), 1) array
 
     # Independent noise for synthetic observations
-    n_obs = length(y_obs)
+    n_obs = length(y)
     Γy = noise_level * Matrix(I, n_obs, n_obs)
 
-    # We let Forward map be the square root of the loss function evaluation
-    G(u) = @. sqrt(loss(transform_unconstrained_to_constrained(prior, u)))
-
-    ℒ = loss(prior_means)
-    pr = norm((σ²s.^(-1/2)) .* μs)^2
-    obs_noise_level = ℒ / pr
-
-    if objective_scale_info
-        println("Approx. scale of L in first term (data misfit) of EKI obj:", ℒ)
-        println("Approx. scale of second term (prior misfit) of EKI obj:", pr)
-        println("For equal weighting of data misfit and prior misfit in EKI objective, let obs noise level be about:", obs_noise_level)
-    end
+    # ℒ = dataset(prior_means)
+    # pr = norm((σ²s.^(-1/2)) .* μs)^2
+    # obs_noise_level = ℒ / pr
+    # if objective_scale_info
+    #     println("Approx. scale of L in first term (data misfit) of EKI obj:", ℒ)
+    #     println("Approx. scale of second term (prior misfit) of EKI obj:", pr)
+    #     println("For equal weighting of data misfit and prior misfit in EKI objective, let obs noise level be about:", obs_noise_level)
+    # end
 
     # (dim(G), N_ens)
     initial_ensemble = construct_initial_ensemble(prior, N_ens;
                                                     rng_seed=rng_seed)
 
-    ekiobj = EnsembleKalmanProcess(initial_ensemble, y_obs, Γy, Inversion())
+    ekiobj = EnsembleKalmanProcess(initial_ensemble, observation, Γy, Inversion())
 
     for i = 1:N_iter
         params_i = get_u_final(ekiobj) # (N_params, N_ens) array

@@ -31,8 +31,6 @@ function eki_multidimensional(loss::LossFunction, ParametersToOptimize, initial_
 
 Given y = G(θ) + η where η ∼ N(0, Γy), Ensemble Kalman Inversion solves the inverse problem: to search for
 the unknown θ that minimize the distance between the observation y and the prediction G(θ).
-In this ``eki_multidimensional" formulation of EKI, we let the forward map output G compute the concatenated final 
-profiles for the predicted `u`, `v`, `b`, and `e` at the final timestep. Thus the truth y corresponds to the 
 
 Arguments
 - `loss`: function `f(θ::Vector)` that evaluates the loss on the training data
@@ -84,60 +82,11 @@ function eki_multidimensional(loss::LossFunction, ParametersToOptimize, initial_
     # Define Prior
     prior_names = String.([propertynames(initial_parameters)...])
     prior = ParameterDistribution(prior_distns, constraints, prior_names)
-    prior_mean = reshape(get_mean(prior),:)
-    prior_cov = get_cov(prior)
-
-    # z-score normalization for profiles
-    normalize_function = get_normalization_functions(loss)
-
-    # Loss Function Minimum
-    y_obs  = []
-    for simulation in loss.batch
-        data = simulation.data
-        coarse_data = CenterField(simulation.model.grid)
-
-        for field_name in simulation.loss.fields
-            if field_name != :e
-
-                data_field = getproperty(data, field_name)[end]
-                set!(coarse_data, data_field)
-
-                # zscore_normalize = normalize_function[field_name]
-                zscore_normalize = normalize_function[data.name][field_name]
-                truth_profile = zscore_normalize(parent(coarse_data.data))[profile_indices]
-                push!(y_obs, truth_profile...)
-            end
-        end
-    end
 
     n_obs = length(y_obs)
     # Independent noise for synthetic observations
     Γy = noise_level * Matrix(I, n_obs, n_obs)
     # noise = MvNormal(zeros(n_obs), Γy)
-
-    # We let Forward map = concatenated profiles at the final timestep
-    function G(u)
-        all = []
-        parameters = ParametersToOptimize(transform_unconstrained_to_constrained(prior, u))
-        for simulation in loss.batch
-            data = simulation.data
-            output = model_time_series(parameters, simulation.model, simulation.data)
-
-            # println(parameters)
-            # println(output.T[end])
-
-            for field_name in simulation.loss.fields
-                if field_name != :e
-                    model_field = getproperty(output, field_name)[end].data
-                    # zscore_normalize = normalize_function[field_name]
-                    zscore_normalize = normalize_function[data.name][field_name]
-                    model_profile = zscore_normalize(parent(model_field))[profile_indices]
-                    push!(all, model_profile...)
-                end
-            end
-        end
-        return all
-    end
 
     # println(normalize_function)
     # println("y_obs: $(y_obs)")

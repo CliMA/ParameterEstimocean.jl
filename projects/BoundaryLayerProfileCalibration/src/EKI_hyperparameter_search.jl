@@ -1,4 +1,3 @@
-using Plots
 
 #
 # Hyperparameter search
