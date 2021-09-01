@@ -2,6 +2,3 @@ name = "BoundaryLayerProfileCalibration"
 uuid = "f2a495e6-5045-4354-8fbd-e5ecaaea5da5"
 authors = ["Adeline Hillier <adelineh2000@gmail.com>"]
 version = "0.1.0"
-
-[deps]
-OceanTurbulenceParameterEstimation = "eca81dc5-87a6-4430-aec8-c76695404a43"
