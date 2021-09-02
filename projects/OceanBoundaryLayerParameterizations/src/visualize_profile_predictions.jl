@@ -119,7 +119,8 @@ visualize_realizations(ds::DataSet, parameters) = visualize_realizations(ds.mode
 
 function visualize_and_save(calibration, validation, parameters, directory; fields=[:b, :u, :v, :e])
 
-        o = open_output_file(directory*"/result.txt")
+        path = joinpath(directory, "results.txt")
+        o = open_output_file(path)
         write(o, "Training relative weights: $(calibration.relative_weights) \n")
         write(o, "Validation relative weights: $(validation.relative_weights) \n")
         write(o, "Training default parameters: $(validation.default_parameters) \n")

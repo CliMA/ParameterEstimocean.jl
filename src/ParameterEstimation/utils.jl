@@ -3,7 +3,7 @@
 
 function open_output_file(directory)
         isdir(directory) || mkpath(directory)
-        file = directory*"output.txt"
+        file = joinpath(directory, "output.txt")
         touch(file)
         o = open(file, "w")
         return o
