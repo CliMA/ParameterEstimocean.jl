@@ -3,7 +3,9 @@ module OceanBoundaryLayerParameterizations
 pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..", ".."))
 
 using OceanTurbulenceParameterEstimation
+using OceanTurbulenceParameterEstimation.LossFunctions: model_time_series
 using CairoMakie, LaTeXStrings, OrderedCollections
+using Oceananigans
 
 export
     # LESbrary_paths.jl
