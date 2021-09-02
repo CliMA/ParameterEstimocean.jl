@@ -22,7 +22,7 @@ end
 using ProgressBars
 
 """
-    eki(dataset::DataSet, initial_parameters;
+    eki(inverse_problem::InverseProblem, initial_parameters;
                     set_prior_means_to_initial_parameters = true,
                     noise_level = 10^(-2.0),
                     N_iter = 15,
@@ -63,7 +63,7 @@ deviations `n` spanned by the parameter bounds where σᵢ = (θmaxᵢ - θmin�
     - parameter priors are set to desired mean and variances according to `initial_parameters`
     and `stds_within_bounds`
 """
-function eki(dataset::DataSet, initial_parameters;
+function eki(inverse_problem::InverseProblem, initial_parameters;
                 set_prior_means_to_initial_parameters = true,
                 noise_level = 10^(-2.0),
                 N_iter = 15,
@@ -72,7 +72,7 @@ function eki(dataset::DataSet, initial_parameters;
                 forward_map_output_type = SqrtLossForwardMapOutput
             )
 
-    N_ens = ensemble_size(dataset.model)
+    N_ens = ensemble_size(inverse_problem.model)
 
     bounds, prior_variances = get_bounds_and_variance(initial_parameters; stds_within_bounds = stds_within_bounds);
 
@@ -94,7 +94,7 @@ function eki(dataset::DataSet, initial_parameters;
     prior_names = String.([propertynames(initial_parameters)...])
     prior = ParameterDistribution(prior_distns, constraints, prior_names)
 
-    G = forward_map_output_type(dataset, prior)
+    G = forward_map_output_type(inverse_problem, prior)
 
     # Loss function minimum
     y  = observation(G) # (dim(G), 1) array
@@ -103,7 +103,7 @@ function eki(dataset::DataSet, initial_parameters;
     n_obs = length(y)
     Γy = noise_level * Matrix(I, n_obs, n_obs)
 
-    # ℒ = dataset(prior_means)
+    # ℒ = inverse_problem(prior_means)
     # pr = norm((σ²s.^(-1/2)) .* μs)^2
     # obs_noise_level = ℒ / pr
     # if objective_scale_info

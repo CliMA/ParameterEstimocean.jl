@@ -17,14 +17,15 @@ parameters = Parameters(
     ParametersToOptimize = StabilityFnParameters    # Subset of RelevantParameters that we want to optimize
 )
 
-# DataSet represents the Model, Data, and loss function
+# InverseProblem represents the model, data, loss function, and parameters
 #
 # Other names might be
 #
 # - ModelDataComparison
 # calibrate(::ModelDataComparison)
 # validate(::ModelDataComparison)
-calibration = DataSet(FourDaySuite, # "Truth data" for model calibration
+# - CalibrationCase
+calibration = InverseProblem(FourDaySuite, # "Truth data" for model calibration
                       parameters;   # Model parameters 
                       # Loss function parameters
                       relative_weights = relative_weight_options["all_but_e"],
@@ -33,7 +34,7 @@ calibration = DataSet(FourDaySuite, # "Truth data" for model calibration
                       Nz = 16,
                       Δt = 30.0)
 
-validation = DataSet(merge(TwoDaySuite, SixDaySuite), p;
+validation = InverseProblem(merge(TwoDaySuite, SixDaySuite), p;
                      relative_weights = relative_weight_options["all_but_e"],
                      ensemble_size = 10,
                      Nz = 64,
@@ -52,7 +53,7 @@ l0 = calibration()
 lθ = calibration(θ)
 
 # Output files/figures
-directory = joinpath(pwd(), "quick_calibrate_results")
+directory = joinpath(pwd(), "quick_calibrate")
 
 # Example parameters
 θ = calibration.default_parameters
@@ -61,18 +62,16 @@ directory = joinpath(pwd(), "quick_calibrate_results")
 output = model_time_series(calibration, θ)
 
 # Run the model forward with parameters θ and visualize the solution compared to the truth
-visualize_realizations(calibration, θ; filename = "example_quick_calibrate.png")
+visualize_realizations(calibration, θ; filename = "visualize_realizations_default_parameters.png")
 
 # Runs `visualize_realizations` and records a summary of the calibration results in a `result.txt` file.
 visualize_and_save(calibration, validation, default_parameters, directory)
 
-# Use EKI to calibrate a one-dimensional loss function
-eki(loss::DataSet, initial_parameters;
+# Use EKI to calibrate the model parameters
+eki(loss::InverseProblem, initial_parameters;
                    noise_level = 10^(-2.0),
-                   N_ens = 10,
                    N_iter = 15,
                    stds_within_bounds = 0.6,
-                   informed_priors = false,
-                   objective_scale_info = false)
+                   informed_priors = false)
 
 plot_prior_variance_and_obs_noise_level(calibration, validation, initial_parameters, directory; vrange=0.40:0.025:0.90, nlrange=-2.5:0.1:0.5)

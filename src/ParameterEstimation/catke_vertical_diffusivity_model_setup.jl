@@ -1,6 +1,6 @@
 
 
-function DataSet(LESdata, p::Parameters{UnionAll}; 
+function InverseProblem(LESdata, p::Parameters{UnionAll}; 
                                 architecture = CPU(),
                             relative_weights = Dict(:b => 1.0, :u => 1.0, :v => 1.0, :e => 1.0),
                                ensemble_size = 1, 
@@ -23,6 +23,6 @@ function DataSet(LESdata, p::Parameters{UnionAll};
 
     default_parameters = custom_defaults(model, p.ParametersToOptimize)
 
-    return DataSet(td_batch, model, relative_weights, loss, default_parameters)
+    return InverseProblem(td_batch, model, relative_weights, loss, default_parameters)
 
 end

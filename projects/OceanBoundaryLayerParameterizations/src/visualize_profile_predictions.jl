@@ -1,5 +1,5 @@
 using OceanTurbulenceParameterEstimation.ModelsAndData: FreeParameters
-using OceanTurbulenceParameterEstimation.ParameterEstimation: DataSet
+using OceanTurbulenceParameterEstimation.ParameterEstimation: InverseProblem
 
 field_guide = Dict(
     :u => (
@@ -115,7 +115,7 @@ function visualize_realizations(model, data_batch, parameters::FreeParameters, �
     save(filename, fig, px_per_unit = 2.0)
 end
 
-visualize_realizations(ds::DataSet, parameters) = visualize_realizations(ds.model, ds.data_batch, ds.loss.ParametersToOptimize(parameters), ds.loss.Δt)
+visualize_realizations(ip::InverseProblem, parameters) = visualize_realizations(ip.model, ip.data_batch, ip.loss.ParametersToOptimize(parameters), ip.loss.Δt)
 
 function visualize_and_save(calibration, validation, parameters, directory; fields=[:b, :u, :v, :e])
 
@@ -142,10 +142,10 @@ function visualize_and_save(calibration, validation, parameters, directory; fiel
 
         parameters = ce.parameters.ParametersToOptimize(parameters)
 
-        for dataset in [calibration, validation]
+        for inverse_problem in [calibration, validation]
 
-            all_data = dataset.data_batch
-            model = dataset.model
+            all_data = inverse_problem.data_batch
+            model = inverse_problem.model
             set!(model, parameters)
 
             for data_length in Set(length.(all_data))
@@ -153,7 +153,7 @@ function visualize_and_save(calibration, validation, parameters, directory; fiel
                 data_batch = [d for d in all_data if length(d) == data_length]
                 days = data_batch[1].t[end]/86400
 
-                visualize_realizations(model, data_batch, parameters, dataset.Δt;
+                visualize_realizations(model, data_batch, parameters, inverse_problem.Δt;
                                                  fields = fields,
                                                  filename = joinpath(directory, "$(days)_day_simulations.png"))
             end

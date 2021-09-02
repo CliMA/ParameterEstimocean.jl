@@ -36,7 +36,7 @@ evaluation of the loss function on θ.
 """
 struct SqrtLossForwardMapOutput{P} <: AbstractForwardMapOutput
     prior :: P
-    SqrtLossForwardMapOutput(dataset, prior::P) where P = new{P}(prior)
+    SqrtLossForwardMapOutput(inverse_problem, prior::P) where P = new{P}(prior)
 end
 
 # Loss function minimum
@@ -49,15 +49,15 @@ In this multidimensional formulation of EKI, we let the forward map output G com
 profiles for the predicted `u`, `v`, `b`, and `e` at the final timestep. Thus the truth y corresponds to the 
 concatenated final profiles of the ground truth simulation data.
 """
-struct ConcatenatedProfilesForwardMapOutput{DS, NF, PR} <: AbstractForwardMapOutput
-    dataset :: DS
+struct ConcatenatedProfilesForwardMapOutput{IP, NF, PR} <: AbstractForwardMapOutput
+    inverse_problem :: IP
     normalize_functions :: NF
     prior :: PR
 
-    function ConcatenatedProfilesForwardMapOutput(dataset::DS, prior::PR) where {DS, PR}
-        normalize_functions = get_normalization_functions(dataset)
+    function ConcatenatedProfilesForwardMapOutput(inverse_problem::IP, prior::PR) where {IP, PR}
+        normalize_functions = get_normalization_functions(inverse_problem)
         NF = typeof(normalize_functions)
-        return new{DS, NF, PR}(dataset, normalize_functions, prior)
+        return new{IP, NF, PR}(inverse_problem, normalize_functions, prior)
     end
 end
 
@@ -65,8 +65,8 @@ end
 function (G::ConcatenatedProfilesForwardMapOutput)(u)
     all = []
     parameters = transform_unconstrained_to_constrained(G.prior, u)
-    outputs = model_time_series(G.dataset, parameters)
-    data_batch = G.dataset.data_batch
+    outputs = model_time_series(G.inverse_problem, parameters)
+    data_batch = G.inverse_problem.data_batch
     for (dataindex, data, output) in zip(eachindex(data_batch), data_batch, outputs)
         last = data.targets[end]
         for fieldname in data.relevant_fields
@@ -82,7 +82,7 @@ end
 # Concatenated profiles at the final timestep according to 
 function observation(G::ConcatenatedProfilesForwardMapOutput)
     y  = []
-    for data in G.dataset.data_batch
+    for data in G.inverse_problem.data_batch
         for fieldname in data.relevant_fields
             last = data.targets[end]
             data_field = getproperty(data, fieldname)[last]

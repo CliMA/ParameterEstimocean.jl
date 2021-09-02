@@ -28,7 +28,7 @@ export
        model_time_series,
 
        # catke_vertical_diffusivity_model_setup.jl
-       DataSet,
+       InverseProblem,
 
        # utils.jl
        open_output_file,
@@ -57,7 +57,7 @@ Base.@kwdef struct Parameters{T <: UnionAll}
     ParametersToOptimize::T
 end
 
-struct DataSet{DB, PM, RW, LF, FP}
+struct InverseProblem{DB, PM, RW, LF, FP}
         data_batch::DB
         model::PM
         relative_weights::RW # field weights
@@ -65,9 +65,9 @@ struct DataSet{DB, PM, RW, LF, FP}
         default_parameters::FP
 end
 
-(ds::DataSet)(θ=ds.default_parameters) = ds.loss(ds.model, ds.data_batch, θ)
+(ip::InverseProblem)(θ=ip.default_parameters) = ip.loss(ip.model, ip.data_batch, θ)
 
-function validation_loss_reduction(calibration::DataSet, validation::DataSet, parameters::FreeParameters)
+function validation_loss_reduction(calibration::InverseProblem, validation::InverseProblem, parameters::FreeParameters)
     validation_loss = validation.loss(parameters)
     calibration_loss = calibration.loss(parameters)
 
@@ -86,6 +86,6 @@ include("utils.jl")
 include("catke_vertical_diffusivity_model_setup.jl")
 include("EKI/EKI.jl")
 
-model_time_series(ds::DataSet, parameters) = model_time_series(ds.loss.ParametersToOptimize(parameters), ds.model, ds.data_batch, ds.loss.Δt)
+model_time_series(ip::InverseProblem, parameters) = model_time_series(ip.loss.ParametersToOptimize(parameters), ip.model, ip.data_batch, ip.loss.Δt)
 
 end # module
