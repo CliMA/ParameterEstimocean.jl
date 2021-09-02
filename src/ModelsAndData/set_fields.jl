@@ -1,4 +1,3 @@
-
 include("set_fields_utils.jl")
 
 # Set interior of field `c` to values of `data`
@@ -11,6 +10,9 @@ function set!(c::AbstractField, data::AbstractArray)
     c .= d
 
 end
+
+extent(grid::AbstractGrid) = (grid.Lx, grid.Ly, grid.Lz)
+horizontal_size(grid::AbstractGrid) = (grid.Nx, grid.Ny)
 
 # Set two fields to one another... some shenanigans
 #

@@ -25,11 +25,10 @@ function ColumnEnsembleGrid(datapath; size = (1,1,nothing))
     Nz = isnothing(size[3]) ? Nz_ : size[3]
 
     @assert Nz <=  Nz_ "Desired grid resolution exceeds the simulation resolution!"
-
     sz = ColumnEnsembleSize(Nz=Nz, ensemble=size[1:2])
     halo = ColumnEnsembleSize(Nz=Nz)
-
     grid = RegularRectilinearGrid(size=sz, halo=halo, z=(-Lz_, 0), topology=(Flat, Flat, Bounded))
 
     return grid
 end
+

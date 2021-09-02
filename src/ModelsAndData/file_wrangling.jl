@@ -1,7 +1,7 @@
 function get_iterations(datapath)
     file = jldopen(datapath, "r")
     iters = parse.(Int, keys(file["timeseries/t"]))
-    sort!(iters)
+    sort!(iters) # We always want iterations to be sorted from small to large
     close(file)
     return iters
 end
