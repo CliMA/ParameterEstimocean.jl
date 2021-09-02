@@ -17,7 +17,7 @@ s = ArgParseSettings()
         default = "all_but_e"
         arg_type = String
     "--free_parameters"
-        default = "TKEParametersRiDependent"
+        default = "CATKEParametersRiDependent"
         arg_type = String
 end
 args = parse_args(s)
@@ -26,7 +26,7 @@ free_parameter_type = args["free_parameters"]
 =#
 
 relative_weight_option = "all_but_e"
-free_parameter_type = "TKEParametersRiDependent"
+free_parameter_type = "CATKEParametersRiDependent"
 
 relative_weight = Dict(:T => 1.0, :U => 0.5, :V => 0.5, :e => 0.0)
 

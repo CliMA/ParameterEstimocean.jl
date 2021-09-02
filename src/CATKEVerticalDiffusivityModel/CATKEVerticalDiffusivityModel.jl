@@ -18,10 +18,10 @@ using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalD
                 MixingLength, SurfaceTKEFlux, VerticallyImplicitTimeDiscretization
 using Oceananigans.Architectures
 
-export TKEParametersRiDependent,
-       TKEParametersRiDependentConvectiveAdjustment,
-       TKEParametersRiIndependent,
-       TKEParametersRiIndependentConvectiveAdjustment,
+export CATKEParametersRiDependent,
+       CATKEParametersRiDependentConvectiveAdjustment,
+       CATKEParametersRiIndependent,
+       CATKEParametersRiIndependentConvectiveAdjustment,
 
        custom_defaults,
        parameter_latex_guide,

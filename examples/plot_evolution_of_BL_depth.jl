@@ -70,7 +70,7 @@ end
 
 LESdata = GeneralStrat
 
-ParametersToOptimize = TKEParametersRiDependent
+ParametersToOptimize = CATKEParametersRiDependent
 RelevantParameters = ParametersToOptimize
 
 params = Parameters(RelevantParameters = RelevantParameters,

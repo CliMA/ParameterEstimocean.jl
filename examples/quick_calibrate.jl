@@ -13,7 +13,7 @@ using OceanBoundaryLayerParameterizations
 StabilityFnParameters = @free_parameters CᴷRiʷ, CᴷRiᶜ, Cᴷu⁻, Cᴷuʳ, Cᴷc⁻, Cᴷcʳ, Cᴷe⁻, Cᴷeʳ,
 
 parameters = Parameters(
-    RelevantParameters = TKEParametersRiDependent,  # Parameters that are used in CATKE
+    RelevantParameters = CATKEParametersRiDependent,  # Parameters that are used in CATKE
     ParametersToOptimize = StabilityFnParameters    # Subset of RelevantParameters that we want to optimize
 )
 

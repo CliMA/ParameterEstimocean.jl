@@ -110,53 +110,53 @@ parameter_guide = Dict(
 )
 
 # For scenarios involving stresses
-@free_parameters(TKEParametersRiDependent,
+@free_parameters(CATKEParametersRiDependent,
                  Cᵟu, Cᵟc, Cᵟe,
                  CᴷRiʷ, CᴷRiᶜ,
                  Cᴷu⁻, Cᴷuʳ, Cᴷc⁻, Cᴷcʳ, Cᴷe⁻, Cᴷeʳ,
                  Cᴰ, Cᴸᵇ, Cᵂu★, CᵂwΔ)
 
-@free_parameters(TKEParametersRiIndependent,
+@free_parameters(CATKEParametersRiIndependent,
                  Cᵟu, Cᵟc, Cᵟe,
                  Cᴷu⁻, Cᴷc⁻, Cᴷe⁻,
                  Cᴰ, Cᴸᵇ, Cᵂu★, CᵂwΔ)
 
-@free_parameters(TKEParametersRiDependentConvectiveAdjustment,
+@free_parameters(CATKEParametersRiDependentConvectiveAdjustment,
                  Cᵟu, Cᵟc, Cᵟe,
                  CᴷRiʷ, CᴷRiᶜ,
                  Cᴬu, Cᴬc, Cᴬe,
                  Cᴷu⁻, Cᴷuʳ, Cᴷc⁻, Cᴷcʳ, Cᴷe⁻, Cᴷeʳ,
                  Cᴰ, Cᴸᵇ, Cᵂu★, CᵂwΔ)
 
-@free_parameters(TKEParametersRiIndependentConvectiveAdjustment,
+@free_parameters(CATKEParametersRiIndependentConvectiveAdjustment,
                  Cᵟu, Cᵟc, Cᵟe,
                  Cᴷu⁻, Cᴷc⁻, Cᴷe⁻,
                  Cᴬu, Cᴬc, Cᴬe,
                  Cᴰ, Cᴸᵇ, Cᵂu★, CᵂwΔ)
 
 free_parameter_options = Dict(
-    "TKEParametersRiDependent" => TKEParametersRiDependent,
+    "CATKEParametersRiDependent" => CATKEParametersRiDependent,
 #     "TKEFreeConvection" => TKEFreeConvection,
 #     "TKEBCParameters" => TKEBCParameters,
 )
 
 parameter_specific_kwargs = Dict(
-   TKEParametersRiDependent => (mixing_length = MixingLength(Cᴬu=0.0, Cᴬc=0.0, Cᴬe=0.0),
+   CATKEParametersRiDependent => (mixing_length = MixingLength(Cᴬu=0.0, Cᴬc=0.0, Cᴬe=0.0),
                                ),
 
-   TKEParametersRiIndependent => (mixing_length = MixingLength(Cᴷuʳ=0.0, Cᴷcʳ=0.0, Cᴷeʳ=0.0,
+   CATKEParametersRiIndependent => (mixing_length = MixingLength(Cᴷuʳ=0.0, Cᴷcʳ=0.0, Cᴷeʳ=0.0,
                                                                 Cᴬu=0.0, Cᴬc=0.0, Cᴬe=0.0),
                                ),
 
-   TKEParametersRiDependentConvectiveAdjustment => (mixing_length = MixingLength(),
+   CATKEParametersRiDependentConvectiveAdjustment => (mixing_length = MixingLength(),
                                ),
 
-   TKEParametersRiIndependentConvectiveAdjustment => (mixing_length = MixingLength(Cᴷuʳ=0.0, Cᴷcʳ=0.0, Cᴷeʳ=0.0),
+   CATKEParametersRiIndependentConvectiveAdjustment => (mixing_length = MixingLength(Cᴷuʳ=0.0, Cᴷcʳ=0.0, Cᴷeʳ=0.0),
                                ),
 )
 
 override_defaults = Dict(
-#     TKEParametersRiDependent => [0.6487, 1.9231, 0.2739, 5.7999, 0.2573, 4.8146, 0.2941, 3.7099, 3.0376, 1.6998, 3.5992, 1.8507],
+#     CATKEParametersRiDependent => [0.6487, 1.9231, 0.2739, 5.7999, 0.2573, 4.8146, 0.2941, 3.7099, 3.0376, 1.6998, 3.5992, 1.8507],
 )
 
 set_if_present!(obj, name, field) = name ∈ propertynames(obj) && setproperty!(obj, name, field)
