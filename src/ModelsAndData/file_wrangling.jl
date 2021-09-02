@@ -8,13 +8,18 @@ end
 
 function get_times(datapath)
     iters = get_iterations(datapath)
-    t = zeros(length(iters))
+
+    times = zeros(length(iters))
+
     jldopen(datapath, "r") do file
         for (i, iter) in enumerate(iters)
-            t[i] = file["timeseries/t/$iter"]
+            times[i] = file["timeseries/t/$iter"]
         end
     end
-    return t
+
+    @assert issorted(times) "Simulation data i"
+
+    return times
 end
 
 function get_parameter(filename, group, parameter_name, default=nothing)

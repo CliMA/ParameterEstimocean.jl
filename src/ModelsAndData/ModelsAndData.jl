@@ -22,12 +22,7 @@ export
        initialize_forward_run!,
        EnsembleModel, EnsembleGrid,
        ensemble_size, batch_size,
-    #    getproperty,
        get_model_field,
-
-       # LESbrary_paths.jl
-       LESbrary,
-       TwoDaySuite, FourDaySuite, SixDaySuite, GeneralStrat,
 
        # grids.jl
        ColumnEnsembleGrid, XYZGrid,
@@ -55,16 +50,6 @@ function get_model_field(m::AbstractModel, p)
     @error "$p is not a valid field name"
 end
 
-# function Base.getproperty(m::AbstractModel, ::Val{p}) where p
-
-#     p ∈ propertynames(m.tracers) && return m.tracers[p]
-
-#     p ∈ propertynames(m.velocities) && return m.velocities[p]
-
-#     return getproperty(m, p)
-
-# end
-
 const EnsembleGrid = RegularRectilinearGrid{<:Any, Flat, Flat, Bounded}
 const EnsembleModel = HydrostaticFreeSurfaceModel{TS, E, A, S, <:EnsembleGrid, T, V, B, R, F, P, U, C, Φ, K, AF} where {TS, E, A, S, T, V, B, R, F, P, U, C, Φ, K, AF}
 
@@ -72,7 +57,6 @@ ensemble_size(model::EnsembleModel) = model.grid.Nx
 batch_size(model::EnsembleModel) = model.grid.Ny
 
 include("file_wrangling.jl")
-include("lesbrary_paths.jl")
 include("grids.jl")
 include("data.jl")
 include("set_fields.jl")

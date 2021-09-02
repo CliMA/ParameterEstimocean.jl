@@ -5,8 +5,7 @@ using Oceananigans,
       Statistics,
       StaticArrays
 
-using Plots,
-      Printf,
+using Printf,
       FileIO,
       JLD2,
       OffsetArrays
@@ -33,10 +32,6 @@ export
     FourDaySuite,
     SixDaySuite,
     GeneralStrat,
-
-    # ParameterEstimation
-    visualize_realizations,
-    visualize_and_save,
 
     # LossFunctions
     evaluate!,

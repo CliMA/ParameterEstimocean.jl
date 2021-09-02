@@ -41,11 +41,7 @@ export
        nelder_mead,
        l_bfgs,
        random_plugin,
-       gradient_descent,
-
-       # visualization.jl
-       visualize_realizations,
-       visualize_and_save
+       gradient_descent
 
 relative_weight_options = Dict(
                 "all_e"     => Dict(:b => 0.0, :u => 0.0, :v => 0.0, :e => 1.0),
@@ -89,9 +85,7 @@ end
 include("utils.jl")
 include("catke_vertical_diffusivity_model_setup.jl")
 include("EKI/EKI.jl")
-include("visualization.jl")
 
-model_time_series(ds::DataSet, parameters) = model_time_series(parameters, ds.model, ds.data_batch, ds.loss.Δt)
-visualize_realizations(ds::DataSet, parameters) = visualize_realizations(ds.model, ds.data_batch, parameters, ds.loss.Δt)
+model_time_series(ds::DataSet, parameters) = model_time_series(ds.loss.ParametersToOptimize(parameters), ds.model, ds.data_batch, ds.loss.Δt)
 
 end # module

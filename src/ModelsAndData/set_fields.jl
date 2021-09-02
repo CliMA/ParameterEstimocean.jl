@@ -1,4 +1,3 @@
-
 include("set_fields_utils.jl")
 
 # Set interior of field `c` to values of `data`
@@ -122,7 +121,6 @@ end
 Set columns of each field in `model` to the model profile columns in `data_batch`, 
 where every field column in `model` that corresponds to the ith `TruthData` object in `data_batch`
 is set to the field column in `data_batch[i]` at time index `time_indices[i]`.
-
 """
 function set!(model::EnsembleModel,
               data_batch::BatchTruthData, time_index::Vector)
