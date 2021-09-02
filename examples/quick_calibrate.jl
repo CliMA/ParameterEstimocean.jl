@@ -9,23 +9,36 @@ using OceanTurbulenceParameterEstimation.CATKEVerticalDiffusivityModel
 
 using OceanBoundaryLayerParameterizations
 
-p = Parameters(
+parameters = Parameters(
     RelevantParameters = TKEParametersRiDependent,  # Parameters that are used in CATKE
     ParametersToOptimize = TKEParametersRiDependent # Subset of RelevantParameters that we want to optimize
 )
 
-calibration = DataSet(FourDaySuite, p; relative_weights = relative_weight_options["all_but_e"],
-                                       ensemble_size = 10,
-                                       Nz = 64,
-                                       Δt = 10.0)
+# DataSet represents the Model, Data, and loss function
+#
+# Other names might be
+#
+# - ModelDataComparison
+# calibrate(::ModelDataComparison)
+# validate(::ModelDataComparison)
+calibration = DataSet(FourDaySuite, # "Truth data" for model calibration
+                      parameters;   # Model parameters 
+                      # Loss function parameters
+                      relative_weights = relative_weight_options["all_but_e"],
+                      # Model (hyper)parameters
+                      ensemble_size = 10,
+                      Nz = 16,
+                      Δt = 30.0)
 
 #=
 
+
+
 validation = DataSet(merge(TwoDaySuite, SixDaySuite), p;
-                                        relative_weights = relative_weight_options["all_but_e"],
-                                        ensemble_size = 10,
-                                        Nz = 64,
-                                        Δt = 10.0);
+                     relative_weights = relative_weight_options["all_but_e"],
+                     ensemble_size = 10,
+                     Nz = 64,
+                     Δt = 10.0);
 
 # Loss on default parameters
 l0 = calibration()
@@ -50,6 +63,7 @@ visualize_realizations(calibration, θ)
 
 visualize_and_save(calibration, validation, default_parameters, pwd())
 
+# Use EKI to calibrate a one-dimensional loss function
 eki_unidimensional(loss::DataSet, initial_parameters;
                    noise_level = 10^(-2.0),
                    N_ens = 10,

@@ -33,10 +33,6 @@ export
     SixDaySuite,
     GeneralStrat,
 
-    # ParameterEstimation
-    visualize_realizations,
-    visualize_and_save,
-
     # LossFunctions
     evaluate!,
     TimeSeriesAnalysis,
