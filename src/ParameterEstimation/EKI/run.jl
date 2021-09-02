@@ -19,6 +19,8 @@ function get_constraint(bounds)
     return no_constraint()
 end
 
+using ProgressBars
+
 """
     eki(dataset::DataSet, initial_parameters;
                     set_prior_means_to_initial_parameters = true,
@@ -116,7 +118,8 @@ function eki(dataset::DataSet, initial_parameters;
 
     ekiobj = EnsembleKalmanProcess(initial_ensemble, observation, Γy, Inversion())
 
-    for i = 1:N_iter
+    @info "Iterative parameter updates in progress"
+    for i = ProgressBar(1:N_iter)
         params_i = get_u_final(ekiobj) # (N_params, N_ens) array
         g_ens = G(params_i) # (dim(G), N_ens)
         update_ensemble!(ekiobj, g_ens)
