@@ -15,7 +15,7 @@ export
     plot_observation_noise_level, plot_prior_variance_and_obs_noise_level,
 
     # visualize_profile_predictions.jl
-    visualize_realizations,
+    visualize_predictions,
     visualize_and_save
 
 include("lesbrary_paths.jl")

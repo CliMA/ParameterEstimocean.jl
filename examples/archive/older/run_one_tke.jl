@@ -39,6 +39,6 @@ chain = calibration.markov_chains[end]
    C★ = optimal(chain).param
 
 close("all")
-viz_fig, viz_axs = visualize_realizations(model, data, loss.targets[[1, end]], C★,
+viz_fig, viz_axs = visualize_predictions(model, data, loss.targets[[1, end]], C★,
                                            fields = (:T, :e),
                                           figsize = (16, 6))

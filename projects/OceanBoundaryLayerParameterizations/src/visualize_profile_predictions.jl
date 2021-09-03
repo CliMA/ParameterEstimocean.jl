@@ -2,13 +2,13 @@ using OceanTurbulenceParameterEstimation.Models: FreeParameters
 using OceanTurbulenceParameterEstimation.ParameterEstimation: InverseProblem
 
 """
-    visualize_realizations(data, model, params...)
+    visualize_predictions(data, model, params...)
 
 Visualize the data alongside several realizations of `column_model`
 for each set of parameters in `params`.
 """
-function visualize_realizations(model, data_batch, parameters::FreeParameters, Δt;
-                                                 fields = [:b, :u, :v, :e],
+function visualize_predictions(model, data_batch, parameters::FreeParameters, Δt;
+                                                 fields = [:u, :v, :b, :e],
                                                  filename = "realizations.png"
                                 )
         
@@ -73,7 +73,7 @@ function visualize_realizations(model, data_batch, parameters::FreeParameters, �
                 times = @. round((data.t[snapshots] - data.t[snapshots[1]]) / 86400, sigdigits=2)
 
                 legendlabel(time) = ["LES, t = $time days", "Model, t = $time days"]
-                Legend(fig[1,3:4], lins, vcat([legendlabel(time) for time in times]...), nbanks=2)
+                Legend(fig[1,2:3], lins, vcat([legendlabel(time) for time in times]...), nbanks=2)
                 lins = []
             else
                 
@@ -85,7 +85,7 @@ function visualize_realizations(model, data_batch, parameters::FreeParameters, �
     save(filename, fig, px_per_unit = 2.0)
 end
 
-visualize_realizations(ip::InverseProblem, parameters; kwargs...) = visualize_realizations(ip.model, ip.data_batch, ip.loss.ParametersToOptimize(parameters), ip.loss.Δt; kwargs...)
+visualize_predictions(ip::InverseProblem, parameters; kwargs...) = visualize_predictions(ip.model, ip.data_batch, ip.loss.ParametersToOptimize(parameters), ip.loss.Δt; kwargs...)
 
 function visualize_and_save(calibration, validation, parameters, directory; fields=[:b, :u, :v, :e])
 
@@ -123,7 +123,7 @@ function visualize_and_save(calibration, validation, parameters, directory; fiel
                 data_batch = [d for d in all_data if length(d) == data_length]
                 days = data_batch[1].t[end]/86400
 
-                visualize_realizations(model, data_batch, parameters, inverse_problem.Δt;
+                visualize_predictions(model, data_batch, parameters, inverse_problem.Δt;
                                                  fields = fields,
                                                  filename = joinpath(directory, "$(days)_day_simulations.png"))
             end

@@ -53,7 +53,7 @@ write(o, "Calibrating $(tdata.name) scenario \n")
 @info "Output statistics will be written to: $(file)"
 
 function saveplot(params, name)
-        p = visualize_realizations(model, tdata, 1:180:length(tdata), params)
+        p = visualize_predictions(model, tdata, 1:180:length(tdata), params)
         PyPlot.savefig(directory*name*".png")
 end
 
@@ -158,7 +158,7 @@ for test_file in to_test
 
         write(o, "$(tdata.name): $(loss(params)) \n")
 
-        p = visualize_realizations(model_test, tdata_test, 1:90:length(tdata_test), best_parameters)
+        p = visualize_predictions(model_test, tdata_test, 1:90:length(tdata_test), best_parameters)
         PyPlot.savefig(directory*"Test/$(tdata_test.name).png")
 end
 

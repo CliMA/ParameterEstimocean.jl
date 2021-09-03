@@ -1,7 +1,7 @@
 ## Optimizing TKE parameters
 using TKECalibration2021
 using Plots, PyPlot
-using OceanTurbulenceParameterEstimation: visualize_realizations
+using OceanTurbulenceParameterEstimation: visualize_predictions
 using Dao
 
 LESdata = FourDaySuite # Calibration set
@@ -106,7 +106,7 @@ for LEScase in values(LESdata)
         case_loss, _ = custom_tke_calibration(LEScase, RelevantParameters, ParametersToOptimize)
         write(o, "$(case_loss.data.name): $(case_loss(best_parameters)) \n")
 
-        p = visualize_realizations(case_loss.model, case_loss.data, 1:180:length(case_loss.data), best_parameters)
+        p = visualize_predictions(case_loss.model, case_loss.data, 1:180:length(case_loss.data), best_parameters)
         # PyPlot.savefig(directory*"Test/$(case_loss.data.name).png")
         PyPlot.savefig(directory*"Train/$(case_loss.data.name).png")
 end
@@ -117,7 +117,7 @@ for LEScase in values(LESdata_validation)
         case_loss, _ = custom_tke_calibration(LEScase, RelevantParameters, ParametersToOptimize)
         write(o, "$(case_loss.data.name): $(case_loss(best_parameters)) \n")
 
-        p = visualize_realizations(case_loss.model, case_loss.data, 1:180:length(case_loss.data), best_parameters)
+        p = visualize_predictions(case_loss.model, case_loss.data, 1:180:length(case_loss.data), best_parameters)
         PyPlot.savefig(directory*"Test/$(case_loss.data.name).png")
 end
 

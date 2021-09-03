@@ -59,10 +59,10 @@ directory = joinpath(pwd(), "quick_calibrate")
 output = model_time_series(calibration, θ)
 
 # Run the model forward with parameters θ and visualize the solution compared to the truth
-visualize_realizations(calibration, θ; filename = "visualize_realizations_default_parameters.png")
+visualize_predictions(calibration, θ; filename = "visualize_predictions_default_parameters.png")
 
-# Runs `visualize_realizations` and records a summary of the calibration results in a `result.txt` file.
-visualize_and_save(calibration, validation, default_parameters, directory)
+# Runs `visualize_predictions` and records a summary of the calibration results in a `result.txt` file.
+visualize_and_save(calibration, validation, θ, directory)
 
 # Use EKI to calibrate the model parameters
 eki(loss::InverseProblem, initial_parameters;

@@ -78,7 +78,7 @@ for file in files
                 write(o, "$(tdata.name): $(loss) \n")
                 total += loss
 
-                p = visualize_realizations(model_test, tdata_test, 1:90:length(tdata_test), params)
+                p = visualize_predictions(model_test, tdata_test, 1:90:length(tdata_test), params)
                 PyPlot.savefig(directory*"Test/$(tdata_test.name).png")
         end
         write(o, "Mean loss on General Strat Simulations: $(total/length(general_strat)) \n")
@@ -94,7 +94,7 @@ for file in files
                 write(o, "$(tdata.name): $(loss) \n")
                 total += loss
 
-                p = visualize_realizations(model_test, tdata_test, 1:90:length(tdata_test), params)
+                p = visualize_predictions(model_test, tdata_test, 1:90:length(tdata_test), params)
                 PyPlot.savefig(directory*"Test/$(tdata_test.name).png")
         end
         write(o, "Mean loss on 4 Day Suite Simulations: $(total/length(four_day_suite)) \n")

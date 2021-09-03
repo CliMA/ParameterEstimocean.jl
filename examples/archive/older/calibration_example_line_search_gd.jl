@@ -90,7 +90,7 @@ bestparam = optimize(loss, ∇loss, best_params, method)
 print([p for p in bestparam])
 params = best_params
 # params = default_parameters
-p = visualize_realizations(model, tdata, 1:100:577, params)
+p = visualize_predictions(model, tdata, 1:100:577, params)
 PyPlot.savefig("default_params.png")
 
 loss(default_parameters)

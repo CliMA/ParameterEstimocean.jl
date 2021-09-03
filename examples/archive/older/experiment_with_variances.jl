@@ -1,7 +1,7 @@
 ## Optimizing TKE parameters
 using TKECalibration2021
 using Plots, PyPlot
-using OceanTurbulenceParameterEstimation: visualize_realizations
+using OceanTurbulenceParameterEstimation: visualize_predictions
 using Dao
 using Statistics
 using CalibrateEmulateSample.ParameterDistributionStorage

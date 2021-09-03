@@ -131,6 +131,6 @@ for file in files
     p = plot!(days[toplot], h2_model[toplot], color = :purple, label = "TKE mixed layer depth", linewidth = 3 )
     Plots.savefig(p, directory*td.name*"_mixed_layer_depth.pdf")
 
-    p = visualize_realizations(md, td, 1:180:length(td), params)
+    p = visualize_predictions(md, td, 1:180:length(td), params)
     PyPlot.savefig(directory*td.name*".png")
 end
