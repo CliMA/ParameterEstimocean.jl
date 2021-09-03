@@ -1,52 +1,41 @@
 module OceanTurbulenceParameterEstimation
 
-using Oceananigans,
-      Oceananigans.Units,
-      Statistics,
-      StaticArrays
-
-using Printf,
-      FileIO,
-      JLD2,
-      OffsetArrays
-
-using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
-using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
-
 export
-    ColumnEnsembleSize,
-    
-    # ModelsAndData
-    TruthData,
-    run_until!,
-    initialize_forward_run!,
-    DefaultFreeParameters,
-    get_free_parameters,
-    FreeParameters,
-    @free_parameters,
-    set!,
 
-    # ModelsAndData/LESbrary_paths.jl
-    LESbrary,
-    TwoDaySuite,
-    FourDaySuite,
-    SixDaySuite,
-    GeneralStrat,
+    # Grids
+    ColumnEnsembleGrid,
+
+    # Data
+    TruthData, TruthDataBatch,
+
+    # Models
+    get_model_field, EnsembleModel, ensemble_size, batch_size,
+    set!, initialize_forward_run!,
+    DefaultFreeParameters, get_free_parameters, FreeParameters, @free_parameters,
 
     # LossFunctions
-    evaluate!,
+    LossFunction,
     TimeSeriesAnalysis,
     TimeAverage,
     model_time_series,
+    ValueProfileAnalysis,
+    GradientProfileAnalysis,
 
-    # modules
-    ModelsAndData,
-    CATKEVerticalDiffusivityModel,
-    ParameterEstimation
+    # ParameterEstimation
+    InverseProblem,
+    Parameters,
+    relative_weight_options
 
-include("ModelsAndData/ModelsAndData.jl")
-include("CATKEVerticalDiffusivityModel/CATKEVerticalDiffusivityModel.jl")
+include("Grids/Grids.jl")
+include("Data/Data.jl")
+include("Models/Models.jl")
 include("LossFunctions/LossFunctions.jl")
 include("ParameterEstimation/ParameterEstimation.jl")
+
+using .Grids
+using .Data
+using .Models
+using .LossFunctions
+using .ParameterEstimation
 
 end # module

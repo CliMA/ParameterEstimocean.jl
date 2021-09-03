@@ -1,16 +1,19 @@
+# In this example, we use EKI to tune the closure parameters of a HydrostaticFreeSurfaceModel 
+# with a CATKEBasedVerticalDiffusivity closure in order to align the predictions of the model 
+# to those of a high-resolution LES data generated in LESbrary.jl. Here `predictions` refers to the
+# 1-D profiles of temperature, velocity, and turbulent kinetic energy horizontally averaged over a
+# 3-D physical domain.
+
 pushfirst!(LOAD_PATH, joinpath(@__DIR__, ".."))
 pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..", "projects", "OceanBoundaryLayerParameterizations", "src"))
 
 using OceanTurbulenceParameterEstimation
-using OceanTurbulenceParameterEstimation.ModelsAndData
-using OceanTurbulenceParameterEstimation.ParameterEstimation
-using OceanTurbulenceParameterEstimation.LossFunctions
-using OceanTurbulenceParameterEstimation.CATKEVerticalDiffusivityModel
+using OceanTurbulenceParameterEstimation.Models.CATKEVerticalDiffusivityModel
 
 using OceanBoundaryLayerParameterizations
 
 # CATKE parameters involved in setting field diffusivities 
-StabilityFnParameters = @free_parameters CᴷRiʷ, CᴷRiᶜ, Cᴷu⁻, Cᴷuʳ, Cᴷc⁻, Cᴷcʳ, Cᴷe⁻, Cᴷeʳ,
+@free_parameters StabilityFnParameters CᴷRiʷ CᴷRiᶜ Cᴷu⁻ Cᴷuʳ Cᴷc⁻ Cᴷcʳ Cᴷe⁻ Cᴷeʳ
 
 parameters = Parameters(
     RelevantParameters = CATKEParametersRiDependent,  # Parameters that are used in CATKE
@@ -18,30 +21,27 @@ parameters = Parameters(
 )
 
 # InverseProblem represents the model, data, loss function, and parameters
-#
-# Other names might be
-#
-# - ModelDataComparison
-# calibrate(::ModelDataComparison)
-# validate(::ModelDataComparison)
-# - CalibrationCase
 calibration = InverseProblem(FourDaySuite, # "Truth data" for model calibration
-                      parameters;   # Model parameters 
-                      # Loss function parameters
-                      relative_weights = relative_weight_options["all_but_e"],
-                      # Model (hyper)parameters
-                      ensemble_size = 10,
-                      Nz = 16,
-                      Δt = 30.0)
+                            parameters;   # Model parameters 
+                            # Loss function parameters
+                            relative_weights = relative_weight_options["all_but_e"],
+                            # Model (hyper)parameters
+                            ensemble_size = 10,
+                            Nz = 16,
+                            Δt = 30.0)
 
-validation = InverseProblem(merge(TwoDaySuite, SixDaySuite), p;
-                     relative_weights = relative_weight_options["all_but_e"],
-                     ensemble_size = 10,
-                     Nz = 64,
-                     Δt = 10.0);
+validation = InverseProblem(merge(TwoDaySuite, SixDaySuite), 
+                            parameters;
+                            relative_weights = relative_weight_options["all_but_e"],
+                            ensemble_size = 10,
+                            Nz = 64,
+                            Δt = 10.0);
 
 # Loss on default parameters
 l0 = calibration()
+
+# Example parameters
+θ = calibration.default_parameters
 
 # Loss on parameters θ.
 # θ can be 
@@ -54,9 +54,6 @@ lθ = calibration(θ)
 
 # Output files/figures
 directory = joinpath(pwd(), "quick_calibrate")
-
-# Example parameters
-θ = calibration.default_parameters
 
 # Run the model forward and store the solution
 output = model_time_series(calibration, θ)

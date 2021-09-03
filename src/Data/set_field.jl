@@ -1,5 +1,5 @@
-height(c::AbstractDataField) = c.grid.Lz
-length(c::AbstractDataField) = c.grid.Nz
+Lz(c::AbstractDataField) = c.grid.Lz
+Nz(c::AbstractDataField) = c.grid.Nz
 Δz(g::RegularRectilinearGrid, i::Int) = g.Δz
 
 function integrate_range(c, cgrid, i₁::Int, i₂::Int)
@@ -67,3 +67,66 @@ function integral(c, cgrid, z₋, z₊=0)
 
     return total
 end
+
+# Set interior of field `c` to values of `data`
+function set!(c::AbstractField, data::AbstractArray)
+
+    # Reshape `data` to the size of `c`'s interior
+    d = reshape(data, size(c))
+
+    # Sets the interior of field `c` to values of `data`
+    c .= d
+
+end
+
+horizontal_size(grid) = (grid.Nx, grid.Ny)
+extent(grid) = (grid.Lx, grid.Ly, grid.Lz)
+
+# Set two fields to one another... some shenanigans
+#
+_set_similar_fields!(c::AbstractField{Ac, G}, d::AbstractField{Ad, G}) where {Ac, Ad, G} = 
+    c.data .= convert(typeof(c.data), d.data)
+
+function interp_and_set!(c1::AbstractField{A1, G1}, c2::AbstractField{A2, G2}) where {A1, A2, G1, G2}
+
+    grid1 = c1.grid
+    grid2 = c2.grid
+
+    @assert extent(grid1) == extent(grid2) "Physical domains differ between the two fields."
+
+    for j in 1:grid1.Ny, i in 1:grid1.Nx
+        for k in 1:grid1.Nz
+            @inbounds c1[i,j,k] = integral(c2[i,j,:], grid2, grid1.zF[k], grid1.zF[k+1]) / Δz(grid1, i)
+        end
+    end
+
+    return nothing
+end
+
+"""
+    set!(c::AbstractField{Ac, G}, d::AbstractField{Ad, G}) where {Ac, Ad, G}
+
+Set the data of field `c` to the data of field `d`, adjusted to field `c`'s grid. 
+
+The columns are assumed to be independent and thus the fields must have the same 
+horizontal resolution. This implementation does not accommodate 3D grids with 
+dependent columns.
+"""
+function set!(c::AbstractField{Ac, G}, d::AbstractField{Ad, G}) where {Ac, Ad, G}
+
+    s1 = horizontal_size(c.grid)
+    s2 = horizontal_size(d.grid)
+    @assert s1 == s2 "Field grids have a different number of columns."
+
+    if s1 != (1, 1)
+        @assert c.grid isa EnsembleGrid && d.grid isa EnsembleGrid "Field has dependent columns."
+    end
+
+    if Lz(c) == Lz(d) && Nz(c) == Nz(d)
+        return _set_similar_fields!(c, d)
+    else
+        return interp_and_set!(c, d)
+    end
+
+end
+

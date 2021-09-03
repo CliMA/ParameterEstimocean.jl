@@ -21,9 +21,7 @@ free_parameter_type = args["free_parameters"]
 =#
 
 using OceanTurbulenceParameterEstimation
-using OceanTurbulenceParameterEstimation.CATKEVerticalDiffusivityModel
-using OceanTurbulenceParameterEstimation.ModelsAndData
-using OceanTurbulenceParameterEstimation.ParameterEstimation
+using OceanTurbulenceParameterEstimation.Models.CATKEVerticalDiffusivityModel
 using Statistics
 using Plots
 using Dao

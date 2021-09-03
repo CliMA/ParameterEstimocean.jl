@@ -1,11 +1,6 @@
 using OceanTurbulenceParameterEstimation
-using OceanTurbulenceParameterEstimation.ModelsAndData
-using OceanTurbulenceParameterEstimation.CATKEVerticalDiffusivityModel
-using OceanTurbulenceParameterEstimation.ParameterEstimation
+using OceanTurbulenceParameterEstimation.Models.CATKEVerticalDiffusivityModel
 using Statistics
-using Plots
-using Dao
-using PyPlot
 using Dates
 
 # directory = Dates.format(Dates.now(), "yyyy-mm-dd_HH:MM:SS")

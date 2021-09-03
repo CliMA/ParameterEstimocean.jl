@@ -1,35 +1,5 @@
-using OceanTurbulenceParameterEstimation.ModelsAndData: FreeParameters
+using OceanTurbulenceParameterEstimation.Models: FreeParameters
 using OceanTurbulenceParameterEstimation.ParameterEstimation: InverseProblem
-
-field_guide = Dict(
-    :u => (
-        axis_args = (ylabel="z (m)", xlabel="U velocity (dm/s)"),
-        scaling = 1e1,
-    ),
-
-    :v => (
-        axis_args = (xlabel="V velocity (dm/s)",),
-        scaling = 1e1,
-    ),
-
-    :b => (
-        axis_args = (xlabel="Buoyancy (cN/kg)",),
-        scaling = 1e2,
-    ),
-
-    :e => (
-        axis_args = (ylabel="z (m)", xlabel="TKE (cm²/s²)"),
-        scaling = 1e4,
-    )
-)
-
-function tostring(num)
-    num == 0 && return "0"
-    om = Int(floor(log10(abs(num))))
-    num /= 10.0^om
-    num = num%1 ≈ 0 ? Int(num) : round(num; digits=2)
-    return "$(num)e$om"
-end
 
 """
     visualize_realizations(data, model, params...)
@@ -115,7 +85,7 @@ function visualize_realizations(model, data_batch, parameters::FreeParameters, �
     save(filename, fig, px_per_unit = 2.0)
 end
 
-visualize_realizations(ip::InverseProblem, parameters) = visualize_realizations(ip.model, ip.data_batch, ip.loss.ParametersToOptimize(parameters), ip.loss.Δt)
+visualize_realizations(ip::InverseProblem, parameters; kwargs...) = visualize_realizations(ip.model, ip.data_batch, ip.loss.ParametersToOptimize(parameters), ip.loss.Δt; kwargs...)
 
 function visualize_and_save(calibration, validation, parameters, directory; fields=[:b, :u, :v, :e])
 

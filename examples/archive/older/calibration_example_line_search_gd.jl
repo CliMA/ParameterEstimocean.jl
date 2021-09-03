@@ -39,7 +39,7 @@ bounds.Cᴬ   = (0.01, 40.0)
 
 # bounds.Cʷu★ = (0.01, 10.0)
 
-targets = 1:length(tdata)
+targets = 1:length(tdata.t)
 # Create loss function and negative-log-likelihood object
 loss_function = LossFunction(model, tdata,
                             fields=(:T,),

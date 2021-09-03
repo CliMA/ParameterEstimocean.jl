@@ -65,18 +65,3 @@ function new_field(fieldtype, simulation_grid, data)
 
     return newfield
 end
-
-function get_grid_params(datapath::String)
-    file = jldopen(datapath, "r")
-
-    Nx = file["grid/Nx"]
-    Ny = file["grid/Ny"]
-    Nz = file["grid/Nz"]
-
-    Lx = file["grid/Lx"]
-    Ly = file["grid/Ly"]
-    Lz = file["grid/Lz"]
-
-    close(file)
-    return Nx, Ny, Nz, Lx, Ly, Lz
-end

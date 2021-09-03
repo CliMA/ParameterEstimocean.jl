@@ -1,5 +1,5 @@
 """
-    EnsembleModel(data_batch::BatchTruthData; architecture = CPU(), N_ens = 50, kwargs...)
+    EnsembleModel(data_batch::TruthDataBatch; architecture = CPU(), N_ens = 50, kwargs...)
 
 Build an Oceananigans `HydrostaticFreeSurfaceModel` with many independent 
 columns. The model grid is given by the data in `data_batch`, and the
@@ -15,7 +15,7 @@ whose attached parameter value (updated at each iteration of EKI) sets the diffu
 used to predict the model solution for the `Ny` physical scenarios described by the simulation-specific 
 `TruthData` objects in `data_batch`.
 """
-function EnsembleModel(data_batch::BatchTruthData; architecture = CPU(), N_ens = 50, kwargs...)
+function EnsembleModel(data_batch::TruthDataBatch; architecture = CPU(), N_ens = 50, kwargs...)
 
     data_grid = data_batch[1].grid
     grid = ColumnEnsembleGrid(data_grid; size=(N_ens, length(data_batch), data_grid.Nz))

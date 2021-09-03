@@ -1,7 +1,6 @@
 
 using OceanTurbulenceParameterEstimation
-using OceanTurbulenceParameterEstimation.ModelsAndData
-using OceanTurbulenceParameterEstimation.ParameterEstimation
+using OceanTurbulenceParameterEstimation.Models.CATKEVerticalDiffusivityModel
 using Oceananigans.Fields: interior
 using CairoMakie
 using LaTeXStrings

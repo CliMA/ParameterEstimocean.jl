@@ -1,47 +1,27 @@
 module ParameterEstimation
 
-using Distributions: delta
-using FileIO, Optim, Random,
-        Statistics, Distributions, LinearAlgebra,
-        Optim, Printf, LaTeXStrings, CairoMakie
-
 using ..OceanTurbulenceParameterEstimation
-using ..OceanTurbulenceParameterEstimation.ModelsAndData
-using ..OceanTurbulenceParameterEstimation.CATKEVerticalDiffusivityModel
+using ..OceanTurbulenceParameterEstimation.Data
+using ..OceanTurbulenceParameterEstimation.Models
+using ..OceanTurbulenceParameterEstimation.Models.CATKEVerticalDiffusivityModel
 using ..OceanTurbulenceParameterEstimation.LossFunctions
 
-using EnsembleKalmanProcesses.EnsembleKalmanProcessModule
-using EnsembleKalmanProcesses.ParameterDistributionStorage
-
-import ..OceanTurbulenceParameterEstimation.ModelsAndData: set!
-import ..OceanTurbulenceParameterEstimation.LossFunctions: model_time_series
-
-using Oceananigans.Fields: interior
+using Oceananigans
 using CairoMakie: Figure
+
+import ..OceanTurbulenceParameterEstimation.Models: set!
+import ..OceanTurbulenceParameterEstimation.LossFunctions: model_time_series
 
 export
        Parameters,
-       CalibrationExperiment,
+       InverseProblem,
        validation_loss_reduction,
        relative_weight_options,
-       set!,
        model_time_series,
+       set!,
 
-       # catke_vertical_diffusivity_model_setup.jl
-       InverseProblem,
-
-       # utils.jl
-       open_output_file,
-       writeout,
-
-       # algorithms.jl
-       eki_unidimensional,
-       eki_multidimensional,
-       simulated_annealing,
-       nelder_mead,
-       l_bfgs,
-       random_plugin,
-       gradient_descent
+       # EKI
+       eki
 
 relative_weight_options = Dict(
                 "all_e"     => Dict(:b => 0.0, :u => 0.0, :v => 0.0, :e => 1.0),
@@ -67,6 +47,8 @@ end
 
 (ip::InverseProblem)(θ=ip.default_parameters) = ip.loss(ip.model, ip.data_batch, θ)
 
+model_time_series(ip::InverseProblem, parameters) = model_time_series(ip.loss.ParametersToOptimize(parameters), ip.model, ip.data_batch, ip.loss.Δt)
+
 function validation_loss_reduction(calibration::InverseProblem, validation::InverseProblem, parameters::FreeParameters)
     validation_loss = validation.loss(parameters)
     calibration_loss = calibration.loss(parameters)
@@ -82,10 +64,9 @@ function validation_loss_reduction(calibration::InverseProblem, validation::Inve
     return validation_loss_reduction
 end
 
-include("utils.jl")
 include("catke_vertical_diffusivity_model_setup.jl")
 include("EKI/EKI.jl")
 
-model_time_series(ip::InverseProblem, parameters) = model_time_series(ip.loss.ParametersToOptimize(parameters), ip.model, ip.data_batch, ip.loss.Δt)
+using .EKI
 
 end # module

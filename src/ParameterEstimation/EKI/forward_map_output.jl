@@ -28,8 +28,6 @@ end
 # Forward map output
 #
 
-abstract type AbstractForwardMapOutput end
-
 """
 In the unidimensional formulation of EKI, we let the forward map output G be the square root of the
 evaluation of the loss function on θ.

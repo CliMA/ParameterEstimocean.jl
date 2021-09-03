@@ -2,21 +2,18 @@ module CATKEVerticalDiffusivityModel
 
 export parameter_latex_guide
 
-using ..OceanTurbulenceParameterEstimation
-using ..OceanTurbulenceParameterEstimation.ModelsAndData
+using ..Grids
+using ..Data
+using ..Models
 
-using Suppressor
-using LaTeXStrings
-
-using Oceananigans.BoundaryConditions
-using Oceananigans.Models: AbstractModel
-using Oceananigans.BuoyancyModels: BuoyancyTracer
-using Oceananigans.Coriolis: FPlane
+using Oceananigans
+using Oceananigans: AbstractModel
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity,
                 MixingLength, SurfaceTKEFlux, VerticallyImplicitTimeDiscretization
-using Oceananigans.Architectures
+
+using Suppressor, LaTeXStrings
 
 export CATKEParametersRiDependent,
        CATKEParametersRiDependentConvectiveAdjustment,

@@ -28,12 +28,12 @@ function (loss::LossFunction)(model, data_batch, θ::Vector{<:FreeParameters})
     return error
 end
 
-(loss::LossFunction)(m, db::BatchTruthData, θ::FreeParameters) = loss(m, db, [θ for i = 1:ensemble_size(m)])
-(loss::LossFunction)(m, db::BatchTruthData, θ::Vector{<:Number}) = loss(m, db, loss.ParametersToOptimize(θ))
-(loss::LossFunction)(m, db::BatchTruthData, θ::Vector{<:Vector}) = loss(m, db, loss.ParametersToOptimize.(θ))
-(loss::LossFunction)(m, db::BatchTruthData, θ::Matrix) = loss(m, db, [θ[:,i] for i in 1:size(θ, 2)])
+(loss::LossFunction)(m::EnsembleModel, db::TruthDataBatch, θ::FreeParameters) = loss(m, db, [θ for i = 1:ensemble_size(m)])
+(loss::LossFunction)(m::EnsembleModel, db::TruthDataBatch, θ::Vector{<:Number}) = loss(m, db, loss.ParametersToOptimize(θ))
+(loss::LossFunction)(m::EnsembleModel, db::TruthDataBatch, θ::Vector{<:Vector}) = loss(m, db, loss.ParametersToOptimize.(θ))
+(loss::LossFunction)(m::EnsembleModel, db::TruthDataBatch, θ::Matrix) = loss(m, db, [θ[:,i] for i in 1:size(θ, 2)])
 
-function LossFunction(model, data_batch::BatchTruthData, Δt, ParametersToOptimize; data_weights=[1.0 for b in data_batch], relative_weights)
+function LossFunction(model::EnsembleModel, data_batch::TruthDataBatch, Δt, ParametersToOptimize; data_weights=[1.0 for b in data_batch], relative_weights)
 
     @assert all([allsame(t_interval(data)) for data in data_batch]) "Simulation time steps are not uniformly spaced."
     @assert allsame([t_interval(data)[1] for data in data_batch]) "Time step differs between simulations."
@@ -70,10 +70,10 @@ function calculate_value_discrepancy!(value, model_field, data_field)
     discrepancy = value.discrepancy
 
     centered_data = CenterField(model_field.grid)
-    set!(centered_data, interior(data_field))
+    centered_data .= interior(data_field)
 
     centered_model = CenterField(model_field.grid)
-    set!(centered_model, interior(model_field))
+    centered_model .= interior(model_field)
 
     interior(discrepancy) .= (interior(centered_data) .- interior(centered_model)) .^ 2
 
@@ -143,7 +143,7 @@ function new_field(field_name, field_data, grid)
 
 end
 
-function analyze_weighted_profile_discrepancy(loss::LossFunction, model, data_batch::BatchTruthData, target)
+function analyze_weighted_profile_discrepancy(loss::LossFunction, model, data_batch::TruthDataBatch, target)
 
     total_discrepancy = zeros(model.grid.Nx, model.grid.Ny, 1)
 
@@ -167,12 +167,13 @@ function analyze_weighted_profile_discrepancy(loss::LossFunction, model, data_ba
     return nan2inf.(total_discrepancy)
 end
 
-function evaluate!(loss::LossFunction, parameters, model, data_batch::BatchTruthData)
+function evaluate!(loss::LossFunction, parameters, model::EnsembleModel, data_batch::TruthDataBatch)
 
     # Initialize
     initialize_forward_run!(model, data_batch, parameters, loss.first_targets)
 
     simulation = Simulation(model; Δt=loss.Δt, stop_time = 0.0)
+    pop!(simulation.diagnostics, :nan_checker)
     
     # Calculate a loss function time-series
     for target in 1:loss.max_simulation_length

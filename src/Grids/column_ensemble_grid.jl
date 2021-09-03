@@ -1,13 +1,6 @@
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 
-###
-### Grids
-###
-
-extent(grid::AbstractGrid) = (grid.Lx, grid.Ly, grid.Lz)
-horizontal_size(grid::AbstractGrid) = (grid.Nx, grid.Ny)
-
-get_grid_params(grid::AbstractGrid) = tuple(size(grid)..., extent(grid)...)
+const EnsembleGrid = RegularRectilinearGrid{<:Any, Flat, Flat, Bounded}
 
 """
     ColumnEnsembleGrid(datapath; ensemble_size = (1,1), Nz = nothing)

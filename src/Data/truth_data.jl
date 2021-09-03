@@ -139,7 +139,3 @@ function TruthData(datapath, grid::AbstractGrid)
     td = TruthData(datapath)
     return TruthData(td, grid)
 end
-
-const BatchTruthData = Vector{<:TruthData}
-
-length(td::TruthData) = length(td.t)

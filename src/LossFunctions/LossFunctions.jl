@@ -1,11 +1,12 @@
 module LossFunctions
 
-using Oceananigans: AbstractModel
 using ..OceanTurbulenceParameterEstimation
-using ..OceanTurbulenceParameterEstimation.ModelsAndData
-import ..OceanTurbulenceParameterEstimation.ModelsAndData: set!, get_model_field
+using ..OceanTurbulenceParameterEstimation.Grids
+using ..OceanTurbulenceParameterEstimation.Data
+using ..OceanTurbulenceParameterEstimation.Models
 
 using Oceananigans
+using Oceananigans: AbstractModel
 using Oceananigans.Grids: RegularRectilinearGrid
 using Oceananigans.Fields: CenterField, AbstractField, AbstractDataField, interior
 
@@ -28,7 +29,7 @@ include("utils.jl")
 include("time_analysis.jl")
 include("profile_analysis.jl")
 include("field_weights.jl")
-include("loss_functions.jl")
+include("loss_function.jl")
 include("forward_run.jl")
 
 end # module
