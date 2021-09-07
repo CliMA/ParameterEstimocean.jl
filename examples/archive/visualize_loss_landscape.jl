@@ -120,7 +120,7 @@ visualize_and_save(ce, initial_parameters, "all_E")
 # plot!(xlabel=parameter_latex_guide[:Cᴷe], ylabel=parameter_latex_guide[:Cᴬe], title="Loss Landscape", zlabel=L"\mathcal{L}(\theta)", linewidth=0)
 # Plots.savefig("loss_landscape5.pdf")
 #
-# using GLMakie
+# using CairoMakie
 # surface(xs, ys, zs)
 #
 #

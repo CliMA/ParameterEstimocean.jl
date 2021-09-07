@@ -90,27 +90,27 @@ visualize_predictions(ip::InverseProblem, parameters; kwargs...) = visualize_pre
 function visualize_and_save(calibration, validation, parameters, directory; fields=[:b, :u, :v, :e])
 
         path = joinpath(directory, "results.txt")
-        o = open_output_file(path)
-        write(o, "Training relative weights: $(calibration.relative_weights) \n")
-        write(o, "Validation relative weights: $(validation.relative_weights) \n")
-        write(o, "Training default parameters: $(validation.default_parameters) \n")
-        write(o, "Validation default parameters: $(validation.default_parameters) \n")
+        # o = open_output_file(path)
+        # write(o, "Training relative weights: $(calibration.relative_weights) \n")
+        # write(o, "Validation relative weights: $(validation.relative_weights) \n")
+        # write(o, "Training default parameters: $(validation.default_parameters) \n")
+        # write(o, "Validation default parameters: $(validation.default_parameters) \n")
 
-        write(o, "------------ \n \n")
-        default_parameters = ce.default_parameters
-        train_loss_default = calibration.loss(default_parameters)
-        valid_loss_default = validation.loss(default_parameters)
-        write(o, "Default parameters: $(default_parameters) \nLoss on training: $(train_loss_default) \nLoss on validation: $(valid_loss_default) \n------------ \n \n")
+        # write(o, "------------ \n \n")
+        # default_parameters = calibration.default_parameters
+        # train_loss_default = calibration(default_parameters)
+        # valid_loss_default = validation(default_parameters)
+        # write(o, "Default parameters: $(default_parameters) \nLoss on training: $(train_loss_default) \nLoss on validation: $(valid_loss_default) \n------------ \n \n")
 
-        train_loss = calibration.loss(parameters)
-        valid_loss = validation.loss(parameters)
-        write(o, "Parameters: $(parameters) \nLoss on training: $(train_loss) \nLoss on validation: $(valid_loss) \n------------ \n \n")
+        # train_loss = calibration(parameters)
+        # valid_loss = validation(parameters)
+        # write(o, "Parameters: $(parameters) \nLoss on training: $(train_loss) \nLoss on validation: $(valid_loss) \n------------ \n \n")
 
-        write(o, "Training loss reduction: $(train_loss/train_loss_default) \n")
-        write(o, "Validation loss reduction: $(valid_loss/valid_loss_default) \n")
-        close(o)
+        # write(o, "Training loss reduction: $(train_loss/train_loss_default) \n")
+        # write(o, "Validation loss reduction: $(valid_loss/valid_loss_default) \n")
+        # close(o)
 
-        parameters = ce.parameters.ParametersToOptimize(parameters)
+        parameters = calibration.loss.ParametersToOptimize(parameters)
 
         for inverse_problem in [calibration, validation]
 
@@ -118,9 +118,9 @@ function visualize_and_save(calibration, validation, parameters, directory; fiel
             model = inverse_problem.model
             set!(model, parameters)
 
-            for data_length in Set(length.(all_data))
+            for data_length in Set(length.(getproperty.(all_data, :t)))
 
-                data_batch = [d for d in all_data if length(d) == data_length]
+                data_batch = [d for d in all_data if length(d.t) == data_length]
                 days = data_batch[1].t[end]/86400
 
                 visualize_predictions(model, data_batch, parameters, inverse_problem.Δt;

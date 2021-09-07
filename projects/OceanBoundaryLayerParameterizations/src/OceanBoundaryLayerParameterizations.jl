@@ -3,6 +3,7 @@ module OceanBoundaryLayerParameterizations
 pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..", ".."))
 
 using OceanTurbulenceParameterEstimation
+using OceanTurbulenceParameterEstimation.Models: set!
 using CairoMakie, LaTeXStrings, OrderedCollections
 using Oceananigans, FileIO
 

@@ -174,11 +174,15 @@ function evaluate!(loss::LossFunction, parameters, model::EnsembleModel, data_ba
 
     simulation = Simulation(model; Δt=loss.Δt, stop_time = 0.0)
     pop!(simulation.diagnostics, :nan_checker)
+
+    # this should be improved
+    all_lengths = getproperty.(data_batch, :t)
+    longest_sim = data_batch[argmax(all_lengths)]
     
     # Calculate a loss function time-series
     for target in 1:loss.max_simulation_length
 
-        simulation.stop_time = data_batch[1].t[target]
+        simulation.stop_time = longest_sim.t[target]
     
         run!(simulation)
 
