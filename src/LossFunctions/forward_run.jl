@@ -1,6 +1,4 @@
 
-# Certain 
-
 mutable struct ModelTimeSeries{UU, VV, BΘ, EE}
     u :: UU
     v :: VV

@@ -13,8 +13,8 @@ function estimate_weights(profile::GradientProfileAnalysis, data::TruthData, rel
     gradient_weight = profile.gradient_weight
     value_weight = profile.value_weight
 
-    @warn "Dividing the gradient weight of profile by height(data.grid) = $(height(data.grid))"
-    gradient_weight = profile.gradient_weight = gradient_weight / height(data.grid)
+    @warn "Dividing the gradient weight of profile by data.grid.Lz = $(data.grid.Lz))"
+    gradient_weight = profile.gradient_weight = gradient_weight / data.grid.Lz
 
     fields = data.relevant_fields
 
@@ -25,7 +25,7 @@ function estimate_weights(profile::GradientProfileAnalysis, data::TruthData, rel
     for i in 1:length(fields)
         σ = max_variances[i]
         #ς = max_gradient_variances[i]
-        weights[i] = 1/σ * (value_weight + gradient_weight / height(data.grid))
+        weights[i] = 1/σ * (value_weight + gradient_weight / data.grid.Lz)
     end
 
     if relative_weights != nothing

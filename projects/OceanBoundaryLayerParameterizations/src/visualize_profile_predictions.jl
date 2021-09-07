@@ -1,44 +1,14 @@
-using OceanTurbulenceParameterEstimation.ModelsAndData: FreeParameters
-using OceanTurbulenceParameterEstimation.ParameterEstimation: DataSet
-
-field_guide = Dict(
-    :u => (
-        axis_args = (ylabel="z (m)", xlabel="U velocity (dm/s)"),
-        scaling = 1e1,
-    ),
-
-    :v => (
-        axis_args = (xlabel="V velocity (dm/s)",),
-        scaling = 1e1,
-    ),
-
-    :b => (
-        axis_args = (xlabel="Buoyancy (cN/kg)",),
-        scaling = 1e2,
-    ),
-
-    :e => (
-        axis_args = (ylabel="z (m)", xlabel="TKE (cm²/s²)"),
-        scaling = 1e4,
-    )
-)
-
-function tostring(num)
-    num == 0 && return "0"
-    om = Int(floor(log10(abs(num))))
-    num /= 10.0^om
-    num = num%1 ≈ 0 ? Int(num) : round(num; digits=2)
-    return "$(num)e$om"
-end
+using OceanTurbulenceParameterEstimation.Models: FreeParameters
+using OceanTurbulenceParameterEstimation.ParameterEstimation: InverseProblem
 
 """
-    visualize_realizations(data, model, params...)
+    visualize_predictions(data, model, params...)
 
 Visualize the data alongside several realizations of `column_model`
 for each set of parameters in `params`.
 """
-function visualize_realizations(model, data_batch, parameters::FreeParameters, Δt;
-                                                 fields = [:b, :u, :v, :e],
+function visualize_predictions(model, data_batch, parameters::FreeParameters, Δt;
+                                                 fields = [:u, :v, :b, :e],
                                                  filename = "realizations.png"
                                 )
         
@@ -103,7 +73,7 @@ function visualize_realizations(model, data_batch, parameters::FreeParameters, �
                 times = @. round((data.t[snapshots] - data.t[snapshots[1]]) / 86400, sigdigits=2)
 
                 legendlabel(time) = ["LES, t = $time days", "Model, t = $time days"]
-                Legend(fig[1,3:4], lins, vcat([legendlabel(time) for time in times]...), nbanks=2)
+                Legend(fig[1,2:3], lins, vcat([legendlabel(time) for time in times]...), nbanks=2)
                 lins = []
             else
                 
@@ -115,44 +85,45 @@ function visualize_realizations(model, data_batch, parameters::FreeParameters, �
     save(filename, fig, px_per_unit = 2.0)
 end
 
-visualize_realizations(ds::DataSet, parameters) = visualize_realizations(ds.model, ds.data_batch, ds.loss.ParametersToOptimize(parameters), ds.loss.Δt)
+visualize_predictions(ip::InverseProblem, parameters; kwargs...) = visualize_predictions(ip.model, ip.data_batch, ip.loss.ParametersToOptimize(parameters), ip.loss.Δt; kwargs...)
 
 function visualize_and_save(calibration, validation, parameters, directory; fields=[:b, :u, :v, :e])
 
-        o = open_output_file(directory*"/result.txt")
-        write(o, "Training relative weights: $(calibration.relative_weights) \n")
-        write(o, "Validation relative weights: $(validation.relative_weights) \n")
-        write(o, "Training default parameters: $(validation.default_parameters) \n")
-        write(o, "Validation default parameters: $(validation.default_parameters) \n")
+        path = joinpath(directory, "results.txt")
+        # o = open_output_file(path)
+        # write(o, "Training relative weights: $(calibration.relative_weights) \n")
+        # write(o, "Validation relative weights: $(validation.relative_weights) \n")
+        # write(o, "Training default parameters: $(validation.default_parameters) \n")
+        # write(o, "Validation default parameters: $(validation.default_parameters) \n")
 
-        write(o, "------------ \n \n")
-        default_parameters = ce.default_parameters
-        train_loss_default = calibration.loss(default_parameters)
-        valid_loss_default = validation.loss(default_parameters)
-        write(o, "Default parameters: $(default_parameters) \nLoss on training: $(train_loss_default) \nLoss on validation: $(valid_loss_default) \n------------ \n \n")
+        # write(o, "------------ \n \n")
+        # default_parameters = calibration.default_parameters
+        # train_loss_default = calibration(default_parameters)
+        # valid_loss_default = validation(default_parameters)
+        # write(o, "Default parameters: $(default_parameters) \nLoss on training: $(train_loss_default) \nLoss on validation: $(valid_loss_default) \n------------ \n \n")
 
-        train_loss = calibration.loss(parameters)
-        valid_loss = validation.loss(parameters)
-        write(o, "Parameters: $(parameters) \nLoss on training: $(train_loss) \nLoss on validation: $(valid_loss) \n------------ \n \n")
+        # train_loss = calibration(parameters)
+        # valid_loss = validation(parameters)
+        # write(o, "Parameters: $(parameters) \nLoss on training: $(train_loss) \nLoss on validation: $(valid_loss) \n------------ \n \n")
 
-        write(o, "Training loss reduction: $(train_loss/train_loss_default) \n")
-        write(o, "Validation loss reduction: $(valid_loss/valid_loss_default) \n")
-        close(o)
+        # write(o, "Training loss reduction: $(train_loss/train_loss_default) \n")
+        # write(o, "Validation loss reduction: $(valid_loss/valid_loss_default) \n")
+        # close(o)
 
-        parameters = ce.parameters.ParametersToOptimize(parameters)
+        parameters = calibration.loss.ParametersToOptimize(parameters)
 
-        for dataset in [calibration, validation]
+        for inverse_problem in [calibration, validation]
 
-            all_data = dataset.data_batch
-            model = dataset.model
+            all_data = inverse_problem.data_batch
+            model = inverse_problem.model
             set!(model, parameters)
 
-            for data_length in Set(length.(all_data))
+            for data_length in Set(length.(getproperty.(all_data, :t)))
 
-                data_batch = [d for d in all_data if length(d) == data_length]
+                data_batch = [d for d in all_data if length(d.t) == data_length]
                 days = data_batch[1].t[end]/86400
 
-                visualize_realizations(model, data_batch, parameters, dataset.Δt;
+                visualize_predictions(model, data_batch, parameters, inverse_problem.Δt;
                                                  fields = fields,
                                                  filename = joinpath(directory, "$(days)_day_simulations.png"))
             end
