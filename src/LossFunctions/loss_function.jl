@@ -176,7 +176,7 @@ function evaluate!(loss::LossFunction, parameters, model::EnsembleModel, data_ba
     pop!(simulation.diagnostics, :nan_checker)
 
     # this should be improved
-    all_lengths = getproperty.(data_batch, :t)
+    all_lengths = length.(getproperty.(data_batch, :t))
     longest_sim = data_batch[argmax(all_lengths)]
     
     # Calculate a loss function time-series
