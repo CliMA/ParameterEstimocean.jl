@@ -56,7 +56,7 @@ function model_time_series(parameters, model, data_batch, Δt)
     end_time = time_ns()
     elapsed_time = (end_time - start_time) * 1e-9
 
-    @info  "The simulation took $(prettytime(elapsed_time))"
+    @info  "The forward run took $(prettytime(elapsed_time))"
 
     return outputs
 end
