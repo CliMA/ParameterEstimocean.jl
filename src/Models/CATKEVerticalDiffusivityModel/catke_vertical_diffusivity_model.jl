@@ -1,3 +1,5 @@
+using Oceananigans.Architectures: arch_array
+
 """
     EnsembleModel(data_batch::TruthDataBatch; architecture = CPU(), N_ens = 50, kwargs...)
 
@@ -31,18 +33,16 @@ function EnsembleModel(data_batch::TruthDataBatch; architecture = CPU(), N_ens =
     dbdz_bottom = bc_matrix(bc -> bc.dbdz_bottom)
     dudz_bottom = bc_matrix(bc -> bc.dudz_bottom)
 
-    if architecture isa GPU
-        closure = CuArray(closure)
-        Qᵇ = CuArray(Qᵇ)
-        Qᵘ = CuArray(Qᵘ)
-        Qᵛ = CuArray(Qᵛ)
-    end
-
+    closure = arch_array(architecture, closure)
+    Qᵇ = arch_array(architecture, Qᵇ)
+    Qᵘ = arch_array(architecture, Qᵘ)
+    Qᵛ = arch_array(architecture, Qᵛ)
+    
     u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ), 
-                                 bottom = GradientBoundaryCondition(dudz_bottom))
+                                    bottom = GradientBoundaryCondition(dudz_bottom))
     v_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵛ))
     b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ), 
-                                 bottom = GradientBoundaryCondition(dbdz_bottom))
+                                    bottom = GradientBoundaryCondition(dbdz_bottom))
 
     model = HydrostaticFreeSurfaceModel(architecture = architecture,
                                          grid = grid,
