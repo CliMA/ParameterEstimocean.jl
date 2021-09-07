@@ -56,8 +56,7 @@ function LossFunction(model::EnsembleModel, data_batch::TruthDataBatch, Δt, Par
         end
 
         for field_name in keys(field_weights)
-            field_name ∉ data_fields &&
-                push!(field_weights[field_name], 0)
+            field_name ∉ data_fields && push!(field_weights[field_name], 0)
         end 
     end
 
@@ -69,6 +68,7 @@ end
 function calculate_value_discrepancy!(value, model_field, data_field)
     discrepancy = value.discrepancy
 
+    #=
     centered_data = CenterField(model_field.grid)
     centered_data .= interior(data_field)
 
@@ -76,6 +76,9 @@ function calculate_value_discrepancy!(value, model_field, data_field)
     centered_model .= interior(model_field)
 
     interior(discrepancy) .= (interior(centered_data) .- interior(centered_model)) .^ 2
+    =#
+    
+    interior(discrepancy) .= (interior(data_field) .- interior(model_field)) .^ 2
 
     return nothing
 end
@@ -160,6 +163,12 @@ function analyze_weighted_profile_discrepancy(loss::LossFunction, model, data_ba
         # Calculate the per-field profile-based discrepancy
         field_discrepancy = analyze_profile_discrepancy(loss.profile, model_field, data_field)
 
+        #=
+        if any(isnan.(field_discrepancy))
+            field_discrepency .= weight * remaining_time / stop_time
+        end
+        =#
+ 
         # Accumulate weighted profile-based discrepancies in the total discrepancyor
         total_discrepancy .+= loss.field_weights[field_name]' .* field_discrepancy # accumulate discrepancyor
     end
