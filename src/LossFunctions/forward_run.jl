@@ -1,3 +1,4 @@
+using Oceananigans.Utils: prettytime
 
 mutable struct ModelTimeSeries{UU, VV, BΘ, EE}
     u :: UU
@@ -35,30 +36,46 @@ function model_time_series(parameters, model, data_batch, Δt)
     longest_sim = data_batch[argmax(all_lengths)]
     t = longest_sim.t # times starting from zero
 
-    simulation = Simulation(model; Δt=Δt, stop_time = 0.0)
+    simulation = Simulation(model; Δt=Δt, stop_time=0.0)
     # pop!(simulation.diagnostics, :nan_checker)
 
-    #for i in 1:max_simulation_length
-    for i in 1:3
-        
-        simulation.stop_time = t[i]
+    start_time = time_ns()
+
+    for save_index in 1:max_simulation_length
+        simulation.stop_time = t[save_index]
         run!(simulation)
 
-        for (dataindex, data, start, output) in zip(eachindex(data_batch), data_batch, starts, outputs)
+        u = model.velocities.u
+        v = model.velocities.v
+        b = model.tracers.b
+        e = model.tracers.e
 
-            if i <= length(data.targets)
-                u_snapshot = output.u[i].data
-                v_snapshot = output.v[i].data
-                b_snapshot = output.b[i].data
-                e_snapshot = output.e[i].data
+        capture_model_state!(outputs, save_index, data_batch, u, v, b, e)
+    end
 
-                u_snapshot .= u.data[1:1, dataindex:dataindex, :]
-                v_snapshot .= v.data[1:1, dataindex:dataindex, :]
-                b_snapshot .= b.data[1:1, dataindex:dataindex, :]
-                e_snapshot .= e.data[1:1, dataindex:dataindex, :]
-            end
+    end_time = time_ns()
+    elapsed_time = (end_time - start_time) * 1e-9
+
+    @info  "The simulation took $(prettytime(elapsed_time))"
+
+    return outputs
+end
+
+function capture_model_state!(outputs, save_index, data_batch, u, v, b, e)
+    for (data_index, data) in enumerate(data_batch)
+        output = outputs[data_index]
+        if save_index <= length(data.targets)
+            u_snapshot = parent(output.u[save_index])
+            v_snapshot = parent(output.v[save_index])
+            b_snapshot = parent(output.b[save_index])
+            e_snapshot = parent(output.e[save_index])
+
+            copyto!(u_snapshot, view(parent(u), 1, data_index, :))
+            copyto!(v_snapshot, view(parent(v), 1, data_index, :))
+            copyto!(b_snapshot, view(parent(b), 1, data_index, :))
+            copyto!(e_snapshot, view(parent(e), 1, data_index, :))
         end
     end
 
-    return outputs
+    return nothing
 end

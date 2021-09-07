@@ -1,5 +1,3 @@
-
-
 function InverseProblem(LESdata, p::Parameters{UnionAll}; 
                                 architecture = CPU(),
                             relative_weights = Dict(:b => 1.0, :u => 1.0, :v => 1.0, :e => 1.0),
@@ -11,7 +9,7 @@ function InverseProblem(LESdata, p::Parameters{UnionAll};
 
     model = CATKEVerticalDiffusivityModel.EnsembleModel(td_batch; 
                                                         architecture = architecture,
-                                                        N_ens=ensemble_size, 
+                                                        N_ens = ensemble_size, 
                                                         parameter_specific_kwargs[p.RelevantParameters]...)
 
     loss = LossFunction(model, td_batch, Δt, p.ParametersToOptimize; 
@@ -24,5 +22,4 @@ function InverseProblem(LESdata, p::Parameters{UnionAll};
     default_parameters = custom_defaults(model, p.ParametersToOptimize)
 
     return InverseProblem(td_batch, model, relative_weights, loss, default_parameters)
-
 end

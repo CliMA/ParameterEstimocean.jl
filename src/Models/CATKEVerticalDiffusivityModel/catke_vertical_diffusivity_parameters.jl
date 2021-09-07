@@ -1,3 +1,5 @@
+using CUDA
+
 parameter_guide = Dict(
 
      :Cᴰ   => (
@@ -161,17 +163,20 @@ override_defaults = Dict(
 
 set_if_present!(obj, name, field) = name ∈ propertynames(obj) && setproperty!(obj, name, field)
 
+get_model_closure(model::AbstractModel) = get_model_closure(model.closure)
+get_model_closure(closure) = closure
+get_model_closure(closure::AbstractArray) = CUDA.@allowscalar closure[1, 1]
+
 function custom_defaults(model::AbstractModel, RelevantParameters)
     fields = fieldnames(RelevantParameters)
 
-    mc = model.closure
-    closure = mc isa Matrix ? mc[1,1] : mc
+    closure = get_model_closure(model)
     defaults = DefaultFreeParameters(closure, RelevantParameters)
 
     RelevantParameters ∈ keys(override_defaults) && return RelevantParameters(override_defaults[RelevantParameters])
 
     for (pname, info) in parameter_guide
-          set_if_present!(defaults, pname, info.default)
+        set_if_present!(defaults, pname, info.default)
     end
 
     return defaults

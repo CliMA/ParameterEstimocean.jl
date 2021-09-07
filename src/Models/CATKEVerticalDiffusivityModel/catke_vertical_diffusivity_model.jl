@@ -25,6 +25,7 @@ function EnsembleModel(data_batch::TruthDataBatch; architecture = CPU(), N_ens =
     closure = [CATKEVerticalDiffusivity(Float64; warning=false, kwargs...) for i=1:N_ens, j=1:length(data_batch)]
 
     coriolis = [FPlane(f=td.constants[:f]) for i=1:N_ens, td in data_batch]
+    coriolis = arch_array(architecture, coriolis)
 
     bc_matrix(f) = [f(td.boundary_conditions) for i = 1:N_ens, td in data_batch]
     Qᵇ = bc_matrix(bc -> bc.Qᵇ)
@@ -33,10 +34,13 @@ function EnsembleModel(data_batch::TruthDataBatch; architecture = CPU(), N_ens =
     dbdz_bottom = bc_matrix(bc -> bc.dbdz_bottom)
     dudz_bottom = bc_matrix(bc -> bc.dudz_bottom)
 
+    # Convert to CuArray if necessary
     closure = arch_array(architecture, closure)
     Qᵇ = arch_array(architecture, Qᵇ)
     Qᵘ = arch_array(architecture, Qᵘ)
     Qᵛ = arch_array(architecture, Qᵛ)
+    dbdz_bottom = arch_array(architecture, dbdz_bottom)
+    dudz_bottom = arch_array(architecture, dudz_bottom)
     
     u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ), 
                                     bottom = GradientBoundaryCondition(dudz_bottom))

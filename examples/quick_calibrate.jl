@@ -7,9 +7,9 @@
 pushfirst!(LOAD_PATH, joinpath(@__DIR__, ".."))
 pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..", "projects", "OceanBoundaryLayerParameterizations", "src"))
 
+using Oceananigans
 using OceanTurbulenceParameterEstimation
 using OceanTurbulenceParameterEstimation.Models.CATKEVerticalDiffusivityModel
-
 using OceanBoundaryLayerParameterizations
 
 # CATKE parameters involved in setting field diffusivities 
@@ -34,6 +34,7 @@ calibration = InverseProblem(two_day_suite, # "Truth data" for model calibration
                              # Loss function parameters
                              relative_weights = relative_weight_options["all_but_e"],
                              # Model (hyper)parameters
+                             architecture = GPU(),
                              ensemble_size = 10,
                              Nz = 16,
                              Δt = 30.0)

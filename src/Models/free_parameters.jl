@@ -1,3 +1,5 @@
+using Oceananigans.Architectures: arch_array, architecture
+
 abstract type FreeParameters{N, T} <: FieldVector{N, T} end
 
 Base.show(io::IO, p::FreeParameters) = print(io, "$(typeof(p)):", '\n',
@@ -57,6 +59,10 @@ function DefaultFreeParameters(closure::AbstractTurbulenceClosure, freeparamtype
     return eval(Expr(:call, freeparamtype, freeparams...)) # e.g. ParametersToOptimize([1.0,2.0,3.0])
 end
 
+#####
+##### new_closure
+#####
+
 function new_closure(closure::AbstractTurbulenceClosure, free_parameters)
 
     paramnames, paramtypes, kw_params = get_free_parameters(closure)
@@ -103,43 +109,22 @@ function new_closure(closure::AbstractTurbulenceClosure, free_parameters)
     return new_closure
 end
 
-function set!(m::EnsembleModel, free_parameters::FreeParameters)
-    closure = getproperty(m, :closure)
-
-    if closure isa AbstractTurbulenceClosure
-        new_ = new_closure(closure, free_parameters)
-        setproperty!(m, :closure, new_)
-    else
-        new_ = new_closure(closure[1,1], free_parameters)
-
-        for i in eachindex(closure)
-            closure[i] = new_
-        end
-    end
+function new_closure(closure::AbstractArray, free_parameters::Vector{<:FreeParameters})
+    arch = architecture(closure)
+    closure = Array(closure)
+    Ex, Ey = size(closure)
+    closure = [new_closure(closure[i, j], free_parameters[i]) for i=1:Ex, j=1:Ey]
+    return arch_array(arch, closure)
 end
 
-function set!(m::EnsembleModel, free_parameters::Vector{<:FreeParameters})
+new_closure(closure::AbstractArray, free_parameters::FreeParameters) =
+    new_closure(closure, [free_parameters for i=1:size(closure, 1)])
 
-    # Array of closures
-    model_closure = getproperty(m, :closure)
+#####
+##### set!
+#####
 
-    N_ens = ensemble_size(m)
-    N_cases = batch_size(m)
-
-    @inbounds begin
-        Base.Threads.@threads for i = 1:N_ens
-
-            θ = free_parameters[i]
-
-            # each thread accesses different elements in model.closure
-            closure = m.closure[i, 1]
-
-            iᵗʰ_closure = new_closure(closure, θ)
-
-            for j in 1:N_cases
-                model_closure[i,j] = iᵗʰ_closure
-            end
-        end
-    end
-
+function set!(model::EnsembleModel, free_parameters)
+    model.closure = new_closure(model.closure, free_parameters)
+    return nothing
 end
