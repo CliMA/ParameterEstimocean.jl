@@ -3,7 +3,7 @@ module CATKEVerticalDiffusivityModel
 export parameter_latex_guide
 
 using ..Grids
-using ..Data
+using ..Observations
 using ..Models
 
 using Oceananigans

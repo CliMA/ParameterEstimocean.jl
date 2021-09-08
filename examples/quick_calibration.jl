@@ -17,7 +17,7 @@ using Distributions
 #
 
 free_convection_path = "/path/to/data"
-free_convection_observation = OneDimensionalTimeSeries(free_convection_path, normalization=Variance(), fields=(:u, :v, :b, :e), time_range=range(2hours, stop=2days, step=4hours))
+free_convection_observation = OneDimensionalTimeSeries(free_convection_path, normalization=Variance(), field_names=(:u, :v, :b, :e), time_range=range(2hours, stop=2days, step=4hours))
 
 # normalize(::Variance, field) =
 
@@ -40,22 +40,6 @@ struct OneDimensionalTimeSeries <: AbstractTruthData
     meta_data
 end
 
-function OneDimensionalTimeSeries(file_path, field_names=(:u, :v, :b, :e), time_range=nothing)
-    isnothing(time_range) && # generate default
-
-    field_timeseries = []
-    iterations = get_iterations(file_path)
-    for iter in iterations
-        fields = NamedTuple(name => get_data(file_path, name, iter) for name in field_names)
-        push!(field_timeseries, fields)
-    end
-
-    # deserialize as much as possible into metadata
-    meta_data = Dict(group => file[group] for group in filter(n -> n != "timeseries", keys(file)))
-
-    # etc
-    return One
-end
 
 stressed = model.velocities.u.boundary_conditions.top.condition == 0
 rotating = model.coriolis.f == 0

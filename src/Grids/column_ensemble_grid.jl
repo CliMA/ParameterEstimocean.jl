@@ -24,4 +24,3 @@ function ColumnEnsembleGrid(datapath; size = (1,1,nothing))
 
     return grid
 end
-

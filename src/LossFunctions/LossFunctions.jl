@@ -2,7 +2,7 @@ module LossFunctions
 
 using ..OceanTurbulenceParameterEstimation
 using ..OceanTurbulenceParameterEstimation.Grids
-using ..OceanTurbulenceParameterEstimation.Data
+using ..OceanTurbulenceParameterEstimation.Observations
 using ..OceanTurbulenceParameterEstimation.Models
 
 using Oceananigans

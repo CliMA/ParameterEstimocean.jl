@@ -5,7 +5,7 @@ export
     # Grids
     ColumnEnsembleGrid,
 
-    # Data
+    # Observations
     OneDimensionalTimeSeries, OneDimensionalTimeSeriesBatch,
 
     # Models
@@ -28,13 +28,13 @@ export
     relative_weight_options
 
 include("Grids/Grids.jl")
-include("Data/Data.jl")
+include("Observations/Observations.jl")
 include("Models/Models.jl")
 include("LossFunctions/LossFunctions.jl")
 include("ParameterEstimation/ParameterEstimation.jl")
 
 using .Grids
-using .Data
+using .Observations
 using .Models
 using .LossFunctions
 using .ParameterEstimation

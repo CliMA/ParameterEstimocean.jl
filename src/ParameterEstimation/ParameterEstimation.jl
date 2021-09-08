@@ -1,7 +1,7 @@
 module ParameterEstimation
 
 using ..OceanTurbulenceParameterEstimation
-using ..OceanTurbulenceParameterEstimation.Data
+using ..OceanTurbulenceParameterEstimation.Observations
 using ..OceanTurbulenceParameterEstimation.Models
 using ..OceanTurbulenceParameterEstimation.Models.CATKEVerticalDiffusivityModel
 using ..OceanTurbulenceParameterEstimation.LossFunctions
