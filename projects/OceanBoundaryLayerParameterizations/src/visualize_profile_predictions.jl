@@ -16,7 +16,7 @@ function visualize!(output::ForwardMap;
                     )
     isdir(directory) || makedir(directory)
     
-    fig = Figure(resolution = (200*(length(fields)+1), 200*length(data_batch)), font = "CMU Serif")
+    fig = Figure(resolution = (200*(length(fields)+1), 200*length(observations)), font = "CMU Serif")
     colors = [:black, :red, :blue]
 
     function empty_plot!(fig_position)
@@ -25,7 +25,7 @@ function visualize!(output::ForwardMap;
         hidespines!(ax, :t, :b, :l, :r)
     end
 
-    for (i, data) in enumerate(data_batch)
+    for (i, data) in enumerate(observations)
 
         targets = data.targets
         snapshots = round.(Int, range(targets[1], targets[end], length=3))
@@ -118,18 +118,18 @@ function visualize_and_save!(calibration, validation, parameters, directory; fie
 
         for inverse_problem in [calibration, validation]
 
-            all_data = inverse_problem.data_batch
+            all_data = inverse_problem.observations
             simulation = inverse_problem.simulation
             set!(simulation.model, parameters)
 
             for data_length in Set(length.(getproperty.(all_data, :t)))
 
-                data_batch = [d for d in all_data if length(d.t) == data_length]
-                days = data_batch[1].t[end]/86400
+                observations = [d for d in all_data if length(d.t) == data_length]
+                days = observations[1].t[end]/86400
 
                 new_ip = InverseProblem()
 
-                visualize!(simulation, data_batch, parameters;
+                visualize!(simulation, observations, parameters;
                                                  fields = fields,
                                                  filename = joinpath(directory, "$(days)_day_simulations.png"))
             end

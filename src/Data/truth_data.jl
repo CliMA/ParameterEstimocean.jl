@@ -97,40 +97,40 @@ function OneDimensionalTimeSeries(LEScase; grid_type=ColumnEnsembleGrid,
 end
 
 """
-    OneDimensionalTimeSeries(data::OneDimensionalTimeSeries, grid)
+    OneDimensionalTimeSeries(observation::OneDimensionalTimeSeries, grid)
 
-Returns `data::OneDimensionalTimeSeries` interpolated to `grid`.
+Returns `observation::OneDimensionalTimeSeries` interpolated to `grid`.
 """
-function OneDimensionalTimeSeries(td::OneDimensionalTimeSeries, grid::AbstractGrid)
+function OneDimensionalTimeSeries(data::OneDimensionalTimeSeries, grid::AbstractGrid)
 
-    U = [ XFaceField(grid) for t in td.t ]
-    V = [ YFaceField(grid) for t in td.t ]
-    B = [ CenterField(grid) for t in td.t ]
-    E = [ CenterField(grid) for t in td.t ]
+    U = [ XFaceField(grid) for t in data.t ]
+    V = [ YFaceField(grid) for t in data.t ]
+    B = [ CenterField(grid) for t in data.t ]
+    E = [ CenterField(grid) for t in data.t ]
 
-    for i = 1:length(td.t)
-        set!(U[i], td.u[i])
-        set!(V[i], td.v[i])
-        set!(B[i], td.b[i])
-        set!(E[i], td.e[i])
+    for i = 1:length(data.t)
+        set!(U[i], data.u[i])
+        set!(V[i], data.v[i])
+        set!(B[i], data.b[i])
+        set!(E[i], data.e[i])
     end
 
     return OneDimensionalTimeSeries(td.boundary_conditions,
                       grid,
-                      td.constants,
-                      td.diffusivities,
+                      data.constants,
+                      data.diffusivities,
                       U,
                       V,
                       B,
                       E,
-                      td.t,
-                      td.name,
-                      td.targets,
-                      td.relevant_fields)
+                      data.t,
+                      data.name,
+                      data.targets,
+                      data.relevant_fields)
 end
 
 """
-    OneDimensionalTimeSeries(data::OneDimensionalTimeSeries, grid)
+    OneDimensionalTimeSeries(observation::OneDimensionalTimeSeries, grid)
 
 Construct OneDimensionalTimeSeries from a time-series of Oceananigans LES data saved at `datapath`.
 and interpolate the data to `grid`.

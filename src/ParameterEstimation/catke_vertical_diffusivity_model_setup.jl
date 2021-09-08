@@ -1,4 +1,4 @@
-function InverseProblem(data_batch::OneDimensionalTimeSeriesObservations, parameters::Parameters{UnionAll}; 
+function InverseProblem(observations::OneDimensionalTimeSeriesBatch, parameters::Parameters{UnionAll}; 
                                 architecture = CPU(),
                             relative_weights = Dict(:b => 1.0, :u => 1.0, :v => 1.0, :e => 1.0),
                                ensemble_size = 1, 
@@ -18,20 +18,20 @@ function InverseProblem(data_batch::OneDimensionalTimeSeriesObservations, parame
 
     default_parameters = custom_defaults(model, parameters.ParametersToOptimize)
 
-    loss = LossFunction(simulation, data_batch; 
-                        data_weights=[1.0 for data in data_batch],
+    loss = LossFunction(simulation, observations; 
+                        data_weights=[1.0 for data in observations],
                         relative_weights)
 
-    return InverseProblem(data_batch, simulation, relative_weights, loss, default_parameters, parameters)
+    return InverseProblem(observations, simulation, relative_weights, loss, default_parameters, parameters)
 end
 
-OneDimensionalTimeSeries(LESdata)
+OneDimensionalTimeSeriesBatch(LESdata; grid_type=ColumnEn) = OneDimensionalTimeSeries.(values(LESdata); grid_type=ColumnEnsembleGrid, Nz=kwargs.Nz)
 
 function InverseProblem(LESdata, parameters::Parameters{UnionAll}; kwargs...)
 
-    data_batch = OneDimensionalTimeSeries.(values(LESdata); grid_type=ColumnEnsembleGrid, Nz=kwargs.Nz)
+    observations = OneDimensionalTimeSeries.(values(LESdata); grid_type=ColumnEnsembleGrid, Nz=kwargs.Nz)
 
-    return InverseProblem(data_batch, parameters; kwargs...)
+    return InverseProblem(observations, parameters; kwargs...)
 end
 
 function InverseProblem(data, ip::InverseProblem; 

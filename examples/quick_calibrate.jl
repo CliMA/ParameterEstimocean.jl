@@ -45,7 +45,6 @@ six_day_suite = SixDaySuite(six_day_suite_dir)
 calibration = InverseProblem(two_day_suite, parameters; relative_weights = relative_weight_options["all_but_e"],
                              architecture = GPU(), ensemble_size = 10, Δt = 30.0)
 
-
 validation = InverseProblem(four_day_suite, calibration; Nz = 64);
 
 # Loss on default parameters

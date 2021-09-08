@@ -2,7 +2,7 @@ using Oceananigans.Utils: prettytime
 
 struct ForwardMap{V,D,P}
     model_time_series::V
-    data_batch::D
+    observations::D
     parameters::P
 end
 
@@ -18,21 +18,21 @@ ModelTimeSeries(grid, targets) = ModelTimeSeries([XFaceField(grid) for i = targe
                                                  [CenterField(grid) for i = targets],
                                                  [CenterField(grid) for i = targets])
 
-function model_time_series(simulation, data_batch, parameters)
+function model_time_series(simulation, observations, parameters)
 
     model = simulation.model
 
-    # Sometimes data_batch will have fewer data objects than the model, so pad data_batch with redundant objects
-    redundant_data = [data_batch[1] for _ in 1:(batch_size(model) - length(data_batch))]
-    full_data_batch = [data_batch; redundant_data]
+    # Sometimes observations will have fewer data objects than the model, so pad observations with redundant objects
+    redundant_data = [observations[1] for _ in 1:(batch_size(model) - length(observations))]
+    full_observations = [observations; redundant_data]
     
-    all_targets = getproperty.(full_data_batch, :targets)
+    all_targets = getproperty.(full_observations, :targets)
     max_simulation_length = maximum(length.(all_targets))
     starts = getindex.(all_targets, 1)
 
-    initialize_forward_run!(model, full_data_batch, parameters, starts)
+    initialize_forward_run!(model, full_observations, parameters, starts)
 
-    outputs = [ModelTimeSeries(data.grid, data.targets) for data in data_batch]
+    outputs = [ModelTimeSeries(data.grid, data.targets) for data in observations]
 
     u = get_model_field(model, :u)
     v = get_model_field(model, :v)
@@ -40,8 +40,8 @@ function model_time_series(simulation, data_batch, parameters)
     e = get_model_field(model, :e)
 
     # this should be improved
-    all_lengths = length.(getproperty.(data_batch, :t))
-    longest_sim = data_batch[argmax(all_lengths)]
+    all_lengths = length.(getproperty.(observations, :t))
+    longest_sim = observations[argmax(all_lengths)]
     t = longest_sim.t # times starting from zero
 
     start_time = time_ns()
@@ -55,7 +55,7 @@ function model_time_series(simulation, data_batch, parameters)
         b = model.tracers.b
         e = model.tracers.e
 
-        capture_model_state!(outputs, save_index, data_batch, u, v, b, e)
+        capture_model_state!(outputs, save_index, observations, u, v, b, e)
     end
 
     end_time = time_ns()
@@ -63,11 +63,11 @@ function model_time_series(simulation, data_batch, parameters)
 
     @info "The forward run took $(prettytime(elapsed_time))"
 
-    return ForwardMap(outputs, data_batch, parameters)
+    return ForwardMap(outputs, observations, parameters)
 end
 
-function capture_model_state!(outputs, save_index, data_batch, u, v, b, e)
-    for (data_index, data) in enumerate(data_batch)
+function capture_model_state!(outputs, save_index, observations, u, v, b, e)
+    for (data_index, data) in enumerate(observations)
         output = outputs[data_index]
         if save_index <= length(data.targets)
             u_snapshot = parent(output.u[save_index])

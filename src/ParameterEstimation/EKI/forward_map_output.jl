@@ -6,7 +6,7 @@ function get_normalization_functions(loss::LossFunction)
 
     normalize_function = Dict()
 
-    for data in loss.data_batch
+    for data in loss.observations
         case = data.name
         normalize_function[case] = Dict()
         fields = data.relevant_fields
@@ -64,8 +64,8 @@ function (G::ConcatenatedProfilesForwardMapOutput)(u)
     all = []
     parameters = transform_unconstrained_to_constrained(G.prior, u)
     outputs = model_time_series(G.inverse_problem, parameters)
-    data_batch = G.inverse_problem.data_batch
-    for (dataindex, data, output) in zip(eachindex(data_batch), data_batch, outputs)
+    observations = G.inverse_problem.observations
+    for (dataindex, data, output) in zip(eachindex(observations), observations, outputs)
         last = data.targets[end]
         for fieldname in data.relevant_fields
             model_field = getproperty(output, fieldname)[last]
@@ -80,7 +80,7 @@ end
 # Concatenated profiles at the final timestep according to 
 function observation(G::ConcatenatedProfilesForwardMapOutput)
     y  = []
-    for data in G.inverse_problem.data_batch
+    for data in G.inverse_problem.observations
         for fieldname in data.relevant_fields
             last = data.targets[end]
             data_field = getproperty(data, fieldname)[last]

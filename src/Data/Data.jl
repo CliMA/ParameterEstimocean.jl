@@ -9,10 +9,8 @@ using Oceananigans.Fields
 using JLD2
 
 export # truth_data.jl
-       TruthData, 
-
-       # truth_data_batch.jl
-       TruthDataBatch,
+       OneDimensionalTimeSeries, 
+       OneDimensionalTimeSeriesBatch,
        column_ensemble_interior,
 
        # set_field.jl
@@ -20,7 +18,7 @@ export # truth_data.jl
 
 include("file_wrangling.jl")
 include("truth_data.jl")
-include("truth_data_batch.jl")
+include("truth_observations.jl")
 include("set_field.jl")
 
 end #module

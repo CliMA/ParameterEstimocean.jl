@@ -72,7 +72,7 @@ function eki(inverse_problem::InverseProblem, initial_parameters;
                 forward_map_output_type = SqrtLossForwardMapOutput
             )
 
-    N_ens = ensemble_size(inverse_problem.model)
+    N_ens = ensemble_size(inverse_problem.simulation.model)
 
     bounds, prior_variances = get_bounds_and_variance(initial_parameters; stds_within_bounds = stds_within_bounds);
 

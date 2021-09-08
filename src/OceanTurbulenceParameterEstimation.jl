@@ -6,7 +6,7 @@ export
     ColumnEnsembleGrid,
 
     # Data
-    OneDimensionalTimeSeries, OneDimensionalTimeSeriesObservations,
+    OneDimensionalTimeSeries, OneDimensionalTimeSeriesBatch,
 
     # Models
     get_model_field, EnsembleModel, ensemble_size, batch_size,
