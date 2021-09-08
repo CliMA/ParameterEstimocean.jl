@@ -1,9 +1,9 @@
 using OceanTurbulenceParameterEstimation, Plots
 
 # convert from offset arrays to normal arrays
-tdata = TruthData(files[1]*"/instantaneous_statistics.jld2")
+tdata = OneDimensionalTimeSeries(files[1]*"/instantaneous_statistics.jld2")
 
-# tdata = TruthData("/Users/adelinehillier/.julia/dev/Data/WENO.jld2")
+# tdata = OneDimensionalTimeSeries("/Users/adelinehillier/.julia/dev/Data/WENO.jld2")
 temp = tdata.T
 Nz = tdata.grid.N
 
@@ -63,9 +63,9 @@ files = ["/Users/adelinehillier/.julia/dev/inst_to_transfer/three_layer_constant
 # 6 too shallow by 3/4
 
 # 7e-4 strong wind
-temperature(file) = [parent(x.data[1:Nz]) for x in TruthData(file).T]
-# uvelocity(file) = [parent(x.data[1:Nz]) for x in TruthData(file).U]
-# vvelocity(file) = [parent(x.data[1:Nz]) for x in TruthData(file).V]
+temperature(file) = [parent(x.data[1:Nz]) for x in OneDimensionalTimeSeries(file).T]
+# uvelocity(file) = [parent(x.data[1:Nz]) for x in OneDimensionalTimeSeries(file).U]
+# vvelocity(file) = [parent(x.data[1:Nz]) for x in OneDimensionalTimeSeries(file).V]
 #
 # get_mean_std(f) = mean([mean(std.(f(file*"/instantaneous_statistics.jld2"))) for file in files])
 # get_mean_std(temperature)

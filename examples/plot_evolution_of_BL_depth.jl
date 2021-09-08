@@ -23,7 +23,7 @@ end
 """
 Approximates the mixed layer depth for pure convection.
 """
-function approximate_mixed_layer_depth(model_time_series, data::TruthData, targets)
+function approximate_mixed_layer_depth(model_time_series, data::OneDimensionalTimeSeries, targets)
 
         data.constants[:αg]
         Qᵇ = data.boundary_conditions.Qᵇ 
@@ -80,7 +80,7 @@ function make_all_the_plots(params)
 
     for (i, LEScase) in enumerate(values(LESdata))
 
-        td = TruthData(LEScase.filename; grid_type=ColumnEnsembleGrid, Nz=32)
+        td = OneDimensionalTimeSeries(LEScase.filename; grid_type=ColumnEnsembleGrid, Nz=32)
 
         relative_weights = Dict(:b => 1.0, :u => 1.0, :v => 1.0, :e => 1.0)
 

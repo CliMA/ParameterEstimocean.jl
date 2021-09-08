@@ -2,10 +2,10 @@ using OceanTurbulenceParameterEstimation, Plots
 using Flux: mse
 
 # convert from offset arrays to normal arrays
-tdata = TruthData("/Users/adelinehillier/.julia/dev/Data/WENO.jld2")
+tdata = OneDimensionalTimeSeries("/Users/adelinehillier/.julia/dev/Data/WENO.jld2")
 temp = tdata.T
 Nz = tdata.grid.N
-temperature(file) = [parent(x.data[1:Nz]) for x in TruthData(file).T]
+temperature(file) = [parent(x.data[1:Nz]) for x in OneDimensionalTimeSeries(file).T]
 
 WENO = temperature("/Users/adelinehillier/.julia/dev/Data/WENO.jld2")
 AMD = temperature("/Users/adelinehillier/.julia/dev/Data/AMD.jld2")

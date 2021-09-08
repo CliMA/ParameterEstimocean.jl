@@ -99,7 +99,7 @@ end
 function conv_adj_independent_diffusivites(file)
 
     # ParameterizedModel and data
-    tdata = TruthData(file)
+    tdata = OneDimensionalTimeSeries(file)
     model = ParameterizedModel(tdata, 1minute, N=32,
                         convective_adjustment = TKEMassFlux.FluxProportionalConvectiveAdjustment(),
                         eddy_diffusivities = TKEMassFlux.IndependentDiffusivities()
@@ -119,7 +119,7 @@ function tke_free_convection_independent_diffusivities(file)
     # simple mixing length
 
     # ParameterizedModel and data
-    tdata = TruthData(file)
+    tdata = OneDimensionalTimeSeries(file)
     model = ParameterizedModel(tdata, 1minute, N=32,
                         convective_adjustment = nothing,
                         eddy_diffusivities = TKEMassFlux.IndependentDiffusivities()
@@ -138,7 +138,7 @@ function tke_free_convection(file)
     # simple mixing length
 
     # ParameterizedModel and data
-    tdata = TruthData(file)
+    tdata = OneDimensionalTimeSeries(file)
     model = ParameterizedModel(tdata, 1minute, N=32,
                         convective_adjustment = nothing,
                         eddy_diffusivities = TKEMassFlux.RiDependentDiffusivities()
@@ -155,7 +155,7 @@ end
 function conv_adj_ri_dependent_diffusivites(file)
 
     # ParameterizedModel and data
-    tdata = TruthData(file)
+    tdata = OneDimensionalTimeSeries(file)
     model = ParameterizedModel(tdata, 1minute, N=32,
                         convective_adjustment = TKEMassFlux.FluxProportionalConvectiveAdjustment(),
                         eddy_diffusivities = TKEMassFlux.RiDependentDiffusivities()

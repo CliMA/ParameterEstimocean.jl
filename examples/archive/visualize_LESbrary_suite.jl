@@ -16,7 +16,7 @@ mkpath(output_directory)
 
 Ts = Dict()
 for file in files
-    Ts[file] = TruthData(data_path*file*"/instantaneous_statistics.jld2")
+    Ts[file] = OneDimensionalTimeSeries(data_path*file*"/instantaneous_statistics.jld2")
 end
 
 file_labels = Dict(

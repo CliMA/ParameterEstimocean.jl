@@ -1,6 +1,6 @@
 
 
-const TruthDataBatch = Vector{<:TruthData}
+const OneDimensionalTimeSeriesObservations = Vector{<:OneDimensionalTimeSeries}
 
 function get_interior(data, field_name, time_index)
 
@@ -15,13 +15,13 @@ function get_interior(data, field_name, time_index)
 end
 
 """
-    column_ensemble_interior(data_batch::TruthDataBatch, field_name, time_indices::Vector, N_ens)
+    column_ensemble_interior(data_batch::OneDimensionalTimeSeriesObservations, field_name, time_indices::Vector, N_ens)
 
 Returns an `N_cases × N_ens` array of the interior of a field `field_name` defined on a 
-`ColumnEnsembleGrid` of size `N_cases × N_ens × Nz`, given a list of `TruthData` objects
+`ColumnEnsembleGrid` of size `N_cases × N_ens × Nz`, given a list of `OneDimensionalTimeSeries` objects
 containing the `N_cases` single-column fields at the corresponding time index in `time_indices`.
 """
-function column_ensemble_interior(data_batch::TruthDataBatch, field_name, time_indices::Vector, N_ens)
+function column_ensemble_interior(data_batch::OneDimensionalTimeSeriesObservations, field_name, time_indices::Vector, N_ens)
     batch = @. get_interior(data_batch, field_name, time_indices)
     batch = cat(batch..., dims = 2) # (N_cases, Nz)
     return cat([batch for i = 1:N_ens]..., dims = 1) # (N_ens, N_cases, Nz)

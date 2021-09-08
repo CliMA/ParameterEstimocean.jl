@@ -11,7 +11,7 @@ using OceanTurb#glw/convective-adjustment-defaults
 datapath = "/Users/adelinehillier/.julia/dev/inst_to_transfer/three_layer_constant_fluxes_linear_hr96_Qu0.0e+00_Qb8.0e-08_f1.0e-04_Nh256_Nz128_free_convection/instantaneous_statistics.jld2"
 
 # ParameterizedModel and data
-tdata = TruthData(datapath)
+tdata = OneDimensionalTimeSeries(datapath)
 model = ParameterizedModel(tdata, 1minute, N=32,
                     convective_adjustment = TKEMassFlux.FluxProportionalConvectiveAdjustment(),
                     eddy_diffusivities = TKEMassFlux.IndependentDiffusivities()

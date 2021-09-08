@@ -1,4 +1,4 @@
-function InverseProblem(data_batch::TruthDataBatch, parameters::Parameters{UnionAll}; 
+function InverseProblem(data_batch::OneDimensionalTimeSeriesObservations, parameters::Parameters{UnionAll}; 
                                 architecture = CPU(),
                             relative_weights = Dict(:b => 1.0, :u => 1.0, :v => 1.0, :e => 1.0),
                                ensemble_size = 1, 
@@ -29,7 +29,7 @@ OneDimensionalTimeSeries(LESdata)
 
 function InverseProblem(LESdata, parameters::Parameters{UnionAll}; kwargs...)
 
-    data_batch = TruthData.(values(LESdata); grid_type=ColumnEnsembleGrid, Nz=kwargs.Nz)
+    data_batch = OneDimensionalTimeSeries.(values(LESdata); grid_type=ColumnEnsembleGrid, Nz=kwargs.Nz)
 
     return InverseProblem(data_batch, parameters; kwargs...)
 end

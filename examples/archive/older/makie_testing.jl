@@ -55,7 +55,7 @@ colors = [:black, :red, :blue]
 
 for (i, LEScase) in enumerate(values(LESdata))
 
-    td = TruthData(LEScase.filename; grid_type=ColumnEnsembleGrid, Nz=64);
+    td = OneDimensionalTimeSeries(LEScase.filename; grid_type=ColumnEnsembleGrid, Nz=64);
     targets = LEScase.first:(isnothing(LEScase.last) ? length(td.t) : LEScase.last)
 
     snapshots = round.(Int, range(targets[1], targets[end], length=3))

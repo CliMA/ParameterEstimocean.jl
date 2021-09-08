@@ -1,14 +1,14 @@
 #####
-##### TruthData
+##### OneDimensionalTimeSeries
 #####
 
 """
-    struct TruthData{FT, F, G, C, D, UU, VV, TT, SS}
+    struct OneDimensionalTimeSeries{FT, F, G, C, D, UU, VV, TT, SS}
 
 A time series of horizontally-averaged observational or LES data
 gridded as Oceananigans fields.
 """
-struct TruthData{F, G, C, D, UU, VV, BΘ, EE, TT, NN, TG, RF}
+struct OneDimensionalTimeSeries{F, G, C, D, UU, VV, BΘ, EE, TT, NN, TG, RF}
    boundary_conditions :: F
                   grid :: G
              constants :: C
@@ -24,11 +24,11 @@ struct TruthData{F, G, C, D, UU, VV, BΘ, EE, TT, NN, TG, RF}
 end
 
 """
-    TruthData(datapath)
+    OneDimensionalTimeSeries(datapath)
 
-Construct TruthData from a time-series of Oceananigans LES data saved at `datapath`.
+Construct OneDimensionalTimeSeries from a time-series of Oceananigans LES data saved at `datapath`.
 """
-function TruthData(LEScase; grid_type=ColumnEnsembleGrid,
+function OneDimensionalTimeSeries(LEScase; grid_type=ColumnEnsembleGrid,
                              Nz=32)
 
     datapath = LEScase.filename
@@ -82,26 +82,26 @@ function TruthData(LEScase; grid_type=ColumnEnsembleGrid,
                       !(LEScase.rotating) ? (:b, :u, :e) :
                                           (:b, :u, :v, :e)
 
-    td = TruthData((Qᶿ=Qᶿ, Qᵇ=Qᵇ, Qᵘ=Qᵘ, Qᵛ=Qᵛ, Qᵉ=0.0, 
+    td = OneDimensionalTimeSeries((Qᶿ=Qᶿ, Qᵇ=Qᵇ, Qᵘ=Qᵘ, Qᵛ=Qᵛ, Qᵉ=0.0, 
                       dθdz_bottom=dθdz_bottom, dbdz_bottom=dbdz_bottom, dudz_bottom=dudz_bottom),
                       simulation_grid, constants, (ν=background_ν, κ=background_κ),
                       u, v, b, e, t, name, targets, relevant_fields)
 
     model_grid = grid_type(datapath; size=(1,1,Nz))
 
-    # Return TruthData with grid and variables coarse_grained to model resolution
-    td_coarse = TruthData(td, model_grid)
+    # Return OneDimensionalTimeSeries with grid and variables coarse_grained to model resolution
+    td_coarse = OneDimensionalTimeSeries(td, model_grid)
 
     return td_coarse
 
 end
 
 """
-    TruthData(data::TruthData, grid)
+    OneDimensionalTimeSeries(data::OneDimensionalTimeSeries, grid)
 
-Returns `data::TruthData` interpolated to `grid`.
+Returns `data::OneDimensionalTimeSeries` interpolated to `grid`.
 """
-function TruthData(td::TruthData, grid::AbstractGrid)
+function OneDimensionalTimeSeries(td::OneDimensionalTimeSeries, grid::AbstractGrid)
 
     U = [ XFaceField(grid) for t in td.t ]
     V = [ YFaceField(grid) for t in td.t ]
@@ -115,7 +115,7 @@ function TruthData(td::TruthData, grid::AbstractGrid)
         set!(E[i], td.e[i])
     end
 
-    return TruthData(td.boundary_conditions,
+    return OneDimensionalTimeSeries(td.boundary_conditions,
                       grid,
                       td.constants,
                       td.diffusivities,
@@ -130,12 +130,12 @@ function TruthData(td::TruthData, grid::AbstractGrid)
 end
 
 """
-    TruthData(data::TruthData, grid)
+    OneDimensionalTimeSeries(data::OneDimensionalTimeSeries, grid)
 
-Construct TruthData from a time-series of Oceananigans LES data saved at `datapath`.
+Construct OneDimensionalTimeSeries from a time-series of Oceananigans LES data saved at `datapath`.
 and interpolate the data to `grid`.
 """
-function TruthData(datapath, grid::AbstractGrid)
-    td = TruthData(datapath)
-    return TruthData(td, grid)
+function OneDimensionalTimeSeries(datapath, grid::AbstractGrid)
+    td = OneDimensionalTimeSeries(datapath)
+    return OneDimensionalTimeSeries(td, grid)
 end
