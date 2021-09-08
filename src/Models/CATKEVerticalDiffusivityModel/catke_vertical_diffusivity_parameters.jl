@@ -111,7 +111,6 @@ parameter_guide = Dict(
           bounds = (0.0, 2.0)),
 )
 
-# For scenarios involving stresses
 @free_parameters(CATKEParametersRiDependent,
                  Cᵟu, Cᵟc, Cᵟe,
                  CᴷRiʷ, CᴷRiᶜ,

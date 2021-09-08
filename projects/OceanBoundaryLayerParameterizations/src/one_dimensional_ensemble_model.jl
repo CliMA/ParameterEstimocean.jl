@@ -1,5 +1,17 @@
 using Oceananigans.Architectures: arch_array
 
+function get_parameter(filename, group, parameter_name, default=nothing)
+    parameter = default
+
+    jldopen(filename) do file
+        if parameter_name ∈ keys(file["$group"])
+            parameter = file["$group/$parameter_name"]
+        end
+    end
+
+    return parameter
+end
+
 """
     OneDimensionalEnsembleModel(observations::OneDimensionalTimeSeriesBatch; architecture = CPU(), ensemble_size = 50, kwargs...)
 
@@ -29,11 +41,11 @@ function OneDimensionalEnsembleModel(observations::OneDimensionalTimeSeriesBatch
 
     datapath = observations.file_path
 
-    α = get_parameter(datapath, "buoyancy", "equation_of_state/α", default = 2e-4)
-    g = get_parameter(datapath, "buoyancy", "gravitational_acceleration", default = 9.81)
+    α = get_parameter(datapath, "buoyancy", "equation_of_state/α", 2e-4)
+    g = get_parameter(datapath, "buoyancy", "gravitational_acceleration", 9.81)
     αg = α * g
 
-    f = get_parameter(datapath, "coriolis", "f")
+    f = get_parameter(datapath, "coriolis", "f", 0.0)
 
     # Surface fluxes
     Qᵘ = get_parameter(datapath, "parameters", "boundary_condition_u_top", 0.0)
@@ -50,8 +62,7 @@ function OneDimensionalEnsembleModel(observations::OneDimensionalTimeSeriesBatch
     # Build model using metadata
     #
 
-    data_grid = observations.grid
-    grid = OneDimensionalEnsembleGrid(data_grid; size=(ensemble_size, length(observations), data_grid.Nz))
+    grid = OneDimensionalEnsembleGrid(observations.grid; size=(ensemble_size, length(observations), data_grid.Nz))
 
     closure = [closure for i=1:ensemble_size, j=1:length(observations)]
 
