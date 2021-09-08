@@ -90,7 +90,7 @@ function make_all_the_plots(params)
 
         targets = case_loss.loss.targets
 
-        ℱ = model_time_series(default_parameters, case_loss.model, case_loss.data)
+        ℱ = model_time_series(case_loss.simulation, case_loss.data, default_parameters)
         h2_les, h2_model = approximate_mixed_layer_depth(ℱ, td, targets)
 
         days = td.t[targets] ./ 86400
@@ -105,7 +105,7 @@ function make_all_the_plots(params)
         p = plot!(days, h2_model, color = :purple, label = "TKE mixed layer depth", linewidth = 3 )
         Plots.savefig(p, directory*td.name*"_mixed_layer_depth_log10.pdf")
 
-        # p = visualize_predictions(md, td, 1:180:length(td), best_parameters)
+        # p = visualize!(md, td, 1:180:length(td), best_parameters)
         # PyPlot.savefig(directory*td.name*".png")
     end
 end

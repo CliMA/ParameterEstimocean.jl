@@ -37,17 +37,21 @@ Base.@kwdef struct Parameters{T <: UnionAll}
     ParametersToOptimize::T
 end
 
-struct InverseProblem{DB, PM, RW, LF, FP}
+struct InverseProblem{DB, PM, RW, LF, FP, PT, DT}
     data_batch::DB
-    model::PM
+    simulation::PM
     relative_weights::RW # field weights
     loss::LF
     default_parameters::FP
+    parameters::PT
 end
 
-(ip::InverseProblem)(θ=ip.default_parameters) = ip.loss(ip.model, ip.data_batch, θ)
+(ip::InverseProblem)(θ::FreeParameters = ip.default_parameters) = ip.loss(ip.simulation, ip.data_batch, [θ for i = 1:ensemble_size(m)])
+(ip::InverseProblem)(θ::Vector{<:Number} = ip.default_parameters) = ip.loss(ip.simulation, ip.data_batch, ip.parameters.ParametersToOptimize(θ))
+(ip::InverseProblem)(θ::Vector{<:Vector} = ip.default_parameters) = ip.loss(ip.simulation, ip.data_batch, ip.parameters.ParametersToOptimize.(θ))
+(ip::InverseProblem)(θ::Matrix = ip.default_parameters) = ip.loss(ip.simulation, ip.data_batch, [θ[:,i] for i in 1:size(θ, 2)])
 
-model_time_series(ip::InverseProblem, parameters) = model_time_series(ip.loss.ParametersToOptimize(parameters), ip.model, ip.data_batch, ip.loss.Δt)
+model_time_series(ip::InverseProblem, parameters) = model_time_series(ip.simulation, ip.data_batch, ip.parameters.ParametersToOptimize(parameters))
 
 function validation_loss_reduction(calibration::InverseProblem, validation::InverseProblem, parameters::FreeParameters)
     validation_loss = validation.loss(parameters)
