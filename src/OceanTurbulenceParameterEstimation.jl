@@ -3,13 +3,13 @@ module OceanTurbulenceParameterEstimation
 export
 
     # Grids
-    ColumnEnsembleGrid,
+    OneDimensionalEnsembleGrid,
 
     # Observations
     OneDimensionalTimeSeries, OneDimensionalTimeSeriesBatch,
 
     # Models
-    get_model_field, EnsembleModel, ensemble_size, batch_size,
+    get_model_field, OneDimensionalEnsembleModel, ensemble_size, batch_size,
     set!, initialize_forward_run!,
     DefaultFreeParameters, get_free_parameters, FreeParameters, @free_parameters,
 

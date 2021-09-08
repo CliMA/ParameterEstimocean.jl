@@ -10,7 +10,7 @@ using Oceananigans.Grids: Flat, Bounded, Periodic,
 
 using JLD2
 
-export ColumnEnsembleGrid, EnsembleGrid
+export OneDimensionalEnsembleGrid, OneDimensionalEnsembleGrid
 
 include("utils.jl")
 include("column_ensemble_grid.jl")

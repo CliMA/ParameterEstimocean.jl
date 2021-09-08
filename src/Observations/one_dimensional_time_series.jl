@@ -37,7 +37,7 @@ function OneDimensionalTimeSeries(file_path, field_names=(:u, :v, :b, :e), time_
 
     times = get_times(datapath)
 
-    model_grid = ColumnEnsembleGrid(datapath; size=(1,1,Nz))
+    model_grid = OneDimensionalEnsembleGrid(datapath; size=(1,1,Nz))
 
     # deserialize as much as possible into metadata
     meta_data = Dict(group => file[group] for group in filter(n -> n != "timeseries", keys(file)))

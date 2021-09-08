@@ -38,8 +38,8 @@ isdir(directory) || mkpath(directory)
 p = Parameters(RelevantParameters = free_parameter_options[free_parameter_option],
                ParametersToOptimize = free_parameter_options[free_parameter_option])
 
-calibration = InverseProblem(FourDaySuite, p; relative_weights = relative_weight_options["all_but_e"], grid_type=ColumnEnsembleGrid, Nz=64, Δt=10.0);
-validation = InverseProblem(merge(TwoDaySuite, SixDaySuite), p; relative_weights = relative_weight_options["all_but_e"], grid_type=ColumnEnsembleGrid, Nz=64, Δt=10.0);
+calibration = InverseProblem(FourDaySuite, p; relative_weights = relative_weight_options["all_but_e"], grid_type=OneDimensionalEnsembleGrid, Nz=64, Δt=10.0);
+validation = InverseProblem(merge(TwoDaySuite, SixDaySuite), p; relative_weights = relative_weight_options["all_but_e"], grid_type=OneDimensionalEnsembleGrid, Nz=64, Δt=10.0);
 ce = CalibrationExperiment(calibration, validation, p);
 
 loss = ce.calibration.loss

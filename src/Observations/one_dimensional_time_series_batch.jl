@@ -18,7 +18,7 @@ end
     column_ensemble_interior(observations::OneDimensionalTimeSeriesBatch, field_name, time_indices::Vector, N_ens)
 
 Returns an `N_cases × N_ens` array of the interior of a field `field_name` defined on a 
-`ColumnEnsembleGrid` of size `N_cases × N_ens × Nz`, given a list of `OneDimensionalTimeSeries` objects
+`OneDimensionalEnsembleGrid` of size `N_cases × N_ens × Nz`, given a list of `OneDimensionalTimeSeries` objects
 containing the `N_cases` single-column fields at the corresponding time index in `time_indices`.
 """
 function column_ensemble_interior(observations::OneDimensionalTimeSeriesBatch, field_name, time_indices::Vector, N_ens)

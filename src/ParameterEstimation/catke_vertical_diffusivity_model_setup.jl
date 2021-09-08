@@ -5,7 +5,7 @@ function InverseProblem(observations::OneDimensionalTimeSeriesBatch, parameters:
                                           Δt = 60.0,
                                           Nz = 64)
 
-    model = CATKEVerticalDiffusivityModel.EnsembleModel(td_batch; 
+    model = CATKEVerticalDiffusivityModel.OneDimensionalEnsembleModel(td_batch; 
                                                         architecture = architecture,
                                                         N_ens = ensemble_size, 
                                                         parameter_specific_kwargs[parameters.RelevantParameters]...)
@@ -25,11 +25,11 @@ function InverseProblem(observations::OneDimensionalTimeSeriesBatch, parameters:
     return InverseProblem(observations, simulation, relative_weights, loss, default_parameters, parameters)
 end
 
-OneDimensionalTimeSeriesBatch(LESdata; grid_type=ColumnEn) = OneDimensionalTimeSeries.(values(LESdata); grid_type=ColumnEnsembleGrid, Nz=kwargs.Nz)
+OneDimensionalTimeSeriesBatch(LESdata; grid_type=ColumnEn) = OneDimensionalTimeSeries.(values(LESdata); grid_type=OneDimensionalEnsembleGrid, Nz=kwargs.Nz)
 
 function InverseProblem(LESdata, parameters::Parameters{UnionAll}; kwargs...)
 
-    observations = OneDimensionalTimeSeries.(values(LESdata); grid_type=ColumnEnsembleGrid, Nz=kwargs.Nz)
+    observations = OneDimensionalTimeSeries.(values(LESdata); grid_type=OneDimensionalEnsembleGrid, Nz=kwargs.Nz)
 
     return InverseProblem(observations, parameters; kwargs...)
 end

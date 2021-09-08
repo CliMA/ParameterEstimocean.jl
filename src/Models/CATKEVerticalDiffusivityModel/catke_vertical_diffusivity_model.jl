@@ -1,7 +1,7 @@
 using Oceananigans.Architectures: arch_array
 
 """
-    EnsembleModel(observations::OneDimensionalTimeSeriesBatch; architecture = CPU(), ensemble_size = 50, kwargs...)
+    OneDimensionalEnsembleModel(observations::OneDimensionalTimeSeriesBatch; architecture = CPU(), ensemble_size = 50, kwargs...)
 
 Build an Oceananigans `HydrostaticFreeSurfaceModel` with many independent 
 columns. The model grid is given by the data in `observations`, and the
@@ -17,7 +17,7 @@ whose attached parameter value (updated at each iteration of EKI) sets the diffu
 used to predict the model solution for the `Ny` physical scenarios described by the simulation-specific 
 `OneDimensionalTimeSeries` objects in `observations`.
 """
-function EnsembleModel(observations::OneDimensionalTimeSeriesBatch; 
+function OneDimensionalEnsembleModel(observations::OneDimensionalTimeSeriesBatch; 
                        architecture = CPU(), 
                        ensemble_size = 50, 
                        closure = CATKEVerticalDiffusivity(Float64; warning=false, kwargs...)
@@ -51,7 +51,7 @@ function EnsembleModel(observations::OneDimensionalTimeSeriesBatch;
     #
 
     data_grid = observations.grid
-    grid = ColumnEnsembleGrid(data_grid; size=(ensemble_size, length(observations), data_grid.Nz))
+    grid = OneDimensionalEnsembleGrid(data_grid; size=(ensemble_size, length(observations), data_grid.Nz))
 
     closure = [closure for i=1:ensemble_size, j=1:length(observations)]
 

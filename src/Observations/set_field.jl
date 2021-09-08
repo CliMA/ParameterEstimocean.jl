@@ -123,7 +123,7 @@ function set!(c::AbstractField{Ac, G}, d::AbstractField{Ad, G}) where {Ac, Ad, G
     @assert s1 == s2 "Field grids have a different number of columns."
 
     if s1 != (1, 1)
-        @assert c.grid isa EnsembleGrid && d.grid isa EnsembleGrid "Field has dependent columns."
+        @assert c.grid isa OneDimensionalEnsembleGrid && d.grid isa OneDimensionalEnsembleGrid "Field has dependent columns."
     end
 
     if Lz(c) == Lz(d) && Nz(c) == Nz(d)

@@ -124,7 +124,7 @@ new_closure(closure::AbstractArray, free_parameters::FreeParameters) =
 ##### set!
 #####
 
-function set!(model::EnsembleModel, free_parameters)
+function set!(model::OneDimensionalEnsembleModel, free_parameters)
     model.closure = new_closure(model.closure, free_parameters)
     return nothing
 end

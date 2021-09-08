@@ -26,7 +26,7 @@ function (loss::LossFunction)(simulation, observations, θ::Vector{<:FreeParamet
     return error
 end
 
-function LossFunction(simulation::Simulation{<:EnsembleModel}, observations::OneDimensionalTimeSeriesBatch; data_weights=[1.0 for b in observations], relative_weights)
+function LossFunction(simulation::Simulation{<:OneDimensionalEnsembleModel}, observations::OneDimensionalTimeSeriesBatch; data_weights=[1.0 for b in observations], relative_weights)
 
     @assert all([allsame(t_interval(data)) for data in observations]) "Simulation time steps are not uniformly spaced."
     @assert allsame([t_interval(data)[1] for data in observations]) "Time step differs between simulations."
@@ -129,7 +129,7 @@ function new_field(field_name, field_data, grid)
 
 end
 
-function analyze_weighted_profile_discrepancy(loss::LossFunction, model::EnsembleModel, observations::OneDimensionalTimeSeriesBatch, target)
+function analyze_weighted_profile_discrepancy(loss::LossFunction, model::OneDimensionalEnsembleModel, observations::OneDimensionalTimeSeriesBatch, target)
 
     total_discrepancy = zeros(model.grid.Nx, model.grid.Ny, 1)
 
@@ -159,7 +159,7 @@ function analyze_weighted_profile_discrepancy(loss::LossFunction, model::Ensembl
     return nan2inf.(total_discrepancy)
 end
 
-function evaluate!(loss::LossFunction, simulation::Simulation{<:EnsembleModel}, observations::OneDimensionalTimeSeriesBatch, parameters)
+function evaluate!(loss::LossFunction, simulation::Simulation{<:OneDimensionalEnsembleModel}, observations::OneDimensionalTimeSeriesBatch, parameters)
 
     # Initialize
     initialize_forward_run!(simulation.model, observations, parameters, loss.first_targets)

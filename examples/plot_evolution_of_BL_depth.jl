@@ -80,7 +80,7 @@ function make_all_the_plots(params)
 
     for (i, LEScase) in enumerate(values(LESdata))
 
-        td = OneDimensionalTimeSeries(LEScase.filename; grid_type=ColumnEnsembleGrid, Nz=32)
+        td = OneDimensionalTimeSeries(LEScase.filename; grid_type=OneDimensionalEnsembleGrid, Nz=32)
 
         relative_weights = Dict(:b => 1.0, :u => 1.0, :v => 1.0, :e => 1.0)
 

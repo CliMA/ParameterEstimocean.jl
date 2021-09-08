@@ -22,7 +22,7 @@ export
        set!,
 
        # ensemble_model.jl
-       EnsembleModel, 
+       OneDimensionalEnsembleModel, 
        ensemble_size, batch_size,
        initialize_forward_run!,
 

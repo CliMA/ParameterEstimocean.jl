@@ -1,7 +1,7 @@
 module Observations
 
 using ..OceanTurbulenceParameterEstimation
-using ..OceanTurbulenceParameterEstimation.Grids: ColumnEnsembleGrid
+using ..OceanTurbulenceParameterEstimation.Grids: OneDimensionalEnsembleGrid
 
 using Oceananigans
 using Oceananigans.Grids: AbstractGrid
