@@ -15,6 +15,7 @@ using Statistics
 export
     # forward_run.jl
     model_time_series,
+    ForwardMap,
 
     # loss_functions.jl
     LossFunction,

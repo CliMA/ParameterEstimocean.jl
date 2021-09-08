@@ -52,7 +52,7 @@ loss_validation = ce.validation.loss
 initial_parameters = ce.default_parameters
 parameternames = propertynames(initial_parameters)
 
-visualize_and_save(ce, initial_parameters, pwd())
+visualize_and_save!(ce, initial_parameters, pwd())
 
 # @time calibration = dataset(FourDaySuite, p; relative_weights = relative_weight_options["all_but_e"],
 #                                         grid_type=ColumnEnsembleGrid,
@@ -144,8 +144,8 @@ nl = 10^(-5.0)
 # v, nl = plot_prior_variance_and_obs_noise_level(loss, loss_validation, initial_parameters, directory)
 # params, losses, mean_vars = eki(loss, initial_parameters; N_ens=30, N_iter=20, noise_level=nl, stds_within_bounds=v)
 params = eki_better(ce.calibration.loss, ce.parameters.ParametersToOptimize, initial_parameters; N_ens=30, N_iter=20, noise_level=nl, stds_within_bounds=v, uninformed=false)
-visualize_and_save(ce, ce.parameters.ParametersToOptimize(params), directory*"Visualize")
-visualize_and_save(ce, ce.parameters.ParametersToOptimize(initial_parameters), directory*"InitialParameters")
+visualize_and_save!(ce, ce.parameters.ParametersToOptimize(params), directory*"Visualize")
+visualize_and_save!(ce, ce.parameters.ParametersToOptimize(initial_parameters), directory*"InitialParameters")
 run_multidimensional(kwargs) = eki_better(ce.calibration.loss, ce.parameters.ParametersToOptimize, initial_parameters; N_ens=25, N_iter=20, kwargs...)
 params = run_multidimensional((noise_level=10.0^(-1.90), stds_within_bounds=4.0, uninformed=false))
 
@@ -339,6 +339,6 @@ parameters = ce.default_parameters
 
 directory="./$(free_parameter_option)_64_calibrated.gif"
 animate_LESbrary_suite(ce, directory; parameters=parameters)
-visualize_and_save(ce, directory; parameters=parameters)
+visualize_and_save!(ce, directory; parameters=parameters)
 
 =#

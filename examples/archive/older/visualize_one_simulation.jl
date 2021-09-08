@@ -163,7 +163,7 @@ end
 
 Plots.gif(anim, "./$(free_parameter_type)_64_calibrated.gif", fps=400)
 
-visualize_and_save(ce, params, "hello/")
+visualize_and_save!(ce, params, "hello/")
 # function plot_(name)
 #     cell_field = f[name](T)
 #     Nz = cell_field[1].grid.N

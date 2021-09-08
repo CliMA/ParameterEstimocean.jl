@@ -60,7 +60,7 @@ ce = CalibrationExperiment(calibration, validation, p)
 initial_parameters = TKECalibration2021.custom_defaults(ce.calibration.loss.batch[1].model, ce.parameters.RelevantParameters)
 initial_parameters.Cᴷe = 0.11
 initial_parameters.Cᴬe = 0.55
-visualize_and_save(ce, initial_parameters, "all_E")
+visualize_and_save!(ce, initial_parameters, "all_E")
 
 # z = zeros((10,10))
 # propertynames(initial_parameters)

@@ -1,10 +1,16 @@
 using Oceananigans.Utils: prettytime
 
-mutable struct ModelTimeSeries{UU, VV, BΘ, EE}
-    u :: UU
-    v :: VV
-    b :: BΘ
-    e :: EE
+struct ForwardMap{V,D,P}
+    model_time_series::V
+    data_batch::D
+    parameters::P
+end
+
+mutable struct ModelTimeSeries{U, V, B, E}
+    u :: U
+    v :: V
+    b :: B
+    e :: E
 end
 
 ModelTimeSeries(grid, targets) = ModelTimeSeries([XFaceField(grid) for i = targets],
@@ -12,7 +18,9 @@ ModelTimeSeries(grid, targets) = ModelTimeSeries([XFaceField(grid) for i = targe
                                                  [CenterField(grid) for i = targets],
                                                  [CenterField(grid) for i = targets])
 
-function model_time_series(parameters, model, data_batch, Δt)
+function model_time_series(simulation, data_batch, parameters)
+
+    model = simulation.model
 
     # Sometimes data_batch will have fewer data objects than the model, so pad data_batch with redundant objects
     redundant_data = [data_batch[1] for _ in 1:(batch_size(model) - length(data_batch))]
@@ -36,9 +44,6 @@ function model_time_series(parameters, model, data_batch, Δt)
     longest_sim = data_batch[argmax(all_lengths)]
     t = longest_sim.t # times starting from zero
 
-    simulation = Simulation(model; Δt=Δt, stop_time=0.0)
-    # pop!(simulation.diagnostics, :nan_checker)
-
     start_time = time_ns()
 
     for save_index in 1:max_simulation_length
@@ -58,7 +63,7 @@ function model_time_series(parameters, model, data_batch, Δt)
 
     @info "The forward run took $(prettytime(elapsed_time))"
 
-    return outputs
+    return ForwardMap(outputs, data_batch, parameters)
 end
 
 function capture_model_state!(outputs, save_index, data_batch, u, v, b, e)

@@ -18,6 +18,7 @@ export
     TimeSeriesAnalysis,
     TimeAverage,
     model_time_series,
+    ForwardMap,
     ValueProfileAnalysis,
     GradientProfileAnalysis,
 
