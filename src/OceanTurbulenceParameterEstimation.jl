@@ -24,9 +24,8 @@ export
 
     # ParameterEstimation
     InverseProblem,
-    Parameters,
-    relative_weight_options
-
+    Parameters
+    
 include("Grids/Grids.jl")
 include("Observations/Observations.jl")
 include("Models/Models.jl")

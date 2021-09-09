@@ -3,7 +3,6 @@ module ParameterEstimation
 using ..OceanTurbulenceParameterEstimation
 using ..OceanTurbulenceParameterEstimation.Observations
 using ..OceanTurbulenceParameterEstimation.Models
-using ..OceanTurbulenceParameterEstimation.Models.CATKEVerticalDiffusivityModel
 using ..OceanTurbulenceParameterEstimation.LossFunctions
 
 using Oceananigans
@@ -16,21 +15,11 @@ export
        Parameters,
        InverseProblem,
        validation_loss_reduction,
-       relative_weight_options,
        model_time_series,
        set!,
 
        # EKI
        eki
-
-relative_weight_options = Dict(
-    "all_e"     => Dict(:b => 0.0, :u => 0.0, :v => 0.0, :e => 1.0),
-    "all_T"     => Dict(:b => 1.0, :u => 0.0, :v => 0.0, :e => 0.0),
-    "uniform"   => Dict(:b => 1.0, :u => 1.0, :v => 1.0, :e => 1.0),
-    "all_but_e" => Dict(:b => 1.0, :u => 1.0, :v => 1.0, :e => 0.0),
-    "all_uv"    => Dict(:b => 0.0, :u => 1.0, :v => 1.0, :e => 0.0),
-    "mostly_T"  => Dict(:b => 1.0, :u => 0.5, :v => 0.5, :e => 0.0)
-)
 
 Base.@kwdef struct Parameters{T <: UnionAll}
     RelevantParameters::T
@@ -68,7 +57,7 @@ function validation_loss_reduction(calibration::InverseProblem, validation::Inve
     return validation_loss_reduction
 end
 
-include("catke_vertical_diffusivity_model_setup.jl")
+include("inverse_problem.jl")
 include("EKI/EKI.jl")
 
 using .EKI

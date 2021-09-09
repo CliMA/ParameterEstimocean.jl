@@ -79,8 +79,4 @@ end
 include("ensemble_model.jl")
 include("free_parameters.jl")
 
-include("CATKEVerticalDiffusivityModel/CATKEVerticalDiffusivityModel.jl")
-
-using .CATKEVerticalDiffusivityModel
-
 end #module

@@ -1,4 +1,7 @@
+using Oceananigans
 using Oceananigans.Architectures: arch_array
+using Oceananigans: AbstractModel
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel
 
 function get_parameter(filename, group, parameter_name, default=nothing)
     parameter = default

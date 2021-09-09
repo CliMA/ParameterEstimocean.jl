@@ -19,6 +19,27 @@ function get_constraint(bounds)
     return no_constraint()
 end
 
+#=
+function get_bounds_and_variance(default_parameters; stds_within_bounds = 5)
+
+    SomeFreeParameters = typeof(default_parameters).name.wrapper
+
+    # Set bounds on free parameters
+    bounds = SomeFreeParameters([(0.0, 10.0) for p in default_parameters]...)
+
+    for (pname, info) in parameter_guide
+        set_if_present!(bounds, pname, info.bounds)
+    end
+
+    # if stds_within_bounds = 3, 3 standard deviations to either side of the mean fits between the bounds
+    variances = SomeFreeParameters((((bound[2] - bound[1])/(2 * stds_within_bounds))^2 for bound in bounds)...)
+
+    variances = Array(variances)
+
+    return bounds, variances
+end
+=#
+
 using ProgressBars
 
 """

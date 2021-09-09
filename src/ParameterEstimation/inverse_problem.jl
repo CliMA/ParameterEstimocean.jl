@@ -1,14 +1,25 @@
-function InverseProblem(observations::OneDimensionalTimeSeriesBatch, parameters::Parameters{UnionAll}; 
-                                architecture = CPU(),
-                            relative_weights = Dict(:b => 1.0, :u => 1.0, :v => 1.0, :e => 1.0),
-                               ensemble_size = 1, 
-                                          Δt = 60.0,
-                                          Nz = 64)
+using Oceananigans: AbstractModel
 
-    model = CATKEVerticalDiffusivityModel.OneDimensionalEnsembleModel(td_batch; 
-                                                        architecture = architecture,
-                                                        N_ens = ensemble_size, 
-                                                        parameter_specific_kwargs[parameters.RelevantParameters]...)
+set_if_present!(obj, name, field) = name ∈ propertynames(obj) && setproperty!(obj, name, field)
+
+get_model_closure(model::AbstractModel) = get_model_closure(model.closure)
+get_model_closure(closure) = closure
+get_model_closure(closure::AbstractArray) = CUDA.@allowscalar closure[1, 1]
+
+function custom_defaults(model::AbstractModel, RelevantParameters)
+    fields = fieldnames(RelevantParameters)
+
+    closure = get_model_closure(model)
+    defaults = DefaultFreeParameters(closure, RelevantParameters)
+
+    # for (pname, info) in parameter_guide
+    #     set_if_present!(defaults, pname, info.default)
+    # end
+
+    return defaults
+end
+
+function InverseProblem(observations::OneDimensionalTimeSeriesBatch, simulation::Simulation, parameters::Parameters{UnionAll}; transformation = )
 
     simulation = Simulation(model; Δt = Δt, stop_time = 0.0)
     pop!(simulation.diagnostics, :nan_checker)
@@ -18,14 +29,8 @@ function InverseProblem(observations::OneDimensionalTimeSeriesBatch, parameters:
 
     default_parameters = custom_defaults(model, parameters.ParametersToOptimize)
 
-    loss = LossFunction(simulation, observations; 
-                        data_weights=[1.0 for data in observations],
-                        relative_weights)
-
-    return InverseProblem(observations, simulation, relative_weights, loss, default_parameters, parameters)
+    return InverseProblem(observations, simulation, parameters)
 end
-
-OneDimensionalTimeSeriesBatch(LESdata; grid_type=ColumnEn) = OneDimensionalTimeSeries.(values(LESdata); grid_type=OneDimensionalEnsembleGrid, Nz=kwargs.Nz)
 
 function InverseProblem(LESdata, parameters::Parameters{UnionAll}; kwargs...)
 

@@ -19,7 +19,7 @@ using Distributions
 free_convection_path = "/path/to/data"
 free_convection_observation = OneDimensionalTimeSeries(free_convection_path, normalization=Variance(), field_names=(:u, :v, :b, :e), time_range=range(2hours, stop=2days, step=4hours))
 
-# normalize(::Variance, field) =
+# normalize(::Variance, field) = 
 
 # Some other possibilities
 
@@ -28,37 +28,6 @@ free_convection_observation = OneDimensionalTimeSeries(free_convection_path, nor
 
 file_paths = [free_convection_path, wind_stress_path]
 observations = [OneDimensionalTimeSeries(path, field_names=(:u, :v, :b, :e)) for path in file_paths]
-
-const OneDimensionalTimeSeriesBatch = Vector{<:OneDimensionalTimeSeries}
-const TimeSeriesBatch = Vector{<:AbstractTruthData}
-
-struct OneDimensionalTimeSeries <: AbstractTruthData
-    field_timeseries
-    times
-    iterations
-    forward_map_time_range
-    meta_data
-end
-
-
-stressed = model.velocities.u.boundary_conditions.top.condition == 0
-rotating = model.coriolis.f == 0
-
-struct TruthData{F, G, C, D, UU, VV, BΘ, EE, TT, NN, TG, RF}
-   boundary_conditions :: F
-                  grid :: G
-             constants :: C
-         diffusivities :: D
-                     u :: UU
-                     v :: VV
-                     b :: BΘ
-                     e :: EE
-                     t :: TT
-                  name :: NN
-               targets :: TG
-       relevant_fields :: RF
-end
-
 
 # 2. Construct two-dimensional observations at a single snapshot:
 # observation = TwoDimensionalSnapshot(data_path, iteration=LastIteration())
