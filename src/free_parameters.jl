@@ -2,16 +2,6 @@ using Oceananigans.Architectures: arch_array, architecture
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
 using Printf
 
-#=
-Base.show(io::IO, p::FreeParameters) = print(io, "$(typeof(p)):", '\n',
-                                             @sprintf("% 24s: ", "parameter names"),
-                                             (@sprintf("%-8s", n) for n in propertynames(p))..., '\n',
-                                             @sprintf("% 24s: ", "values"),
-                                             (@sprintf("%-8.4f", pᵢ) for pᵢ in p)...)
-=#
-
-named_tuple_snippet(name) = Symbol(" $name,")
-
 macro free_parameters(parameter_names...)
     return esc(quote
         let
