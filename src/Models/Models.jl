@@ -14,7 +14,6 @@ using Printf
 
 import Oceananigans.Fields: interpolate
 import Base: size
-import StaticArrays: FieldVector
 import OceanTurbulenceParameterEstimation.Observations: set!
 
 export
