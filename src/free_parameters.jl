@@ -2,30 +2,24 @@ using Oceananigans.Architectures: arch_array, architecture
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
 using Printf
 
+#=
 Base.show(io::IO, p::FreeParameters) = print(io, "$(typeof(p)):", '\n',
                                              @sprintf("% 24s: ", "parameter names"),
                                              (@sprintf("%-8s", n) for n in propertynames(p))..., '\n',
                                              @sprintf("% 24s: ", "values"),
                                              (@sprintf("%-8.4f", pᵢ) for pᵢ in p)...)
+=#
 
 named_tuple_snippet(name) = Symbol(" $name,")
 
-macro free_parameters(group_name, parameter_names...)
-    N = length(parameter_names)
-    
-    function_elems = [named_tuple_snippet(name) for name in parameter_names]
-    function_body = Symbol("(; ", function_elems..., ")")
-    function_args = Symbol(function_elems...)
-
+macro free_parameters(parameter_names...)
     return esc(quote
-        # Positional argument constructor
-        $group_name($function_args) = $function_body
-
-        # Keyword argument constructor
-        $group_name($function_args) = $function_body
+        let
+            new_free_parameters(args...) = NamedTuple{$parameter_names}(args)
+            new_free_parameters(; kwargs...) = NamedTuple(n => kwargs[n] for n in $parameter_names)
+        end
     end)
 end
-
 
 #####
 ##### Setting parameters

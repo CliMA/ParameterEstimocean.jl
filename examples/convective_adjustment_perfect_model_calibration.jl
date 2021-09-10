@@ -91,7 +91,9 @@ set!(ensemble_model, b = bᵢ)
 
 ensemble_simulation = Simulation(ensemble_model; Δt, stop_time)
 
-@free_parameters ConvectiveAdjustmentParameters convective_κz convective_νz background_κz background_νz
+# @free_parameters convective_adj_free_params convective_κz convective_νz background_κz background_νz
+
+convective_adj_free_params = @free_parameters convective_κz convective_νz background_κz background_νz
 
 struct FreeParameters
     value

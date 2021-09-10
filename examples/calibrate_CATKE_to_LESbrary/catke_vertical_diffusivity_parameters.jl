@@ -16,7 +16,7 @@ parameter_guide = Dict(
           latex = L"C^{\ell}_b",
           default = 1.1612,
           bounds = (0.0, 7.0)),
-     
+
      :Cᵟu => (
           name = "Ratio of mixing length to grid spacing",
           latex = L"C^{\delta}u",
