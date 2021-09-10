@@ -12,7 +12,6 @@ mkpath(image_dir)
 
 using Oceananigans
 using OceanTurbulenceParameterEstimation
-using OceanTurbulenceParameterEstimation.Models.CATKEVerticalDiffusivityModel
 using OceanBoundaryLayerParameterizations
 
 # CATKE parameters involved in setting field diffusivities 

@@ -6,7 +6,6 @@
 using Plots, PyPlot
 
 using OceanTurbulenceParameterEstimation
-using OceanTurbulenceParameterEstimation.Models.CATKEVerticalDiffusivityModel
 using Oceananigans.Fields: interior
 
 # les analysis

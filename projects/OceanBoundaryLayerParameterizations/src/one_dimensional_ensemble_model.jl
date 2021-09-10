@@ -39,7 +39,7 @@ function OneDimensionalEnsembleModel(observations::OneDimensionalTimeSeriesBatch
                       )
 
     #
-    # Collect observation file metadata
+    # Harvest observation file metadata
     #
 
     datapath = observations.file_path

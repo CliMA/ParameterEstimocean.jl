@@ -158,3 +158,14 @@ parameter_specific_kwargs = Dict(
    CATKEParametersRiIndependentConvectiveAdjustment => (mixing_length = MixingLength(Cᴷuʳ=0.0, Cᴷcʳ=0.0, Cᴷeʳ=0.0),
                                ),
 )
+
+set_if_present!(obj, name, field) = name ∈ propertynames(obj) && setproperty!(obj, name, field)
+
+function set_to_my_defaults!(ip::InverseProblem)
+
+     defaults = ip.default_parameters
+
+    for (pname, info) in parameter_guide
+        set_if_present!(defaults, pname, info.default)
+    end
+end

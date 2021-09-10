@@ -2,27 +2,25 @@
 ##### The LESbrary (so to speak)
 #####
 
-mutable struct CaseMetaData{F, W, C, T}
-    filename :: F
-    with_wind_stress :: W
-    with_coriolis :: C
-    targets :: T
-end
+# mutable struct CaseMetaData{F, W, C, T}
+#     filename :: F
+#     with_wind_stress :: W
+#     with_coriolis :: C
+#     targets :: T
+# end
 
-function CaseMetaData(; filename, with_wind_stress=true, with_coriolis=true, first=nothing, last=nothing, targets)
-   #targets = ...
-   metadata = CaseMetaData(filename, with_wind_stress, with_coriolis, targets)
-   return metadata
-end
+# function CaseMetaData(; filename, with_wind_stress=true, with_coriolis=true, first=nothing, last=nothing, targets)
+#    #targets = ...
+#    metadata = CaseMetaData(filename, with_wind_stress, with_coriolis, targets)
+#    return metadata
+# end
 
-function stride_targets(metadata; stride=1)
-   first = metadata.targets[1]
-   last = metadata.targets[end]
-   new_targets = first:stride:last
-   return CaseMetaData(metadata.filename, metadata.with_wind_stress, metadata.with_coriolis, new_targets)
-end
-
-
+# function stride_targets(metadata; stride=1)
+#    first = metadata.targets[1]
+#    last = metadata.targets[end]
+#    new_targets = first:stride:last
+#    return CaseMetaData(metadata.filename, metadata.with_wind_stress, metadata.with_coriolis, new_targets)
+# end
 
 # https://engaging-web.mit.edu/~alir/lesbrary/4DaySuite/
 function FourDaySuite(directory)

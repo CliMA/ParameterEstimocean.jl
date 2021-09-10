@@ -1,23 +1,10 @@
 using Oceananigans: AbstractModel
 
-set_if_present!(obj, name, field) = name ∈ propertynames(obj) && setproperty!(obj, name, field)
-
 get_model_closure(model::AbstractModel) = get_model_closure(model.closure)
 get_model_closure(closure) = closure
 get_model_closure(closure::AbstractArray) = CUDA.@allowscalar closure[1, 1]
 
-function custom_defaults(model::AbstractModel, RelevantParameters)
-    fields = fieldnames(RelevantParameters)
-
-    closure = get_model_closure(model)
-    defaults = DefaultFreeParameters(closure, RelevantParameters)
-
-    # for (pname, info) in parameter_guide
-    #     set_if_present!(defaults, pname, info.default)
-    # end
-
-    return defaults
-end
+defaults(model::AbstractModel, RelevantParameters) = DefaultFreeParameters(get_model_closure(model), RelevantParameters)
 
 function InverseProblem(observations::OneDimensionalTimeSeriesBatch, simulation::Simulation, parameters::Parameters{UnionAll}; transformation = )
 
