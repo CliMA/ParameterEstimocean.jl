@@ -1,3 +1,5 @@
+using Oceananigans.Architectures: arch_array, architecture
+
 Lz(c::AbstractDataField) = c.grid.Lz
 Nz(c::AbstractDataField) = c.grid.Nz
 Δz(g::RegularRectilinearGrid, i::Int) = g.Δz
@@ -71,8 +73,10 @@ end
 # Set interior of field `c` to values of `data`
 function set!(c::AbstractField, data::AbstractArray)
 
+    arch = architecture(c)
+
     # Reshape `data` to the size of `c`'s interior
-    d = reshape(data, size(c))
+    d = arch_array(arch, reshape(data, size(c)))
 
     # Sets the interior of field `c` to values of `data`
     c .= d

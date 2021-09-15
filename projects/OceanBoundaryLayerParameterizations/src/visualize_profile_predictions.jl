@@ -87,28 +87,28 @@ end
 
 visualize_predictions(ip::InverseProblem, parameters; kwargs...) = visualize_predictions(ip.model, ip.data_batch, ip.loss.ParametersToOptimize(parameters), ip.loss.Δt; kwargs...)
 
-function visualize_and_save(calibration, validation, parameters, directory; fields=[:b, :u, :v, :e])
+function visualize_and_save(calibration, validation, parameters, directory; fields=[:u, :v, :b, :e])
 
         path = joinpath(directory, "results.txt")
-        # o = open_output_file(path)
-        # write(o, "Training relative weights: $(calibration.relative_weights) \n")
-        # write(o, "Validation relative weights: $(validation.relative_weights) \n")
-        # write(o, "Training default parameters: $(validation.default_parameters) \n")
-        # write(o, "Validation default parameters: $(validation.default_parameters) \n")
+        o = open_output_file(path)
+        write(o, "Training relative weights: $(calibration.relative_weights) \n")
+        write(o, "Validation relative weights: $(validation.relative_weights) \n")
+        write(o, "Training default parameters: $(validation.default_parameters) \n")
+        write(o, "Validation default parameters: $(validation.default_parameters) \n")
 
-        # write(o, "------------ \n \n")
-        # default_parameters = calibration.default_parameters
-        # train_loss_default = calibration(default_parameters)
-        # valid_loss_default = validation(default_parameters)
-        # write(o, "Default parameters: $(default_parameters) \nLoss on training: $(train_loss_default) \nLoss on validation: $(valid_loss_default) \n------------ \n \n")
+        write(o, "------------ \n \n")
+        default_parameters = calibration.default_parameters
+        train_loss_default = calibration(default_parameters)
+        valid_loss_default = validation(default_parameters)
+        write(o, "Default parameters: $(default_parameters) \nLoss on training: $(train_loss_default) \nLoss on validation: $(valid_loss_default) \n------------ \n \n")
 
-        # train_loss = calibration(parameters)
-        # valid_loss = validation(parameters)
-        # write(o, "Parameters: $(parameters) \nLoss on training: $(train_loss) \nLoss on validation: $(valid_loss) \n------------ \n \n")
+        train_loss = calibration(parameters)
+        valid_loss = validation(parameters)
+        write(o, "Parameters: $(parameters) \nLoss on training: $(train_loss) \nLoss on validation: $(valid_loss) \n------------ \n \n")
 
-        # write(o, "Training loss reduction: $(train_loss/train_loss_default) \n")
-        # write(o, "Validation loss reduction: $(valid_loss/valid_loss_default) \n")
-        # close(o)
+        write(o, "Training loss reduction: $(train_loss/train_loss_default) \n")
+        write(o, "Validation loss reduction: $(valid_loss/valid_loss_default) \n")
+        close(o)
 
         parameters = calibration.loss.ParametersToOptimize(parameters)
 
@@ -123,7 +123,7 @@ function visualize_and_save(calibration, validation, parameters, directory; fiel
                 data_batch = [d for d in all_data if length(d.t) == data_length]
                 days = data_batch[1].t[end]/86400
 
-                visualize_predictions(model, data_batch, parameters, inverse_problem.Δt;
+                visualize_predictions(model, data_batch, parameters, inverse_problem.loss.Δt;
                                                  fields = fields,
                                                  filename = joinpath(directory, "$(days)_day_simulations.png"))
             end

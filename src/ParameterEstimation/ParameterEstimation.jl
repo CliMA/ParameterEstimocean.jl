@@ -24,12 +24,12 @@ export
        eki
 
 relative_weight_options = Dict(
-                "all_e"     => Dict(:b => 0.0, :u => 0.0, :v => 0.0, :e => 1.0),
-                "all_T"     => Dict(:b => 1.0, :u => 0.0, :v => 0.0, :e => 0.0),
-                "uniform"   => Dict(:b => 1.0, :u => 1.0, :v => 1.0, :e => 1.0),
-                "all_but_e" => Dict(:b => 1.0, :u => 1.0, :v => 1.0, :e => 0.0),
-                "all_uv"    => Dict(:b => 0.0, :u => 1.0, :v => 1.0, :e => 0.0),
-                "mostly_T"  => Dict(:b => 1.0, :u => 0.5, :v => 0.5, :e => 0.0)
+    "all_e"     => Dict(:b => 0.0, :u => 0.0, :v => 0.0, :e => 1.0),
+    "all_T"     => Dict(:b => 1.0, :u => 0.0, :v => 0.0, :e => 0.0),
+    "uniform"   => Dict(:b => 1.0, :u => 1.0, :v => 1.0, :e => 1.0),
+    "all_but_e" => Dict(:b => 1.0, :u => 1.0, :v => 1.0, :e => 0.0),
+    "all_uv"    => Dict(:b => 0.0, :u => 1.0, :v => 1.0, :e => 0.0),
+    "mostly_T"  => Dict(:b => 1.0, :u => 0.5, :v => 0.5, :e => 0.0)
 )
 
 Base.@kwdef struct Parameters{T <: UnionAll}
@@ -38,11 +38,11 @@ Base.@kwdef struct Parameters{T <: UnionAll}
 end
 
 struct InverseProblem{DB, PM, RW, LF, FP}
-        data_batch::DB
-        model::PM
-        relative_weights::RW # field weights
-        loss::LF
-        default_parameters::FP
+    data_batch::DB
+    model::PM
+    relative_weights::RW # field weights
+    loss::LF
+    default_parameters::FP
 end
 
 (ip::InverseProblem)(θ=ip.default_parameters) = ip.loss(ip.model, ip.data_batch, θ)
