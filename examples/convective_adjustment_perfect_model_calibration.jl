@@ -112,3 +112,8 @@ free_parameters = FreeParameters(priors)
 #####
 
 calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
+
+θ★ = [convective_κz, convective_νz, background_κz, background_νz]
+
+# Assert that G(θ*) ≈ y
+@assert forward_map(calibration, θ★) ≈ observation(calibration)

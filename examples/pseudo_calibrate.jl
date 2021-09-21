@@ -17,15 +17,19 @@ using Distributions
 #
 
 free_convection_path = "/path/to/data"
-free_convection_observation = OneDimensionalTimeSeries(free_convection_path, normalization=Variance(), field_names=(:u, :v, :b, :e), time_range=range(2hours, stop=2days, step=4hours))
+free_convection_observation = OneDimensionalTimeSeries(free_convection_path, 
+                                                        # normalization=Variance(), 
+                                                        field_names=(:u, :v, :b, :e), 
+                                                        # time_range=range(2hours, 
+                                                        #                  stop=2days, 
+                                                        #                  step=4hours)
+                                                                         )
 
 # normalize(::Variance, field) = 
 
 # Some other possibilities
 
 # 1. Construct a batch of observations:
-# wind_stress_observation = OneDimensionalTimeSeries(wind_stress_path, time_range=range(2hours, stop=2days, step=4hours))
-
 file_paths = [free_convection_path, wind_stress_path]
 observations = [OneDimensionalTimeSeries(path, field_names=(:u, :v, :b, :e)) for path in file_paths]
 
@@ -39,7 +43,6 @@ observations = [OneDimensionalTimeSeries(path, field_names=(:u, :v, :b, :e)) for
 # where G(θ) is the forward map and y is the observations.
 
 @free_parameters StabilityFnParameters CᴷRiʷ CᴷRiᶜ Cᴷu⁻ Cᴷuʳ Cᴷc⁻ Cᴷcʳ Cᴷe⁻ Cᴷeʳ
-@free_parameters StabilityFnParameters CᴷRiʷ CᴷRiᶜ Cᴷuʳ Cᴷc⁻ Cᴷcʳ Cᴷe⁻ Cᴷeʳ
 
 stability_fn_parameters_priors = StabilityFnParameters(
     CᴷRiʷ = Normal(0.25, 0.05) |> logify,

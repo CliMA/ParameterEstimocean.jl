@@ -16,12 +16,13 @@ abstract type AbstractObservation end
 A time series of horizontally-averaged observational or LES data
 gridded as Oceananigans fields.
 """
-struct OneDimensionalTimeSeries{F, G, T, P, M} <: AbstractObservation
-       fields :: F
-         grid :: G
-        times :: T
-         path :: P
-     metadata :: M
+struct OneDimensionalTimeSeries{F, G, T, P, M, N} <: AbstractObservation
+          fields :: F
+            grid :: G
+           times :: T
+            path :: P
+        metadata :: M
+   normalization :: N
 end
 
 obs_str(ts::OneDimensionalTimeSeries) = "OneDimensionalTimeSeries of $(keys(ts.fields)) on $(short_show(ts.grid))"
@@ -37,7 +38,7 @@ const not_metadata_names = ("serialized", "timeseries")
 read_group(group::JLD2.Group) = NamedTuple(Symbol(subgroup) => read_group(group[subgroup]) for subgroup in keys(group))
 read_group(group) = group
 
-function OneDimensionalTimeSeries(path; field_names)
+function OneDimensionalTimeSeries(path; field_names; normalize=Identity())
     field_names = tupleit(field_names)
     fields = NamedTuple(name => FieldTimeSeries(path, string(name)) for name in field_names)
     grid = fields[1].grid
@@ -48,7 +49,9 @@ function OneDimensionalTimeSeries(path; field_names)
     metadata = NamedTuple(Symbol(group) => read_group(file[group]) for group in filter(n -> n ∉ not_metadata_names, keys(file)))
     close(file)
 
-    return OneDimensionalTimeSeries(fields, grid, times, path, metadata)
+    normalization = [normalize.body(field_time_series) for field_time_series in values(fields)]
+
+    return OneDimensionalTimeSeries(fields, grid, times, path, metadata, normalization)
 end
 
 #####
@@ -90,6 +93,7 @@ Base.show(io::IO, ts::OneDimensionalTimeSeries) =
               "├── times: $(ts.times)", '\n',    
               "├── grid: $(short_show(ts.grid))", '\n',
               "├── path: \"$(ts.path)\"", '\n',
-              "└── metadata: $(keys(ts.metadata))")
+              "├── metadata: $(keys(ts.metadata))", '\n',
+              "└── normalization: $(short_show(ts.normalization))")
 
 end # module

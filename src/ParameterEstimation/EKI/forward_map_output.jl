@@ -23,7 +23,6 @@ function get_normalization_functions(loss::LossFunction)
     return normalize_function
 end
 
-
 #
 # Forward map output
 #
