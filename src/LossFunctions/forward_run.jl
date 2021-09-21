@@ -1,5 +1,4 @@
-
-# Certain 
+using Oceananigans.Utils: prettytime
 
 mutable struct ModelTimeSeries{UU, VV, BΘ, EE}
     u :: UU
@@ -15,11 +14,15 @@ ModelTimeSeries(grid, targets) = ModelTimeSeries([XFaceField(grid) for i = targe
 
 function model_time_series(parameters, model, data_batch, Δt)
 
-    all_targets = getproperty.(data_batch, :targets)
+    # Sometimes data_batch will have fewer data objects than the model, so pad data_batch with redundant objects
+    redundant_data = [data_batch[1] for _ in 1:(batch_size(model) - length(data_batch))]
+    full_data_batch = [data_batch; redundant_data]
+    
+    all_targets = getproperty.(full_data_batch, :targets)
     max_simulation_length = maximum(length.(all_targets))
     starts = getindex.(all_targets, 1)
 
-    initialize_forward_run!(model, data_batch, parameters, starts)
+    initialize_forward_run!(model, full_data_batch, parameters, starts)
 
     outputs = [ModelTimeSeries(data.grid, data.targets) for data in data_batch]
 
@@ -28,31 +31,51 @@ function model_time_series(parameters, model, data_batch, Δt)
     b = get_model_field(model, :b)
     e = get_model_field(model, :e)
 
-    t = data_batch[1].t # times starting from zero
+    # this should be improved
+    all_lengths = length.(getproperty.(data_batch, :t))
+    longest_sim = data_batch[argmax(all_lengths)]
+    t = longest_sim.t # times starting from zero
 
-    simulation = Simulation(model; Δt=Δt, stop_time = 0.0)
-    pop!(simulation.diagnostics, :nan_checker)
+    simulation = Simulation(model; Δt=Δt, stop_time=0.0)
+    # pop!(simulation.diagnostics, :nan_checker)
 
-    for i in 1:max_simulation_length
+    start_time = time_ns()
 
-        simulation.stop_time = t[i]
+    for save_index in 1:max_simulation_length
+        simulation.stop_time = t[save_index]
         run!(simulation)
 
-        for (dataindex, data, start, output) in zip(eachindex(data_batch), data_batch, starts, outputs)
+        u = model.velocities.u
+        v = model.velocities.v
+        b = model.tracers.b
+        e = model.tracers.e
 
-            if i <= length(data.targets)
-                u_snapshot = output.u[i].data
-                v_snapshot = output.v[i].data
-                b_snapshot = output.b[i].data
-                e_snapshot = output.e[i].data
+        capture_model_state!(outputs, save_index, data_batch, u, v, b, e)
+    end
 
-                u_snapshot .= u.data[1:1, dataindex:dataindex, :]
-                v_snapshot .= v.data[1:1, dataindex:dataindex, :]
-                b_snapshot .= b.data[1:1, dataindex:dataindex, :]
-                e_snapshot .= e.data[1:1, dataindex:dataindex, :]
-            end
+    end_time = time_ns()
+    elapsed_time = (end_time - start_time) * 1e-9
+
+    @info "The forward run took $(prettytime(elapsed_time))"
+
+    return outputs
+end
+
+function capture_model_state!(outputs, save_index, data_batch, u, v, b, e)
+    for (data_index, data) in enumerate(data_batch)
+        output = outputs[data_index]
+        if save_index <= length(data.targets)
+            u_snapshot = parent(output.u[save_index])
+            v_snapshot = parent(output.v[save_index])
+            b_snapshot = parent(output.b[save_index])
+            e_snapshot = parent(output.e[save_index])
+
+            copyto!(u_snapshot, view(parent(u), 1, data_index, :))
+            copyto!(v_snapshot, view(parent(v), 1, data_index, :))
+            copyto!(b_snapshot, view(parent(b), 1, data_index, :))
+            copyto!(e_snapshot, view(parent(e), 1, data_index, :))
         end
     end
 
-    return outputs
+    return nothing
 end

@@ -29,7 +29,7 @@ function plot_stds_within_bounds(calibration, validation, initial_parameters, di
     p = Plots.plot(title="Loss reduction versus prior std's within bounds (n_σ)", ylabel="Loss reduction (Final / Initial)", xlabel="prior std's spanned by bound width (n_σ)", legend=false, lw=3)
     plot!(loss_reductions, label="training", color=:purple, lw=4)
     plot!(val_loss_reductions, label="validation", color=:blue, lw=4)
-    Plots.savefig(p, directory*"stds_within_bounds.pdf")
+    Plots.savefig(p, joinpath(directory, "stds_within_bounds.pdf"))
     println("loss-minimizing stds within bounds: $(argmin(val_loss_reductions))")
 end
 
@@ -45,7 +45,7 @@ function plot_prior_variance(calibration, validation, initial_parameters, direct
     p = Plots.plot(title="Loss reduction versus prior variance", ylabel="Loss reduction (Final / Initial)", xlabel="Prior variance")
     plot!(loss_reductions, label="training", lw=4, color=:purple)
     plot!(val_loss_reductions, label="validation", lw=4, color=:blue)
-    Plots.savefig(p, directory*"variance.pdf")
+    Plots.savefig(p, joinpath(directory, "variance.pdf"))
     v = argmin(var_val_loss_reductions)
     println("loss-minimizing variance: $(v)")
     return v
@@ -64,7 +64,7 @@ function plot_num_ensemble_members(calibration, validation, initial_parameters, 
     p = Plots.plot(title="Loss reduction versus N_ens", xlabel="N_ens", ylabel="Loss reduction (Final / Initial)", legend=false, lw=3)
     plot!(loss_reductions, label="training")
     plot!(val_loss_reductions, label="validation")
-    Plots.savefig(p, directory*"N_ens.pdf")
+    Plots.savefig(p, joinpath(directory, "N_ens.pdf"))
 end
 
 ## Observation noise level
@@ -80,7 +80,7 @@ function plot_observation_noise_level(calibration, validation, initial_parameter
     p = Plots.plot(title="Loss Reduction versus Observation Noise Level", xlabel="log₁₀(Observation noise level)", ylabel="Loss reduction (Final / Initial)", legend=:topleft)
     plot!(loss_reductions, label="training", lw=4, color=:purple)
     plot!(val_loss_reductions, label="validation", lw=4, color=:blue)
-    Plots.savefig(p, directory*"obs_noise_level.pdf")
+    Plots.savefig(p, joinpath(directory, "obs_noise_level.pdf"))
     nl = argmin(val_loss_reductions)
     println("loss-minimizing obs noise level: $(nl)")
     return 10^nl
@@ -103,7 +103,7 @@ function plot_prior_variance_and_obs_noise_level(calibration, validation, initia
         end
     end
     p = Plots.heatmap(Γys, Γθs, losses, xlabel=L"\Gamma_y", ylabel=L"\Gamma_\theta", size=(250,250), yscale=:log10)
-    Plots.savefig(p, directory*"GammaHeatmap.pdf")
+    Plots.savefig(p, joinpath(directory, "GammaHeatmap.pdf"))
     v = Γθs[argmin(losses)[1]]
     nl = Γys[argmin(losses)[2]]
     println("loss-minimizing Γθ: $(v)")

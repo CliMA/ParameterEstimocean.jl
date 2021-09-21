@@ -6,10 +6,7 @@
 using Plots, PyPlot
 
 using OceanTurbulenceParameterEstimation
-using OceanTurbulenceParameterEstimation.CATKEVerticalDiffusivityModel
-using OceanTurbulenceParameterEstimation.ParameterEstimation
-using OceanTurbulenceParameterEstimation.LossFunctions
-using OceanTurbulenceParameterEstimation.ModelsAndData
+using OceanTurbulenceParameterEstimation.Models.CATKEVerticalDiffusivityModel
 using Oceananigans.Fields: interior
 
 # les analysis
@@ -70,7 +67,7 @@ end
 
 LESdata = GeneralStrat
 
-ParametersToOptimize = TKEParametersRiDependent
+ParametersToOptimize = CATKEParametersRiDependent
 RelevantParameters = ParametersToOptimize
 
 params = Parameters(RelevantParameters = RelevantParameters,
@@ -108,7 +105,7 @@ function make_all_the_plots(params)
         p = plot!(days, h2_model, color = :purple, label = "TKE mixed layer depth", linewidth = 3 )
         Plots.savefig(p, directory*td.name*"_mixed_layer_depth_log10.pdf")
 
-        # p = visualize_realizations(md, td, 1:180:length(td), best_parameters)
+        # p = visualize_predictions(md, td, 1:180:length(td), best_parameters)
         # PyPlot.savefig(directory*td.name*".png")
     end
 end
