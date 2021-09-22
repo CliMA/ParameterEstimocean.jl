@@ -1,14 +1,14 @@
 module OceanTurbulenceParameterEstimation
 
-export OneDimensionalTimeSeries, InverseProblem, FreeParameters
+export OneDimensionalTimeSeries, InverseProblem, FreeParameters, 
+        IdentityNormalization, ZScore, forward_map
 
 include("Observations.jl")
 include("TurbulenceClosureParameters.jl")
 include("InverseProblems.jl")
-include("normalization.jl")
 
-using .Observations: OneDimensionalTimeSeries
+using .Observations: OneDimensionalTimeSeries, ZScore
 using .TurbulenceClosureParameters: FreeParameters
-using .InverseProblems: InverseProblem
+using .InverseProblems: InverseProblem, forward_map
 
 end # module

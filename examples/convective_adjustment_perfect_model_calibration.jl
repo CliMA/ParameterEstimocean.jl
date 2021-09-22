@@ -31,6 +31,8 @@ convective_νz = 0.9
 background_κz = 1e-4
 background_νz = 1e-5
 
+θ★ = [convective_κz, convective_νz, background_κz, background_νz]
+
 #####
 ##### Generate synthetic observations
 #####
@@ -69,7 +71,7 @@ end
 
 data_path = experiment_name * ".jld2"
 
-observations = OneDimensionalTimeSeries(data_path, field_names=(:u, :b))
+observations = OneDimensionalTimeSeries(data_path, field_names=(:u, :b), normalize=ZScore)
 
 #####
 ##### Set up ensemble model
@@ -113,7 +115,7 @@ free_parameters = FreeParameters(priors)
 
 calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
 
-θ★ = [convective_κz, convective_νz, background_κz, background_νz]
+forward_map(calibration, θ★)
 
 # Assert that G(θ*) ≈ y
-@assert forward_map(calibration, θ★) ≈ observation(calibration)
+# @assert forward_map(calibration, θ★) ≈ observation(calibration)

@@ -7,7 +7,7 @@ using Printf
 ##### Free parameters
 #####
 
-struct FreeParameters{N, P}
+struct FreeParameters{N, P, C}
      names :: N
     priors :: P
 end
@@ -69,11 +69,11 @@ dict_properties(d::ParameterValue) = d
 
 function dict_properties(d)
     p = Dict{Symbol, Any}(n => dict_properties(getproperty(d, n)) for n in propertynames(d))
-    p[:type] = typeof(d)
+    p[:type] = typeof(d).name.wrapper
     return p
 end
 
-construct_object(d::ParameterValue, parameters; name=nothing) = kw ∈ keys(parameters) ? getproperty(parameters, kw) : d
+construct_object(d::ParameterValue, parameters; name=nothing) = name ∈ keys(parameters) ? getproperty(parameters, name) : d
 
 function construct_object(specification_dict, parameters; name=nothing, type_parameter=nothing)
     type = Constructor = specification_dict[:type]
@@ -113,7 +113,7 @@ update_closure_ensemble_member!(closures::AbstractVector, p_ensemble, parameters
 
 function update_closure_ensemble_member!(closures::AbstractMatrix, p_ensemble, parameters)
     for j in size(closures, 2) # Assume that ensemble varies along first dimension
-        closures[p_ensemble, j] = closure_with_parameters(closures[p_ensemble, j], θp)
+        closures[p_ensemble, j] = closure_with_parameters(closures[p_ensemble, j], parameters)
     end
     return nothing
 end
