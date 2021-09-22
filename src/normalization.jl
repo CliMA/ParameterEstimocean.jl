@@ -30,6 +30,8 @@ abstract type AbstractNormalization end
 
 struct IdentityNormalization <: AbstractNormalization end
 
+IdentityNormalization(field_time_series) = IdentityNormalization()
+
 normalize!(field, ::IdentityNormalization) = nothing
 
 struct ZScore{T} <: AbstractNormalization
