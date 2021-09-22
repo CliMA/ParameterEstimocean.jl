@@ -6,7 +6,7 @@ get_model_closure(closure::AbstractArray) = CUDA.@allowscalar closure[1, 1]
 
 defaults(model::AbstractModel, RelevantParameters) = DefaultFreeParameters(get_model_closure(model), RelevantParameters)
 
-function InverseProblem(observations::OneDimensionalTimeSeriesBatch, simulation::Simulation, parameters::Parameters{UnionAll}; transformation = )
+function InverseProblem(observations::OneDimensionalTimeSeriesBatch, simulation::Simulation, parameters::Parameters{UnionAll}; transformation = nothing)
 
     simulation = Simulation(model; Δt = Δt, stop_time = 0.0)
     pop!(simulation.diagnostics, :nan_checker)
