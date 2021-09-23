@@ -1,4 +1,4 @@
-function estimate_weights(profile::ValueProfileAnalysis, data::TruthData, relative_weights)
+function estimate_weights(profile::ValueProfileAnalysis, data::OneDimensionalTimeSeries, relative_weights)
     mean_variances = [mean_variance(data, field) for field in data.relevant_fields]
     weights = [1/σ for σ in mean_variances]
 
@@ -9,7 +9,7 @@ function estimate_weights(profile::ValueProfileAnalysis, data::TruthData, relati
     return weights
 end
 
-function estimate_weights(profile::GradientProfileAnalysis, data::TruthData, relative_weights)
+function estimate_weights(profile::GradientProfileAnalysis, data::OneDimensionalTimeSeries, relative_weights)
     gradient_weight = profile.gradient_weight
     value_weight = profile.value_weight
 

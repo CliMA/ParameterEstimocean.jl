@@ -1,23 +1,21 @@
 
 mutable struct LossFunction{Δ, FT, ML, F, T, L, P}
-                     Δt :: Δ
           first_targets :: FT
   max_simulation_length :: ML
           field_weights :: F # scenario weights
             time_series :: T
                 profile :: L
-   ParametersToOptimize :: P
 end
 
 allsame(x) = all(y -> y ≈ first(x), x)
 t_interval(data) = data.t[2:end] .- data.t[1:end-1]
 
-function (loss::LossFunction)(model, data_batch, θ::Vector{<:FreeParameters})
+function (loss::LossFunction)(simulation, observations, θ::Vector{<:FreeParameters})
 
     # iterate the model and record discrepancy summary in `time_series`
-    evaluate!(loss, θ, model, data_batch)
+    evaluate!(loss, simulation, observations, θ)
 
-    N_ens = ensemble_size(model)
+    N_ens = ensemble_size(simulation.model)
     error = zeros((N_ens, 1))
     
     for ts in loss.time_series
@@ -28,24 +26,19 @@ function (loss::LossFunction)(model, data_batch, θ::Vector{<:FreeParameters})
     return error
 end
 
-(loss::LossFunction)(m::EnsembleModel, db::TruthDataBatch, θ::FreeParameters) = loss(m, db, [θ for i = 1:ensemble_size(m)])
-(loss::LossFunction)(m::EnsembleModel, db::TruthDataBatch, θ::Vector{<:Number}) = loss(m, db, loss.ParametersToOptimize(θ))
-(loss::LossFunction)(m::EnsembleModel, db::TruthDataBatch, θ::Vector{<:Vector}) = loss(m, db, loss.ParametersToOptimize.(θ))
-(loss::LossFunction)(m::EnsembleModel, db::TruthDataBatch, θ::Matrix) = loss(m, db, [θ[:,i] for i in 1:size(θ, 2)])
+function LossFunction(simulation::Simulation{<:OneDimensionalEnsembleModel}, observations::OneDimensionalTimeSeriesBatch; data_weights=[1.0 for b in observations], relative_weights)
 
-function LossFunction(model::EnsembleModel, data_batch::TruthDataBatch, Δt, ParametersToOptimize; data_weights=[1.0 for b in data_batch], relative_weights)
+    @assert all([allsame(t_interval(data)) for data in observations]) "Simulation time steps are not uniformly spaced."
+    @assert allsame([t_interval(data)[1] for data in observations]) "Time step differs between simulations."
 
-    @assert all([allsame(t_interval(data)) for data in data_batch]) "Simulation time steps are not uniformly spaced."
-    @assert allsame([t_interval(data)[1] for data in data_batch]) "Time step differs between simulations."
-
-    all_targets = getproperty.(data_batch, :targets)
+    all_targets = getproperty.(observations, :targets)
     first_targets = getindex.(all_targets, 1)
     max_simulation_length = maximum(length.(all_targets))
     
-    profile = ValueProfileAnalysis(model.grid, analysis = column_mean)
+    profile = ValueProfileAnalysis(simulation.model.grid, analysis = column_mean)
 
     field_weights = Dict(f => [] for f in [:u, :v, :b, :e])
-    for (i, data) in enumerate(data_batch)
+    for (i, data) in enumerate(observations)
         data_fields = data.relevant_fields # e.g. (:b, :e)
         targets = all_targets[i]
         rw = [relative_weights[f] for f in data_fields]
@@ -60,23 +53,13 @@ function LossFunction(model::EnsembleModel, data_batch::TruthDataBatch, Δt, Par
         end 
     end
 
-    time_series = [EnsembleTimeSeriesAnalysis(data_batch[i].t[all_targets[i]], model.grid.Nx) for i in 1:length(data_batch)]
+    time_series = [EnsembleTimeSeriesAnalysis(observations[i].t[all_targets[i]], simulation.model.grid.Nx) for i in 1:length(observations)]
 
-    return LossFunction(Δt, first_targets, max_simulation_length, field_weights, time_series, profile, ParametersToOptimize)
+    return LossFunction(first_targets, max_simulation_length, field_weights, time_series, profile)
 end
 
 function calculate_value_discrepancy!(value, model_field, data_field)
     discrepancy = value.discrepancy
-
-    #=
-    centered_data = CenterField(model_field.grid)
-    centered_data .= interior(data_field)
-
-    centered_model = CenterField(model_field.grid)
-    centered_model .= interior(model_field)
-
-    interior(discrepancy) .= (interior(centered_data) .- interior(centered_model)) .^ 2
-    =#
     
     interior(discrepancy) .= (interior(data_field) .- interior(model_field)) .^ 2
 
@@ -146,7 +129,7 @@ function new_field(field_name, field_data, grid)
 
 end
 
-function analyze_weighted_profile_discrepancy(loss::LossFunction, model, data_batch::TruthDataBatch, target)
+function analyze_weighted_profile_discrepancy(loss::LossFunction, model::OneDimensionalEnsembleModel, observations::OneDimensionalTimeSeriesBatch, target)
 
     total_discrepancy = zeros(model.grid.Nx, model.grid.Ny, 1)
 
@@ -157,7 +140,7 @@ function analyze_weighted_profile_discrepancy(loss::LossFunction, model, data_ba
         # compensate for setting model time index 1 to to index `first_target` in data.
         data_indices = target .+ loss.first_targets .- 1
 
-        field_data = column_ensemble_interior(data_batch, field_name, data_indices, model.grid.Nx)
+        field_data = column_ensemble_interior(observations, field_name, data_indices, model.grid.Nx)
         data_field = new_field(field_name, field_data, model_field.grid)
 
         # Calculate the per-field profile-based discrepancy
@@ -176,17 +159,14 @@ function analyze_weighted_profile_discrepancy(loss::LossFunction, model, data_ba
     return nan2inf.(total_discrepancy)
 end
 
-function evaluate!(loss::LossFunction, parameters, model::EnsembleModel, data_batch::TruthDataBatch)
+function evaluate!(loss::LossFunction, simulation::Simulation{<:OneDimensionalEnsembleModel}, observations::OneDimensionalTimeSeriesBatch, parameters)
 
     # Initialize
-    initialize_forward_run!(model, data_batch, parameters, loss.first_targets)
-
-    simulation = Simulation(model; Δt=loss.Δt, stop_time = 0.0)
-    pop!(simulation.diagnostics, :nan_checker)
+    initialize_forward_run!(simulation.model, observations, parameters, loss.first_targets)
 
     # this should be improved
-    all_lengths = length.(getproperty.(data_batch, :t))
-    longest_sim = data_batch[argmax(all_lengths)]
+    all_lengths = length.(getproperty.(observations, :t))
+    longest_sim = observations[argmax(all_lengths)]
     
     # Calculate a loss function time-series
     for target in 1:loss.max_simulation_length
@@ -195,7 +175,7 @@ function evaluate!(loss::LossFunction, parameters, model::EnsembleModel, data_ba
     
         run!(simulation)
 
-        discrepancy = analyze_weighted_profile_discrepancy(loss, model, data_batch, target)
+        discrepancy = analyze_weighted_profile_discrepancy(loss, simulation.model, observations, target)
 
         for (j, ts) in enumerate(loss.time_series)
             if target <= length(ts.time)

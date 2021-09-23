@@ -1,41 +1,14 @@
 module OceanTurbulenceParameterEstimation
 
-export
+export OneDimensionalTimeSeries, InverseProblem, FreeParameters, 
+        IdentityNormalization, ZScore, forward_map
 
-    # Grids
-    ColumnEnsembleGrid,
+include("Observations.jl")
+include("TurbulenceClosureParameters.jl")
+include("InverseProblems.jl")
 
-    # Data
-    TruthData, TruthDataBatch,
-
-    # Models
-    get_model_field, EnsembleModel, ensemble_size, batch_size,
-    set!, initialize_forward_run!,
-    DefaultFreeParameters, get_free_parameters, FreeParameters, @free_parameters,
-
-    # LossFunctions
-    LossFunction,
-    TimeSeriesAnalysis,
-    TimeAverage,
-    model_time_series,
-    ValueProfileAnalysis,
-    GradientProfileAnalysis,
-
-    # ParameterEstimation
-    InverseProblem,
-    Parameters,
-    relative_weight_options
-
-include("Grids/Grids.jl")
-include("Data/Data.jl")
-include("Models/Models.jl")
-include("LossFunctions/LossFunctions.jl")
-include("ParameterEstimation/ParameterEstimation.jl")
-
-using .Grids
-using .Data
-using .Models
-using .LossFunctions
-using .ParameterEstimation
+using .Observations: OneDimensionalTimeSeries, ZScore
+using .TurbulenceClosureParameters: FreeParameters
+using .InverseProblems: InverseProblem, forward_map
 
 end # module

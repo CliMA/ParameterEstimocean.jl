@@ -2,7 +2,7 @@ module LossFunctions
 
 using ..OceanTurbulenceParameterEstimation
 using ..OceanTurbulenceParameterEstimation.Grids
-using ..OceanTurbulenceParameterEstimation.Data
+using ..OceanTurbulenceParameterEstimation.Observations
 using ..OceanTurbulenceParameterEstimation.Models
 
 using Oceananigans
@@ -15,6 +15,7 @@ using Statistics
 export
     # forward_run.jl
     model_time_series,
+    ForwardMap,
 
     # loss_functions.jl
     LossFunction,

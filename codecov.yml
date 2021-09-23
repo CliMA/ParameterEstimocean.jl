@@ -1,0 +1,26 @@
+coverage:
+  range: 50..90
+  round: down
+  precision: 2
+
+  ignore:
+    - "projects"
+    - "examples"
+    - "test"
+    - "src/Grids"
+    - "src/LossFunctions"
+    - "src/Models"
+    - "src/Observations"
+    - "src/ParameterEstimation"
+
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 5%
+    patch:
+      default:
+        target: auto
+        threshold: 20%
+
+comment: false

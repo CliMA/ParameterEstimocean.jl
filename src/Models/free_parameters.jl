@@ -1,22 +1,4 @@
-using Oceananigans.Architectures: arch_array, architecture
 
-abstract type FreeParameters{N, T} <: FieldVector{N, T} end
-
-Base.show(io::IO, p::FreeParameters) = print(io, "$(typeof(p)):", '\n',
-                                             @sprintf("% 24s: ", "parameter names"),
-                                             (@sprintf("%-8s", n) for n in propertynames(p))..., '\n',
-                                             @sprintf("% 24s: ", "values"),
-                                             (@sprintf("%-8.4f", pᵢ) for pᵢ in p)...)
-
-macro free_parameters(GroupName, parameter_names...)
-    N = length(parameter_names)
-    parameter_exprs = [:($name :: T; ) for name in parameter_names]
-    return esc(quote
-        Base.@kwdef mutable struct $GroupName{T} <: FreeParameters{$N, T}
-            $(parameter_exprs...)
-        end
-    end)
-end
 
 function get_free_parameters(closure::AbstractTurbulenceClosure)
     paramnames = Dict()
@@ -124,7 +106,7 @@ new_closure(closure::AbstractArray, free_parameters::FreeParameters) =
 ##### set!
 #####
 
-function set!(model::EnsembleModel, free_parameters)
+function set!(model::OneDimensionalEnsembleModel, free_parameters)
     model.closure = new_closure(model.closure, free_parameters)
     return nothing
 end

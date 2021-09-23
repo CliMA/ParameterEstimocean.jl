@@ -28,7 +28,7 @@ function variance(field::AbstractDataField)
 end
 
 # Returns the field variance for each target in `data.targets`
-function variances(data::TruthData, field_name)
+function variances(data::OneDimensionalTimeSeries, field_name)
 
     variances = zeros(length(data.targets))
     fields = getproperty(data, field_name)
@@ -40,9 +40,9 @@ function variances(data::TruthData, field_name)
     return variances
 end
 
-mean_variance(data::TruthData, field_name)   = mean(variances(data::TruthData, field_name))
-max_variance(data::TruthData, field_name) = maximum(variances(data::TruthData, field_name))
-mean_std(data::TruthData, field_name)  = mean(sqrt.(variances(data::TruthData, field_name)))
+mean_variance(data::OneDimensionalTimeSeries, field_name)   = mean(variances(data::OneDimensionalTimeSeries, field_name))
+max_variance(data::OneDimensionalTimeSeries, field_name) = maximum(variances(data::OneDimensionalTimeSeries, field_name))
+mean_std(data::OneDimensionalTimeSeries, field_name)  = mean(sqrt.(variances(data::OneDimensionalTimeSeries, field_name)))
 
 nan2inf(err) = isnan(err) ? Inf : err
 

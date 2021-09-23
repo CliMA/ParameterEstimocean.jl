@@ -2,7 +2,7 @@ module Models
 
 using ..OceanTurbulenceParameterEstimation
 using ..OceanTurbulenceParameterEstimation.Grids
-using ..OceanTurbulenceParameterEstimation.Data
+using ..OceanTurbulenceParameterEstimation.Observations
 
 using Oceananigans
 using Oceananigans: AbstractModel
@@ -14,15 +14,14 @@ using Printf
 
 import Oceananigans.Fields: interpolate
 import Base: size
-import StaticArrays: FieldVector
-import OceanTurbulenceParameterEstimation.Data: set!
+import OceanTurbulenceParameterEstimation.Observations: set!
 
 export
        get_model_field,
        set!,
 
        # ensemble_model.jl
-       EnsembleModel, 
+       OneDimensionalEnsembleModel, 
        ensemble_size, batch_size,
        initialize_forward_run!,
 
@@ -78,9 +77,5 @@ end
 
 include("ensemble_model.jl")
 include("free_parameters.jl")
-
-include("CATKEVerticalDiffusivityModel/CATKEVerticalDiffusivityModel.jl")
-
-using .CATKEVerticalDiffusivityModel
 
 end #module

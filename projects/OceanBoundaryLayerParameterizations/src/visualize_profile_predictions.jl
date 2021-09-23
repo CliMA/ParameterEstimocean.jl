@@ -1,18 +1,22 @@
+using OceanTurbulenceParameterEstimation.LossFunctions: ForwardMap
 using OceanTurbulenceParameterEstimation.Models: FreeParameters
 using OceanTurbulenceParameterEstimation.ParameterEstimation: InverseProblem
 
 """
-    visualize_predictions(data, model, params...)
-
-Visualize the data alongside several realizations of `column_model`
-for each set of parameters in `params`.
+    visualize!(output::ForwardMap;
+                    fields = [:u, :v, :b, :e],
+                    directory = pwd(),
+                    filename = "realizations.png"
+                    )
 """
-function visualize_predictions(model, data_batch, parameters::FreeParameters, Δt;
-                                                 fields = [:u, :v, :b, :e],
-                                                 filename = "realizations.png"
-                                )
-        
-    fig = Figure(resolution = (200*(length(fields)+1), 200*length(data_batch)), font = "CMU Serif")
+function visualize!(output::ForwardMap;
+                    fields = [:u, :v, :b, :e],
+                    directory = pwd(),
+                    filename = "realizations.png"
+                    )
+    isdir(directory) || makedir(directory)
+    
+    fig = Figure(resolution = (200*(length(fields)+1), 200*length(observations)), font = "CMU Serif")
     colors = [:black, :red, :blue]
 
     function empty_plot!(fig_position)
@@ -21,9 +25,7 @@ function visualize_predictions(model, data_batch, parameters::FreeParameters, Δ
         hidespines!(ax, :t, :b, :l, :r)
     end
 
-    predictions_batch = model_time_series(parameters, model, data_batch, Δt)
-
-    for (i, data) in enumerate(data_batch)
+    for (i, data) in enumerate(observations)
 
         targets = data.targets
         snapshots = round.(Int, range(targets[1], targets[end], length=3))
@@ -82,12 +84,14 @@ function visualize_predictions(model, data_batch, parameters::FreeParameters, Δ
         end
     end
 
-    save(filename, fig, px_per_unit = 2.0)
+    save(joinpath(directory, filename), fig, px_per_unit = 2.0)
+    return nothing
 end
 
-visualize_predictions(ip::InverseProblem, parameters; kwargs...) = visualize_predictions(ip.model, ip.data_batch, ip.loss.ParametersToOptimize(parameters), ip.loss.Δt; kwargs...)
+visualize!(ip::InverseProblem, parameters; kwargs...) = visualize!(model_time_series(ip, parameters); kwargs...)
 
-function visualize_and_save(calibration, validation, parameters, directory; fields=[:u, :v, :b, :e])
+function visualize_and_save!(calibration, validation, parameters, directory; fields=[:u, :v, :b, :e])
+        isdir(directory) || makedir(directory)
 
         path = joinpath(directory, "results.txt")
         o = open_output_file(path)
@@ -110,22 +114,26 @@ function visualize_and_save(calibration, validation, parameters, directory; fiel
         write(o, "Validation loss reduction: $(valid_loss/valid_loss_default) \n")
         close(o)
 
-        parameters = calibration.loss.ParametersToOptimize(parameters)
+        parameters = calibration.parameters.ParametersToOptimize(parameters)
 
         for inverse_problem in [calibration, validation]
 
-            all_data = inverse_problem.data_batch
-            model = inverse_problem.model
-            set!(model, parameters)
+            all_data = inverse_problem.observations
+            simulation = inverse_problem.simulation
+            set!(simulation.model, parameters)
 
             for data_length in Set(length.(getproperty.(all_data, :t)))
 
-                data_batch = [d for d in all_data if length(d.t) == data_length]
-                days = data_batch[1].t[end]/86400
+                observations = [d for d in all_data if length(d.t) == data_length]
+                days = observations[1].t[end]/86400
 
-                visualize_predictions(model, data_batch, parameters, inverse_problem.loss.Δt;
+                new_ip = InverseProblem()
+
+                visualize!(simulation, observations, parameters;
                                                  fields = fields,
                                                  filename = joinpath(directory, "$(days)_day_simulations.png"))
             end
         end
+    
+    return nothing
 end
