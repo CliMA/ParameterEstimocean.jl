@@ -39,7 +39,7 @@ mutable struct EnsembleKalmanInversion{I, P, E, M, O, F, S, D}
     inverting_forward_map :: F
     iteration :: Int
     iteration_summaries :: S
-    dropped_ensemble_members = D
+    dropped_ensemble_members :: D
 end
 
 construct_noise_covariance(noise_covariance::AbstractMatrix, y) = noise_covariance
