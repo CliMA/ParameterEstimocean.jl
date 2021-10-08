@@ -71,7 +71,7 @@ background_νz = 1e-5
     ub_observations = OneDimensionalTimeSeries(data_path, field_names=(:u, :b))
     uvb_observations = OneDimensionalTimeSeries(data_path, field_names=(:u, :v, :b))
 
-    @test keys(b_observations.fields) == tuple(:b)
-    @test keys(ub_observations.fields) == tuple(:u, :b)
-    @test keys(uvb_observations.fields) == tuple(:u, :v, :b)
+    @test keys(b_observations.field_time_serieses) == tuple(:b)
+    @test keys(ub_observations.field_time_serieses) == tuple(:u, :b)
+    @test keys(uvb_observations.field_time_serieses) == tuple(:u, :v, :b)
 end

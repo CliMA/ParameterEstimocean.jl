@@ -1,13 +1,22 @@
 module InverseProblems
 
-using ..Observations: obs_str, OneDimensionalTimeSeries, initialize_simulation!, FieldTimeSeriesCollector
+using OrderedCollections
+
+using ..Observations: obs_str, AbstractObservation, OneDimensionalTimeSeries, initialize_simulation!, FieldTimeSeriesCollector, 
+                      observation_times
+
 using ..TurbulenceClosureParameters: free_parameters_str, update_closure_ensemble_member!
 
-using Oceananigans: short_show, run!, fields
-using Oceananigans.Fields: interior
-using Oceananigans.Grids: Flat, Bounded, 
+using OffsetArrays
+
+using Oceananigans: short_show, run!, fields, FieldTimeSeries, CPU
+using Oceananigans.OutputReaders: InMemory
+using Oceananigans.Fields: interior, location
+using Oceananigans.Grids: Flat, Bounded,
                           Face, Center,
-                          RegularRectilinearGrid
+                          RegularRectilinearGrid, offset_data,
+                          topology, halo_size,
+                          interior_parent_indices
 
 import ..Observations: normalize!
 
@@ -55,8 +64,8 @@ function InverseProblem(observations, simulation, free_parameters; output_map=Co
 
     if isnothing(time_series_collector) # attempt to construct automagically
         simulation_fields = fields(simulation.model)
-        collected_fields = NamedTuple(name => simulation_fields[name] for name in keys(observations.fields))
-        time_series_collector = FieldTimeSeriesCollector(collected_fields, observations.times)
+        collected_fields = NamedTuple(name => simulation_fields[name] for name in keys(simulation_fields))
+        time_series_collector = FieldTimeSeriesCollector(collected_fields, observation_times(observations))
     end
 
     return InverseProblem(observations, simulation, time_series_collector, free_parameters, output_map)
@@ -85,12 +94,14 @@ tupify_parameters(ip, θ) = NamedTuple{ip.free_parameters.names}(Tuple(θ))
 
 const OneDimensionalEnsembleGrid = RegularRectilinearGrid{<:Any, Flat, Flat, Bounded}
 
-# ensemble_size(grid::OneDimensionalEnsembleGrid) = grid.Nx
-# batch_size(grid::OneDimensionalEnsembleGrid) = grid.Ny
-
 n_ensemble(grid::OneDimensionalEnsembleGrid) = grid.Nx
 n_observations(grid::OneDimensionalEnsembleGrid) = grid.Ny
 n_z(grid::OneDimensionalEnsembleGrid) = grid.Nz
+
+n_ensemble(ip::InverseProblem) = n_ensemble(ip.simulation.model.grid)
+
+""" Transform and return `ip.observations` appropriate for `ip.output_map`. """
+observation_map(ip::InverseProblem) = transform_observations(ip.output_map, ip.observations)
 
 function forward_map(ip::InverseProblem, θ::Vector{<:NamedTuple})
     observations = ip.observations
@@ -104,75 +115,115 @@ function forward_map(ip::InverseProblem, θ::Vector{<:NamedTuple})
     initialize_simulation!(simulation, observations, ip.time_series_collector)
     run!(simulation)
 
-    return map_output(ip.output_map, ip.time_series_collector, observations)
+    return transform_output(ip.output_map, observations, ip.time_series_collector)
 end
 
-#=
-function forward_map(ip, θ::NamedTuple)
-
-    single_member_grid = 
-    single_member_simulation = 
-    
-    single_member_ip = InverseProblem(ip.observations,
-                                      single_member_simulation,
-                                      ip.free_parameters;
-                                      output_map = ip.output_map,
-                                      time_series_collector = ip.time_series_collector)
-
-    return forward_map(single_member_ip, [θ])
-end
-=#
-
+forward_map(ip, θ::Vector{<:Vector}) = forward_map(ip, [tupify_parameters(ip, p) for p in θ])
 forward_map(ip, θ::Matrix) = forward_map(ip, [tupify_parameters(ip, θ[:, i]) for i in 1:size(θ, 2)])
 
 (ip::InverseProblem)(θ) = forward_map(ip, θ)
 
-function normalize!(field_data, observations::Vector{<:OneDimensionalTimeSeries}, field_name)
+function transform_observations(::ConcatenatedOutputMap, observation::OneDimensionalTimeSeries)
+    flattened_normalized_data = []
 
-    for (batch_index, observation) in enumerate(observations)
-        normalize!(view(field_data, :, batch_index, :), observation, field_name)
+    for field_name in keys(observation.field_time_serieses)
+        field_time_series = observation.field_time_serieses[field_name]
+
+        # *** FIXME ***
+        # Here we hack an implementation of `interior` because
+        # `field_time_series.grid` may be wrong (sometimes grid.Nx is wrong)
+        grid = field_time_series.grid
+        Hx, Hy, Hz = halo_size(grid)
+        Nx, Ny, Nz = size(grid)
+        topo = topology(grid)
+        loc = location(field_time_series)
+        y_indices = interior_parent_indices(loc[2], topo[2], Ny, Hy)
+        z_indices = interior_parent_indices(loc[3], topo[3], Nz, Hz)
+        field_time_series_data = Array(view(parent(field_time_series), :, y_indices, z_indices, :))
+
+        Nx, Ny, Nz, Nt = size(field_time_series_data)
+        field_time_series_data = reshape(field_time_series_data, Nx, Ny * Nz * Nt)
+
+        normalize!(field_time_series_data, observation.normalization[field_name])
+
+        push!(flattened_normalized_data, field_time_series_data)
     end
 
-    return nothing
+    transformed = hcat(flattened_normalized_data...)
+
+    return Matrix(transpose(transformed))
 end
 
-normalize!(field_data, observation::OneDimensionalTimeSeries, field_name) =
-    normalize!(field_data, observation.normalization[field_name])
+transform_observations(map, observations::Vector) =
+    hcat(Tuple(transform_observations(map, observation) for observation in observations)...)
 
-observation_field_names(observation::OneDimensionalTimeSeries) = keys(observation.fields)
+function transform_output(map::ConcatenatedOutputMap,
+                          observations::Union{OneDimensionalTimeSeries, Vector{<:OneDimensionalTimeSeries}},
+                          time_series_collector)
 
-observation_field_names(observations::Vector{<:OneDimensionalTimeSeries}) =
-    observation_field_names(observations[1])
+    # transposed_output isa Vector{OneDimensionalTimeSeries} where OneDimensionalTimeSeries is Nx by Nz by Nt
+    transposed_output = transpose_model_output(time_series_collector, observations)[1]
 
-# Returns an ``$(n_t n_z m, n_\text{ensemble})$`` array, where 
-# ``$m=\sum_{i=1}^{n_\text{observations}}N_\text{fields, i}$``.
-function map_output(::ConcatenatedOutputMap, time_series_collector, observations)
+    return transform_observations(map, transposed_output)
+end
 
-    grid = time_series_collector.grid
-    stacked = reshape([], n_ensemble(grid), 0)
+vectorize(observation) = [observation]
+vectorize(observations::Vector) = observations
 
-    for (time_index, time) in enumerate(time_series_collector.times)
-        for field_name in observation_field_names(observations)
+"""
+    transpose_model_output(time_series_collector, observations)
 
-            field_time_series = time_series_collector.field_time_serieses[field_name]
-            field = field_time_series[time_index]
-            interior_field_data = Array(interior(field))
-            normalize!(interior_field_data, observations, field_name)
+Transpose a `NamedTuple` of 4D `FieldTimeSeries` model output collected by `time_series_collector`
+into a Vector of `OneDimensionalTimeSeries` for each member of the observation batch.
 
-            Nx, Ny, Nz = size(interior_field_data)
-            flattened_field_data = reshape(interior_field_data, Nx, Ny * Nz)
+Return a 1-vector in the case of singleton observations.
+"""
+function transpose_model_output(time_series_collector, observations)
+    observations = vectorize(observations)
+    times = time_series_collector.times
 
-            stacked = hcat(stacked, flattened_field_data)
+    transposed_output = []
+
+    n_ensemble = time_series_collector.grid.Nx
+    n_batch = time_series_collector.grid.Ny
+    Nz = time_series_collector.grid.Nz
+    Hz = time_series_collector.grid.Hz
+    Nt = length(times)
+
+    for j = 1:n_batch
+        observation = observations[j]
+        grid = observation.grid
+        time_serieses = OrderedDict{Any, Any}()
+
+        for name in keys(observation.field_time_serieses)
+            loc = LX, LY, LZ = location(observation.field_time_serieses[name])
+            topo = topology(grid)
+
+            field_time_series = time_series_collector.field_time_serieses[name]
+
+            raw_data = parent(field_time_series.data)
+            data = OffsetArray(view(raw_data, :, j:j, :, :), 0, 0, -Hz, 0)
+
+            # Note: FieldTimeSeries.grid.Nx is in general incorrect
+            time_series = FieldTimeSeries{LX, LY, LZ, InMemory}(data, CPU(), grid, nothing, times)
+            time_serieses[name] = time_series
         end
+
+        # Convert to NamedTuple
+        time_serieses = NamedTuple(name => time_series for (name, time_series) in time_serieses)
+
+
+        batch_output = OneDimensionalTimeSeries(time_serieses,
+                                                grid, # this grid has the wrong grid.Nx --- forgive us our sins
+                                                times,
+                                                nothing,
+                                                nothing,
+                                                observation.normalization) 
+
+        push!(transposed_output, batch_output)
     end
 
-    return stacked'
+    return transposed_output
 end
-
-# Either
-map_observations(::ConcatenatedOutputMap, observations::Vector{<:OneDimensionalTimeSeries}) =
-    map_output(ConcatenatedOutputMap(), reshape(observations, 1, length(observations)), nothing)
-
-# or new code
 
 end # module

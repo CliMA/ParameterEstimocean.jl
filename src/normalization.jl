@@ -45,6 +45,7 @@ function normalize!(field, z_score::ZScore)
     return nothing
 end
 
+#=
 "Returns a view of `f` that excludes halo points."
 @inline interior(f::FieldTimeSeries{X, Y, Z}) where {X, Y, Z} =
     view(parent(f.data),
@@ -52,6 +53,7 @@ end
          interior_parent_indices(Y, topology(f, 2), f.grid.Ny, f.grid.Hy),
          interior_parent_indices(Z, topology(f, 3), f.grid.Nz, f.grid.Hz),
          :)
+=#
 
 function ZScore(field_time_series)
     μ = mean(interior(field_time_series))
