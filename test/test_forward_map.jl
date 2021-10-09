@@ -1,4 +1,3 @@
-using Test
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
@@ -6,7 +5,9 @@ using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
 
 using OceanTurbulenceParameterEstimation
 using OceanTurbulenceParameterEstimation.Observations: FieldTimeSeriesCollector, initialize_simulation!, observation_times
-using OceanTurbulenceParameterEstimation.InverseProblems:  transpose_model_output
+using OceanTurbulenceParameterEstimation.InverseProblems: transpose_model_output
+
+using Distributions
 
 @testset "Forward map tests" begin
 
