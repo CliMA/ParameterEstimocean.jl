@@ -7,7 +7,7 @@ using Printf
 ##### Free parameters
 #####
 
-struct FreeParameters{N, P, C}
+struct FreeParameters{N, P}
      names :: N
     priors :: P
 end
@@ -28,8 +28,8 @@ julia> free_parameters = FreeParameter(priors)
 ```
 """
 function FreeParameters(priors; names = Symbol.(keys(priors)))
-    priors = Dict{Symbol, Any}(name => get(priors, name, nothing) for name in names)
-    return FreeParameters(names, priors)
+    priors = NamedTuple(name => priors[name] for name in names)
+    return FreeParameters(Tuple(names), priors)
 end
 
 free_parameters_str(fp::FreeParameters) = "$(fp.names)"

@@ -28,6 +28,7 @@ statprof/
 Results/
 *.png
 *.txt
+*.jld2
 
 *.swp
 *.DS_Store

@@ -20,15 +20,15 @@ A time series of horizontally-averaged observational or LES data
 gridded as Oceananigans fields.
 """
 struct OneDimensionalTimeSeries{F, G, T, P, M, N} <: AbstractObservation
-           fields :: F
-             grid :: G
-            times :: T
-             path :: P
-         metadata :: M
-    normalization :: N
+    field_time_serieses :: F
+                   grid :: G
+                  times :: T
+                   path :: P
+               metadata :: M
+          normalization :: N
 end
 
-obs_str(ts::OneDimensionalTimeSeries) = "OneDimensionalTimeSeries of $(keys(ts.fields)) on $(short_show(ts.grid))"
+obs_str(ts::OneDimensionalTimeSeries) = "OneDimensionalTimeSeries of $(keys(ts.field_time_serieses)) on $(short_show(ts.grid))"
 
 tupleit(t) = try
     Tuple(t)
@@ -41,44 +41,61 @@ const not_metadata_names = ("serialized", "timeseries")
 read_group(group::JLD2.Group) = NamedTuple(Symbol(subgroup) => read_group(group[subgroup]) for subgroup in keys(group))
 read_group(group) = group
 
+get_grid(field_time_serieses) = field_time_serieses[1].grid
+
 function OneDimensionalTimeSeries(path; field_names, normalize=IdentityNormalization, times=nothing)
     field_names = tupleit(field_names)
-    fields = NamedTuple(name => FieldTimeSeries(path, string(name); times) for name in field_names)
-    grid = first(fields).grid
-    times = first(fields).times
+    field_time_serieses = NamedTuple(name => FieldTimeSeries(path, string(name); times) for name in field_names)
+    grid = get_grid(field_time_serieses)
+    times = first(field_time_serieses).times
 
     # validate_data(fields, grid, times) # might be a good idea to validate the data...
     file = jldopen(path)
     metadata = NamedTuple(Symbol(group) => read_group(file[group]) for group in filter(n -> n ∉ not_metadata_names, keys(file)))
     close(file)
 
-    normalization = Dict(name => normalize(fields[name]) for name in keys(fields))
+    normalization = Dict(name => normalize(field_time_serieses[name]) for name in keys(field_time_serieses))
 
-    return OneDimensionalTimeSeries(fields, grid, times, path, metadata, normalization)
+    return OneDimensionalTimeSeries(field_time_serieses, grid, times, path, metadata, normalization)
 end
+
+observation_times(observation) = observation.times
+observation_times(obs::Vector) = observation_times(first(obs))
 
 #####
 ##### set! for simulation models and observations
 #####
 
-default_initial_condition(ts) = 0
-
-function initial_condition(ts, field_name, time_index)
-    if field_name in keys(ts.fields)
-        return ts.fields[field_name][time_index]
-    else
-        return default_initial_condition(ts)
-    end
-end
+default_initial_condition(ts, name) = 0
 
 function set!(model, ts::OneDimensionalTimeSeries, index=1)
     # Set initial condition
     for name in keys(fields(model))
-        field = fields(model)[name]
-        set!(field, initial_condition(ts, name, index))
+
+        model_field = fields(model)[name]
+
+        if name in keys(ts.field_time_serieses)
+            ts_field = ts.field_time_serieses[name][index]
+            set!(model_field, ts_field)
+        else
+            set!(model_field, 0) #default_initial_condition(ts, Val(name)))
+        end
     end
 
     return nothing
+end
+
+"""
+    column_ensemble_interior(observations::Vector{<:OneDimensionalTimeSeries}, field_name, time_indices::Vector, N_ens)
+
+Returns an `N_cases × N_ens` array of the interior of a field `field_name` defined on a 
+`OneDimensionalEnsembleGrid` of size `N_cases × N_ens × Nz`, given a list of `OneDimensionalTimeSeries` objects
+containing the `N_cases` single-column fields at the corresponding time index in `time_indices`.
+"""
+function column_ensemble_interior(observations::Vector{<:OneDimensionalTimeSeries}, field_name, time_indices::Vector, ensemble_size)
+    batch = @. get_interior(observations, field_name, time_indices)
+    batch = cat(batch..., dims = 2) # (n_batch, n_z)
+    return cat([batch for i = 1:ensemble_size]..., dims = 1) # (ensemble_size, n_batch, n_z)
 end
 
 struct FieldTimeSeriesCollector{G, D, F, T}
@@ -129,8 +146,10 @@ function (collector::FieldTimeSeriesCollector)(simulation)
     return nothing
 end
 
-function initialize_simulation!(simulation, ts::OneDimensionalTimeSeries, time_series_collector, time_index=1)
+function initialize_simulation!(simulation, ts, time_series_collector, time_index=1)
     set!(simulation.model, ts, time_index) 
+
+    times = observation_times(ts)
 
     initial_time = ts.times[time_index]
     simulation.model.clock.time = initial_time
@@ -141,19 +160,22 @@ function initialize_simulation!(simulation, ts::OneDimensionalTimeSeries, time_s
         time_series.data .= 0
     end
 
-    simulation.callbacks[:data_collector] = Callback(time_series_collector, SpecifiedTimes(ts.times...))
+    simulation.callbacks[:data_collector] = Callback(time_series_collector, SpecifiedTimes(times...))
 
-    simulation.stop_time = ts.times[end]
+    simulation.stop_time = times[end]
 
     return nothing
 end
 
+summarize_metadata(::Nothing) = ""
+summarize_metadata(metadata) = keys(metadata)
+
 Base.show(io::IO, ts::OneDimensionalTimeSeries) =
-    print(io, "OneDimensionalTimeSeries with fields $(propertynames(ts.fields))", '\n',
+    print(io, "OneDimensionalTimeSeries with fields $(propertynames(ts.field_time_serieses))", '\n',
               "├── times: $(ts.times)", '\n',    
               "├── grid: $(short_show(ts.grid))", '\n',
               "├── path: \"$(ts.path)\"", '\n',
-              "├── metadata: $(keys(ts.metadata))", '\n',
+              "├── metadata: ", summarize_metadata(ts.metadata), '\n',
               "└── normalization: $(short_show(ts.normalization))")
 
 end # module
