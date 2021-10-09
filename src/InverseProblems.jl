@@ -56,7 +56,7 @@ struct InverseProblem{F, O, S, T, P}
 end
 
 """
-    InverseProblem(observations, simluation, free_parameters; output_map=ConcatenatedOutputMap())
+    InverseProblem(observations, simulation, free_parameters; output_map=ConcatenatedOutputMap())
 
 Return an `InverseProblem`.
 """
