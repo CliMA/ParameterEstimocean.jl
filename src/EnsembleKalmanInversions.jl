@@ -112,20 +112,28 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2)
     return EnsembleKalmanInversion(inverse_problem, parameter_distribution, ensemble_kalman_process, y, Γy, G, 0, [], Set())
 end
 
-struct IterationSummary{P, E}
-    parameters :: P
+struct IterationSummary{P, M, V, E}
+    parameters :: P # constrained
+    ensemble_mean :: M # constrained
+    ensemble_variance :: V # unconstrained
     mean_square_errors :: E
 end
 
-function IterationSummary(parameters, forward_map, observations)
+function IterationSummary(eki, parameters, forward_map)
     N_observations, N_ensemble = size(forward_map)
+    original_priors = eki.inverse_problem.free_parameters.priors
+
+    ensemble_mean = mean(parameters, dims=2)
+    ensemble_mean_constrained = inverse_parameter_transform.(values(original_priors), ensemble_mean)
+    ensemble_variance = diag(cov(parameters, dims=2))
+    parameters_constrained = inverse_parameter_transform.(values(original_priors), parameters)
 
     mean_square_errors = [
-        mapreduce((x, y) -> (x - y)^2, +, observations, view(forward_map, m, :)) / N_observations
+        mapreduce((x, y) -> (x - y)^2, +, eki.mapped_observations, view(forward_map, :, m)) / N_observations
         for m in 1:N_ensemble
     ]
 
-    return IterationSummary(parameters, mean_square_errors)
+    return IterationSummary(parameters_constrained, ensemble_mean_constrained, ensemble_variance, mean_square_errors)
 end
 
 function drop_ensemble_member!(eki, member)
@@ -156,7 +164,7 @@ function iterate!(eki::EnsembleKalmanInversion; iterations = 1)
 
             # Save the parameter values and mean square error between forward map
             # and observations at the current iteration
-            summary = IterationSummary(θ, G, eki.mapped_observations)
+            summary = IterationSummary(eki, θ, G)
 
             @show summary.mean_square_errors
             
@@ -167,21 +175,8 @@ function iterate!(eki::EnsembleKalmanInversion; iterations = 1)
         end
     end
 
-    #=
-    # All unconstrained
-    params = mean(get_u_final(ensemble_kalman_process), dims=2) # ensemble mean
-
-    # losses = [norm([G([mean(get_u(ensemble_kalman_process, i), dims=2)...])...]  - y) for i in 1:n_iterations] # particle loss
-    mean_vars = [diag(cov(get_u(ensemble_kalman_process, i), dims=2)) for i in 1:iterations] # ensemble variance for each parameter
-
-    original_priors = eki.inverse_problem.free_parameters.priors
-    params = inverse_parameter_transform.(values(original_priors), params)
-
-    # return params, mean_vars, mean_us_constrained
-    mean_us_eki = [[mean(get_u(ensemble_kalman_process, i), dims=2)...] for i in 1:iterations]
-    mean_us_constrained = [inverse_parameter_transform.(values(original_priors), mean_u) for mean_u in mean_us_eki]
-    return [params...], mean_vars, mean_us_constrained
-    =#
+    # Return ensemble mean (best guess for optimal parameters)
+    return eki.iteration_summaries[end].ensemble_mean
 
     return nothing
 end
