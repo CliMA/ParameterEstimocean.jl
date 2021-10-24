@@ -65,7 +65,7 @@ makedocs(
      format = format,
       pages = pages,
     doctest = true,
-     # strict = true,
+     strict = true,
       clean = true,
   checkdocs = :exports
 )

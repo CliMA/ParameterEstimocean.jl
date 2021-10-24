@@ -22,7 +22,7 @@ Examples
 ========
 
 ```jldoctest
-julia> using Distributions
+julia> using OceanTurbulenceParameterEstimation, Distributions
 
 julia> priors = (ν = Normal(1e-4, 1e-5), κ = Normal(1e-3, 1e-5))
 (ν = Normal{Float64}(μ=0.0001, σ=1.0e-5), κ = Normal{Float64}(μ=0.001, σ=1.0e-5))
