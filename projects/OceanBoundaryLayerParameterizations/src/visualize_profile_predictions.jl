@@ -9,14 +9,14 @@ using OceanTurbulenceParameterEstimation.ParameterEstimation: InverseProblem
                     filename = "realizations.png"
                     )
 """
-function visualize!(output::ForwardMap;
+function visualize!(ip::InverseProblem;
                     fields = [:u, :v, :b, :e],
                     directory = pwd(),
                     filename = "realizations.png"
                     )
     isdir(directory) || makedir(directory)
     
-    fig = Figure(resolution = (200*(length(fields)+1), 200*length(observations)), font = "CMU Serif")
+    fig = Figure(resolution = (200*(length(fields)+1), 200*length(ip.observations)), font = "CMU Serif")
     colors = [:black, :red, :blue]
 
     function empty_plot!(fig_position)
@@ -25,7 +25,7 @@ function visualize!(output::ForwardMap;
         hidespines!(ax, :t, :b, :l, :r)
     end
 
-    for (i, data) in enumerate(observations)
+    for (i, data) in enumerate(ip.observations)
 
         targets = data.targets
         snapshots = round.(Int, range(targets[1], targets[end], length=3))
@@ -130,8 +130,8 @@ function visualize_and_save!(calibration, validation, parameters, directory; fie
                 new_ip = InverseProblem()
 
                 visualize!(simulation, observations, parameters;
-                                                 fields = fields,
-                                                 filename = joinpath(directory, "$(days)_day_simulations.png"))
+                            fields = fields,
+                            filename = joinpath(directory, "$(days)_day_simulations.png"))
             end
         end
     

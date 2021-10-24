@@ -58,12 +58,12 @@ Returns `observation::OneDimensionalTimeSeries` interpolated to `grid`.
 """
 function OneDimensionalTimeSeries(data::OneDimensionalTimeSeries, grid::AbstractGrid)
 
-    U = [ XFaceField(grid) for t in data.times ]
-    V = [ YFaceField(grid) for t in data.times ]
-    B = [ CenterField(grid) for t in data.times ]
-    E = [ CenterField(grid) for t in data.times ]
+    U = [ XFaceField(grid) for _ in data.time_range ]
+    V = [ YFaceField(grid) for _ in data.time_range ]
+    B = [ CenterField(grid) for _ in data.time_range ]
+    E = [ CenterField(grid) for _ in data.time_range ]
 
-    for i = 1:length(data.t)
+    for i in data.time_range
         set!(U[i], data.fields.u[i])
         set!(V[i], data.fields.v[i])
         set!(B[i], data.fields.b[i])
@@ -73,7 +73,7 @@ function OneDimensionalTimeSeries(data::OneDimensionalTimeSeries, grid::Abstract
     return OneDimensionalTimeSeries(data.file_path,
                       data.fields,
                       grid,
-                      data.times,
+                      data.times[data.time_range],
                       data.time_range,
                       data.name)
-end
+end 

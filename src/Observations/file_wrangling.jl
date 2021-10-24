@@ -8,7 +8,6 @@ end
 
 function get_times(datapath)
     iters = get_iterations(datapath)
-
     times = zeros(length(iters))
 
     jldopen(datapath, "r") do file
