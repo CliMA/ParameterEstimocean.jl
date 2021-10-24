@@ -167,7 +167,7 @@ Arguments
 - `prior_cov :: Array{Float64, 2}`: prior covariance
 - `noise_covariance :: Float64`: observation error covariance
 - `α_reg :: Float64`: regularization parameter toward the prior mean (0 < `α_reg` ≤ 1);
-                      default `α_reg=1` implies no regulariazion
+                      default `α_reg=1` implies no regularization
 - `update_freq::IT`: set to 0 when the inverse problem is not identifiable (default), namely the
                      inverse problem has multiple solutions, the covariance matrix will represent
                      only the sensitivity of the parameters, instead of posterior covariance information;
