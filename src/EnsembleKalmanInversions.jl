@@ -79,12 +79,12 @@ Return an object that interfaces with EnsembleKalmanProcesses.jl to iteratively
 "solve" the inverse problem
 
 ```math
-y = G(θ) + η
-````
+y = G(θ) + η,
+```
 
 for the parameters ``θ``, where ``y`` is a "normalized" vector of observations,
-``G(θ)`` is a forward map that predicts the observations, and ``η ∼ N(0, Γy) is zero-mean
-random noise with covariance matrix Γy representing uncertainty in the observations.
+``G(θ)`` is a forward map that predicts the observations, and ``η ∼ N(0, Γy)`` is zero-mean
+random noise with covariance matrix ``Γy`` representing uncertainty in the observations.
 
 By "solve", we mean that the iteration finds  ``θ`` that minimizes the distance
 between ``y`` and ``G(θ)``.
@@ -135,20 +135,23 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2)
 end
 
 """
-UnscentedKalmanInversion Constructor 
-inverse_problem         : inverse problem
-prior_mean::Array{FT}   : prior mean
-prior_cov::Array{FT, 2} : prior covariance
-noise_covariance::FT    : observation error covariance
-α_reg::FT               : regularization parameter toward `u0` (0 < `α_reg` ≤ 1), default should be 1, without regulariazion
-update_freq::IT : set to 0 when the inverse problem is not identifiable (default), 
+    UnscentedKalmanInversion(inverse_problem, prior_mean, prior_cov; noise_covariance=1e-2, α_reg = 1.0, update_freq = 0)
+
+Arguments
+=========
+
+- `inverse_problem`         : inverse problem
+- `prior_mean::Array{Float64}`   : prior mean
+- `prior_cov::Array{Float64, 2}` : prior covariance
+- `noise_covariance::Float64`    : observation error covariance
+- `α_reg::Float64`               : regularization parameter toward `u0` (0 < `α_reg` ≤ 1), default should be 1, without regulariazion
+- `update_freq::IT` : set to 0 when the inverse problem is not identifiable (default), 
                   namely the inverse problem has multiple solutions, 
                   the covariance matrix will represent only the sensitivity of the parameters, 
                   instead of posterior covariance information;
                   set to 1 (or anything > 0) when the inverse problem is identifiable, and 
                   the covariance matrix will converge to a good approximation of the 
                   posterior covariance with an uninformative prior.
-                  
 """
 function UnscentedKalmanInversion(inverse_problem, prior_mean, prior_cov; noise_covariance=1e-2, α_reg = 1.0, update_freq = 0)
     free_parameters = inverse_problem.free_parameters
