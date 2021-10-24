@@ -93,13 +93,13 @@ Example:
 ```julia-repl
 julia> struct ClosureSubModel a; b end
 
-julia> struct Closure test; c end
+julia> struct Closure c; d end
 
 julia> closure = Closure(ClosureSubModel(1, 2), 3)
 Closure(ClosureSubModel(1, 2), 3)
 
-julia> parameters = (a = 12, c = 7)
-(a = 12, c = 7)
+julia> parameters = (a = 12, d = 7)
+(a = 12, d = 7)
 
 julia> closure_with_parameters(closure, parameters)
 Closure(ClosureSubModel(12, 2), 7)
