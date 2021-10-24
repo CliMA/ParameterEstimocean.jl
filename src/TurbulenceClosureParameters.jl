@@ -21,10 +21,18 @@ Free parameter `names` are inferred from the keys of `priors` if not provided.
 Examples
 ========
 
-```julia
-julia> priors = (ν = Normal(1e-4, 1e-5), κ = Normal(1e-3, 1e-5))
+```jldoctest
+julia> using Distributions
 
-julia> free_parameters = FreeParameter(priors)
+julia> priors = (ν = Normal(1e-4, 1e-5), κ = Normal(1e-3, 1e-5))
+(ν = Normal{Float64}(μ=0.0001, σ=1.0e-5), κ = Normal{Float64}(μ=0.001, σ=1.0e-5))
+
+julia> free_parameters = FreeParameters(priors)
+FreeParameters with 2 parameters
+├── names: (:ν, :κ)
+└── priors: Dict{Symbol, Any}
+    ├── ν => Normal{Float64}(μ=0.0001, σ=1.0e-5)
+    └── κ => Normal{Float64}(μ=0.001, σ=1.0e-5)
 ```
 """
 function FreeParameters(priors; names = Symbol.(keys(priors)))
@@ -92,9 +100,11 @@ Example
 =======
 
 ```julia-repl
-julia> struct ClosureSubModel a; b end
+julia> import Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
 
-julia> struct Closure test; c end
+julia> struct ClosureSubModel; a; b end
+
+julia> struct Closure <: AbstractTurbulenceClosure{Nothing} test; c end
 
 julia> closure = Closure(ClosureSubModel(1, 2), 3)
 Closure(ClosureSubModel(1, 2), 3)
@@ -102,7 +112,7 @@ Closure(ClosureSubModel(1, 2), 3)
 julia> parameters = (a = 12, c = 7)
 (a = 12, c = 7)
 
-julia> closure_with_parameters(closure, parameters)
+julia> OceanTurbulenceParameterEstimation.TurbulenceClosureParameters.closure_with_parameters(closure, parameters)
 Closure(ClosureSubModel(12, 2), 7)
 ```
 """
