@@ -7,7 +7,7 @@ using ..Observations: obs_str, AbstractObservation, OneDimensionalTimeSeries, in
 
 using ..TurbulenceClosureParameters: free_parameters_str, update_closure_ensemble_member!
 
-using OffsetArrays
+using OffsetArrays, Statistics
 
 using Oceananigans: short_show, run!, fields, FieldTimeSeries, CPU
 using Oceananigans.OutputReaders: InMemory
@@ -118,8 +118,25 @@ function forward_map(ip::InverseProblem, θ::Vector{<:NamedTuple})
     return transform_output(ip.output_map, observations, ip.time_series_collector)
 end
 
-forward_map(ip, θ::Vector{<:Vector}) = forward_map(ip, [tupify_parameters(ip, p) for p in θ])
-forward_map(ip, θ::Matrix) = forward_map(ip, [tupify_parameters(ip, θ[:, i]) for i in 1:size(θ, 2)])
+function forward_map(ip, θ::Vector{<:Vector})
+
+    ensemble_capacity = n_ensemble(ip.time_series_collector.grid)
+    ensemble_size = length(θ)
+    
+    θs = [tupify_parameters(ip, p) for p in θ]
+
+    # feed redundant parameters in case ensemble_size < ensemble_capacity
+    full_θs = vcat(θs , [θs[end] for _ in 1:(ensemble_capacity - ensemble_size)])
+
+    # (output_size, ensemble_capacity)
+    output = forward_map(ip, full_θs)
+
+    # (output_size, ensemble_size)
+    return output[:, 1:ensemble_size]
+end
+
+forward_map(ip, θ::Vector{<:Number}) = forward_map(ip, [θ,])
+forward_map(ip, θ::Matrix) = forward_map(ip, [θ[:, i] for i in 1:size(θ, 2)])
 
 (ip::InverseProblem)(θ) = forward_map(ip, θ)
 
@@ -142,6 +159,9 @@ function transform_observations(::ConcatenatedOutputMap, observation::OneDimensi
         field_time_series_data = Array(view(parent(field_time_series), :, y_indices, z_indices, :))
 
         Nx, Ny, Nz, Nt = size(field_time_series_data)
+
+        # field_time_series_data = reshape(field_time_series_data, Nx, Ny, Nz * Nt)
+        # field_time_series_data = permutedims(field_time_series_data, [1, 3, 2])
         field_time_series_data = reshape(field_time_series_data, Nx, Ny * Nz * Nt)
 
         normalize!(field_time_series_data, observation.normalization[field_name])
@@ -155,14 +175,51 @@ function transform_observations(::ConcatenatedOutputMap, observation::OneDimensi
 end
 
 transform_observations(map, observations::Vector) =
-    hcat(Tuple(transform_observations(map, observation) for observation in observations)...)
+    vcat(Tuple(transform_observations(map, observation) for observation in observations)...)
+
+"""
+    observation_map_variance_across_time(map::ConcatenatedOutputMap, observation::OneDimensionalTimeSeries)
+
+Returns an (Nx, Ny*Nz*Nfields, Ny*Nz*Nfields) array storing the covariance of each element of the observation 
+map measured across time, for each ensemble member, where `Nx` is the ensemble size, `Ny` is the batch size, 
+`Nz` is the number of grid elements in the vertical, and `Nfields` is the number of fields in `observation`.
+"""
+function observation_map_variance_across_time(map::ConcatenatedOutputMap, observation::OneDimensionalTimeSeries)
+
+    N_fields = length(keys(observation.field_time_serieses))
+
+    a = transform_observations(map, observation)
+    a = transpose(a) # (Nx, Ny*Nz*Nt)
+
+    example_field_time_series = values(observation.field_time_serieses)[1]
+
+    Nx, Ny, Nz, Nt = size(interior(example_field_time_series))
+
+    # Assume all fields have the same size
+    b = reshape(a, Nx, Ny * Nz, Nt, N_fields); # (Nx, Ny*Nz, Nt, Nfields)
+
+    c = cat((b[:,:,:,i] for i in 1:N_fields)..., dims=2) # (Nx, Ny*Nz*Nfields, Nt)
+
+    ds = [reshape(var(c[:,:,1:t], dims=3), Nx, Ny*Nz, N_fields) for t in 1:Nt]
+
+    e = cat(ds..., dims=2)
+
+    replace!(e, NaN => 0) # variance for first time step is zero
+
+    return reshape(e, Nx, Ny*Nz*Nt*N_fields)
+end
+
+observation_map_variance_across_time(map::ConcatenatedOutputMap, observations::Vector) = 
+    hcat(Tuple(observation_map_variance_across_time(map, observation) for observation in observations)...)
+
+observation_map_variance_across_time(ip::InverseProblem) = observation_map_variance_across_time(ip.output_map, ip.observations)
 
 function transform_output(map::ConcatenatedOutputMap,
                           observations::Union{OneDimensionalTimeSeries, Vector{<:OneDimensionalTimeSeries}},
                           time_series_collector)
 
     # transposed_output isa Vector{OneDimensionalTimeSeries} where OneDimensionalTimeSeries is Nx by Nz by Nt
-    transposed_output = transpose_model_output(time_series_collector, observations)[1]
+    transposed_output = transpose_model_output(time_series_collector, observations)
 
     return transform_observations(map, transposed_output)
 end
