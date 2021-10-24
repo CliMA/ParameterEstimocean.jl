@@ -70,7 +70,8 @@ makedocs(
   checkdocs = :exports
 )
 
-deploydocs(        repo = "github.com/adelinehillier/OceanTurbulenceParameterEstimation.git",
-                versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
-            push_preview = true
+deploydocs(        repo = "github.com/adelinehillier/OceanTurbulenceParameterEstimation.jl.git",
+               versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
+              devbranch = "main",
+           push_preview = true
 )
