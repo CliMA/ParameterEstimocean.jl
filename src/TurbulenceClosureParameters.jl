@@ -84,11 +84,12 @@ end
 """
     closure_with_parameters(closure, parameters)
 
-Returns a new object where for each (parameter_name, parameter_value) pair 
+Returns a new object where for each (`parameter_name`, `parameter_value`) pair 
 in `parameters`, the value corresponding to the key in `object` that matches
 `parameter_name` is replaced with `parameter_value`.
 
-Example:
+Example
+=======
 
 ```julia-repl
 julia> struct ClosureSubModel a; b end
