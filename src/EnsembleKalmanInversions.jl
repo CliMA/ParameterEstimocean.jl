@@ -17,18 +17,42 @@ function lognormal_with_mean_std(mean, std)
     return LogNormal(μ, σ)
 end
 
+struct ConstrainedNormal{FT}
+    # θ is the original constrained paramter, θ̃ is the unconstrained parameter ~ N(μ, σ)
+    # θ = lower_bound + (upper_bound - lower_bound)/（1 + exp(θ̃)）
+    μ::FT
+    σ::FT
+    lower_bound::FT
+    upper_bound::FT
+end
+
+# Scaling factor to give the parameter a magnitude of one
+sf(prior) = 1 / abs(prior.μ)
+
 # Model priors are sometimes constrained; EKI deals with unconstrained, Normal priors.
-convert_prior(prior::LogNormal) = Normal(prior.μ, prior.σ)
-convert_prior(prior::Normal) = prior
-convert_prior(constrained_prior) = @error "We don't know how to transform a $(typeof(constrained_prior)) distribution to a Normal distribution."
+convert_prior(prior::LogNormal) = Normal(sf(prior) * prior.μ, sf(prior) * prior.σ)
+convert_prior(prior::Normal) = Normal(sf(prior) * prior.μ, sf(prior) * prior.σ)
+convert_prior(prior::ConstrainedNormal) = Normal(prior.μ, prior.σ)
 
 # Convert parameters to unconstrained for EKI
-forward_parameter_transform(::LogNormal, parameter) = log(parameter)
-forward_parameter_transform(::Normal, parameter) = parameter
+forward_parameter_transform(prior::LogNormal, parameter) = log(parameter ^ sf(prior))
+forward_parameter_transform(prior::Normal, parameter) = parameter * sf(prior)
+forward_parameter_transform(cn::ConstrainedNormal, parameter) = log((cn.upper_bound - parameter)/(cn.upper_bound - cn.lower_bound))
 
 # Convert parameters from unconstrained (EKI) to constrained
-inverse_parameter_transform(::LogNormal, parameter) = exp(parameter)
-inverse_parameter_transform(::Normal, parameter) = parameter
+inverse_parameter_transform(prior::LogNormal, parameter) = exp(parameter / sf(prior))
+inverse_parameter_transform(prior::Normal, parameter) = parameter / sf(prior)
+inverse_parameter_transform(cn::ConstrainedNormal, parameter) = cn.lower_bound+(cn.upper_bound - cn.lower_bound)/(1 + exp(parameter))
+
+# Convert covariance from unconstrained (EKI) to constrained
+inverse_covariance_transform(::Tuple{Vararg{LogNormal}}, parameters, covariance) = Diagonal(exp.(parameters)) * covariance * Diagonal(exp.(parameters))
+inverse_covariance_transform(::Tuple{Vararg{Normal}}, parameters, covariance) = covariance
+function inverse_covariance_transform(cn::Tuple{Vararg{ConstrainedNormal}}, parameters, covariance)
+    upper_bound = [cn[i].upper_bound for i = 1:length(cn)]
+    lower_bound = [cn[i].lower_bound for i = 1:length(cn)]
+    dT = Diagonal(-(upper_bound - lower_bound) .* exp.(parameters)./(1.0 .+ exp.(parameters)).^2) 
+    return dT * covariance * dT'
+end
 
 mutable struct EnsembleKalmanInversion{I, P, E, M, O, F, S, D}
     inverse_problem :: I
@@ -93,6 +117,11 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2)
     no_constraints = [[no_constraint()] for _ in transformed_priors]
     parameter_distribution = ParameterDistribution(transformed_priors, no_constraints, collect(string.(free_parameters.names)))
 
+    prior_mean = get_mean(parameter_distribution)
+    prior_cov = get_cov(parameter_distribution)
+    eks_process = Sampler(prior_mean, prior_cov)
+    # eks_process = Inversion()
+
     # Seed for pseudo-random number generator for reproducibility
     initial_ensemble = construct_initial_ensemble(parameter_distribution, n_ensemble(inverse_problem); rng_seed = Random.seed!(41))
 
@@ -107,7 +136,7 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2)
         return forward_map(inverse_problem, inverted_parameters)
     end
 
-    ensemble_kalman_process = EnsembleKalmanProcess(initial_ensemble, y, Γy, Inversion())
+    ensemble_kalman_process = EnsembleKalmanProcess(initial_ensemble, y, Γy, eks_process)
 
     return EnsembleKalmanInversion(inverse_problem, parameter_distribution, ensemble_kalman_process, y, Γy, G, 0, [], Set())
 end
