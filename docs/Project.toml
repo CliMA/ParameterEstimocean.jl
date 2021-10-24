@@ -1,0 +1,9 @@
+[deps]
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+Literate = "98b081ad-f1c9-55d3-8b20-4c87d4299306"
+OceanTurbulenceParameterEstimation = "eca81dc5-87a6-4430-aec8-c76695404a43"
+Oceananigans = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+
+[compat]
+Plots = "≥1.10.1"
