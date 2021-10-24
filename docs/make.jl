@@ -1,3 +1,5 @@
+pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..")) # add OceanTurbulenceParameterEstimation to environment stack
+
 using
   Documenter,
   Literate,
@@ -50,9 +52,9 @@ pages = [
         ],
     =#
     "Library" => [ 
-        "Contents" => "library/outline.md",
-        "Public" => "library/public.md",
-        "Private" => "library/internals.md",
+        "Contents"       => "library/outline.md",
+        "Public"         => "library/public.md",
+        "Private"        => "library/internals.md",
         "Function index" => "library/function_index.md",
         ],
 ]
