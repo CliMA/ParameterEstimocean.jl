@@ -165,9 +165,9 @@ uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
 [[Distributions]]
 deps = ["ChainRulesCore", "FillArrays", "LinearAlgebra", "PDMats", "Printf", "QuadGK", "Random", "SparseArrays", "SpecialFunctions", "Statistics", "StatsBase", "StatsFuns"]
-git-tree-sha1 = "9809cf6871ca006d5a4669136c09e77ba08bf51a"
+git-tree-sha1 = "15dad92b6a36400c988de3fc9490a372599f5b4c"
 uuid = "31c24e10-a181-5473-b8eb-7969acd0382f"
-version = "0.25.20"
+version = "0.25.21"
 
 [[DocStringExtensions]]
 deps = ["LibGit2"]
@@ -195,12 +195,6 @@ version = "2.2.3+0"
 git-tree-sha1 = "71c79e77221ab3a29918aaf6db4f217b89138608"
 uuid = "b305315f-e792-5b7a-8f41-49f472929428"
 version = "1.0.1"
-
-[[EnsembleKalmanProcesses]]
-deps = ["Distributions", "DocStringExtensions", "LinearAlgebra", "Random", "Statistics", "StatsBase"]
-git-tree-sha1 = "6e6cff0111d9849c2a2ce253325478a2903b16d0"
-uuid = "aa8a2aa5-91d8-4396-bcef-d4f2ec43552d"
-version = "0.1.1"
 
 [[Expat_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -651,12 +645,6 @@ version = "400.702.400+0"
 [[NetworkOptions]]
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
 
-[[OceanTurbulenceParameterEstimation]]
-deps = ["Distributions", "EnsembleKalmanProcesses", "JLD2", "LinearAlgebra", "Oceananigans", "OffsetArrays", "OrderedCollections", "Printf", "ProgressBars", "Random", "Statistics", "Suppressor", "Test"]
-path = "/Users/navid/Research/OceanTurbulenceParameterEstimation.jl"
-uuid = "eca81dc5-87a6-4430-aec8-c76695404a43"
-version = "0.1.0"
-
 [[Oceananigans]]
 deps = ["Adapt", "CUDA", "CUDAKernels", "Crayons", "CubedSphere", "Dates", "FFTW", "Glob", "InteractiveUtils", "JLD2", "KernelAbstractions", "LinearAlgebra", "Logging", "MPI", "NCDatasets", "OffsetArrays", "OrderedCollections", "PencilFFTs", "Pkg", "Printf", "Random", "Rotations", "SafeTestsets", "SeawaterPolynomials", "Statistics", "StructArrays", "Tullio"]
 git-tree-sha1 = "6663045ad9ad4f7dbba3400041ee9a3db9ef4586"
@@ -777,12 +765,6 @@ version = "1.2.2"
 [[Printf]]
 deps = ["Unicode"]
 uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
-
-[[ProgressBars]]
-deps = ["Printf"]
-git-tree-sha1 = "938525cc66a4058f6ed75b84acd13a00fbecea11"
-uuid = "49802e3a-d2f1-5c88-81d8-b72133a6f568"
-version = "1.4.0"
 
 [[Qt5Base_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Fontconfig_jll", "Glib_jll", "JLLWrappers", "Libdl", "Libglvnd_jll", "OpenSSL_jll", "Pkg", "Xorg_libXext_jll", "Xorg_libxcb_jll", "Xorg_xcb_util_image_jll", "Xorg_xcb_util_keysyms_jll", "Xorg_xcb_util_renderutil_jll", "Xorg_xcb_util_wm_jll", "Zlib_jll", "xkbcommon_jll"]
@@ -967,11 +949,6 @@ version = "1.8.1"
 [[SuiteSparse]]
 deps = ["Libdl", "LinearAlgebra", "Serialization", "SparseArrays"]
 uuid = "4607b0f0-06f3-5cda-b6b1-a6196a1729e9"
-
-[[Suppressor]]
-git-tree-sha1 = "a819d77f31f83e5792a76081eee1ea6342ab8787"
-uuid = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
-version = "0.2.0"
 
 [[TOML]]
 deps = ["Dates"]
