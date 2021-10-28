@@ -99,12 +99,12 @@ in `parameters`, the value corresponding to the key in `object` that matches
 Example
 =======
 
-```julia-repl
-julia> import Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
+```jldoctest
+julia> using OceanTurbulenceParameterEstimation
 
 julia> struct ClosureSubModel; a; b end
 
-julia> struct Closure <: AbstractTurbulenceClosure{Nothing} test; c end
+julia> struct Closure; test; c end
 
 julia> closure = Closure(ClosureSubModel(1, 2), 3)
 Closure(ClosureSubModel(1, 2), 3)
@@ -116,6 +116,8 @@ julia> OceanTurbulenceParameterEstimation.TurbulenceClosureParameters.closure_wi
 Closure(ClosureSubModel(12, 2), 7)
 ```
 """
+closure_with_parameters(closure, parameters) = construct_object(dict_properties(closure), parameters)
+
 closure_with_parameters(closure::AbstractTurbulenceClosure{TD}, parameters) where TD =
     construct_object(dict_properties(closure), parameters; type_parameter=TD)
 
