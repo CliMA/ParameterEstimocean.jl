@@ -4,6 +4,7 @@ using
   Documenter,
   Literate,
   Plots,  # so that Literate.jl does not capture precompilation output
+  Distributions,
   OceanTurbulenceParameterEstimation
   
 # Gotta set this environment variable when using the GR run-time on CI machines.
@@ -65,7 +66,7 @@ makedocs(
      format = format,
       pages = pages,
     doctest = true,
-     # strict = true,
+     strict = true,
       clean = true,
   checkdocs = :exports
 )
