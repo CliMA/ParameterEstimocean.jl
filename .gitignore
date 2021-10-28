@@ -27,6 +27,7 @@ Untracked/
 statprof/
 Results/
 *.png
+*.mp4
 *.txt
 *.jld2
 
