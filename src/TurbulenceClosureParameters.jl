@@ -76,7 +76,7 @@ end
 construct_object(d::ParameterValue, parameters; name=nothing) = name ∈ keys(parameters) ? getproperty(parameters, name) : d
 
 function construct_object(specification_dict, parameters; name=nothing, type_parameter=nothing)
-    type = Constructor = specification_dict[:type]
+    @show type = Constructor = specification_dict[:type]
     kwargs_vector = [construct_object(specification_dict[name], parameters; name) for name in fieldnames(type) if name != :type]
     return isnothing(type_parameter) ? Constructor(kwargs_vector...) : Constructor{type_parameter}(kwargs_vector...)
 end

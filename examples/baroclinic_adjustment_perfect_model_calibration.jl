@@ -27,11 +27,11 @@ architecture = CPU()
 stop_time = 40days
 Δt = 5minutes
 stop_time = 40days
-save_interval = 2hour
+save_interval = 0.2days
 experiment_name = "baroclinic_adjustment"
 data_path = experiment_name * ".jld2"
 ensemble_size = 10
-generate_observations = true
+generate_observations = false
 
 # "True" parameters to be estimated by calibration
 κ_skew = 1000       # [m² s⁻¹] skew diffusivity
@@ -65,6 +65,9 @@ gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 1000,
                                                                 slope_limiter = gerdes_koberle_willebrand_tapering)
                                         
 closures = (diffusive_closure, convective_adjustment, gent_mcwilliams_diffusivity)
+
+closures = gent_mcwilliams_diffusivity
+
 
 #####
 ##### Generate synthetic observations
@@ -123,8 +126,24 @@ if generate_observations || !(isfile(data_path))
     cᵢ(x, y, z) = exp(-y^2 / 2Δc^2) * exp(-(z + Lz/2)^2 / (2*Δz^2))
 
     set!(model, b=bᵢ, c=cᵢ)
-
-    simulation = Simulation(model; Δt, stop_time)
+    
+    function print_progress(sim)
+        @printf("[%05.2f%%] i: %d, t: %s, wall time: %s, max(u): (%6.8e, %6.8e, %6.8e) m/s, next Δt: %s\n",
+                100 * (sim.model.clock.time / sim.stop_time),
+                sim.model.clock.iteration,
+                prettytime(sim.model.clock.time),
+                prettytime(1e-9 * (time_ns() - wall_clock[1])),
+                maximum(abs, sim.model.velocities.u),
+                maximum(abs, sim.model.velocities.v),
+                maximum(abs, sim.model.velocities.w),
+                prettytime(sim.Δt.Δt))
+    
+        wall_clock[1] = time_ns()
+        
+        return nothing
+    end
+    
+    simulation = Simulation(model, Δt=wizard, stop_time=stop_time, progress=print_progress, iteration_interval=100)
     
     simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
                                                           schedule = TimeInterval(save_interval),
@@ -137,25 +156,29 @@ if generate_observations || !(isfile(data_path))
 end
 
 
-
+#=
 #####
 ##### Visualize
 #####
+using GLMakie
 
 fig = Figure(resolution = (1400, 700))
 
-filepath = "zonally_averaged_baroclinic_adj_fields.jld2"
+filepath = "baroclinic_adjustment.jld2"
 
 ut = FieldTimeSeries(filepath, "u")
 bt = FieldTimeSeries(filepath, "b")
 ct = FieldTimeSeries(filepath, "c")
-rt = FieldTimeSeries(filepath, "Rb")
+
+grid = RegularRectilinearGrid(topology = (Periodic, Bounded, Bounded), 
+                                  size = (Nx, Ny, Nz), 
+                                  x = (0, Lx),
+                                  y = (-Ly/2, Ly/2),
+                                  z = (-Lz, 0),
+                                  halo = (3, 3, 3))
 
 # Build coordinates, rescaling the vertical coordinate
 x, y, z = nodes((Center, Center, Center), grid)
-
-zscale = 1
-z = z .* zscale
 
 #####
 ##### Plot buoyancy...
@@ -167,21 +190,16 @@ Nt = length(times)
 un(n) = interior(ut[n])[1, :, :]
 bn(n) = interior(bt[n])[1, :, :]
 cn(n) = interior(ct[n])[1, :, :]
-rn(n) = interior(rt[n])[1, :, :]
 
 @show min_c = 0
 @show max_c = 1
 @show max_u = maximum(abs, un(Nt))
 min_u = - max_u
 
-@show max_r = maximum(abs, rn(Nt))
-@show min_r = - max_r
-
 n = Node(1)
 u = @lift un($n)
 b = @lift bn($n)
 c = @lift cn($n)
-r = @lift rn($n)
 
 ax = Axis(fig[1, 1], title="Zonal velocity")
 hm = heatmap!(ax, y * 1e-3, z * 1e-3, u, colorrange=(min_u, max_u), colormap=:balance)
@@ -192,11 +210,6 @@ ax = Axis(fig[2, 1], title="Tracer concentration")
 hm = heatmap!(ax, y * 1e-3, z * 1e-3, c, colorrange=(0, 0.5), colormap=:thermal)
 contour!(ax, y * 1e-3, z * 1e-3, b, levels = 25, color=:black, linewidth=2)
 cb = Colorbar(fig[2, 2], hm)
-
-ax = Axis(fig[3, 1], title="R(b)")
-hm = heatmap!(ax, y * 1e-3, z * 1e-3, r, colorrange=(min_r, max_r), colormap=:balance)
-contour!(ax, y * 1e-3, z * 1e-3, b, levels = 25, color=:black, linewidth=2)
-cb = Colorbar(fig[3, 2], hm)
 
 title_str = @lift "Parameterized baroclinic adjustment at t = " * prettytime(times[$n])
 ax_t = fig[0, :] = Label(fig, title_str)
@@ -209,7 +222,7 @@ record(fig, "zonally_averaged_baroclinic_adj.mp4", 1:Nt, framerate=8) do i
 end
 
 
-
+=#
 
 
 
@@ -230,7 +243,7 @@ slice_ensemble_size = SliceEnsembleSize(size=(Ny, Nz), ensemble=ensemble_size, h
 ensemble_grid = RegularRectilinearGrid(size=slice_ensemble_size, y = (0, Ly), z = (-Lz, 0), topology = (Flat, Bounded, Bounded))
 
 closure_ensemble = [deepcopy(closures) for i = 1:ensemble_size] 
-coriolis_ensemble = [BetaPlane(-45) for i = 1:ensemble_size]
+coriolis_ensemble = [BetaPlane(latitude=-45) for i = 1:ensemble_size]
 
 ensemble_model = HydrostaticFreeSurfaceModel(architecture = architecture,
                                              grid = ensemble_grid,
