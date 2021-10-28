@@ -109,6 +109,11 @@ Closure(ClosureSubModel(12, 2), 7)
 closure_with_parameters(closure::AbstractTurbulenceClosure{TD}, parameters) where TD =
     construct_object(dict_properties(closure), parameters; type_parameter=TD)
 
+closure_with_parameters(closure, parameters) = construct_object(dict_properties(closure), parameters)
+
+closure_with_parameters(closures::Tuple, parameters) =
+    Tuple(closure_with_parameters(closure, parameters) for closure in closures)
+
 update_closure_ensemble_member!(closures::AbstractVector, p_ensemble, parameters) =
     closures[p_ensemble] = closure_with_parameters(closures[p_ensemble], parameters)
 
