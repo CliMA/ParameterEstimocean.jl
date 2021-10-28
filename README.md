@@ -4,4 +4,4 @@ Continuous Integration: [![Build Status](https://github.com/adelinehillier/Ocean
 
 Latest Documentation: [![Build Status](https://img.shields.io/badge/documentation-in%20development-orange)](https://adelinehillier.github.io/OceanTurbulenceParameterEstimation.jl/dev)
 
-A Julia package designed to leverate [Oceananigans.jl](http://github.com/CliMA/Oceananigans.jl/) and [EnsembleKalmanProcesses.jl](https://github.com/CliMA/EnsembleKalmanProcesses.jl) to allow for calibration of ocean turbulence parametrizations.
+A Julia package designed to leverage [Oceananigans.jl](http://github.com/CliMA/Oceananigans.jl/) and [EnsembleKalmanProcesses.jl](https://github.com/CliMA/EnsembleKalmanProcesses.jl) to allow for calibration of ocean turbulence parametrizations.
