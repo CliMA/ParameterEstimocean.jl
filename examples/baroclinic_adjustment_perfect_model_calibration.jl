@@ -1,6 +1,7 @@
 pushfirst!(LOAD_PATH, joinpath(@__DIR__, ".."))
 
 using Distributions
+using Printf
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SliceEnsembleSize
@@ -66,7 +67,14 @@ gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 1000,
                                         
 closures = (diffusive_closure, convective_adjustment, gent_mcwilliams_diffusivity)
 
+gent_mcwilliams_diffusivity_only_b = IsopycnalSkewSymmetricDiffusivity(κ_skew = 1000,
+                                                                       slope_limiter = gerdes_koberle_willebrand_tapering)
+                                        
+closures = (diffusive_closure, convective_adjustment, gent_mcwilliams_diffusivity)
+
 closures = gent_mcwilliams_diffusivity
+
+closures_only_b = gent_mcwilliams_diffusivity_only_b
 
 
 #####
@@ -242,12 +250,12 @@ observations = OneDimensionalTimeSeries(data_path, field_names=(:b, :c), normali
 slice_ensemble_size = SliceEnsembleSize(size=(Ny, Nz), ensemble=ensemble_size, halo=(1, 1))
 ensemble_grid = RegularRectilinearGrid(size=slice_ensemble_size, y = (0, Ly), z = (-Lz, 0), topology = (Flat, Bounded, Bounded))
 
-closure_ensemble = [deepcopy(closures) for i = 1:ensemble_size] 
+closure_ensemble = [deepcopy(closures_only_b) for i = 1:ensemble_size] 
 coriolis_ensemble = [BetaPlane(latitude=-45) for i = 1:ensemble_size]
 
 ensemble_model = HydrostaticFreeSurfaceModel(architecture = architecture,
                                              grid = ensemble_grid,
-                                             tracers = (:b, :c),
+                                             tracers = (:b),
                                              buoyancy = BuoyancyTracer(),
                                              coriolis = coriolis_ensemble,
                                              closure = closure_ensemble,
