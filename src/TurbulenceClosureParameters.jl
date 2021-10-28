@@ -1,6 +1,6 @@
 module TurbulenceClosureParameters
 
-using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
+using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, AbstractTimeDiscretization
 using Printf
 
 #####
@@ -118,7 +118,7 @@ Closure(ClosureSubModel(12, 2), 7)
 """
 closure_with_parameters(closure, parameters) = construct_object(dict_properties(closure), parameters)
 
-closure_with_parameters(closure::AbstractTurbulenceClosure{TD}, parameters) where TD =
+closure_with_parameters(closure::AbstractTurbulenceClosure{TD}, parameters) where {TD <: AbstractTimeDiscretization} =
     construct_object(dict_properties(closure), parameters; type_parameter=TD)
 
 closure_with_parameters(closure, parameters) = construct_object(dict_properties(closure), parameters)
