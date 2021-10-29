@@ -103,7 +103,7 @@ n_ensemble(ip::InverseProblem) = n_ensemble(ip.simulation.model.grid)
 """ Transform and return `ip.observations` appropriate for `ip.output_map`. """
 observation_map(ip::InverseProblem) = transform_observations(ip.output_map, ip.observations)
 
-function forward_map(ip::InverseProblem, θ::Vector{<:NamedTuple})
+function run_simulation_with_params!(ip::InverseProblem, θ::Vector{<:NamedTuple})
     observations = ip.observations
     simulation = ip.simulation
     closures = simulation.model.closure
@@ -114,8 +114,6 @@ function forward_map(ip::InverseProblem, θ::Vector{<:NamedTuple})
 
     initialize_simulation!(simulation, observations, ip.time_series_collector)
     run!(simulation)
-
-    return transform_output(ip.output_map, observations, ip.time_series_collector)
 end
 
 function forward_map(ip, θ::Vector{<:Vector})
@@ -128,8 +126,11 @@ function forward_map(ip, θ::Vector{<:Vector})
     # feed redundant parameters in case ensemble_size < ensemble_capacity
     full_θs = vcat(θs , [θs[end] for _ in 1:(ensemble_capacity - ensemble_size)])
 
+    # Run the output map, fill the time series collector
+    run_simulation_with_params!(ip, full_θs)
+
     # (output_size, ensemble_capacity)
-    output = forward_map(ip, full_θs)
+    output = transform_output(ip.output_map, ip.observations, ip.time_series_collector)
 
     # (output_size, ensemble_size)
     return output[:, 1:ensemble_size]

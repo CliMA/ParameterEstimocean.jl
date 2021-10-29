@@ -13,6 +13,7 @@ import Oceananigans.Fields: set!
 abstract type AbstractObservation end
 
 include("normalization.jl")
+include("legacy_data_time_serieses.jl")
 
 """
     OneDimensionalTimeSeries{F, G, T, P, M} <: AbstractObservation
@@ -46,7 +47,14 @@ get_grid(field_time_serieses) = field_time_serieses[1].grid
 
 function OneDimensionalTimeSeries(path; field_names, normalize=IdentityNormalization, times=nothing)
     field_names = tupleit(field_names)
-    field_time_serieses = NamedTuple(name => FieldTimeSeries(path, string(name); times) for name in field_names)
+
+    field_time_serieses = nothing
+    try
+        field_time_serieses = NamedTuple(name => FieldTimeSeries(path, string(name); times) for name in field_names)
+    catch
+        field_time_serieses = legacy_data_field_time_serieses(path, field_names, times)
+    end
+        
     grid = get_grid(field_time_serieses)
     times = first(field_time_serieses).times
 

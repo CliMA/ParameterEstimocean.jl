@@ -8,6 +8,8 @@ using OceanTurbulenceParameterEstimation.ParameterEstimation: InverseProblem
                     directory = pwd(),
                     filename = "realizations.png"
                     )
+
+    For visualizing 1-dimensional time series predictions.
 """
 function visualize!(ip::InverseProblem;
                     fields = [:u, :v, :b, :e],
@@ -25,14 +27,18 @@ function visualize!(ip::InverseProblem;
         hidespines!(ax, :t, :b, :l, :r)
     end
 
-    for (i, data) in enumerate(ip.observations)
+    observations = vectorize(ip.observations)
 
-        targets = data.targets
+    for (i, observation) in enumerate(observations)
+
+        targets = observation.times
         snapshots = round.(Int, range(targets[1], targets[end], length=3))
-        bcs = data.boundary_conditions
+        
+        Qᵇ = ip.simulation.model.tracers.b.boundary_conditions.top.condition
+        Qᵘ = ip.simulation.model.velocities.u.boundary_conditions.top.condition
 
         empty_plot!(fig[i,1])
-        text!(fig[i,1], "Qᵇ = $(tostring(bcs.Qᵇ)) m⁻¹s⁻³\nQᵘ = $(tostring(bcs.Qᵘ)) m⁻¹s⁻²\nf = $(tostring(data.constants[:f])) s⁻¹", 
+        text!(fig[i,1], "Qᵇ = $(tostring(Qᵇ)) m⁻¹s⁻³\nQᵘ = $(tostring(Qᵘ)) m⁻¹s⁻²\nf = $(tostring(data.constants[:f])) s⁻¹", 
                     position = (0, 0), 
                     align = (:center, :center), 
                     textsize = 15,
