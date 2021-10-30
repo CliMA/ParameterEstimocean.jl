@@ -21,7 +21,7 @@ Lz = 1kilometers    # depth [m]
 
 Nx = 1
 Ny = 64
-Nz = 16
+Nz = 32
 
 architecture = CPU()
 
@@ -30,7 +30,7 @@ stop_time = 10days
 save_interval = 1days
 experiment_name = "baroclinic_adjustment"
 data_path = experiment_name * ".jld2"
-ensemble_size = 10
+ensemble_size = 30
 generate_observations = false
 
 # "True" parameters to be estimated by calibration
@@ -234,7 +234,11 @@ observations = OneDimensionalTimeSeries(data_path, field_names=(:b, :c), normali
 #####
 
 slice_ensemble_size = SliceEnsembleSize(size=(Ny, Nz), ensemble=ensemble_size)
-@show ensemble_grid = RegularRectilinearGrid(size=slice_ensemble_size, y = (-Ly/2, Ly/2), z = (-Lz, 0), topology = (Flat, Bounded, Bounded), halo=(3, 3))
+@show ensemble_grid = RegularRectilinearGrid(topology = (Flat, Bounded, Bounded),
+                                             size = slice_ensemble_size,
+                                             y = (-Ly/2, Ly/2),
+                                             z = (-Lz, 0),
+                                             halo=(3, 3))
 
 closure_ensemble = [deepcopy(closures) for i = 1:ensemble_size] 
 coriolis_ensemble = [BetaPlane(latitude=-45) for i = 1:ensemble_size]
@@ -279,8 +283,8 @@ pop!(ensemble_simulation.diagnostics, :nan_checker)
 # )
 
 priors = (
-    κ_skew = ConstrainedNormal(0.0, 1.0, 400.0, 1200.0),
-    κ_symmetric = ConstrainedNormal(0.0, 1.0, 800.0, 1800.0)
+    κ_skew = ConstrainedNormal(0.0, 1.0, 400.0, 1300.0),
+    κ_symmetric = ConstrainedNormal(0.0, 1.0, 700.0, 1700.0)
 )
 
 free_parameters = FreeParameters(priors)
@@ -291,7 +295,7 @@ free_parameters = FreeParameters(priors)
 using CairoMakie
 using OceanTurbulenceParameterEstimation.EnsembleKalmanInversions: convert_prior, inverse_parameter_transform
 
-samples(prior) = [inverse_parameter_transform(prior, x) for x in rand(convert_prior(prior), 10000000)]
+samples(prior) = [inverse_parameter_transform(prior, x) for x in rand(convert_prior(prior), 100000000)]
 samples_κ_skew = samples(priors.κ_skew)
 samples_κ_symmetric = samples(priors.κ_symmetric)
 
@@ -301,9 +305,10 @@ densities = []
 push!(densities, CairoMakie.density!(axtop, samples_κ_skew))
 push!(densities, CairoMakie.density!(axtop, samples_κ_symmetric))
 leg = Legend(f[1, 2], densities, ["κ_skew", "κ_symmetric"], position = :lb)
-# CairoMakie.xlims!(0,2e-5)
+# CairoMakie.xlims!(0, 2e-5)
 save("visualize_prior_kappa_skew.png", f)
 display(f)
+
 
 #####
 ##### Build the Inverse Problem
@@ -312,11 +317,11 @@ display(f)
 calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
 
 # forward_map(calibration, [θ★ for _ in 1:ensemble_size])
-x = forward_map(calibration, [θ★ for _ in 1:ensemble_size])
-y = observation_map(calibration)
+# x = forward_map(calibration, [θ★ for _ in 1:ensemble_size])
+# y = observation_map(calibration)
 
 # Assert that G(θ*) ≈ y
-@show x[:, 1:1] == y
+# @show x[:, 1:1] == y
 
 #=
 using Plots, LinearAlgebra
@@ -326,7 +331,7 @@ Plots.plot!(collect(1:length(y)), [y...], label="observation_map")
 display(p)
 =#
 
-iterations = 10
+iterations = 20
 eki = EnsembleKalmanInversion(calibration; noise_covariance = 1e-2)
 params = iterate!(eki; iterations = iterations)
 
@@ -347,17 +352,17 @@ ensemble_variances = [varθ(iter) for iter in 1:iterations]
 
 x = 1:iterations
 f = CairoMakie.Figure()
-CairoMakie.lines(f[1, 1], x, weight_distances, color = :red,
-            axis = (title = "Parameter distance", xlabel = "Iteration, n", ylabel="|θ̅ₙ - θ⋆|"))
-CairoMakie.lines(f[1, 2], x, output_distances, color = :blue,
-            axis = (title = "Output distance", xlabel = "Iteration, n", ylabel="|G(θ̅ₙ) - y|"))
-ax3 = Axis(f[2, 1:2], title = "Parameter convergence", xlabel = "Iteration, n", ylabel="Ensemble variance")
+CairoMakie.lines(f[1, 1], x, weight_distances, color = :red, linewidth = 2,
+            axis = (title = "Parameter distance", xlabel = "Iteration", ylabel="|θ̅ₙ - θ⋆|", yscale = log10))
+CairoMakie.lines(f[1, 2], x, output_distances, color = :blue, linewidth = 2,
+            axis = (title = "Output distance", xlabel = "Iteration", ylabel="|G(θ̅ₙ) - y|", yscale = log10))
+ax3 = Axis(f[2, 1:2], title = "Parameter convergence", xlabel = "Iteration", ylabel="Ensemble variance", yscale = log10)
 for (i, pname) in enumerate(free_parameters.names)
     ev = getindex.(ensemble_variances,i)
-    CairoMakie.lines!(ax3, 1:iterations, ev / ev[1], label=String(pname))
+    CairoMakie.lines!(ax3, 1:iterations, ev / ev[1], label=String(pname), linewidth = 2)
 end
 CairoMakie.axislegend(ax3, position = :rt)
-CairoMakie.save("summary_makie.png", f)
+CairoMakie.save("summary_makie.pdf", f)
 
 ###
 ### Plot ensemble density with time
@@ -369,7 +374,7 @@ axmain = CairoMakie.Axis(f[2, 1], xlabel = "κ_skew", ylabel = "κ_symmetric")
 axright = CairoMakie.Axis(f[2, 2])
 s = eki.iteration_summaries
 scatters = []
-for i in [1, 2, 5, 10]
+for i in [1, 2, 5, 21]
     ensemble = transpose(s[i].parameters)
     push!(scatters, CairoMakie.scatter!(axmain, ensemble))
     CairoMakie.density!(axtop, ensemble[:, 1])
@@ -377,16 +382,22 @@ for i in [1, 2, 5, 10]
 end
 vlines!(axmain, [κ_skew], color=:red)
 vlines!(axtop, [κ_skew], color=:red)
-hlines!(axmain, [κ_symmetric], color=:red)
-hlines!(axright, [κ_symmetric], color=:red)
+hlines!(axmain, [κ_symmetric], color=:red, alpha=0.6)
+hlines!(axright, [κ_symmetric], color=:red, alpha=0.6)
 colsize!(f.layout, 1, Fixed(300))
 colsize!(f.layout, 2, Fixed(200))
 rowsize!(f.layout, 1, Fixed(200))
 rowsize!(f.layout, 2, Fixed(300))
-leg = Legend(f[1, 2], scatters, ["Initial ensemble", "Iteration 1", "Iteration 5", "Iteration 10"], position = :lb)
+leg = Legend(f[1, 2], scatters, ["Initial ensemble", "Iteration 1", "Iteration 4", "Iteration 20"], position = :lb)
 hidedecorations!(axtop, grid = false)
 hidedecorations!(axright, grid = false)
-save("distributions_makie.png", f)
+CairoMakie.xlims!(axmain, 400, 1400)
+CairoMakie.xlims!(axtop, 400, 1400)
+CairoMakie.ylims!(axmain, 600, 1600)
+CairoMakie.ylims!(axright, 600, 1600)
+CairoMakie.xlims!(axright, 0, 0.06)
+CairoMakie.ylims!(axtop, 0, 0.06)
+save("distributions_makie.pdf", f)
 
 tupified_params = NamedTuple{calibration.free_parameters.names}(Tuple(params))
 
