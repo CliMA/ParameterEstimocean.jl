@@ -58,10 +58,12 @@ read_group(group) = group
 
 get_grid(field_time_serieses) = field_time_serieses[1].grid
 
-function OneDimensionalTimeSeries(path; field_names, normalize=IdentityNormalization, times=nothing)
+function OneDimensionalTimeSeries(path; field_names, normalize=IdentityNormalization, times=nothing, grid=nothing)
     field_names = tupleit(field_names)
     field_time_serieses = NamedTuple(name => FieldTimeSeries(path, string(name); times) for name in field_names)
-    grid = get_grid(field_time_serieses)
+    if grid === nothing
+        grid = get_grid(field_time_serieses)
+    end
     times = first(field_time_serieses).times
 
     # validate_data(fields, grid, times) # might be a good idea to validate the data...
