@@ -1,6 +1,6 @@
 module TurbulenceClosureParameters
 
-using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, AbstractTimeDiscretization
+using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, AbstractTimeDiscretization, ExplicitTimeDiscretization
 using Printf
 
 #####
@@ -84,7 +84,7 @@ end
 construct_object(d::ParameterValue, parameters; name=nothing) = name ∈ keys(parameters) ? getproperty(parameters, name) : d
 
 function construct_object(specification_dict, parameters; name=nothing, type_parameter=nothing)
-    @show type = Constructor = specification_dict[:type]
+    type = Constructor = specification_dict[:type]
     kwargs_vector = [construct_object(specification_dict[name], parameters; name) for name in fieldnames(type) if name != :type]
     return isnothing(type_parameter) ? Constructor(kwargs_vector...) : Constructor{type_parameter}(kwargs_vector...)
 end
@@ -118,10 +118,11 @@ Closure(ClosureSubModel(12, 2), 7)
 """
 closure_with_parameters(closure, parameters) = construct_object(dict_properties(closure), parameters)
 
+closure_with_parameters(closure::AbstractTurbulenceClosure{ExplicitTimeDiscretization}, parameters) =
+    construct_object(dict_properties(closure), parameters, type_parameter=nothing)
+
 closure_with_parameters(closure::AbstractTurbulenceClosure{TD}, parameters) where {TD <: AbstractTimeDiscretization} =
     construct_object(dict_properties(closure), parameters; type_parameter=TD)
-
-closure_with_parameters(closure, parameters) = construct_object(dict_properties(closure), parameters)
 
 closure_with_parameters(closures::Tuple, parameters) =
     Tuple(closure_with_parameters(closure, parameters) for closure in closures)

@@ -28,6 +28,21 @@ struct OneDimensionalTimeSeries{F, G, T, P, M, N} <: AbstractObservation
           normalization :: N
 end
 
+observation_names(ts::OneDimensionalTimeSeries) = keys(ts.field_time_serieses)
+
+"""
+    observation_names(ts_vector::Vector{<:OneDimensionalTimeSeries})
+
+Return a Set representing the union of all names in `ts_vector`.
+"""
+function observation_names(ts_vector::Vector{<:OneDimensionalTimeSeries})
+    names = Set()
+    for ts in ts_vector
+        push!(names, observation_names(ts)...)
+    end
+    return names
+end
+
 obs_str(ts::OneDimensionalTimeSeries) = "OneDimensionalTimeSeries of $(keys(ts.field_time_serieses)) on $(short_show(ts.grid))"
 
 tupleit(t) = try
