@@ -60,7 +60,7 @@ get_grid(field_time_serieses) = field_time_serieses[1].grid
 
 function OneDimensionalTimeSeries(path; field_names, normalize=IdentityNormalization, times=nothing, grid=nothing)
     field_names = tupleit(field_names)
-    field_time_serieses = NamedTuple(name => FieldTimeSeries(path, string(name); times) for name in field_names)
+    field_time_serieses = NamedTuple(name => FieldTimeSeries(path, string(name); grid=grid, times=times) for name in field_names)
     if grid === nothing
         grid = get_grid(field_time_serieses)
     end
@@ -164,7 +164,7 @@ function (collector::FieldTimeSeriesCollector)(simulation)
 end
 
 function initialize_simulation!(simulation, ts, time_series_collector, time_index=1)
-    set!(simulation.model, ts, time_index) 
+    set!(simulation.model, ts, time_index)
 
     times = observation_times(ts)
 

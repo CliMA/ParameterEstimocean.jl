@@ -102,7 +102,6 @@ n_observations(grid::OneDimensionalEnsembleGrid) = grid.Ny
 n_observations(grid::TwoDimensionalEnsembleGrid) = 1
 n_z(grid::Union{OneDimensionalEnsembleGrid, TwoDimensionalEnsembleGrid}) = grid.Nz
 n_y(grid::TwoDimensionalEnsembleGrid) = grid.Ny
-
 n_ensemble(ip::InverseProblem) = n_ensemble(ip.simulation.model.grid)
 
 """ Transform and return `ip.observations` appropriate for `ip.output_map`. """
