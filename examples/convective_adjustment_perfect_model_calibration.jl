@@ -125,8 +125,11 @@ free_parameters = FreeParameters(priors)
 calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
 
 # forward_map(calibration, [θ★ for _ in 1:ensemble_size])
-x = forward_map(calibration, [θ★ for _ in 1:ensemble_size])[1:1, :]
+x = forward_map(calibration, [θ★ for _ in 1:ensemble_size])
 y = observation_map(calibration)
+
+# Assert that G(θ*) ≈ y
+@show x[:, 1:1] == y
 
 using Plots, LinearAlgebra
 # p = plot(collect(1:length(x)), [x...], label="forward_map")
