@@ -64,6 +64,19 @@ mutable struct EnsembleKalmanInversion{I, P, E, M, O, F, S, D}
     dropped_ensemble_members :: D
 end
 
+Base.show(io::IO, eki::EnsembleKalmanInversion) = 
+    print(io, "EnsembleKalmanInversion", '\n',
+              "├── inverse_problem: ", typeof(eki.inverse_problem).name.wrapper, '\n',
+              "├── parameter_distribution: ", typeof(eki.parameter_distribution).name.wrapper, '\n',
+              "├── ensemble_kalman_process: ", typeof(eki.ensemble_kalman_process), '\n',
+              "├── mapped_observations: ", typeof(eki.mapped_observations), '\n',
+              "├── noise_covariance: ", typeof(eki.noise_covariance), '\n',
+              "├── inverting_forward_map: ", typeof(eki.inverting_forward_map).name.wrapper, '\n',
+              "├── iteration: $(eki.iteration)", '\n',
+              "├── iteration_summaries: $(eki.iteration_summaries)", '\n',
+              "└── dropped_ensemble_members: $(eki.dropped_ensemble_members)", '\n'
+              )
+
 construct_noise_covariance(noise_covariance::AbstractMatrix, y) = noise_covariance
 
 function construct_noise_covariance(noise_covariance::Number, y)
