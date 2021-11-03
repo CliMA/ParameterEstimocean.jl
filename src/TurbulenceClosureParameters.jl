@@ -113,7 +113,7 @@ julia> parameters = (a = 12, d = 7)
 (a = 12, d = 7)
 
 julia> OceanTurbulenceParameterEstimation.TurbulenceClosureParameters.closure_with_parameters(closure, parameters)
-Closure(ClosureSubModel(12, 2), 7)
+Closure(ClosureSubModel(12, 2), 3)
 ```
 """
 closure_with_parameters(closure, parameters) = construct_object(dict_properties(closure), parameters)
