@@ -88,6 +88,15 @@ end
 
 tupify_parameters(ip, θ) = NamedTuple{ip.free_parameters.names}(Tuple(θ))
 
+"""
+    expand_parameters(ip, θ)
+
+Convert `θ` to `Vector{<:NamedTuple}`, where the elements
+correspond to `ip.free_parameters`.
+
+`θ` may be `Vector{<:Vector}` or `Matrix` (correpsonding to a parameter
+ensemble), or `Vector{<:Number}` (correpsonding to a single parameter vector).
+"""
 function expand_parameters(ip, θ::Vector{<:Vector})
     ensemble_capacity = n_ensemble(ip.time_series_collector.grid)
     ensemble_size = length(θ)
@@ -118,6 +127,12 @@ n_ensemble(ip::InverseProblem) = n_ensemble(ip.simulation.model.grid)
 """ Transform and return `ip.observations` appropriate for `ip.output_map`. """
 observation_map(ip::InverseProblem) = transform_observations(ip.output_map, ip.observations)
 
+"""
+    run_simulation_with_params!(ip, parameters)
+
+Initialize `ip.simulation` with `parameters` and run it forward.
+Output will be stored in `ip.time_series_collector`.
+"""
 function run_simulation_with_params!(ip::InverseProblem, parameters)
     observations = ip.observations
     simulation = ip.simulation
@@ -130,11 +145,13 @@ function run_simulation_with_params!(ip::InverseProblem, parameters)
     end
 
     initialize_simulation!(simulation, observations, ip.time_series_collector)
+
     run!(simulation)
+
+    return nothing
 end
 
 function forward_map(ip, parameters)
-
     # Run the output map, fill the time series collector
     run_simulation_with_params!(ip, parameters)
 
