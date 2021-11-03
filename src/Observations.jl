@@ -5,6 +5,7 @@ using Oceananigans: short_show, fields
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Fields
 using Oceananigans.Utils: SpecifiedTimes
+using Oceananigans.Architectures: arch_array, architecture
 using JLD2
 
 import Oceananigans.Fields: set!
@@ -12,6 +13,7 @@ import Oceananigans.Fields: set!
 abstract type AbstractObservation end
 
 include("normalization.jl")
+include("legacy_data_time_serieses.jl")
 
 """
     OneDimensionalTimeSeries{F, G, T, P, M} <: AbstractObservation
@@ -56,14 +58,16 @@ const not_metadata_names = ("serialized", "timeseries")
 read_group(group::JLD2.Group) = NamedTuple(Symbol(subgroup) => read_group(group[subgroup]) for subgroup in keys(group))
 read_group(group) = group
 
-get_grid(field_time_serieses) = field_time_serieses[1].grid
-
 function OneDimensionalTimeSeries(path; field_names, normalize=IdentityNormalization, times=nothing, grid=nothing)
     field_names = tupleit(field_names)
-    field_time_serieses = NamedTuple(name => FieldTimeSeries(path, string(name); grid=grid, times=times) for name in field_names)
-    if grid === nothing
-        grid = get_grid(field_time_serieses)
+
+    field_time_serieses = try
+        NamedTuple(name => FieldTimeSeries(path, string(name); times) for name in field_names)
+    catch
+        legacy_data_field_time_serieses(path, field_names, times)
     end
+
+    grid === nothing && (grid = first(field_time_serieses).grid)
     times = first(field_time_serieses).times
 
     # validate_data(fields, grid, times) # might be a good idea to validate the data...
@@ -77,7 +81,11 @@ function OneDimensionalTimeSeries(path; field_names, normalize=IdentityNormaliza
 end
 
 observation_times(observation) = observation.times
-observation_times(obs::Vector) = observation_times(first(obs))
+
+function observation_times(obs::Vector)
+    @assert all([o.times == obs[1].times for o in obs]) "Observations must have the same times."
+    return observation_times(first(obs))
+end
 
 #####
 ##### set! for simulation models and observations
@@ -104,15 +112,48 @@ end
 
 """
     column_ensemble_interior(observations::Vector{<:OneDimensionalTimeSeries}, field_name, time_indices::Vector, N_ens)
-
-Returns an `N_cases × N_ens` array of the interior of a field `field_name` defined on a 
+Returns an `N_cases × N_ens × Nz` array of the interior of a field `field_name` defined on a 
 `OneDimensionalEnsembleGrid` of size `N_cases × N_ens × Nz`, given a list of `OneDimensionalTimeSeries` objects
-containing the `N_cases` single-column fields at the corresponding time index in `time_indices`.
+containing the `N_cases` single-column fields at time index in `time_index`.
 """
-function column_ensemble_interior(observations::Vector{<:OneDimensionalTimeSeries}, field_name, time_indices::Vector, ensemble_size)
-    batch = @. get_interior(observations, field_name, time_indices)
+function column_ensemble_interior(observations::Vector{<:OneDimensionalTimeSeries}, field_name, time_index, ensemble_size)
+    zeros_column = zeros(size(observations[1].field_time_serieses[1].grid))
+    Nt = length(observation_times(observations))
+
+    batch = []
+    for observation in observations
+        fts = observation.field_time_serieses
+        if field_name in keys(fts) && time_index <= Nt
+            push!(batch, interior(fts[field_name][time_index]))
+        else
+            push!(batch, zeros_column)
+        end
+    end
+
     batch = cat(batch..., dims = 2) # (n_batch, n_z)
-    return cat([batch for i = 1:ensemble_size]..., dims = 1) # (ensemble_size, n_batch, n_z)
+    ensemble_interior = cat([batch for i = 1:ensemble_size]..., dims = 1) # (ensemble_size, n_batch, n_z)
+
+    return ensemble_interior
+end
+
+function set!(model, observations::Vector{<:OneDimensionalTimeSeries}, index=1)
+
+    for name in keys(fields(model))
+
+        model_field = fields(model)[name]
+        
+        field_ts_data = column_ensemble_interior(observations, name, index, model.grid.Nx)
+
+        arch = architecture(model_field)
+
+        # Reshape `field_ts_data` to the size of `model_field`'s interior
+        reshaped_data = arch_array(arch, reshape(field_ts_data, size(model_field)))
+
+        # Sets the interior of field `field_ts_data` to values of `ts_field_data`
+        model_field .= reshaped_data
+    end
+
+    return nothing
 end
 
 struct FieldTimeSeriesCollector{G, D, F, T}
@@ -163,12 +204,12 @@ function (collector::FieldTimeSeriesCollector)(simulation)
     return nothing
 end
 
-function initialize_simulation!(simulation, ts, time_series_collector, time_index=1)
-    set!(simulation.model, ts, time_index)
+function initialize_simulation!(simulation, observations, time_series_collector, time_index=1)
+    set!(simulation.model, observations, time_index) 
 
-    times = observation_times(ts)
+    times = observation_times(observations)
 
-    initial_time = ts.times[time_index]
+    initial_time = times[time_index]
     simulation.model.clock.time = initial_time
     simulation.model.clock.iteration = 0
 

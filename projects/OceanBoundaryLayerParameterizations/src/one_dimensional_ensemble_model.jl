@@ -35,14 +35,14 @@ used to predict the model solution for the `Ny` physical scenarios described by 
 function OneDimensionalEnsembleModel(observations::OneDimensionalTimeSeriesBatch; 
                        architecture = CPU(), 
                        ensemble_size = 50, 
-                       closure = CATKEVerticalDiffusivity(Float64; warning=false, kwargs...)
+                       closure = CATKEVerticalDiffusivity(Float64; warning=false)
                       )
 
     #
     # Harvest observation file metadata
     #
 
-    datapath = observations.file_path
+    datapath = observations.path
 
     α = get_parameter(datapath, "buoyancy", "equation_of_state/α", 2e-4)
     g = get_parameter(datapath, "buoyancy", "gravitational_acceleration", 9.81)
