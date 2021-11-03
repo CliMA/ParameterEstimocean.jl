@@ -109,11 +109,11 @@ julia> struct Closure; test; c end
 julia> closure = Closure(ClosureSubModel(1, 2), 3)
 Closure(ClosureSubModel(1, 2), 3)
 
-julia> parameters = (a = 12, c = 7)
-(a = 12, c = 7)
+julia> parameters = (a = 12, d = 7)
+(a = 12, d = 7)
 
 julia> OceanTurbulenceParameterEstimation.TurbulenceClosureParameters.closure_with_parameters(closure, parameters)
-Closure(ClosureSubModel(12, 2), 7)
+Closure(ClosureSubModel(12, 2), 3)
 ```
 """
 closure_with_parameters(closure, parameters) = construct_object(dict_properties(closure), parameters)
