@@ -88,6 +88,21 @@ end
 
 tupify_parameters(ip, θ) = NamedTuple{ip.free_parameters.names}(Tuple(θ))
 
+function expand_parameters(ip, θ::Vector{<:Vector})
+    ensemble_capacity = n_ensemble(ip.time_series_collector.grid)
+    ensemble_size = length(θ)
+    
+    θs = [tupify_parameters(ip, p) for p in θ]
+
+    # feed redundant parameters in case ensemble_size < ensemble_capacity
+    full_θs = vcat(θs , [θs[end] for _ in 1:(ensemble_capacity - ensemble_size)])
+
+    return full_θs
+end
+
+expand_parameters(ip, θ::Vector{<:Number}) = expand_parameters(ip, [θ,])
+expand_parameters(ip, θ::Matrix) = expand_parameters(ip, [θ[:, i] for i in 1:size(θ, 2)])
+
 #####
 ##### Forward map evaluation given vector-of-vector (one parameter vector for each ensemble member)
 #####
@@ -103,10 +118,12 @@ n_ensemble(ip::InverseProblem) = n_ensemble(ip.simulation.model.grid)
 """ Transform and return `ip.observations` appropriate for `ip.output_map`. """
 observation_map(ip::InverseProblem) = transform_observations(ip.output_map, ip.observations)
 
-function run_simulation_with_params!(ip::InverseProblem, θ::Vector{<:NamedTuple})
+function run_simulation_with_params!(ip::InverseProblem, parameters)
     observations = ip.observations
     simulation = ip.simulation
     closures = simulation.model.closure
+
+    θ = expand_parameters(ip, parameters)
 
     for p in 1:length(θ)
         update_closure_ensemble_member!(closures, p, θ[p])
@@ -116,28 +133,17 @@ function run_simulation_with_params!(ip::InverseProblem, θ::Vector{<:NamedTuple
     run!(simulation)
 end
 
-function forward_map(ip, θ::Vector{<:Vector})
-
-    ensemble_capacity = n_ensemble(ip.time_series_collector.grid)
-    ensemble_size = length(θ)
-    
-    θs = [tupify_parameters(ip, p) for p in θ]
-
-    # feed redundant parameters in case ensemble_size < ensemble_capacity
-    full_θs = vcat(θs , [θs[end] for _ in 1:(ensemble_capacity - ensemble_size)])
+function forward_map(ip, parameters)
 
     # Run the output map, fill the time series collector
-    run_simulation_with_params!(ip, full_θs)
+    run_simulation_with_params!(ip, parameters)
 
     # (output_size, ensemble_capacity)
     output = transform_output(ip.output_map, ip.observations, ip.time_series_collector)
 
     # (output_size, ensemble_size)
-    return output[:, 1:ensemble_size]
+    return output[:, 1:length(parameters)]
 end
-
-forward_map(ip, θ::Vector{<:Number}) = forward_map(ip, [θ,])
-forward_map(ip, θ::Matrix) = forward_map(ip, [θ[:, i] for i in 1:size(θ, 2)])
 
 (ip::InverseProblem)(θ) = forward_map(ip, θ)
 

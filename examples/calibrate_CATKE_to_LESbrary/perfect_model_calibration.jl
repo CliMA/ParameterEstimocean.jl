@@ -1,7 +1,7 @@
 pushfirst!(LOAD_PATH, joinpath(@__DIR__, "../.."))
 
 using Oceananigans
-using Plots, LinearAlgebra, Distributions
+using Plots, LinearAlgebra, Distributions, JLD2
 using Oceananigans.Units
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
@@ -120,14 +120,15 @@ closure_ensemble = [closure for i = 1:Nx, j = 1:Ny]
 
 function get_parameter(observation, parameter_path)
     file = jldopen(observation.path)
-    parameter = getproperty(observation, parameter_path)
+    # parameter = getproperty(file, parameter_path)
+    parameter = file[parameter_path]
     close(file)
     return parameter
 end
 
-get_Qᵇ(observation) = get_parameter(observations[j], "timeseries/b/serialized/boundary_conditions").top.condition
-get_Qᵘ(observation) = get_parameter(observations[j], "timeseries/u/serialized/boundary_conditions").top.condition
-get_f₀(observation) = get_parameter(observations[j], "coriolis/f")
+get_Qᵇ(observation) = get_parameter(observation, "timeseries/b/serialized/boundary_conditions").top.condition
+get_Qᵘ(observation) = get_parameter(observation, "timeseries/u/serialized/boundary_conditions").top.condition
+get_f₀(observation) = get_parameter(observation, "coriolis/f")
 
 Qᵇ_ensemble = [get_Qᵇ(observations[j]) for i = 1:Nx, j = 1:Ny]
 Qᵘ_ensemble = [get_Qᵘ(observations[j]) for i = 1:Nx, j = 1:Ny]
