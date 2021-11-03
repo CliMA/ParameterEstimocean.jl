@@ -1,4 +1,4 @@
-using OceanTurbulenceParameterEstimation.InverseProblems: vectorize, run_simulation_with_params!, transpose_model_output
+using OceanTurbulenceParameterEstimation.InverseProblems: vectorize, transpose_model_output
 
 """
     visualize!(output::ForwardMap;
@@ -19,7 +19,7 @@ function visualize!(ip::InverseProblem, parameters;
 
     observations = vectorize(ip.observations)
 
-    run_simulation_with_params!(ip, parameters)
+    forward_run!(ip, parameters)
 
     # Vector of OneDimensionalTimeSeries objects, one for each observation
     predictions = transpose_model_output(time_series_collector, observations)

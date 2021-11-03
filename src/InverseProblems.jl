@@ -128,12 +128,12 @@ n_ensemble(ip::InverseProblem) = n_ensemble(ip.simulation.model.grid)
 observation_map(ip::InverseProblem) = transform_observations(ip.output_map, ip.observations)
 
 """
-    run_simulation_with_params!(ip, parameters)
+    forward_run!(ip, parameters)
 
 Initialize `ip.simulation` with `parameters` and run it forward.
 Output will be stored in `ip.time_series_collector`.
 """
-function run_simulation_with_params!(ip::InverseProblem, parameters)
+function forward_run!(ip::InverseProblem, parameters)
     observations = ip.observations
     simulation = ip.simulation
     closures = simulation.model.closure
@@ -151,11 +151,22 @@ function run_simulation_with_params!(ip::InverseProblem, parameters)
     return nothing
 end
 
-function forward_map(ip, parameters)
-    # Run the output map, fill the time series collector
-    run_simulation_with_params!(ip, parameters)
+"""
+    forward_map(ip, parameters)
 
-    # (output_size, ensemble_capacity)
+Run `ip.simulation` forward with `parameters` and return the data,
+transformed into an array format expected by `EnsembleKalmanProcesses.jl`.
+"""
+function forward_map(ip, parameters)
+    # Run the simulation forward and populate the time series collector
+    # with model data.
+    forward_run!(ip, parameters)
+
+    # Transform the model data according to `ip.output_map` into
+    # the array format expected by EnsembleKalmanProcesses.jl
+    # The result has `size(output) = (output_size, ensemble_capacity)`,
+    # where `output_size` is determined by both the `output_map` and the
+    # data collection dictated by `ip.observations`.
     output = transform_output(ip.output_map, ip.observations, ip.time_series_collector)
 
     # (output_size, ensemble_size)
@@ -222,9 +233,9 @@ function observation_map_variance_across_time(map::ConcatenatedOutputMap, observ
     # Assume all fields have the same size
     b = reshape(a, Nx, Ny * Nz, Nt, N_fields); # (Nx, Ny*Nz, Nt, Nfields)
 
-    c = cat((b[:,:,:,i] for i in 1:N_fields)..., dims=2) # (Nx, Ny*Nz*Nfields, Nt)
+    c = cat((b[:, :, :, i] for i in 1:N_fields)..., dims=2) # (Nx, Ny*Nz*Nfields, Nt)
 
-    ds = [reshape(var(c[:,:,1:t], dims=3), Nx, Ny*Nz, N_fields) for t in 1:Nt]
+    ds = [reshape(var(c[:, :, 1:t], dims=3), Nx, Ny * Nz, N_fields) for t in 1:Nt]
 
     e = cat(ds..., dims=2)
 
