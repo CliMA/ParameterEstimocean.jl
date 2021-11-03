@@ -33,4 +33,6 @@ Results/
 *.swp
 *.DS_Store
 
+*.code-workspace
+
 data
