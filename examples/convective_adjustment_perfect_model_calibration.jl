@@ -23,7 +23,7 @@ save_interval = 1hour
 experiment_name = "convective_adjustment_example"
 data_path = experiment_name * ".jld2"
 ensemble_size = 50
-generate_observations = false
+generate_observations = true
 
 free_parameters = (a = 12, d = 7)
 
@@ -120,9 +120,17 @@ free_parameters = FreeParameters(priors)
 
 calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
 
-v = observation_map_variance_across_time(calibration)[1,:,:]
+v = observation_map_variance_across_time(calibration)[1, :, :]
 
-# Assert that G(θ*) ≈ y
+using Plots, LinearAlgebra
+
+# p = plot(collect(1:length(x)), [x...], label="forward_map")
+# plot!(collect(1:length(y)), [y...], label="observation_map")
+# savefig(p, "obs_vs_pred.png")
+# display(p)
+
+# Assert that G(θ★) ≈ y
+# forward_run!(calibration, θ★)
 x = forward_map(calibration, θ★)
 y = observation_map(calibration)
 @show x == y

@@ -134,3 +134,4 @@ function GeneralStrat(directory)
                            last = nothing),
                 )
 end
+

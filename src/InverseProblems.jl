@@ -80,7 +80,7 @@ function Base.show(io::IO, ip::InverseProblem)
     print(io, "InverseProblem{$out_map_type}", '\n',
               "├── observations: $(obs_str(ip.observations))", '\n',    
               "├── simulation: $sim_str", '\n',
-              "├── free_parameters: $(free_parameters_str(ip.free_parameters))",
+              "├── free_parameters: $(free_parameters_str(ip.free_parameters))", '\n',
               "└── output map: $out_map_str")
 
     return nothing
