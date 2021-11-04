@@ -1,6 +1,6 @@
 module TurbulenceClosureParameters
 
-using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
+using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, AbstractTimeDiscretization, ExplicitTimeDiscretization
 using Printf
 
 #####
@@ -109,23 +109,29 @@ julia> struct Closure; test; c end
 julia> closure = Closure(ClosureSubModel(1, 2), 3)
 Closure(ClosureSubModel(1, 2), 3)
 
-julia> parameters = (a = 12, c = 7)
-(a = 12, c = 7)
+julia> parameters = (a = 12, d = 7)
+(a = 12, d = 7)
 
 julia> OceanTurbulenceParameterEstimation.TurbulenceClosureParameters.closure_with_parameters(closure, parameters)
-Closure(ClosureSubModel(12, 2), 7)
+Closure(ClosureSubModel(12, 2), 3)
 ```
 """
 closure_with_parameters(closure, parameters) = construct_object(dict_properties(closure), parameters)
 
-closure_with_parameters(closure::AbstractTurbulenceClosure{TD}, parameters) where TD =
+closure_with_parameters(closure::AbstractTurbulenceClosure{ExplicitTimeDiscretization}, parameters) =
+    construct_object(dict_properties(closure), parameters, type_parameter=nothing)
+
+closure_with_parameters(closure::AbstractTurbulenceClosure{TD}, parameters) where {TD <: AbstractTimeDiscretization} =
     construct_object(dict_properties(closure), parameters; type_parameter=TD)
+
+closure_with_parameters(closures::Tuple, parameters) =
+    Tuple(closure_with_parameters(closure, parameters) for closure in closures)
 
 update_closure_ensemble_member!(closures::AbstractVector, p_ensemble, parameters) =
     closures[p_ensemble] = closure_with_parameters(closures[p_ensemble], parameters)
 
 function update_closure_ensemble_member!(closures::AbstractMatrix, p_ensemble, parameters)
-    for j in size(closures, 2) # Assume that ensemble varies along first dimension
+    for j in 1:size(closures, 2) # Assume that ensemble varies along first dimension
         closures[p_ensemble, j] = closure_with_parameters(closures[p_ensemble, j], parameters)
     end
     return nothing

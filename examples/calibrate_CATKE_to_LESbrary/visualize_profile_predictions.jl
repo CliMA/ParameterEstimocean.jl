@@ -1,6 +1,4 @@
-using OceanTurbulenceParameterEstimation.LossFunctions: ForwardMap
-using OceanTurbulenceParameterEstimation.Models: FreeParameters
-using OceanTurbulenceParameterEstimation.ParameterEstimation: InverseProblem
+using OceanTurbulenceParameterEstimation.InverseProblems: vectorize, transpose_model_output
 
 """
     visualize!(output::ForwardMap;
@@ -8,15 +6,25 @@ using OceanTurbulenceParameterEstimation.ParameterEstimation: InverseProblem
                     directory = pwd(),
                     filename = "realizations.png"
                     )
+
+    For visualizing 1-dimensional time series predictions.
 """
-function visualize!(output::ForwardMap;
+function visualize!(ip::InverseProblem, parameters;
                     fields = [:u, :v, :b, :e],
                     directory = pwd(),
                     filename = "realizations.png"
                     )
+
     isdir(directory) || makedir(directory)
-    
-    fig = Figure(resolution = (200*(length(fields)+1), 200*length(observations)), font = "CMU Serif")
+
+    observations = vectorize(ip.observations)
+
+    forward_run!(ip, parameters)
+
+    # Vector of OneDimensionalTimeSeries objects, one for each observation
+    predictions = transpose_model_output(time_series_collector, observations)
+        
+    fig = Figure(resolution = (200*(length(fields)+1), 200*length(ip.observations)), font = "CMU Serif")
     colors = [:black, :red, :blue]
 
     function empty_plot!(fig_position)
@@ -25,14 +33,21 @@ function visualize!(output::ForwardMap;
         hidespines!(ax, :t, :b, :l, :r)
     end
 
-    for (i, data) in enumerate(observations)
+    # function get_data!()
 
-        targets = data.targets
+    for (i, observation) in enumerate(observations)
+
+        prediction = predictions[i]
+
+        targets = observation.times
         snapshots = round.(Int, range(targets[1], targets[end], length=3))
-        bcs = data.boundary_conditions
+        
+        Qᵇ = ip.simulation.model.tracers.b.boundary_conditions.top.condition[1,i]
+        Qᵘ = ip.simulation.model.velocities.u.boundary_conditions.top.condition[1,i]
+        f = ip.simulation.model.coriolis[1,i].f
 
         empty_plot!(fig[i,1])
-        text!(fig[i,1], "Qᵇ = $(tostring(bcs.Qᵇ)) m⁻¹s⁻³\nQᵘ = $(tostring(bcs.Qᵘ)) m⁻¹s⁻²\nf = $(tostring(data.constants[:f])) s⁻¹", 
+        text!(fig[i,1], "Qᵇ = $(tostring(Qᵇ)) m⁻¹s⁻³\nQᵘ = $(tostring(Qᵘ)) m⁻¹s⁻²\nf = $(tostring(f)) s⁻¹", 
                     position = (0, 0), 
                     align = (:center, :center), 
                     textsize = 15,
@@ -130,8 +145,8 @@ function visualize_and_save!(calibration, validation, parameters, directory; fie
                 new_ip = InverseProblem()
 
                 visualize!(simulation, observations, parameters;
-                                                 fields = fields,
-                                                 filename = joinpath(directory, "$(days)_day_simulations.png"))
+                            fields = fields,
+                            filename = joinpath(directory, "$(days)_day_simulations.png"))
             end
         end
     

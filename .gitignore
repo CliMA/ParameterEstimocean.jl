@@ -27,10 +27,14 @@ Untracked/
 statprof/
 Results/
 *.png
+*.mp4
+*.pdf
 *.txt
 *.jld2
 
 *.swp
 *.DS_Store
+
+*.code-workspace
 
 data

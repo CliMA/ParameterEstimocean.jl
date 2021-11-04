@@ -14,14 +14,6 @@ using Oceananigans
 using OceanTurbulenceParameterEstimation
 using OceanBoundaryLayerParameterizations
 
-# CATKE parameters involved in setting field diffusivities 
-@free_parameters StabilityFnParameters CᴷRiʷ CᴷRiᶜ Cᴷu⁻ Cᴷuʳ Cᴷc⁻ Cᴷcʳ Cᴷe⁻ Cᴷeʳ
-
-parameters = Parameters(
-    RelevantParameters = CATKEParametersRiDependent,  # Parameters that are used in CATKE
-    ParametersToOptimize = StabilityFnParameters      # Subset of RelevantParameters that we want to optimize
-)
-
 two_day_suite_dir = "/Users/gregorywagner/Projects/OceanTurbulenceParameterEstimation/data/2DaySuite"
 four_day_suite_dir = "/Users/gregorywagner/Projects/OceanTurbulenceParameterEstimation/data/4DaySuite"
 six_day_suite_dir = "/Users/gregorywagner/Projects/OceanTurbulenceParameterEstimation/data/6DaySuite"
@@ -29,17 +21,6 @@ six_day_suite_dir = "/Users/gregorywagner/Projects/OceanTurbulenceParameterEstim
 two_day_suite = TwoDaySuite(two_day_suite_dir)
 four_day_suite = FourDaySuite(four_day_suite_dir)
 six_day_suite = SixDaySuite(six_day_suite_dir)
-
-# InverseProblem represents the model, data, loss function, and parameters
-# calibration = InverseProblem(two_day_suite, # "Truth data" for model calibration
-#                              parameters;   # Model parameters 
-#                              # Loss function parameters
-#                              relative_weights = relative_weight_options["all_but_e"],
-#                              # Model (hyper)parameters
-#                              architecture = GPU(),
-#                              ensemble_size = 10,
-#                              Nz = 16,
-#                              Δt = 30.0)
 
 calibration = InverseProblem(two_day_suite, parameters; relative_weights = relative_weight_options["all_but_e"],
                              architecture = GPU(), ensemble_size = 10, Δt = 30.0)
