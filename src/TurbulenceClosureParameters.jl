@@ -112,7 +112,7 @@ update_closure_ensemble_member!(closures::AbstractVector, p_ensemble, parameters
     closures[p_ensemble] = closure_with_parameters(closures[p_ensemble], parameters)
 
 function update_closure_ensemble_member!(closures::AbstractMatrix, p_ensemble, parameters)
-    for j in size(closures, 2) # Assume that ensemble varies along first dimension
+    for j in 1:size(closures, 2) # Assume that ensemble varies along first dimension
         closures[p_ensemble, j] = closure_with_parameters(closures[p_ensemble, j], parameters)
     end
     return nothing

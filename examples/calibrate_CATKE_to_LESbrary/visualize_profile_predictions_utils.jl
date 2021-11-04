@@ -28,8 +28,8 @@ field_guide = Dict(
     ),
 
     :b => (
-        axis_args = (xlabel="Buoyancy (cN/kg)",),
-        scaling = 1e2,
+        axis_args = (xlabel="Buoyancy (mN/kg)",),
+        scaling = 1e3,
     ),
 
     :e => (
