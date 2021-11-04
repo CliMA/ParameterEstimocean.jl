@@ -131,7 +131,7 @@ end
 #####
 ##### Visualize
 #####
-using GLMakie
+using CairoMakie
 
 fig = Figure(resolution = (1400, 700))
 
@@ -320,7 +320,7 @@ axmain = CairoMakie.Axis(f[2, 1], xlabel = "κ_skew", ylabel = "κ_symmetric")
 axright = CairoMakie.Axis(f[2, 2])
 s = eki.iteration_summaries
 scatters = []
-for i in [1, 2, 5, 11]
+for i in [1, 2, 3, 6]
     ensemble = transpose(s[i].parameters)
     push!(scatters, CairoMakie.scatter!(axmain, ensemble))
     CairoMakie.density!(axtop, ensemble[:, 1])
@@ -334,7 +334,7 @@ colsize!(f.layout, 1, Fixed(300))
 colsize!(f.layout, 2, Fixed(200))
 rowsize!(f.layout, 1, Fixed(200))
 rowsize!(f.layout, 2, Fixed(300))
-leg = Legend(f[1, 2], scatters, ["Initial ensemble", "Iteration 1", "Iteration 4", "Iteration 20"], position = :lb)
+leg = Legend(f[1, 2], scatters, ["Initial ensemble", "Iteration 1", "Iteration 2", "Iteration 5"], position = :lb)
 hidedecorations!(axtop, grid = false)
 hidedecorations!(axright, grid = false)
 CairoMakie.xlims!(axmain, 400, 1400)
