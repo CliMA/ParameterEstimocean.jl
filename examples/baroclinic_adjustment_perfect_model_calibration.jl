@@ -26,7 +26,7 @@ architecture = CPU()
 
 stop_time = 1days
 save_interval = 0.25days
-Δt = 10minute
+Δt = 12minute
 
 experiment_name = "baroclinic_adjustment"
 data_path = experiment_name * ".jld2"
@@ -58,8 +58,6 @@ if generate_observations
                                         buoyancy = BuoyancyTracer(),
                                         closure = gent_mcwilliams_diffusivity,
                                         tracers = (:b, :c),
-                                        # momentum_advection = WENO5(),
-                                        # tracer_advection = WENO5(),
                                         free_surface = ImplicitFreeSurface())
     
     @info "Built $model."
@@ -79,18 +77,18 @@ if generate_observations
     """
     ramp(y, Δy) = min(max(0, y/Δy + 1/2), 1)
 
-    # Parameters
     N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
     M² = 8e-8 # [s⁻²] horizontal buoyancy gradient
 
     Δy = 50kilometers
-    Δz = 50
 
-    Δc = 2Δy
+    Δc_y = 2Δy
+    Δc_z = 50
+
     Δb = Δy * M²
 
     bᵢ(x, y, z) = N² * z + Δb * ramp(y, Δy)
-    cᵢ(x, y, z) = exp(-y^2 / 2Δc^2) * exp(-(z + Lz/2)^2 / (2*Δz^2))
+    cᵢ(x, y, z) = exp(-y^2 / Δc_y^2) * exp(-(z + Lz/2)^2 / (2Δc_z^2))
 
     set!(model, b=bᵢ, c=cᵢ)
     
@@ -111,7 +109,7 @@ if generate_observations
         return nothing
     end
     
-    simulation = Simulation(model, Δt=Δt, stop_time=stop_time, progress=print_progress, iteration_interval=100)
+    simulation = Simulation(model, Δt=Δt, stop_time=stop_time, progress=print_progress, iteration_interval=40)
     
     simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
                                                           schedule = TimeInterval(save_interval),
@@ -246,7 +244,7 @@ y = observation_map(calibration)
 ###
 ### Visualize the prior densities
 ###
-#=
+
 using CairoMakie
 using OceanTurbulenceParameterEstimation.EnsembleKalmanInversions: convert_prior, inverse_parameter_transform
 
@@ -263,7 +261,7 @@ leg = Legend(f[1, 2], densities, ["κ_skew", "κ_symmetric"], position = :lb)
 # CairoMakie.xlims!(0, 2e-5)
 save("visualize_prior_kappa_skew_test.pdf", f)
 display(f)
-=#
+
 
 
 #=
@@ -274,7 +272,6 @@ Plots.plot!(collect(1:length(y)), [y...], label="observation_map")
 display(p)
 =#
 
-#=
 
 iterations = 5
 eki = EnsembleKalmanInversion(calibration; noise_covariance = 1e-2)
