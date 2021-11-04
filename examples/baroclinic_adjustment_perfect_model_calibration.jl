@@ -29,7 +29,7 @@ architecture = CPU()
 
 stop_time = 1days
 save_interval = 0.25days
-Δt = 12minute
+Δt = 10minute
 
 ensemble_size = 10
 generate_observations = true
@@ -109,7 +109,7 @@ if generate_observations
         return nothing
     end
     
-    simulation = Simulation(model, Δt=Δt, stop_time=stop_time, progress=print_progress, iteration_interval=40)
+    simulation = Simulation(model, Δt=Δt, stop_time=stop_time, progress=print_progress, iteration_interval=48)
     
     simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
                                                           schedule = TimeInterval(save_interval),
@@ -173,7 +173,7 @@ x = forward_map(calibration, [θ★ for _ in 1:ensemble_size])
 y = observation_map(calibration)
 
 # # Assert that G(θ*) ≈ y
-@show x[:, 1:1] == y
+@show mean(x, dims=2) ≈ y
 
 ###
 ### Visualize the prior densities
@@ -192,11 +192,11 @@ densities = []
 push!(densities, density!(axtop, samples_κ_skew))
 push!(densities, density!(axtop, samples_κ_symmetric))
 leg = Legend(f[1, 2], densities, ["κ_skew", "κ_symmetric"], position = :lb)
-save("visualize_prior_kappa_skew.svg", f) #hide
+save("visualize_prior_kappa_skew.svg", f); nothing # hide
 
-![](visualize_prior_kappa_skew.svg)
+![](visualize_prior_kappa_skewr.svg)
 
-
+# then let's do
 
 iterations = 5
 eki = EnsembleKalmanInversion(calibration; noise_covariance = 1e-2)
@@ -221,18 +221,27 @@ ensemble_variances = [varθ(iter) for iter in 1:iterations]
 x = 1:iterations
 f = Figure()
 lines(f[1, 1], x, weight_distances, color = :red, linewidth = 2,
-      axis = (title = "Parameter distance", xlabel = "Iteration", ylabel="|θ̅ₙ - θ⋆|", yscale = log10))
+      axis = (title = "Parameter distance",
+              xlabel = "Iteration",
+              ylabel="|θ̅ₙ - θ⋆|",
+              yscale = log10))
 lines(f[1, 2], x, output_distances, color = :blue, linewidth = 2,
-      axis = (title = "Output distance", xlabel = "Iteration", ylabel="|G(θ̅ₙ) - y|", yscale = log10))
-ax3 = Axis(f[2, 1:2], title = "Parameter convergence", xlabel = "Iteration", ylabel="Ensemble variance", yscale = log10)
+      axis = (title = "Output distance",
+              xlabel = "Iteration",
+              ylabel="|G(θ̅ₙ) - y|",
+              yscale = log10))
+ax3 = Axis(f[2, 1:2], title = "Parameter convergence",
+           xlabel = "Iteration",
+           ylabel = "Ensemble variance",
+           yscale = log10)
 
 for (i, pname) in enumerate(free_parameters.names)
     ev = getindex.(ensemble_variances,i)
-    lines!(ax3, 1:iterations, ev / ev[1], label=String(pname), linewidth = 2)
+    lines!(ax3, 1:iterations, ev / ev[1], label = String(pname), linewidth = 2)
 end
 
 axislegend(ax3, position = :rt)
-save("summary.svg", f) #hide
+save("summary.svg", f); nothing # hide
 
 ![](summary.svg)
 
@@ -243,12 +252,14 @@ save("summary.svg", f) #hide
 
 f = Figure()
 axtop = Axis(f[1, 1])
-axmain = Axis(f[2, 1], xlabel = "κ_skew", ylabel = "κ_symmetric")
+axmain = Axis(f[2, 1],
+              xlabel = "κ_skew",
+              ylabel = "κ_symmetric")
 axright = Axis(f[2, 2])
-s = eki.iteration_summaries
+summaries = eki.iteration_summaries
 scatters = []
 for i in [1, 2, 3, 6]
-    ensemble = transpose(s[i].parameters)
+    ensemble = transpose(summaries[i].parameters)
     push!(scatters, scatter!(axmain, ensemble))
     density!(axtop, ensemble[:, 1])
     density!(axright, ensemble[:, 2], direction = :y)
@@ -261,7 +272,8 @@ colsize!(f.layout, 1, Fixed(300))
 colsize!(f.layout, 2, Fixed(200))
 rowsize!(f.layout, 1, Fixed(200))
 rowsize!(f.layout, 2, Fixed(300))
-leg = Legend(f[1, 2], scatters, ["Initial ensemble", "Iteration 1", "Iteration 2", "Iteration 5"], position = :lb)
+leg = Legend(f[1, 2], scatters, ["Initial ensemble", "Iteration 1", "Iteration 2", "Iteration 5"],
+             position = :lb)
 hidedecorations!(axtop, grid = false)
 hidedecorations!(axright, grid = false)
 xlims!(axmain, 400, 1400)
@@ -270,6 +282,6 @@ ylims!(axmain, 600, 1600)
 ylims!(axright, 600, 1600)
 xlims!(axright, 0, 0.06)
 ylims!(axtop, 0, 0.06)
-save("distributions_makie.svg", f) #hide
+save("distributions.svg", f); nothing # hide
 
-![](distributions_makie.svg)
+![](distributions.svg)
