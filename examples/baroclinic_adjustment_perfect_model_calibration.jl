@@ -88,7 +88,7 @@ if generate_observations
     Δb = Δy * M²
 
     bᵢ(x, y, z) = N² * z + Δb * ramp(y, Δy)
-    cᵢ(x, y, z) = exp(-y^2 / Δc_y^2) * exp(-(z + Lz/2)^2 / (2Δc_z^2))
+    cᵢ(x, y, z) = exp(-y^2 / 2Δc_y^2) * exp(-(z + Lz/2)^2 / (2Δc_z^2))
 
     set!(model, b=bᵢ, c=cᵢ)
     
@@ -255,22 +255,13 @@ samples_κ_symmetric = samples(priors.κ_symmetric)
 f = Figure()
 axtop = Axis(f[1, 1])
 densities = []
-push!(densities, CairoMakie.density!(axtop, samples_κ_skew))
-push!(densities, CairoMakie.density!(axtop, samples_κ_symmetric))
+push!(densities, density!(axtop, samples_κ_skew))
+push!(densities, density!(axtop, samples_κ_symmetric))
 leg = Legend(f[1, 2], densities, ["κ_skew", "κ_symmetric"], position = :lb)
-# CairoMakie.xlims!(0, 2e-5)
-save("visualize_prior_kappa_skew_test.pdf", f)
-display(f)
+save("assets/visualize_prior_kappa_skew.svg", f)
 
+![](assets/visualize_prior_kappa_skew.svg)
 
-
-#=
-using Plots, LinearAlgebra
-p = Plots.plot(collect(1:length(x)), [x...], label="forward_map")
-Plots.plot!(collect(1:length(y)), [y...], label="observation_map")
-# savefig(p, "obs_vs_pred_test.pdf")
-display(p)
-=#
 
 
 iterations = 5
@@ -284,7 +275,6 @@ params = iterate!(eki; iterations = iterations)
 ### Summary plots
 ###
 
-using CairoMakie
 using LinearAlgebra
 
 θ̅(iteration) = [eki.iteration_summaries[iteration].ensemble_mean...]
@@ -295,34 +285,39 @@ output_distances = [norm(forward_map(calibration, [θ̅(iter) for _ in 1:ensembl
 ensemble_variances = [varθ(iter) for iter in 1:iterations]
 
 x = 1:iterations
-f = CairoMakie.Figure()
-CairoMakie.lines(f[1, 1], x, weight_distances, color = :red, linewidth = 2,
-            axis = (title = "Parameter distance", xlabel = "Iteration", ylabel="|θ̅ₙ - θ⋆|", yscale = log10))
-CairoMakie.lines(f[1, 2], x, output_distances, color = :blue, linewidth = 2,
-            axis = (title = "Output distance", xlabel = "Iteration", ylabel="|G(θ̅ₙ) - y|", yscale = log10))
+f = Figure()
+lines(f[1, 1], x, weight_distances, color = :red, linewidth = 2,
+      axis = (title = "Parameter distance", xlabel = "Iteration", ylabel="|θ̅ₙ - θ⋆|", yscale = log10))
+lines(f[1, 2], x, output_distances, color = :blue, linewidth = 2,
+      axis = (title = "Output distance", xlabel = "Iteration", ylabel="|G(θ̅ₙ) - y|", yscale = log10))
 ax3 = Axis(f[2, 1:2], title = "Parameter convergence", xlabel = "Iteration", ylabel="Ensemble variance", yscale = log10)
+
 for (i, pname) in enumerate(free_parameters.names)
     ev = getindex.(ensemble_variances,i)
-    CairoMakie.lines!(ax3, 1:iterations, ev / ev[1], label=String(pname), linewidth = 2)
+    lines!(ax3, 1:iterations, ev / ev[1], label=String(pname), linewidth = 2)
 end
-CairoMakie.axislegend(ax3, position = :rt)
-CairoMakie.save("summary_makie_test.pdf", f)
+
+axislegend(ax3, position = :rt)
+save("assets/summary.svg", f)
+
+![](assets/summary.svg)
+
 
 ###
 ### Plot ensemble density with time
 ###
 
-f = CairoMakie.Figure()
-axtop = CairoMakie.Axis(f[1, 1])
-axmain = CairoMakie.Axis(f[2, 1], xlabel = "κ_skew", ylabel = "κ_symmetric")
-axright = CairoMakie.Axis(f[2, 2])
+f = Figure()
+axtop = Axis(f[1, 1])
+axmain = Axis(f[2, 1], xlabel = "κ_skew", ylabel = "κ_symmetric")
+axright = Axis(f[2, 2])
 s = eki.iteration_summaries
 scatters = []
 for i in [1, 2, 3, 6]
     ensemble = transpose(s[i].parameters)
-    push!(scatters, CairoMakie.scatter!(axmain, ensemble))
-    CairoMakie.density!(axtop, ensemble[:, 1])
-    CairoMakie.density!(axright, ensemble[:, 2], direction = :y)
+    push!(scatters, scatter!(axmain, ensemble))
+    density!(axtop, ensemble[:, 1])
+    density!(axright, ensemble[:, 2], direction = :y)
 end
 vlines!(axmain, [κ_skew], color=:red)
 vlines!(axtop, [κ_skew], color=:red)
@@ -335,10 +330,12 @@ rowsize!(f.layout, 2, Fixed(300))
 leg = Legend(f[1, 2], scatters, ["Initial ensemble", "Iteration 1", "Iteration 2", "Iteration 5"], position = :lb)
 hidedecorations!(axtop, grid = false)
 hidedecorations!(axright, grid = false)
-CairoMakie.xlims!(axmain, 400, 1400)
-CairoMakie.xlims!(axtop, 400, 1400)
-CairoMakie.ylims!(axmain, 600, 1600)
-CairoMakie.ylims!(axright, 600, 1600)
-CairoMakie.xlims!(axright, 0, 0.06)
-CairoMakie.ylims!(axtop, 0, 0.06)
-save("distributions_makie_test.pdf", f)
+xlims!(axmain, 400, 1400)
+xlims!(axtop, 400, 1400)
+ylims!(axmain, 600, 1600)
+ylims!(axright, 600, 1600)
+xlims!(axright, 0, 0.06)
+ylims!(axtop, 0, 0.06)
+save("assets/distributions_makie.svg", f)
+
+![](assets/distributions_makie.svg)
