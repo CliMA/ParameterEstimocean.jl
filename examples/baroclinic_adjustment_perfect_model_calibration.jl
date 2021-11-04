@@ -14,8 +14,11 @@ using OceanTurbulenceParameterEstimation
 # "True" parameters to be estimated by calibration
 κ_skew = 1000.0       # [m² s⁻¹] skew diffusivity
 κ_symmetric = 900.0   # [m² s⁻¹] symmetric diffusivity
+nothign #hide
 
 # Domain
+experiment_name = "baroclinic_adjustment"
+
 Ly = 1000kilometers # north-south extent [m]
 Lz = 1kilometers    # depth [m]
 
@@ -27,9 +30,6 @@ architecture = CPU()
 stop_time = 1days
 save_interval = 0.25days
 Δt = 12minute
-
-experiment_name = "baroclinic_adjustment"
-data_path = experiment_name * ".jld2"
 
 ensemble_size = 10
 generate_observations = true
@@ -123,72 +123,6 @@ if generate_observations
     run!(simulation)
 end
 
-#=
-
-#####
-##### Visualize
-#####
-using CairoMakie
-
-fig = Figure(resolution = (1400, 700))
-
-filepath = experiment_name * ".jld2"
-
-ut = FieldTimeSeries(filepath, "u")
-bt = FieldTimeSeries(filepath, "b")
-ct = FieldTimeSeries(filepath, "c")
-
-grid = RegularRectilinearGrid(topology = (Flat, Bounded, Bounded), 
-                                  size = (Ny, Nz),
-                                  y = (-Ly/2, Ly/2),
-                                  z = (-Lz, 0),
-                                  halo = (2, 2))
-
-# Build coordinates, rescaling the vertical coordinate
-x, y, z = nodes((Center, Center, Center), grid)
-
-#####
-##### Plot buoyancy...
-#####
-
-times = bt.times
-Nt = length(times)
-
-un(n) = interior(ut[n])[1, :, :]
-bn(n) = interior(bt[n])[1, :, :]
-cn(n) = interior(ct[n])[1, :, :]
-
-@show min_c = 0
-@show max_c = 1
-@show max_u = maximum(abs, un(Nt))
-min_u = - max_u
-
-n = Node(1)
-u = @lift un($n)
-b = @lift bn($n)
-c = @lift cn($n)
-
-ax = Axis(fig[1, 1], title="Zonal velocity")
-hm = heatmap!(ax, y * 1e-3, z * 1e-3, u, colorrange=(min_u, max_u), colormap=:balance)
-contour!(ax, y * 1e-3, z * 1e-3, b, levels = 25, color=:black, linewidth=2)
-cb = Colorbar(fig[1, 2], hm)
-
-ax = Axis(fig[2, 1], title="Tracer concentration")
-hm = heatmap!(ax, y * 1e-3, z * 1e-3, c, colorrange=(0, 0.5), colormap=:thermal)
-contour!(ax, y * 1e-3, z * 1e-3, b, levels = 25, color=:black, linewidth=2)
-cb = Colorbar(fig[2, 2], hm)
-
-title_str = @lift "Parameterized baroclinic adjustment at t = " * prettytime(times[$n])
-ax_t = fig[0, :] = Label(fig, title_str)
-
-display(fig)
-
-record(fig, "zonally_averaged_baroclinic_adj.mp4", 1:Nt, framerate=8) do i
-    @info "Plotting frame $i of $Nt"
-    n[] = i
-end
-
-=#
 
 #####
 ##### Load truth data as observations
