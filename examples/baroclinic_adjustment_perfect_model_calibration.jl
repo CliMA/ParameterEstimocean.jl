@@ -192,7 +192,7 @@ priors = (
 
 free_parameters = FreeParameters(priors)
 
-# # We may visualize the prior distributions by randomly sampling out of them.
+# To visualize the prior distributions we randomly sample out values from then and plot the p.d.f.
 
 using CairoMakie
 using OceanTurbulenceParameterEstimation.EnsembleKalmanInversions: convert_prior, inverse_parameter_transform
@@ -226,13 +226,13 @@ calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
 
 x = forward_map(calibration, [θ★ for _ in 1:ensemble_size])
 y = observation_map(calibration)
+nothing #hide
 
 # The `forward_map` output `x` is a two-dimensional matrix whose first dimension is the size of the state space
 # (here, ``2 N_y N_z``) and whose second dimension is the `ensemble_size`. In the case above, all columns of `x`
 # are identical.
 
 mean(x, dims=2) ≈ y
-
 
 # Next, we construct an `EnsembleKalmanInversion` (EKI) object,
 
