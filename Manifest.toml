@@ -28,9 +28,9 @@ uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
 
 [[ArrayInterface]]
 deps = ["Compat", "IfElse", "LinearAlgebra", "Requires", "SparseArrays", "Static"]
-git-tree-sha1 = "426050a30c2cda1969510e92d5c5b52735f41c7d"
+git-tree-sha1 = "e527b258413e0c6d4f66ade574744c94edef81f8"
 uuid = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
-version = "3.1.39"
+version = "3.1.40"
 
 [[Artifacts]]
 uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
@@ -166,10 +166,10 @@ uuid = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
 version = "4.0.4"
 
 [[CubedSphere]]
-deps = ["Elliptic", "Printf", "Rotations", "TaylorSeries", "Test"]
-git-tree-sha1 = "f66fabd1ee5df59a7ba47c7873a6332c19e0c03f"
+deps = ["Elliptic", "Printf", "Requires", "Rotations", "TaylorSeries", "Test"]
+git-tree-sha1 = "b7df0c21789cb6adf5f1e2eb7a52accae5b867f6"
 uuid = "7445602f-e544-4518-8976-18f8e8ae6cdb"
-version = "0.2.0"
+version = "0.1.0"
 
 [[DataAPI]]
 git-tree-sha1 = "cc70b17275652eb47bc9e5f81635981f13cea5c8"
@@ -196,10 +196,10 @@ deps = ["Mmap"]
 uuid = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 
 [[DiffRules]]
-deps = ["NaNMath", "Random", "SpecialFunctions"]
-git-tree-sha1 = "7220bc21c33e990c14f4a9a319b1d242ebc5b269"
+deps = ["LogExpFunctions", "NaNMath", "Random", "SpecialFunctions"]
+git-tree-sha1 = "3287dacf67c3652d3fed09f4c12c187ae4dbb89a"
 uuid = "b552c78f-8df3-52c6-915a-8e097449b14b"
-version = "1.3.1"
+version = "1.4.0"
 
 [[Distributed]]
 deps = ["Random", "Serialization", "Sockets"]
@@ -229,9 +229,9 @@ version = "2.2.3+0"
 
 [[EllipsisNotation]]
 deps = ["ArrayInterface"]
-git-tree-sha1 = "8041575f021cba5a099a456b4163c9a08b566a02"
+git-tree-sha1 = "9aad812fb7c4c038da7cab5a069f502e6e3ae030"
 uuid = "da5c29d0-fa7d-589e-88eb-ea29b0a81949"
-version = "1.1.0"
+version = "1.1.1"
 
 [[Elliptic]]
 git-tree-sha1 = "71c79e77221ab3a29918aaf6db4f217b89138608"
@@ -775,9 +775,11 @@ version = "0.4.0"
 
 [[Oceananigans]]
 deps = ["Adapt", "CUDA", "CUDAKernels", "Crayons", "CubedSphere", "Dates", "FFTW", "Glob", "InteractiveUtils", "JLD2", "KernelAbstractions", "LinearAlgebra", "Logging", "MPI", "NCDatasets", "OffsetArrays", "OrderedCollections", "PencilFFTs", "Pkg", "Printf", "Random", "Rotations", "SafeTestsets", "SeawaterPolynomials", "Statistics", "StructArrays", "Tullio"]
-git-tree-sha1 = "daef2bdd39ecaca51e428aa29ed07b41080343dd"
+git-tree-sha1 = "7ede7eb253e0e09f4e7e51a8f3c58bb7f9528a53"
+repo-rev = "ncc-glw/gm"
+repo-url = "https://github.com/CliMA/Oceananigans.jl.git"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
-version = "0.63.4"
+version = "0.64.0"
 
 [[OffsetArrays]]
 deps = ["Adapt"]
@@ -880,15 +882,15 @@ version = "2.1.2"
 
 [[PencilArrays]]
 deps = ["ArrayInterface", "JSON3", "Libdl", "LinearAlgebra", "MPI", "OffsetArrays", "Reexport", "Requires", "StaticArrays", "StaticPermutations", "Strided", "TimerOutputs"]
-git-tree-sha1 = "69c2bb9f7463a59eaf5f4a1882c25cc0aed19b23"
+git-tree-sha1 = "93a9548253b593293915e11f5e7c0abe7937ca44"
 uuid = "0e08944d-e94e-41b1-9406-dcf66b6a9d2e"
-version = "0.11.0"
+version = "0.12.0"
 
 [[PencilFFTs]]
 deps = ["AbstractFFTs", "FFTW", "LinearAlgebra", "MPI", "PencilArrays", "Reexport", "TimerOutputs"]
-git-tree-sha1 = "44ea30947b8f88a9908afbf49abdec843ad4c3e0"
+git-tree-sha1 = "c664883316c03cf75a88fe1a2b38c1a8e33fcd39"
 uuid = "4a48f351-57a6-4416-9ec4-c37015456aae"
-version = "0.12.6"
+version = "0.12.7"
 
 [[Pixman_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
