@@ -14,13 +14,14 @@
 
 # First we load few things
 
+using OceanTurbulenceParameterEstimation
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.TurbulenceClosures: FluxTapering
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SliceEnsembleSize
 using Distributions
 using Printf
-using OceanTurbulenceParameterEstimation
+using LinearAlgebra: norm
 
 # ## Set up the problem and generate observations
 
@@ -40,27 +41,26 @@ experiment_name = "baroclinic_adjustment"
 data_path = experiment_name * ".jld2"
 
 # The domain, number of grid points, and other parameters.
-architecture = CPU() # CPU or GPU?
+architecture = CPU()      # CPU or GPU?
 
-Ly = 1000kilometers  # north-south extent [m]
-Lz = 1kilometers     # depth [m]
+Ly = 1000kilometers       # north-south extent [m]
+Lz = 1kilometers          # depth [m]
 
-Ny = 64              # grid points in north-south direction
-Nz = 16              # grid points in the vertical
+Ny = 64                   # grid points in north-south direction
+Nz = 16                   # grid points in the vertical
 
-Δt = 10minute        # time-step
+Δt = 10minute             # time-step
 
-stop_time = 1days           # length of run
-save_interval = 0.25days    # save observation every so often
+stop_time = 1days         # length of run
+save_interval = 0.25days  # save observation every so often
 
 generate_observations = true
 
+# The isopycnal skew-symmetric diffusivity closure.
 gerdes_koberle_willebrand_tapering = FluxTapering(1e-2)
 gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = κ_skew,
                                                                 κ_symmetric = κ_symmetric,
                                                                 slope_limiter = gerdes_koberle_willebrand_tapering)
-                                        
-coriolis = BetaPlane(latitude=-45)
 nothing #hide
 
 # ## Generate synthetic observations
@@ -74,10 +74,10 @@ if generate_observations || !(isfile(data_path))
     
     model = HydrostaticFreeSurfaceModel(architecture = architecture,
                                         grid = grid,
-                                        coriolis = coriolis,
-                                        buoyancy = BuoyancyTracer(),
-                                        closure = gent_mcwilliams_diffusivity,
                                         tracers = (:b, :c),
+                                        buoyancy = BuoyancyTracer(),
+                                        coriolis = BetaPlane(latitude=-45),
+                                        closure = gent_mcwilliams_diffusivity,
                                         free_surface = ImplicitFreeSurface())
     
     @info "Built $model."
@@ -162,12 +162,12 @@ slice_ensemble_size = SliceEnsembleSize(size=(Ny, Nz), ensemble=ensemble_size)
 closure_ensemble = [deepcopy(gent_mcwilliams_diffusivity) for i = 1:ensemble_size] 
 
 @show ensemble_model = HydrostaticFreeSurfaceModel(architecture = architecture,
-                                             grid = ensemble_grid,
-                                             tracers = (:b, :c),
-                                             buoyancy = BuoyancyTracer(),
-                                             coriolis = coriolis,
-                                             closure = closure_ensemble,
-                                             free_surface = ImplicitFreeSurface())
+                                                   grid = ensemble_grid,
+                                                   tracers = (:b, :c),
+                                                   buoyancy = BuoyancyTracer(),
+                                                   coriolis = BetaPlane(latitude=-45),
+                                                   closure = closure_ensemble,
+                                                   free_surface = ImplicitFreeSurface())
 
 # and an ensemble simulation. We remove the `nan_checker` checker since we would ideally want to
 # be able to proceed with the EKI iteration step even if one of the models of the ensemble ends
@@ -179,7 +179,7 @@ pop!(ensemble_simulation.diagnostics, :nan_checker)
 
 ensemble_simulation
 
-# ### Free parame
+# ### Free parameters
 #
 # We construct some prior distributions for our free parameters. We found that it often helps to
 # constrain the prior distributions so that neither very high nor very low values for diffusivities
@@ -192,21 +192,7 @@ priors = (
 
 free_parameters = FreeParameters(priors)
 
-#####
-##### Build the Inverse Problem
-#####
-
-calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
-
-x = forward_map(calibration, [θ★ for _ in 1:ensemble_size])
-y = observation_map(calibration)
-
-# # Assert that G(θ*) ≈ y
-@show mean(x, dims=2) ≈ y
-
-###
-### Visualize the prior densities
-###
+# # We may visualize the prior distributions by randomly sampling out of them.
 
 using CairoMakie
 using OceanTurbulenceParameterEstimation.EnsembleKalmanInversions: convert_prior, inverse_parameter_transform
@@ -225,20 +211,41 @@ save("visualize_prior_kappa_skew.svg", f); nothing #hide
 
 # ![](visualize_prior_kappa_skew.svg)
 
-# then let's do
 
-iterations = 5
+# ### The inverse problem
+
+# We can construct the inverse problem ``y = G(θ) + η``. Here, ``y`` are the `observations` and `G` is the
+# `ensemble_model`.
+calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
+
+# ### Assert that ``G(θ_*) ≈ y``
+#
+# As a sanity check we apply the `forward_map` on the calibration after we initialize all ensemble
+# members with the true parameter values. We then confirm that the output of the `forward_map` matches
+# the observations to machine precision.
+
+x = forward_map(calibration, [θ★ for _ in 1:ensemble_size])
+y = observation_map(calibration)
+
+# The `forward_map` output `x` is a two-dimensional matrix whose first dimension is the size of the state space
+# (here, ``2 N_y N_z``) and whose second dimension is the `ensemble_size`. In the case above, all columns of `x`
+# are identical.
+
+mean(x, dims=2) ≈ y
+
+
+# Next, we construct an `EnsembleKalmanInversion` (EKI) object,
+
 eki = EnsembleKalmanInversion(calibration; noise_covariance = 1e-2)
 
+# and perform few iterations to see if we can converge to the true parameter values.
+
+iterations = 5
 params = iterate!(eki; iterations = iterations)
 
 @show params
 
-###
-### Summary plots
-###
-
-using LinearAlgebra
+# Last, we visualize few metrics regarding how the EKI calibration went about.
 
 θ̅(iteration) = [eki.iteration_summaries[iteration].ensemble_mean...]
 varθ(iteration) = eki.iteration_summaries[iteration].ensemble_variance
@@ -247,14 +254,13 @@ weight_distances = [norm(θ̅(iter) - θ★) for iter in 1:iterations]
 output_distances = [norm(forward_map(calibration, [θ̅(iter) for _ in 1:ensemble_size])[:, 1] - y) for iter in 1:iterations]
 ensemble_variances = [varθ(iter) for iter in 1:iterations]
 
-x = 1:iterations
 f = Figure()
-lines(f[1, 1], x, weight_distances, color = :red, linewidth = 2,
+lines(f[1, 1], 1:iterations, weight_distances, color = :red, linewidth = 2,
       axis = (title = "Parameter distance",
               xlabel = "Iteration",
               ylabel="|θ̅ₙ - θ⋆|",
               yscale = log10))
-lines(f[1, 2], x, output_distances, color = :blue, linewidth = 2,
+lines(f[1, 2], 1:iterations, output_distances, color = :blue, linewidth = 2,
       axis = (title = "Output distance",
               xlabel = "Iteration",
               ylabel="|G(θ̅ₙ) - y|",
@@ -274,8 +280,8 @@ save("summary.svg", f); nothing #hide
 
 # ![](summary.svg)
 
-# Next we plot the ensemble density for few EKI iterations to see if and how well
-# it converges to the true diffusivity values.
+# And also we plot the the distributions of the various model ensembles for few EKI iterations to see
+# if and how well they converge to the true diffusivity values.
 
 f = Figure()
 axtop = Axis(f[1, 1])
@@ -285,8 +291,8 @@ axmain = Axis(f[2, 1],
 axright = Axis(f[2, 2])
 summaries = eki.iteration_summaries
 scatters = []
-for i in [1, 2, 3, 6]
-    ensemble = transpose(summaries[i].parameters)
+for iteration in [1, 2, 3, 6]
+    ensemble = transpose(summaries[iteration].parameters)
     push!(scatters, scatter!(axmain, ensemble))
     density!(axtop, ensemble[:, 1])
     density!(axright, ensemble[:, 2], direction = :y)
@@ -304,10 +310,10 @@ leg = Legend(f[1, 2], scatters,
              position = :lb)
 hidedecorations!(axtop, grid = false)
 hidedecorations!(axright, grid = false)
-xlims!(axmain, 400, 1400)
-xlims!(axtop, 400, 1400)
-ylims!(axmain, 600, 1600)
-ylims!(axright, 600, 1600)
+xlims!(axmain, 350, 1350)
+xlims!(axtop, 350, 1350)
+ylims!(axmain, 650, 1750)
+ylims!(axright, 650, 1750)
 xlims!(axright, 0, 0.06)
 ylims!(axtop, 0, 0.06)
 save("distributions.svg", f); nothing #hide 
