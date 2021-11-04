@@ -12,6 +12,8 @@
 # pkg"add Oceananigans, Distributions, CairoMakie, OceanTurbulenceParameterEstimation"
 # ```
 
+# First we load few things
+
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.TurbulenceClosures: FluxTapering
@@ -20,33 +22,38 @@ using Distributions
 using Printf
 using OceanTurbulenceParameterEstimation
 
-# ## Set up problem and generate observations
+# ## Set up the problem and generate observations
 
 # Define the  "true" skew and symmetrid diffusivity coefficients. These are the parameter values that we
 # use to generate the data. Then, we'll see if the EKI calibration can recover these values.
+
 κ_skew = 1000.0       # [m² s⁻¹] skew diffusivity
 κ_symmetric = 900.0   # [m² s⁻¹] symmetric diffusivity
 nothing #hide
 
-experiment_name = "baroclinic_adjustment"
-
-# Domain
-Ly = 1000kilometers # north-south extent [m]
-Lz = 1kilometers    # depth [m]
-
-Ny = 64
-Nz = 16
-
-architecture = CPU()
-
-stop_time = 1days
-save_interval = 0.25days
-Δt = 10minute
-
-ensemble_size = 10
-generate_observations = true
+# We gather the "true" parameters in a vector `\theta_★`:
 
 θ★ = [κ_skew, κ_symmetric]
+
+# The experiment name and where the synthetic observations will be saved.
+experiment_name = "baroclinic_adjustment"
+data_path = experiment_name * ".jld2"
+
+# The domain, number of grid points, and other parameters.
+architecture = CPU() # CPU or GPU?
+
+Ly = 1000kilometers  # north-south extent [m]
+Lz = 1kilometers     # depth [m]
+
+Ny = 64              # grid points in north-south direction
+Nz = 16              # grid points in the vertical
+
+Δt = 10minute        # time-step
+
+stop_time = 1days           # length of run
+save_interval = 0.25days    # save observation every so often
+
+generate_observations = true
 
 gerdes_koberle_willebrand_tapering = FluxTapering(1e-2)
 gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = κ_skew,
@@ -54,10 +61,11 @@ gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = κ_ske
                                                                 slope_limiter = gerdes_koberle_willebrand_tapering)
                                         
 coriolis = BetaPlane(latitude=-45)
+nothing #hide
 
-# Generate synthetic observations
+# ## Generate synthetic observations
 
-if generate_observations
+if generate_observations || !(isfile(data_path))
     grid = RegularRectilinearGrid(topology = (Flat, Bounded, Bounded), 
                                   size = (Ny, Nz), 
                                   y = (-Ly/2, Ly/2),
@@ -74,9 +82,7 @@ if generate_observations
     
     @info "Built $model."
 
-    #####
-    ##### Initial conditions
-    #####
+    ##### Initial conditions of an unstable buoyancy front
 
     """
     Linear ramp from 0 to 1 between -Δy/2 and +Δy/2.
@@ -89,15 +95,15 @@ if generate_observations
     """
     ramp(y, Δy) = min(max(0, y/Δy + 1/2), 1)
 
-    N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
-    M² = 8e-8 # [s⁻²] horizontal buoyancy gradient
+    N² = 4e-6             # [s⁻²] buoyancy frequency / stratification
+    M² = 8e-8             # [s⁻²] horizontal buoyancy gradient
 
-    Δy = 50kilometers
+    Δy = 50kilometers     # horizontal extent of the font
 
-    Δc_y = 2Δy
-    Δc_z = 50
+    Δc_y = 2Δy            # horizontal extent of initial tracer concentration
+    Δc_z = 50             # [m] vertical extent of initial tracer concentration
 
-    Δb = Δy * M²
+    Δb = Δy * M²          # inital buoyancy jump
 
     bᵢ(x, y, z) = N² * z + Δb * ramp(y, Δy)
     cᵢ(x, y, z) = exp(-y^2 / 2Δc_y^2) * exp(-(z + Lz/2)^2 / (2Δc_z^2))
@@ -130,30 +136,32 @@ if generate_observations
                                                           field_slicer = nothing,
                                                           force = true)
 
-    pop!(simulation.diagnostics, :nan_checker)
+    pop!(simulation.diagnostics, :nan_checker)      # remove the `nan_checker`
     
     run!(simulation)
 end
 
-
-#####
-##### Load truth data as observations
-#####
-
-data_path = experiment_name * ".jld2"
+# ## Load truth data as observations
 
 observations = OneDimensionalTimeSeries(data_path, field_names=(:b, :c), normalize=ZScore)
 
-#####
-##### Set up ensemble model
-#####
+# ## Calibration with Ensemble Kalman Inversions
+
+# ### Ensemble model
+
+# First we set up an ensemble model,
+ensemble_size = 10
 
 slice_ensemble_size = SliceEnsembleSize(size=(Ny, Nz), ensemble=ensemble_size)
-@show ensemble_grid = RegularRectilinearGrid(size=slice_ensemble_size, y = (-Ly/2, Ly/2), z = (-Lz, 0), topology = (Flat, Bounded, Bounded), halo=(3, 3))
+@show ensemble_grid = RegularRectilinearGrid(size=slice_ensemble_size,
+                                             topology = (Flat, Bounded, Bounded),
+                                             y = (-Ly/2, Ly/2),
+                                             z = (-Lz, 0),
+                                             halo=(3, 3))
 
 closure_ensemble = [deepcopy(gent_mcwilliams_diffusivity) for i = 1:ensemble_size] 
 
-ensemble_model = HydrostaticFreeSurfaceModel(architecture = architecture,
+@show ensemble_model = HydrostaticFreeSurfaceModel(architecture = architecture,
                                              grid = ensemble_grid,
                                              tracers = (:b, :c),
                                              buoyancy = BuoyancyTracer(),
@@ -161,12 +169,21 @@ ensemble_model = HydrostaticFreeSurfaceModel(architecture = architecture,
                                              closure = closure_ensemble,
                                              free_surface = ImplicitFreeSurface())
 
+# and an ensemble simulation. We remove the `nan_checker` checker since we would ideally want to
+# be able to proceed with the EKI iteration step even if one of the models of the ensemble ends
+# up blowing up.
+
 ensemble_simulation = Simulation(ensemble_model; Δt, stop_time)
+
 pop!(ensemble_simulation.diagnostics, :nan_checker)
 
-#####
-##### Build free parameters
-#####
+ensemble_simulation
+
+# ### Free parame
+#
+# We construct some prior distributions for our free parameters. We found that it often helps to
+# constrain the prior distributions so that neither very high nor very low values for diffusivities
+# can be drawn out of the distribution.
 
 priors = (
     κ_skew = ConstrainedNormal(0.0, 1.0, 400.0, 1300.0),
