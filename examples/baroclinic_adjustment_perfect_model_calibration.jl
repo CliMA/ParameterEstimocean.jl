@@ -192,9 +192,9 @@ densities = []
 push!(densities, density!(axtop, samples_κ_skew))
 push!(densities, density!(axtop, samples_κ_symmetric))
 leg = Legend(f[1, 2], densities, ["κ_skew", "κ_symmetric"], position = :lb)
-save("visualize_prior_kappa_skew.svg", f); nothing # hide
+save("visualize_prior_kappa_skew.svg", f) # hide
 
-![](visualize_prior_kappa_skewr.svg)
+![](visualize_prior_kappa_skew.svg)
 
 # then let's do
 
@@ -241,7 +241,7 @@ for (i, pname) in enumerate(free_parameters.names)
 end
 
 axislegend(ax3, position = :rt)
-save("summary.svg", f); nothing # hide
+save("summary.svg", f) # hide
 
 ![](summary.svg)
 
@@ -272,7 +272,8 @@ colsize!(f.layout, 1, Fixed(300))
 colsize!(f.layout, 2, Fixed(200))
 rowsize!(f.layout, 1, Fixed(200))
 rowsize!(f.layout, 2, Fixed(300))
-leg = Legend(f[1, 2], scatters, ["Initial ensemble", "Iteration 1", "Iteration 2", "Iteration 5"],
+leg = Legend(f[1, 2], scatters,
+             ["Initial ensemble", "Iteration 1", "Iteration 2", "Iteration 5"],
              position = :lb)
 hidedecorations!(axtop, grid = false)
 hidedecorations!(axright, grid = false)
@@ -282,6 +283,6 @@ ylims!(axmain, 600, 1600)
 ylims!(axright, 600, 1600)
 xlims!(axright, 0, 0.06)
 ylims!(axtop, 0, 0.06)
-save("distributions.svg", f); nothing # hide
+save("distributions.svg", f) # hide
 
 ![](distributions.svg)
