@@ -1,15 +1,15 @@
-pushfirst!(LOAD_PATH, joinpath(@__DIR__, ".."))
-
-using Distributions
-using Printf
 using Oceananigans
 using Oceananigans.Units
+using Oceananigans.TurbulenceClosures: FluxTapering
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SliceEnsembleSize
+using Distributions
+using Printf
+
 using OceanTurbulenceParameterEstimation
 
-#####
-##### Parameters
-#####
+
+# Here we perform a "perfect model calibration" of the two-dimensional baroclinic adjustement problem
+# (depth-latitude) with eddies parametrized by Gent-McWilliams--Redi isoneutral diffusion.
 
 # "True" parameters to be estimated by calibration
 κ_skew = 1000.0       # [m² s⁻¹] skew diffusivity
@@ -26,25 +26,24 @@ architecture = CPU()
 
 stop_time = 1days
 save_interval = 0.25days
+Δt = 10minute
+
 experiment_name = "baroclinic_adjustment"
 data_path = experiment_name * ".jld2"
+
 ensemble_size = 10
 generate_observations = true
-Δt = 10minute
 
 θ★ = [κ_skew, κ_symmetric]
 
-gerdes_koberle_willebrand_tapering = Oceananigans.TurbulenceClosures.FluxTapering(1e-2)
-
+gerdes_koberle_willebrand_tapering = FluxTapering(1e-2)
 gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = κ_skew,
                                                                 κ_symmetric = κ_symmetric,
                                                                 slope_limiter = gerdes_koberle_willebrand_tapering)
                                         
 coriolis = BetaPlane(latitude=-45)
 
-#####
-##### Generate synthetic observations
-#####
+# Generate synthetic observations
 
 if generate_observations
     grid = RegularRectilinearGrid(topology = (Flat, Bounded, Bounded), 
@@ -274,6 +273,8 @@ Plots.plot!(collect(1:length(y)), [y...], label="observation_map")
 # savefig(p, "obs_vs_pred_test.pdf")
 display(p)
 =#
+
+#=
 
 iterations = 5
 eki = EnsembleKalmanInversion(calibration; noise_covariance = 1e-2)

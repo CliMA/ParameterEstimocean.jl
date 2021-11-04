@@ -3,7 +3,7 @@ pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..")) # add OceanTurbulenceParameterEs
 using
   Documenter,
   Literate,
-  Plots,  # so that Literate.jl does not capture precompilation output
+  CairoMakie,  # so that Literate.jl does not capture precompilation output
   Distributions,
   OceanTurbulenceParameterEstimation
   
@@ -22,6 +22,7 @@ const OUTPUT_DIR   = joinpath(@__DIR__, "src/literated")
 examples = [
   # "convective_adjustment_perfect_model_calibration.jl",
   # "convective_adjustment_perfect_model_calibration_uki.jl",
+  "baroclinic_adjustment_perfect_model_calibration.jl"
 ]
 
 for example in examples
@@ -40,18 +41,17 @@ Timer(t -> println(" "), 0, interval=240)
 format = Documenter.HTML(
   collapselevel = 2,
      prettyurls = get(ENV, "CI", nothing) == "true",
-      canonical = "https://adelinehillier.github.io/OceanTurbulenceParameterEstimation/dev/",
+      canonical = "https://clima.github.io/OceanTurbulenceParameterEstimation/dev/",
 )
 
 pages = [
     "Home" => "index.md",
     "Installation Instructions" => "installation_instructions.md",
-    #=
+    
     "Examples" => [ 
-        "literated/convective_adjustment_perfect_model_calibration.md",
-        "literated/convective_adjustment_perfect_model_calibration_uki.md",
+        "literated/baroclinic_adjustment_perfect_model_calibration.md",
         ],
-    =#
+    
     "Library" => [ 
         "Contents"       => "library/outline.md",
         "Public"         => "library/public.md",
@@ -71,7 +71,7 @@ makedocs(
   checkdocs = :exports
 )
 
-deploydocs(        repo = "github.com/adelinehillier/OceanTurbulenceParameterEstimation.jl.git",
+deploydocs(        repo = "github.com/clima/OceanTurbulenceParameterEstimation.jl.git",
                versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
               devbranch = "main",
            push_preview = true
