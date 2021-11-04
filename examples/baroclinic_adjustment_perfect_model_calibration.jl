@@ -14,7 +14,7 @@ using OceanTurbulenceParameterEstimation
 # "True" parameters to be estimated by calibration
 κ_skew = 1000.0       # [m² s⁻¹] skew diffusivity
 κ_symmetric = 900.0   # [m² s⁻¹] symmetric diffusivity
-nothign #hide
+nothing #hide
 
 # Domain
 experiment_name = "baroclinic_adjustment"
