@@ -3,7 +3,7 @@ module InverseProblems
 using OrderedCollections
 
 using ..Observations: obs_str, AbstractObservation, OneDimensionalTimeSeries, initialize_simulation!, FieldTimeSeriesCollector, 
-                      observation_times
+                      observation_times, observation_names
 
 using ..TurbulenceClosureParameters: free_parameters_str, update_closure_ensemble_member!
 
@@ -17,6 +17,8 @@ using Oceananigans.Grids: Flat, Bounded,
                           RegularRectilinearGrid, offset_data,
                           topology, halo_size,
                           interior_parent_indices
+
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: SingleColumnGrid, YZSliceGrid
 
 import ..Observations: normalize!
 
@@ -64,7 +66,7 @@ function InverseProblem(observations, simulation, free_parameters; output_map=Co
 
     if isnothing(time_series_collector) # attempt to construct automagically
         simulation_fields = fields(simulation.model)
-        collected_fields = NamedTuple(name => simulation_fields[name] for name in keys(simulation_fields))
+        collected_fields = NamedTuple(name => simulation_fields[name] for name in observation_names(observations))
         time_series_collector = FieldTimeSeriesCollector(collected_fields, observation_times(observations))
     end
 
@@ -117,11 +119,13 @@ expand_parameters(ip, θ::Matrix) = expand_parameters(ip, [θ[:, i] for i in 1:s
 #####
 
 const OneDimensionalEnsembleGrid = RegularRectilinearGrid{<:Any, Flat, Flat, Bounded}
+const TwoDimensionalEnsembleGrid = RegularRectilinearGrid{<:Any, Flat, Bounded, Bounded}
 
-n_ensemble(grid::OneDimensionalEnsembleGrid) = grid.Nx
+n_ensemble(grid::Union{OneDimensionalEnsembleGrid, TwoDimensionalEnsembleGrid}) = grid.Nx
 n_observations(grid::OneDimensionalEnsembleGrid) = grid.Ny
-n_z(grid::OneDimensionalEnsembleGrid) = grid.Nz
-
+n_observations(grid::TwoDimensionalEnsembleGrid) = 1
+n_z(grid::Union{OneDimensionalEnsembleGrid, TwoDimensionalEnsembleGrid}) = grid.Nz
+n_y(grid::TwoDimensionalEnsembleGrid) = grid.Ny
 n_ensemble(ip::InverseProblem) = n_ensemble(ip.simulation.model.grid)
 
 """ Transform and return `ip.observations` appropriate for `ip.output_map`. """
@@ -147,8 +151,6 @@ function forward_run!(ip::InverseProblem, parameters)
     initialize_simulation!(simulation, observations, ip.time_series_collector)
 
     run!(simulation)
-
-    return nothing
 end
 
 """
@@ -262,6 +264,17 @@ end
 vectorize(observation) = [observation]
 vectorize(observations::Vector) = observations
 
+const YZSliceObservations = OneDimensionalTimeSeries{<:Any, <:YZSliceGrid}
+
+function transpose_model_output(time_series_collector, observations::YZSliceObservations)
+    return OneDimensionalTimeSeries(time_series_collector.field_time_serieses,
+                                    time_series_collector.grid,
+                                    time_series_collector.times,
+                                    nothing,
+                                    nothing,
+                                    observations.normalization)
+end
+
 """
     transpose_model_output(time_series_collector, observations)
 
@@ -303,7 +316,6 @@ function transpose_model_output(time_series_collector, observations)
 
         # Convert to NamedTuple
         time_serieses = NamedTuple(name => time_series for (name, time_series) in time_serieses)
-
 
         batch_output = OneDimensionalTimeSeries(time_serieses,
                                                 grid, # this grid has the wrong grid.Nx --- forgive us our sins

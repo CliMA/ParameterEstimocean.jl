@@ -30,6 +30,21 @@ struct OneDimensionalTimeSeries{F, G, T, P, M, N} <: AbstractObservation
           normalization :: N
 end
 
+observation_names(ts::OneDimensionalTimeSeries) = keys(ts.field_time_serieses)
+
+"""
+    observation_names(ts_vector::Vector{<:OneDimensionalTimeSeries})
+
+Return a Set representing the union of all names in `ts_vector`.
+"""
+function observation_names(ts_vector::Vector{<:OneDimensionalTimeSeries})
+    names = Set()
+    for ts in ts_vector
+        push!(names, observation_names(ts)...)
+    end
+    return names
+end
+
 obs_str(ts::OneDimensionalTimeSeries) = "OneDimensionalTimeSeries of $(keys(ts.field_time_serieses)) on $(short_show(ts.grid))"
 
 tupleit(t) = try
@@ -43,19 +58,16 @@ const not_metadata_names = ("serialized", "timeseries")
 read_group(group::JLD2.Group) = NamedTuple(Symbol(subgroup) => read_group(group[subgroup]) for subgroup in keys(group))
 read_group(group) = group
 
-get_grid(field_time_serieses) = field_time_serieses[1].grid
-
-function OneDimensionalTimeSeries(path; field_names, normalize=IdentityNormalization, times=nothing)
+function OneDimensionalTimeSeries(path; field_names, normalize=IdentityNormalization, times=nothing, grid=nothing)
     field_names = tupleit(field_names)
 
-    field_time_serieses = nothing
-    try
-        field_time_serieses = NamedTuple(name => FieldTimeSeries(path, string(name); times) for name in field_names)
+    field_time_serieses = try
+        NamedTuple(name => FieldTimeSeries(path, string(name); times) for name in field_names)
     catch
-        field_time_serieses = legacy_data_field_time_serieses(path, field_names, times)
+        legacy_data_field_time_serieses(path, field_names, times)
     end
-        
-    grid = get_grid(field_time_serieses)
+
+    grid === nothing && (grid = first(field_time_serieses).grid)
     times = first(field_time_serieses).times
 
     # validate_data(fields, grid, times) # might be a good idea to validate the data...
