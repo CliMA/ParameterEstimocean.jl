@@ -3,12 +3,12 @@ pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..")) # add OceanTurbulenceParameterEs
 using
   Documenter,
   Literate,
-  CairoMakie,  # so that Literate.jl does not capture precompilation output
+  CairoMakie,  # so that Literate.jl does not capture precompilation output or warnings
   Distributions,
   OceanTurbulenceParameterEstimation
   
 # Gotta set this environment variable when using the GR run-time on CI machines.
-# This happens as examples will use Plots.jl to make plots and movies.
+# This happens when examples, e.g., use Plots.jl to make plots and movies.
 # See: https://github.com/jheinen/GR.jl/issues/278
 ENV["GKSwstype"] = "100"
 

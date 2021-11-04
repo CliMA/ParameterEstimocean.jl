@@ -192,9 +192,9 @@ densities = []
 push!(densities, density!(axtop, samples_κ_skew))
 push!(densities, density!(axtop, samples_κ_symmetric))
 leg = Legend(f[1, 2], densities, ["κ_skew", "κ_symmetric"], position = :lb)
-save("visualize_prior_kappa_skew.svg", f) # hide
+save("visualize_prior_kappa_skew.svg", f); nothing #hide 
 
-![](visualize_prior_kappa_skew.svg)
+# ![](visualize_prior_kappa_skew.svg)
 
 # then let's do
 
@@ -241,9 +241,9 @@ for (i, pname) in enumerate(free_parameters.names)
 end
 
 axislegend(ax3, position = :rt)
-save("summary.svg", f) # hide
+save("summary.svg", f); nothing #hide 
 
-![](summary.svg)
+# ![](summary.svg)
 
 
 ###
@@ -283,6 +283,6 @@ ylims!(axmain, 600, 1600)
 ylims!(axright, 600, 1600)
 xlims!(axright, 0, 0.06)
 ylims!(axtop, 0, 0.06)
-save("distributions.svg", f) # hide
+save("distributions.svg", f); nothing #hide 
 
-![](distributions.svg)
+# ![](distributions.svg)
