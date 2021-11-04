@@ -198,11 +198,14 @@ using CairoMakie
 using OceanTurbulenceParameterEstimation.EnsembleKalmanInversions: convert_prior, inverse_parameter_transform
 
 samples(prior) = [inverse_parameter_transform(prior, x) for x in rand(convert_prior(prior), 10000000)]
+
 samples_κ_skew = samples(priors.κ_skew)
 samples_κ_symmetric = samples(priors.κ_symmetric)
 
 f = Figure()
-axtop = Axis(f[1, 1])
+axtop = Axis(f[1, 1],
+             xlabel = "diffusivities",
+             ylabel = "p.d.f.")
 densities = []
 push!(densities, density!(axtop, samples_κ_skew))
 push!(densities, density!(axtop, samples_κ_symmetric))
