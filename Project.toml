@@ -21,10 +21,12 @@ Suppressor = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
+CairoMakie = "0.6"
 Distributions = "0.25"
 EnsembleKalmanProcesses = "0.1"
 JLD2 = "0.4"
-Oceananigans = "^0.63"
+LaTeXStrings = "1"
+Oceananigans = "0.63, 0.64"
 OffsetArrays = "1"
 OrderedCollections = "1"
 ProgressBars = "1"
