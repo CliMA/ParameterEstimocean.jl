@@ -1,24 +1,36 @@
+# # Baroclinic adjustment perfect model calibration
+#
+# This example showcases a "perfect model calibration" of the two-dimensional baroclinic adjustement
+# problem # (depth-latitude) with eddies parametrized by Gent-McWilliams--Redi isoneutral diffusion.
+
+# ## Install dependencies
+#
+# First let's make sure we have all required packages installed.
+
+# ```julia
+# using Pkg
+# pkg"add Oceananigans, Distributions, CairoMakie, OceanTurbulenceParameterEstimation"
+# ```
+
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.TurbulenceClosures: FluxTapering
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SliceEnsembleSize
 using Distributions
 using Printf
-
 using OceanTurbulenceParameterEstimation
 
+# ## Set up problem and generate observations
 
-# Here we perform a "perfect model calibration" of the two-dimensional baroclinic adjustement problem
-# (depth-latitude) with eddies parametrized by Gent-McWilliams--Redi isoneutral diffusion.
-
-# "True" parameters to be estimated by calibration
+# Define the  "true" skew and symmetrid diffusivity coefficients. These are the parameter values that we
+# use to generate the data. Then, we'll see if the EKI calibration can recover these values.
 κ_skew = 1000.0       # [m² s⁻¹] skew diffusivity
 κ_symmetric = 900.0   # [m² s⁻¹] symmetric diffusivity
 nothing #hide
 
-# Domain
 experiment_name = "baroclinic_adjustment"
 
+# Domain
 Ly = 1000kilometers # north-south extent [m]
 Lz = 1kilometers    # depth [m]
 
@@ -245,10 +257,8 @@ save("summary.svg", f); nothing #hide
 
 # ![](summary.svg)
 
-
-###
-### Plot ensemble density with time
-###
+# Next we plot the ensemble density for few EKI iterations to see if and how well
+# it converges to the true diffusivity values.
 
 f = Figure()
 axtop = Axis(f[1, 1])

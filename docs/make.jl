@@ -71,8 +71,9 @@ makedocs(
   checkdocs = :exports
 )
 
-deploydocs(        repo = "github.com/clima/OceanTurbulenceParameterEstimation.jl.git",
+deploydocs(        repo = "github.com/CliMA/OceanTurbulenceParameterEstimation.jl",
                versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
+              forcepush = true,
               devbranch = "main",
            push_preview = true
 )
