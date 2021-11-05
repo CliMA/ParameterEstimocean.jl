@@ -13,7 +13,7 @@
 
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, Distributions, CairoMakie, OceanTurbulenceParameterEstimation"
+# pkg"add OceanTurbulenceParameterEstimation, Oceananigans, Distributions, EnsembleKalmanProcesses, CairoMakie"
 # ```
 
 # First we load few things
@@ -243,8 +243,11 @@ lines!(ax2, 1:N_iter, θ_mean[2, :])
 band!(ax2, 1:N_iter, θ_mean[2, :] .+ θθ_std_arr[2, :], θ_mean[2, :] .- θθ_std_arr[2, :])
 hlines!(ax2, [background_κz], color=:red)
 
-# Error plot
-lines!(ax3, 1:N_iter, error, xaxis = "Iterations", yaxis = "Error", reuse = false)
+plot!(ax3, 2:N_iter, error)
+
+xlims!(ax1, 0.5, N_iter+0.5)
+xlims!(ax2, 0.5, N_iter+0.5)
+xlims!(ax3, 0.5, N_iter+0.5)
 
 save("uki_results.svg", f); nothing #hide 
 
