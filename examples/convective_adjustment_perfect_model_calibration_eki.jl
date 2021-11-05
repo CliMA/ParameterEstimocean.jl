@@ -173,9 +173,9 @@ densities = []
 push!(densities, density!(axtop, samples_convective_κz))
 push!(densities, density!(axbottom, samples_background_κz))
 xlims!(axtop, 0, 20)
-save("visualize_prior_diffusivities.svg", f); nothing #hide 
+save("visualize_prior_diffusivities_convective_adjustment.svg", f); nothing #hide 
 
-# ![](visualize_prior_diffusivities.svg)
+# ![](visualize_prior_diffusivities_convective_adjustment.svg)
 
 # ### The inverse problem
 
@@ -228,9 +228,9 @@ for t = 0:Nt-1
     plot!(x[range], range, color=:red, legend=false)
     plot!(0.1 .* v[range], range, color = :green)
 end
-save("output_with_variance.svg", f); nothing #hide 
+save("output_with_variance_convective_adjustment.svg", f); nothing #hide 
 
-# ![](output_with_variance.svg)
+# ![](output_with_variance_convective_adjustment.svg)
 
 
 θ̅(iteration) = [eki.iteration_summaries[iteration].ensemble_mean...]
@@ -262,9 +262,9 @@ for (i, pname) in enumerate(free_parameters.names)
     lines!(ax3, 1:iterations, ev / ev[1], label=String(pname))
 end
 axislegend(ax3, position = :rt)
-save("summary.svg", f); nothing #hide 
+save("summary_convective_adjustment.svg", f); nothing #hide 
 
-# ![](summary.svg)
+# ![](summary_convective_adjustment.svg)
 
 # And also we plot the the distributions of the various model ensembles for few EKI iterations to see
 # if and how well they converge to the true diffusivity values.
@@ -276,7 +276,7 @@ axmain = Axis(f[2, 1],
               ylabel = "background_κz [m² s⁻¹]")
 axright = Axis(f[2, 2])
 scatters = []
-for i in [1, 2, 3, 10]
+for i in [1, 2, 3, 11]
     ensemble = transpose(eki.iteration_summaries[i].parameters)
     push!(scatters, scatter!(axmain, ensemble))
     density!(axtop, ensemble[:, 1])
@@ -298,6 +298,6 @@ xlims!(axmain, -0.25, 3.2)
 xlims!(axtop, -0.25, 3.2)
 ylims!(axmain, 5e-5, 35e-5)
 ylims!(axright, 5e-5, 35e-5)
-save("distributions.svg", f); nothing #hide 
+save("distributions_convective_adjustment.svg", f); nothing #hide 
 
-# ![](distributions.svg)
+# ![](distributions_convective_adjustment.svg)
