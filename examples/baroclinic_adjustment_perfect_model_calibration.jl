@@ -1,7 +1,9 @@
 # # Baroclinic adjustment perfect model calibration
 #
 # This example showcases a "perfect model calibration" of the two-dimensional baroclinic adjustement
-# problem # (depth-latitude) with eddies parametrized by Gent-McWilliams--Redi isoneutral diffusion.
+# problem (depth-latitude) with eddies parametrized using Gent-McWilliams--Redi isoneutral diffusion
+# closure. We use output for buoyancy (``b``) and a passive-tracer concentration (``c``) to calibrate
+# the parametrization.
 
 # ## Install dependencies
 #
@@ -32,7 +34,7 @@ using LinearAlgebra: norm
 κ_symmetric = 900.0   # [m² s⁻¹] symmetric diffusivity
 nothing #hide
 
-# We gather the "true" parameters in a vector `\theta_★`:
+# We gather the "true" parameters in a vector ``θ_*``:
 
 θ★ = [κ_skew, κ_symmetric]
 
@@ -55,13 +57,13 @@ stop_time = 1days         # length of run
 save_interval = 0.25days  # save observation every so often
 
 generate_observations = true
+nothing #hide
 
 # The isopycnal skew-symmetric diffusivity closure.
 gerdes_koberle_willebrand_tapering = FluxTapering(1e-2)
 gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = κ_skew,
                                                                 κ_symmetric = κ_symmetric,
                                                                 slope_limiter = gerdes_koberle_willebrand_tapering)
-nothing #hide
 
 # ## Generate synthetic observations
 
@@ -169,15 +171,17 @@ closure_ensemble = [deepcopy(gent_mcwilliams_diffusivity) for i = 1:ensemble_siz
                                                    closure = closure_ensemble,
                                                    free_surface = ImplicitFreeSurface())
 
-# and an ensemble simulation. We remove the `nan_checker` checker since we would ideally want to
-# be able to proceed with the EKI iteration step even if one of the models of the ensemble ends
-# up blowing up.
+# and then we create an ensemble simulation: 
 
 ensemble_simulation = Simulation(ensemble_model; Δt, stop_time)
 
 pop!(ensemble_simulation.diagnostics, :nan_checker)
 
 ensemble_simulation
+
+# We removed the `nan_checker` checker since we would ideally want to be able to proceed with the
+# Ensemble Kalman Inversion (EKI) iteration step even if one of the models of the ensemble ends up
+# blowing up.
 
 # ### Free parameters
 #
@@ -204,12 +208,12 @@ samples_κ_symmetric = samples(priors.κ_symmetric)
 
 f = Figure()
 axtop = Axis(f[1, 1],
-             xlabel = "diffusivities",
+             xlabel = "diffusivities [m² s⁻¹]",
              ylabel = "p.d.f.")
 densities = []
 push!(densities, density!(axtop, samples_κ_skew))
 push!(densities, density!(axtop, samples_κ_symmetric))
-leg = Legend(f[1, 2], densities, ["κ_skew", "κ_symmetric"], position = :lb)
+Legend(f[1, 2], densities, ["κ_skew", "κ_symmetric"], position = :lb)
 save("visualize_prior_kappa_skew.svg", f); nothing #hide 
 
 # ![](visualize_prior_kappa_skew.svg)
@@ -232,8 +236,8 @@ y = observation_map(calibration)
 nothing #hide
 
 # The `forward_map` output `x` is a two-dimensional matrix whose first dimension is the size of the state space
-# (here, ``2 N_y N_z``) and whose second dimension is the `ensemble_size`. In the case above, all columns of `x`
-# are identical.
+# (here, ``2 N_y N_z``; the 2 comes from the two tracers we used as observations) and whose second dimension is
+# the `ensemble_size`. In the case above, all columns of `x` are identical.
 
 mean(x, dims=2) ≈ y
 
@@ -289,8 +293,8 @@ save("summary.svg", f); nothing #hide
 f = Figure()
 axtop = Axis(f[1, 1])
 axmain = Axis(f[2, 1],
-              xlabel = "κ_skew",
-              ylabel = "κ_symmetric")
+              xlabel = "κ_skew [m² s⁻¹]",
+              ylabel = "κ_symmetric [m² s⁻¹]")
 axright = Axis(f[2, 2])
 summaries = eki.iteration_summaries
 scatters = []
@@ -308,9 +312,9 @@ colsize!(f.layout, 1, Fixed(300))
 colsize!(f.layout, 2, Fixed(200))
 rowsize!(f.layout, 1, Fixed(200))
 rowsize!(f.layout, 2, Fixed(300))
-leg = Legend(f[1, 2], scatters,
-             ["Initial ensemble", "Iteration 1", "Iteration 2", "Iteration 5"],
-             position = :lb)
+Legend(f[1, 2], scatters,
+       ["Initial ensemble", "Iteration 1", "Iteration 2", "Iteration 5"],
+       position = :lb)
 hidedecorations!(axtop, grid = false)
 hidedecorations!(axright, grid = false)
 xlims!(axmain, 350, 1350)
