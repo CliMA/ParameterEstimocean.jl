@@ -109,7 +109,7 @@ Nθ = length(θ★)
 
 ensemble_size = 2Nθ + 1
 
-column_ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(ensemble_size, length(observations)), Hz=1)
+column_ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(ensemble_size, 1), Hz=1)
 
 @show ensemble_grid = RegularRectilinearGrid(size=column_ensemble_size,
                                              topology = (Flat, Flat, Bounded),
@@ -240,9 +240,6 @@ plot!(axtop, 1:N_iter, fill(θ★[2], N_iter), linestyle = :dash, color = :grey,
 
 # Error plot
 plot!(axbottom, 1:length(err), err, xaxis = "Iterations", yaxis = "Error", reuse = false)
-
-hidedecorations!(axtop, grid = false)
-hidedecorations!(axbottom, grid = false)
 
 save("uki_results.svg", f); nothing #hide 
 

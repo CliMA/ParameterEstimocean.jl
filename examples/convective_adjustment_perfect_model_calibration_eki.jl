@@ -107,7 +107,7 @@ nothing #hide
 # First we set up an ensemble model,
 ensemble_size = 50
 
-column_ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(ensemble_size, 1), Hz=1)
+column_ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(ensemble_size, length(observations)), Hz=1)
 
 @show ensemble_grid = RegularRectilinearGrid(size=column_ensemble_size,
                                              topology = (Flat, Flat, Bounded),
