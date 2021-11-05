@@ -204,7 +204,7 @@ samples_κ_symmetric = samples(priors.κ_symmetric)
 
 f = Figure()
 axtop = Axis(f[1, 1],
-             xlabel = "diffusivities",
+             xlabel = "diffusivities [m² s⁻¹]",
              ylabel = "p.d.f.")
 densities = []
 push!(densities, density!(axtop, samples_κ_skew))
@@ -289,8 +289,8 @@ save("summary.svg", f); nothing #hide
 f = Figure()
 axtop = Axis(f[1, 1])
 axmain = Axis(f[2, 1],
-              xlabel = "κ_skew",
-              ylabel = "κ_symmetric")
+              xlabel = "κ_skew [m² s⁻¹]",
+              ylabel = "κ_symmetric [m² s⁻¹]")
 axright = Axis(f[2, 2])
 summaries = eki.iteration_summaries
 scatters = []
