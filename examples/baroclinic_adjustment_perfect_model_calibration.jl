@@ -214,9 +214,10 @@ densities = []
 push!(densities, density!(axtop, samples_κ_skew))
 push!(densities, density!(axtop, samples_κ_symmetric))
 Legend(f[1, 2], densities, ["κ_skew", "κ_symmetric"], position = :lb)
-save("visualize_prior_diffusivities.svg", f); nothing #hide 
 
-# ![](visualize_prior_diffusivities.svg)
+save("visualize_prior_diffusivities_baroclinic_adjustment.svg", f); nothing #hide 
+
+# ![](visualize_prior_diffusivities_baroclinic_adjustment.svg)
 
 
 # ### The inverse problem
@@ -284,9 +285,9 @@ for (i, pname) in enumerate(free_parameters.names)
 end
 
 axislegend(ax3, position = :rt)
-save("summary.svg", f); nothing #hide 
+save("summary_baroclinic_adjustment.svg", f); nothing #hide 
 
-# ![](summary.svg)
+# ![](summary_baroclinic_adjustment.svg)
 
 # And also we plot the the distributions of the various model ensembles for few EKI iterations to see
 # if and how well they converge to the true diffusivity values.
@@ -323,6 +324,6 @@ ylims!(axmain, 650, 1750)
 ylims!(axright, 650, 1750)
 xlims!(axright, 0, 0.06)
 ylims!(axtop, 0, 0.06)
-save("distributions.svg", f); nothing #hide 
+save("distributions_baroclinic_adjustment.svg", f); nothing #hide 
 
-# ![](distributions.svg)
+# ![](distributions_baroclinic_adjustment.svg)

@@ -249,6 +249,12 @@ git-tree-sha1 = "71c79e77221ab3a29918aaf6db4f217b89138608"
 uuid = "b305315f-e792-5b7a-8f41-49f472929428"
 version = "1.0.1"
 
+[[EnsembleKalmanProcesses]]
+deps = ["Distributions", "DocStringExtensions", "LinearAlgebra", "Random", "Statistics", "StatsBase"]
+git-tree-sha1 = "6e6cff0111d9849c2a2ce253325478a2903b16d0"
+uuid = "aa8a2aa5-91d8-4396-bcef-d4f2ec43552d"
+version = "0.1.1"
+
 [[Expat_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "b3bfd02e98aedfa5cf885665493c5598c350cd2f"
