@@ -216,30 +216,35 @@ iterations = 10
 
 iterate!(uki; iterations = iterations)
 
-θ_mean, θθ_cov, θθ_std_arr, err =  UnscentedKalmanInversionPostprocess(uki)
+θ_mean, θθ_cov, θθ_std_arr, error =  UnscentedKalmanInversionPostprocess(uki)
 
 # Parameter plot
 N_iter = size(θ_mean, 2)
 
-f = Figure()
-axtop = Axis(f[1, 1],
-              xlabel = "iterations",
-              xticks = 1:N_iter,
-              ylabel = "parameters",
-              yscale = log10)
-axbottom = Axis(f[2, 1],
-                xlabel = "iterations",
-                ylabel = "error",
-                xticks = 1:N_iter)
+f = Figure(resolution = (800, 800))
+ax1 = Axis(f[1, 1],
+           xlabel = "iterations",
+           xticks = 1:N_iter,
+           ylabel = "convective_κz [m² s⁻¹]")
+ax2 = Axis(f[2, 1],
+           xlabel = "iterations",
+           xticks = 1:N_iter,
+           ylabel = "background_κz [m² s⁻¹]")
+ax3 = Axis(f[3, 1],
+           xlabel = "iterations",
+           ylabel = "error",
+           xticks = 1:N_iter)
 
-plot!(axtop, 1:N_iter, θ_mean[1, :], yerror = θθ_std_arr[1, :], color=:blue, label = "θ_1")
-plot!(axtop, 1:N_iter, fill(θ★[1], N_iter), linestyle = :dash, color = :grey, label = nothing)
+lines!(ax1, 1:N_iter, θ_mean[1, :])
+band!(ax1, 1:N_iter, θ_mean[1, :] .+ θθ_std_arr[1, :], θ_mean[1, :] .- θθ_std_arr[1, :])
+hlines!(ax1, [convective_κz], color=:red)
 
-plot!(axtop, 1:N_iter, θ_mean[2, :], yerror = θθ_std_arr[2, :], color=:red, label = "θ_2")
-plot!(axtop, 1:N_iter, fill(θ★[2], N_iter), linestyle = :dash, color = :grey, label = nothing)
+lines!(ax2, 1:N_iter, θ_mean[2, :])
+band!(ax2, 1:N_iter, θ_mean[2, :] .+ θθ_std_arr[2, :], θ_mean[2, :] .- θθ_std_arr[2, :])
+hlines!(ax2, [background_κz], color=:red)
 
 # Error plot
-plot!(axbottom, 1:length(err), err, xaxis = "Iterations", yaxis = "Error", reuse = false)
+lines!(ax3, 1:N_iter, error, xaxis = "Iterations", yaxis = "Error", reuse = false)
 
 save("uki_results.svg", f); nothing #hide 
 
