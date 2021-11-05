@@ -1,8 +1,11 @@
-# # Convective adjustment perfect model calibration
+# # Convective adjustment perfect model calibration -- Ensemble Kalman Inversion
 #
 # This example showcases a "perfect model calibration" of the convective adjustement problem. We use
 # output for buoyancy (``b``) to calibrate the convective adjustment closure and recover the 
 # background and the convective diffusivities used to create some synthetic data.
+#
+# The calibration is done here using Ensemble Kalman Inversion. For more information about the 
+# algorithm refer to [EnsembleKalmanProcesses.jl documentation](https://clima.github.io/EnsembleKalmanProcesses.jl/stable/ensemble_kalman_inversion/).
 
 # ## Install dependencies
 #
@@ -41,7 +44,7 @@ nothing #hide
 θ★ = [convective_κz, background_κz]
 
 # The experiment name and where the synthetic observations will be saved.
-experiment_name = "convective_adjustment_example"
+experiment_name = "convective_adjustment_eki_example"
 data_path = experiment_name * ".jld2"
 
 # The domain, number of grid points, and other parameters.
@@ -104,7 +107,7 @@ nothing #hide
 # First we set up an ensemble model,
 ensemble_size = 50
 
-column_ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(ensemble_size, length(observations)), Hz=1)
+column_ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(ensemble_size, 1), Hz=1)
 
 @show ensemble_grid = RegularRectilinearGrid(size=column_ensemble_size,
                                              topology = (Flat, Flat, Bounded),
@@ -173,9 +176,9 @@ densities = []
 push!(densities, density!(axtop, samples_convective_κz))
 push!(densities, density!(axbottom, samples_background_κz))
 xlims!(axtop, 0, 20)
-save("visualize_prior_diffusivities_convective_adjustment.svg", f); nothing #hide 
+save("visualize_prior_diffusivities_convective_adjustment_uki.svg", f); nothing #hide 
 
-# ![](visualize_prior_diffusivities_convective_adjustment.svg)
+# ![](visualize_prior_diffusivities_convective_adjustment_eki.svg)
 
 # ### The inverse problem
 
@@ -228,9 +231,9 @@ for t = 0:Nt-1
     plot!(x[range], range, color=:red, legend=false)
     plot!(0.1 .* v[range], range, color = :green)
 end
-save("output_with_variance_convective_adjustment.svg", f); nothing #hide 
+save("output_with_variance_convective_adjustment_eki.svg", f); nothing #hide 
 
-# ![](output_with_variance_convective_adjustment.svg)
+# ![](output_with_variance_convective_adjustment_eki.svg)
 
 
 θ̅(iteration) = [eki.iteration_summaries[iteration].ensemble_mean...]
@@ -262,9 +265,9 @@ for (i, pname) in enumerate(free_parameters.names)
     lines!(ax3, 1:iterations, ev / ev[1], label=String(pname))
 end
 axislegend(ax3, position = :rt)
-save("summary_convective_adjustment.svg", f); nothing #hide 
+save("summary_convective_adjustment_eki.svg", f); nothing #hide 
 
-# ![](summary_convective_adjustment.svg)
+# ![](summary_convective_adjustment_eki.svg)
 
 # And also we plot the the distributions of the various model ensembles for few EKI iterations to see
 # if and how well they converge to the true diffusivity values.
@@ -298,6 +301,6 @@ xlims!(axmain, -0.25, 3.2)
 xlims!(axtop, -0.25, 3.2)
 ylims!(axmain, 5e-5, 35e-5)
 ylims!(axright, 5e-5, 35e-5)
-save("distributions_convective_adjustment.svg", f); nothing #hide 
+save("distributions_convective_adjustment_eki.svg", f); nothing #hide 
 
-# ![](distributions_convective_adjustment.svg)
+# ![](distributions_convective_adjustment_eki.svg)
