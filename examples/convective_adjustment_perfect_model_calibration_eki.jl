@@ -250,9 +250,14 @@ lines(f[1, 2], 1:iterations, output_distances, color = :blue,
               xlabel = "Iteration",
               ylabel="|G(θ̅ₙ) - y|",
               yscale = log10))
-ax3 = Axis(f[2, 1:2], title = "Parameter convergence", xlabel = "Iteration", ylabel = "Ensemble variance")
+ax3 = Axis(f[2, 1:2],
+           title = "Parameter convergence",
+           xlabel = "Iteration",
+           ylabel = "Ensemble variance",
+           yscale = log10)
+
 for (i, pname) in enumerate(free_parameters.names)
-    ev = getindex.(ensemble_variances,i)
+    ev = getindex.(ensemble_variances, i)
     lines!(ax3, 1:iterations, ev / ev[1], label=String(pname))
 end
 axislegend(ax3, position = :rt)
@@ -265,12 +270,13 @@ save("summary.svg", f); nothing #hide
 
 f = Figure()
 axtop = Axis(f[1, 1])
-axmain = Axis(f[2, 1], xlabel = "convective_κz [m² s⁻¹]", ylabel = "background_κz [m² s⁻¹]")
+axmain = Axis(f[2, 1],
+              xlabel = "convective_κz [m² s⁻¹]",
+              ylabel = "background_κz [m² s⁻¹]")
 axright = Axis(f[2, 2])
-summaries = eki.iteration_summaries
 scatters = []
 for i in [1, 2, 3, 10]
-    ensemble = transpose(summaries[i].parameters)
+    ensemble = transpose(eki.iteration_summaries[i].parameters)
     push!(scatters, scatter!(axmain, ensemble))
     density!(axtop, ensemble[:, 1])
     density!(axright, ensemble[:, 2], direction = :y)
@@ -283,9 +289,14 @@ colsize!(f.layout, 1, Fixed(300))
 colsize!(f.layout, 2, Fixed(200))
 rowsize!(f.layout, 1, Fixed(200))
 rowsize!(f.layout, 2, Fixed(300))
-leg = Legend(f[1, 2], scatters, ["Initial ensemble", "Iteration 1", "Iteration 2", "Iteration 10"], position = :lb)
+Legend(f[1, 2], scatters, ["Initial ensemble", "Iteration 1", "Iteration 2", "Iteration 10"],
+       position = :lb)
 hidedecorations!(axtop, grid = false)
 hidedecorations!(axright, grid = false)
+xlims!(axmain, -0.25, 3.2)
+xlims!(axtop, -0.25, 3.2)
+ylims!(axmain, 5e-5, 35e-5)
+ylims!(axright, 5e-5, 35e-5)
 save("distributions.svg", f); nothing #hide 
 
 # ![](distributions.svg)
