@@ -216,9 +216,10 @@ iterations = 10
 
 iterate!(uki; iterations = iterations)
 
+# Last, we visualize the outputs of UKI calibration.
+
 θ_mean, θθ_cov, θθ_std_arr, error =  UnscentedKalmanInversionPostprocess(uki)
 
-# Parameter plot
 N_iter = size(θ_mean, 2)
 
 f = Figure(resolution = (800, 800))
