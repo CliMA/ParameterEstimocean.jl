@@ -10,7 +10,7 @@
 
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, Distributions, CairoMakie, Plots, OceanTurbulenceParameterEstimation"
+# pkg"add Oceananigans, Distributions, CairoMakie, OceanTurbulenceParameterEstimation"
 # ```
 
 # First we load few things
@@ -25,9 +25,9 @@ using LinearAlgebra
 
 # ## Set up the problem and generate observations
 
-# Define the  "true" convective and background viscocities and diffusivities. These are the
-# parameter values that we use to generate the data. Then, we'll see if the EKI calibration
-# can recover these values.
+# Define the "true" values for convective and background diffusivities. These are the
+# parameter values that we use to generate the data. Then, we'll see if EKI calibration
+# can recover the diffusivity values.
 
 convective_κz = 1.0     # [m² s⁻¹] convective diffusivity
 background_κz = 1e-4    # [m² s⁻¹] background diffusivity
@@ -96,6 +96,7 @@ end
 
 observations = [observations, observations]
 nothing #hide
+
 # ## Calibration with Ensemble Kalman Inversions
 
 # ### Ensemble model
@@ -126,7 +127,7 @@ ensemble_u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
 
 set!(ensemble_model, b = (x, y, z) -> N² * z)
 
-# and then we create an ensemble simulation: 
+# and then we create an ensemble simulation.
 
 ensemble_simulation = Simulation(ensemble_model; Δt, stop_time)
 
@@ -216,7 +217,7 @@ output_size = length(x)
 indices = 1:output_size
 Nx, Ny, Nz = size(calibration.time_series_collector.grid)
 Nt = (Int(stop_time / save_interval) + 1)
-n = Ny*Nz
+n = Ny * Nz
 
 v = observation_map_variance_across_time(calibration)[1, :, :]
 
