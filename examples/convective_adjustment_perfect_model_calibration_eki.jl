@@ -13,7 +13,7 @@
 
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, Distributions, CairoMakie, OceanTurbulenceParameterEstimation"
+# pkg"add OceanTurbulenceParameterEstimation, Oceananigans, Distributions, CairoMakie"
 # ```
 
 # First we load few things
