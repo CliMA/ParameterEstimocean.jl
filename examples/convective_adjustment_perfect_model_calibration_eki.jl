@@ -216,26 +216,6 @@ params = iterate!(eki; iterations = iterations)
 
 # Last, we visualize the outputs of EKI calibration.
 
-output_size = length(x)
-indices = 1:output_size
-Nx, Ny, Nz = size(calibration.time_series_collector.grid)
-Nt = (Int(stop_time / save_interval) + 1)
-n = Ny * Nz
-
-v = observation_map_variance_across_time(calibration)[1, :, :]
-
-f = Figure()
-ax = Axis(f[1, 1])
-for t = 0:Nt-1
-    range = (t*n + 1):((t + 1)*n)
-    plot!(x[range], range, color=:red, legend=false)
-    plot!(0.1 .* v[range], range, color = :green)
-end
-save("output_with_variance_convective_adjustment_eki.svg", f); nothing #hide 
-
-# ![](output_with_variance_convective_adjustment_eki.svg)
-
-
 θ̅(iteration) = [eki.iteration_summaries[iteration].ensemble_mean...]
 varθ(iteration) = eki.iteration_summaries[iteration].ensemble_variance
 
