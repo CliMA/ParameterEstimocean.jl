@@ -214,9 +214,9 @@ densities = []
 push!(densities, density!(axtop, samples_κ_skew))
 push!(densities, density!(axtop, samples_κ_symmetric))
 Legend(f[1, 2], densities, ["κ_skew", "κ_symmetric"], position = :lb)
-save("visualize_prior_kappa_skew.svg", f); nothing #hide 
+save("visualize_prior_diffusivities.svg", f); nothing #hide 
 
-# ![](visualize_prior_kappa_skew.svg)
+# ![](visualize_prior_diffusivities.svg)
 
 
 # ### The inverse problem
@@ -248,6 +248,7 @@ eki = EnsembleKalmanInversion(calibration; noise_covariance = 1e-2)
 # and perform few iterations to see if we can converge to the true parameter values.
 
 iterations = 5
+
 params = iterate!(eki; iterations = iterations)
 
 @show params
@@ -278,7 +279,7 @@ ax3 = Axis(f[2, 1:2], title = "Parameter convergence",
            yscale = log10)
 
 for (i, pname) in enumerate(free_parameters.names)
-    ev = getindex.(ensemble_variances,i)
+    ev = getindex.(ensemble_variances, i)
     lines!(ax3, 1:iterations, ev / ev[1], label = String(pname), linewidth = 2)
 end
 
@@ -296,10 +297,9 @@ axmain = Axis(f[2, 1],
               xlabel = "κ_skew [m² s⁻¹]",
               ylabel = "κ_symmetric [m² s⁻¹]")
 axright = Axis(f[2, 2])
-summaries = eki.iteration_summaries
 scatters = []
 for iteration in [1, 2, 3, 6]
-    ensemble = transpose(summaries[iteration].parameters)
+    ensemble = transpose(eki.iteration_summaries[iteration].parameters)
     push!(scatters, scatter!(axmain, ensemble))
     density!(axtop, ensemble[:, 1])
     density!(axright, ensemble[:, 2], direction = :y)
