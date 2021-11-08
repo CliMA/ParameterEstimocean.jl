@@ -297,7 +297,7 @@ function transpose_model_output(time_series_collector, observations)
 
     for j = 1:n_batch
         observation = observations[j]
-        grid = observation.grid
+        grid = time_series_collector.grid
         time_serieses = OrderedDict{Any, Any}()
 
         for name in keys(observation.field_time_serieses)
@@ -309,7 +309,6 @@ function transpose_model_output(time_series_collector, observations)
             raw_data = parent(field_time_series.data)
             data = OffsetArray(view(raw_data, :, j:j, :, :), 0, 0, -Hz, 0)
 
-            # Note: FieldTimeSeries.grid.Nx is in general incorrect
             time_series = FieldTimeSeries{LX, LY, LZ, InMemory}(data, CPU(), grid, nothing, times)
             time_serieses[name] = time_series
         end
@@ -318,7 +317,7 @@ function transpose_model_output(time_series_collector, observations)
         time_serieses = NamedTuple(name => time_series for (name, time_series) in time_serieses)
 
         batch_output = OneDimensionalTimeSeries(time_serieses,
-                                                grid, # this grid has the wrong grid.Nx --- forgive us our sins
+                                                grid,
                                                 times,
                                                 nothing,
                                                 nothing,
