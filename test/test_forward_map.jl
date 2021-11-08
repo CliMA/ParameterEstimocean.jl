@@ -145,18 +145,19 @@ using Distributions
     @testset "Six-member (2x3) transposition of model output" begin
         ensemble_size = 2
         batch_size = 3
+        observations_batch = [observations, observations, observations]
         column_ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(ensemble_size, batch_size), Hz=1)
         test_simulation = build_simulation(column_ensemble_size)
         collected_fields = (u = test_simulation.model.velocities.u, b = test_simulation.model.tracers.b)
         time_series_collector = FieldTimeSeriesCollector(collected_fields, observation_times(observations))
-        initialize_simulation!(test_simulation, observations, time_series_collector)
+        initialize_simulation!(test_simulation, observations_batch, time_series_collector)
         run!(test_simulation)
-        output = transpose_model_output(time_series_collector, observations)
-
-        truth_b = observations.field_time_serieses.b
-        truth_u = observations.field_time_serieses.u
+        output = transpose_model_output(time_series_collector, observations_batch)
 
         for j in 1:batch_size
+            truth_b = observations_batch[j].field_time_serieses.b
+            truth_u = observations_batch[j].field_time_serieses.u
+    
             test_b = output[j].field_time_serieses.b
             test_u = output[j].field_time_serieses.u
         
