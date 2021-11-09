@@ -54,7 +54,7 @@ function generate_truth_data!(name; Qᵘ, Qᵇ, f₀)
     
     simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
                                                           schedule = TimeInterval(save_interval),
-                                                          prefix = name,
+                                                          prefix = joinpath(@__DIR__, name),
                                                           array_type = Array{Float64},
                                                           field_slicer = nothing,
                                                           force = true)
@@ -62,18 +62,18 @@ function generate_truth_data!(name; Qᵘ, Qᵇ, f₀)
     run!(simulation)
 end
 
-experiment_name = "catke_perfect_model_observation"
-data_path = experiment_name * ".jld2"
+experiment_name = "perfect_model_observation1"
+data_path = joinpath(@__DIR__, experiment_name * ".jld2")
 
 if generate_observations || !(isfile(data_path))
-    generate_truth_data!(experiment_name; Qᵘ=-7e-4, Qᵇ=6e-8, f₀=1e-4)
+    generate_truth_data!(experiment_name; Qᵘ=-7e-4, Qᵇ=6e-8, f₀=3e-4)
 end
 
-experiment_name2 = "catke_perfect_model_observation2"
-data_path2 = experiment_name2 * ".jld2"
+experiment_name2 = "perfect_model_observation2"
+data_path2 = joinpath(@__DIR__, experiment_name2 * ".jld2")
 
 if generate_observations || !(isfile(data_path2))
-    generate_truth_data!(experiment_name2; Qᵘ=-1.4e-3, Qᵇ=3e-8, f₀=1.5e-4)
+    generate_truth_data!(experiment_name2; Qᵘ=-1.4e-3, Qᵇ=3e-8, f₀=0e-4)
 end
 
 #####
@@ -145,16 +145,87 @@ free_parameters = FreeParameters(priors)
 #####
 
 calibration = InverseProblem(observations, ensemble_simulation, free_parameters);
-@show calibration.simulation.model.closure[1,1] == true_closure
-@show calibration.simulation.model.closure[10,2] == true_closure
 
-# a = forward_map(calibration, free_parameter_means)
 x = forward_map(calibration, θ★)[:,1:1]
 y = observation_map(calibration)
 @show x == y
 
 visualize!(calibration, θ★; 
                     field_names = [:u, :v, :b, :e],
-                    directory = joinpath(pwd(), "examples/calibrate_CATKE_to_LESbrary"),
-                    filename = "catke_perfect_model_visual.png"
+                    directory = @__DIR__,
+                    filename = "perfect_model_visual.png"
                     )
+
+#####
+##### Calibrate
+#####
+
+iterations = 5
+eki = EnsembleKalmanInversion(calibration; noise_covariance = 1e-2)
+
+params = iterate!(eki; iterations = iterations)
+
+@show params
+
+###
+### Summary plots
+###
+
+using CairoMakie
+using LinearAlgebra
+
+θ̅(iteration) = [eki.iteration_summaries[iteration].ensemble_mean...]
+varθ(iteration) = eki.iteration_summaries[iteration].ensemble_variance
+
+weight_distances = [norm(θ̅(iter) - θ★) for iter in 1:iterations]
+output_distances = [norm(forward_map(calibration, [θ̅(iter) for _ in 1:ensemble_size])[:, 1] - y) for iter in 1:iterations]
+ensemble_variances = [varθ(iter) for iter in 1:iterations]
+
+x = 1:iterations
+f = CairoMakie.Figure()
+CairoMakie.lines(f[1, 1], x, weight_distances, color = :red, linewidth = 2,
+            axis = (title = "Parameter distance", xlabel = "Iteration", ylabel="|θ̅ₙ - θ⋆|", yscale = log10))
+CairoMakie.lines(f[1, 2], x, output_distances, color = :blue, linewidth = 2,
+            axis = (title = "Output distance", xlabel = "Iteration", ylabel="|G(θ̅ₙ) - y|", yscale = log10))
+ax3 = Axis(f[2, 1:2], title = "Parameter convergence", xlabel = "Iteration", ylabel="Ensemble variance", yscale = log10)
+for (i, pname) in enumerate(free_parameters.names)
+    ev = getindex.(ensemble_variances,i)
+    CairoMakie.lines!(ax3, 1:iterations, ev / ev[1], label=String(pname), linewidth = 2)
+end
+CairoMakie.axislegend(ax3, position = :rt)
+CairoMakie.save("summary_makie_test.pdf", f)
+
+###
+### Plot ensemble density with time
+###
+
+f = CairoMakie.Figure()
+axtop = CairoMakie.Axis(f[1, 1])
+axmain = CairoMakie.Axis(f[2, 1], xlabel = "κ_skew", ylabel = "κ_symmetric")
+axright = CairoMakie.Axis(f[2, 2])
+s = eki.iteration_summaries
+scatters = []
+for i in [1, 2, 3, 6]
+    ensemble = transpose(s[i].parameters)
+    push!(scatters, CairoMakie.scatter!(axmain, ensemble))
+    CairoMakie.density!(axtop, ensemble[:, 1])
+    CairoMakie.density!(axright, ensemble[:, 2], direction = :y)
+end
+vlines!(axmain, [κ_skew], color=:red)
+vlines!(axtop, [κ_skew], color=:red)
+hlines!(axmain, [κ_symmetric], color=:red, alpha=0.6)
+hlines!(axright, [κ_symmetric], color=:red, alpha=0.6)
+colsize!(f.layout, 1, Fixed(300))
+colsize!(f.layout, 2, Fixed(200))
+rowsize!(f.layout, 1, Fixed(200))
+rowsize!(f.layout, 2, Fixed(300))
+leg = Legend(f[1, 2], scatters, ["Initial ensemble", "Iteration 1", "Iteration 2", "Iteration 5"], position = :lb)
+hidedecorations!(axtop, grid = false)
+hidedecorations!(axright, grid = false)
+CairoMakie.xlims!(axmain, 400, 1400)
+CairoMakie.xlims!(axtop, 400, 1400)
+CairoMakie.ylims!(axmain, 600, 1600)
+CairoMakie.ylims!(axright, 600, 1600)
+CairoMakie.xlims!(axright, 0, 0.06)
+CairoMakie.ylims!(axtop, 0, 0.06)
+save("distributions_makie_test.pdf", f)
