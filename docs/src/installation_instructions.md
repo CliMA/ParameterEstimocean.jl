@@ -6,7 +6,7 @@ instantiate/build all the required dependencies
 
 ```julia
 julia>]
-(v1.6) pkg> add OceanTurbulenceParameterEstimation
+(v1.6) pkg> add https://github.com/CliMA/OceanTurbulenceParameterEstimation.jl
 (v1.6) pkg> instantiate
 ```
 

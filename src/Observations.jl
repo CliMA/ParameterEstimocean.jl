@@ -46,6 +46,7 @@ function observation_names(ts_vector::Vector{<:OneDimensionalTimeSeries})
 end
 
 obs_str(ts::OneDimensionalTimeSeries) = "OneDimensionalTimeSeries of $(keys(ts.field_time_serieses)) on $(short_show(ts.grid))"
+obs_str(ts::Vector{<:OneDimensionalTimeSeries}) = "Vector of OneDimensionalTimeSeries of $(keys(ts[1].field_time_serieses)) on $(short_show(ts[1].grid))"
 
 tupleit(t) = try
     Tuple(t)

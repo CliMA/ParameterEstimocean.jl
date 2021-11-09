@@ -4,4 +4,6 @@ A Julia package designed to leverage [Oceananigans.jl](http://github.com/CliMA/O
 
 Continuous Integration: [![Build Status](https://github.com/CliMA/OceanTurbulenceParameterEstimation.jl/workflows/CI/badge.svg)](https://github.com/CliMA/OceanTurbulenceParameterEstimation.jl/actions?query=workflow%3ACI+branch%3Amaster)
 
+Code Coverage: [![codecov](https://codecov.io/gh/CliMA/OceanTurbulenceParameterEstimation.jl/branch/main/graph/badge.svg?token=cPeTALmiPU)](https://codecov.io/gh/CliMA/OceanTurbulenceParameterEstimation.jl)
+
 Latest Documentation: [![Build Status](https://img.shields.io/badge/documentation-in%20development-orange)](https://clima.github.io/OceanTurbulenceParameterEstimation.jl/dev)
