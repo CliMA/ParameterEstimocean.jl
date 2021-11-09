@@ -52,7 +52,7 @@ pages = [
     
     "Examples" => [ 
         "literated/intro_to_observations.md",
-        "literated/intro_to_inverse_problems.jl",
+        "literated/intro_to_inverse_problems.md",
         "literated/convective_adjustment_perfect_model_calibration_eki.md",
         "literated/convective_adjustment_perfect_model_calibration_uki.md",
         "literated/baroclinic_adjustment_perfect_model_calibration.md",
