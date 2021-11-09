@@ -182,21 +182,6 @@ function transform_observations(::ConcatenatedOutputMap, observation::OneDimensi
 
     for field_name in keys(observation.field_time_serieses)
         field_time_series = observation.field_time_serieses[field_name]
-
-        # *** FIXME ***
-        # Here we hack an implementation of `interior` because
-        # `field_time_series.grid` may be wrong (sometimes grid.Nx is wrong)
-        #=
-        grid = field_time_series.grid
-        Hx, Hy, Hz = halo_size(grid)
-        Nx, Ny, Nz = size(grid)
-        topo = topology(grid)
-        loc = location(field_time_series)
-        y_indices = interior_parent_indices(loc[2], topo[2], Ny, Hy)
-        z_indices = interior_parent_indices(loc[3], topo[3], Nz, Hz)
-        field_time_series_data = Array(view(parent(field_time_series), :, y_indices, z_indices, :))
-        =#
-        
         field_time_series_data = Array(interior(field_time_series))
 
         Nx, Ny, Nz, Nt = size(field_time_series_data)
