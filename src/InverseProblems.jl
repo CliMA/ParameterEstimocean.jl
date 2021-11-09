@@ -18,7 +18,7 @@ using Oceananigans.Grids: Flat, Bounded,
                           topology, halo_size,
                           interior_parent_indices
 
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: SingleColumnGrid, YZSliceGrid
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: SingleColumnGrid, YZSliceGrid, ColumnEnsembleSize
 
 import ..Observations: normalize!
 
@@ -182,23 +182,9 @@ function transform_observations(::ConcatenatedOutputMap, observation::OneDimensi
 
     for field_name in keys(observation.field_time_serieses)
         field_time_series = observation.field_time_serieses[field_name]
-
-        # *** FIXME ***
-        # Here we hack an implementation of `interior` because
-        # `field_time_series.grid` may be wrong (sometimes grid.Nx is wrong)
-        grid = field_time_series.grid
-        Hx, Hy, Hz = halo_size(grid)
-        Nx, Ny, Nz = size(grid)
-        topo = topology(grid)
-        loc = location(field_time_series)
-        y_indices = interior_parent_indices(loc[2], topo[2], Ny, Hy)
-        z_indices = interior_parent_indices(loc[3], topo[3], Nz, Hz)
-        field_time_series_data = Array(view(parent(field_time_series), :, y_indices, z_indices, :))
+        field_time_series_data = Array(interior(field_time_series))
 
         Nx, Ny, Nz, Nt = size(field_time_series_data)
-
-        # field_time_series_data = reshape(field_time_series_data, Nx, Ny, Nz * Nt)
-        # field_time_series_data = permutedims(field_time_series_data, [1, 3, 2])
         field_time_series_data = reshape(field_time_series_data, Nx, Ny * Nz * Nt)
 
         normalize!(field_time_series_data, observation.normalization[field_name])
@@ -295,9 +281,10 @@ function transpose_model_output(time_series_collector, observations)
     Hz = time_series_collector.grid.Hz
     Nt = length(times)
 
+    grid = drop_y_dimension(time_series_collector.grid)
+
     for j = 1:n_batch
         observation = observations[j]
-        grid = observation.grid
         time_serieses = OrderedDict{Any, Any}()
 
         for name in keys(observation.field_time_serieses)
@@ -309,7 +296,6 @@ function transpose_model_output(time_series_collector, observations)
             raw_data = parent(field_time_series.data)
             data = OffsetArray(view(raw_data, :, j:j, :, :), 0, 0, -Hz, 0)
 
-            # Note: FieldTimeSeries.grid.Nx is in general incorrect
             time_series = FieldTimeSeries{LX, LY, LZ, InMemory}(data, CPU(), grid, nothing, times)
             time_serieses[name] = time_series
         end
@@ -318,7 +304,7 @@ function transpose_model_output(time_series_collector, observations)
         time_serieses = NamedTuple(name => time_series for (name, time_series) in time_serieses)
 
         batch_output = OneDimensionalTimeSeries(time_serieses,
-                                                grid, # this grid has the wrong grid.Nx --- forgive us our sins
+                                                grid,
                                                 times,
                                                 nothing,
                                                 nothing,
@@ -328,6 +314,13 @@ function transpose_model_output(time_series_collector, observations)
     end
 
     return transposed_output
+end
+
+function drop_y_dimension(grid::RegularRectilinearGrid{<:Any, <:Flat, <:Flat, <:Bounded})
+    new_size = ColumnEnsembleSize(Nz=grid.Nz, ensemble=(grid.Nx, 1), Hz=grid.Hz)
+    z_domain = (grid.zF[1], grid.zF[grid.Nz])
+    new_grid = RegularRectilinearGrid(size=new_size, z=z_domain, topology=(Flat, Flat, Bounded))
+    return new_grid
 end
 
 end # module

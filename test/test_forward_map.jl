@@ -120,10 +120,10 @@ using Distributions
         @test x[:, 1:1] == y
     end
 
-    #=
-    @testset "Two-member transposition of model output" begin
-        ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(2, 1), Hz=1)
-        test_simulation = build_simulation(ensemble_size)
+    @testset "Two-member (2x1) transposition of model output" begin
+        ensemble_size = 2
+        column_ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(ensemble_size, 1), Hz=1)
+        test_simulation = build_simulation(column_ensemble_size)
         collected_fields = (u = test_simulation.model.velocities.u, b = test_simulation.model.tracers.b)
         time_series_collector = FieldTimeSeriesCollector(collected_fields, observation_times(observations))
         initialize_simulation!(test_simulation, observations, time_series_collector)
@@ -133,46 +133,38 @@ using Distributions
         truth_b = observations.field_time_serieses.b
         truth_u = observations.field_time_serieses.u
 
-        test_b1 = output[1].field_time_serieses.b
-        test_u1 = output[1].field_time_serieses.u
-        test_b2 = output[2].field_time_serieses.b
-        test_u2 = output[2].field_time_serieses.u
+        test_b = output[1].field_time_serieses.b
+        test_u = output[1].field_time_serieses.u
 
-        @test interior(test_b1) == interior(truth_b)
-        @test interior(test_u1) == interior(truth_u)
-        @test interior(test_b2) == interior(truth_b)
-        @test interior(test_u2) == interior(truth_u)
+        for n in 1:ensemble_size
+            @test test_b[n, :, :, :] == truth_b[1, :, : ,:]
+            @test test_u[n, :, :, :] == truth_u[1, :, : ,:]
+        end
     end
 
-    @testset "Four-member transposition of model output" begin
-        ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(2, 2), Hz=1)
-        test_simulation = build_simulation(ensemble_size)
+    @testset "Six-member (2x3) transposition of model output" begin
+        ensemble_size = 2
+        batch_size = 3
+        observations_batch = [observations, observations, observations]
+        column_ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(ensemble_size, batch_size), Hz=1)
+        test_simulation = build_simulation(column_ensemble_size)
         collected_fields = (u = test_simulation.model.velocities.u, b = test_simulation.model.tracers.b)
         time_series_collector = FieldTimeSeriesCollector(collected_fields, observation_times(observations))
-        initialize_simulation!(test_simulation, observations, time_series_collector)
+        initialize_simulation!(test_simulation, observations_batch, time_series_collector)
         run!(test_simulation)
-        output = transpose_model_output(time_series_collector, observations)
+        output = transpose_model_output(time_series_collector, observations_batch)
 
-        truth_b = observations.field_time_serieses.b
-        truth_u = observations.field_time_serieses.u
-
-        test_b1 = output[1].field_time_serieses.b
-        test_u1 = output[1].field_time_serieses.u
-        test_b2 = output[2].field_time_serieses.b
-        test_u2 = output[2].field_time_serieses.u
-        test_b3 = output[3].field_time_serieses.b
-        test_u3 = output[3].field_time_serieses.u
-        test_b4 = output[4].field_time_serieses.b
-        test_u4 = output[4].field_time_serieses.u
-
-        @test interior(test_b1) == interior(truth_b)
-        @test interior(test_u1) == interior(truth_u)
-        @test interior(test_b2) == interior(truth_b)
-        @test interior(test_u2) == interior(truth_u)
-        @test interior(test_b3) == interior(truth_b)
-        @test interior(test_u3) == interior(truth_u)
-        @test interior(test_b4) == interior(truth_b)
-        @test interior(test_u4) == interior(truth_u)
+        for j in 1:batch_size
+            truth_b = observations_batch[j].field_time_serieses.b
+            truth_u = observations_batch[j].field_time_serieses.u
+    
+            test_b = output[j].field_time_serieses.b
+            test_u = output[j].field_time_serieses.u
+        
+            for n in 1:ensemble_size
+                @test test_b[n, :, :, :] == truth_b[1, :, : ,:]
+                @test test_u[n, :, :, :] == truth_u[1, :, : ,:]
+            end
+        end
     end
-    =#
 end
