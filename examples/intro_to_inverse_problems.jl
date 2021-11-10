@@ -149,8 +149,7 @@ density!(ax_bottom, background_κz_samples)
 
 save("prior_visualization.svg", fig)
 
-display(fig)
-nothing # hide
+display(fig) #src
 
 # ![](prior_visualization.svg)
 
@@ -221,8 +220,7 @@ axislegend(ax, position=:rb)
 
 save("ensemble_simulation_demonstration.svg", fig)
 
-display(fig)
-nothing # hide
+display(fig) #src
 
 # ![](ensemble_simulation_demonstration.svg)
 

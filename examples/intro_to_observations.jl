@@ -140,8 +140,7 @@ axislegend(ax_u, position=:lb, merge=true)
 
 save("intro_to_observations.svg", fig)
 
-display(fig)
-nothing # hide
+display(fig) #src
 
 # ![](intro_to_observations.svg)
 
