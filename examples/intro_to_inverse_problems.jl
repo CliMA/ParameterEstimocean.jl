@@ -34,7 +34,8 @@ using JLD2
 #
 # We reuse some utilities from a previous example:
 
-include("intro_to_observations.jl")
+examples_path = joinpath(pathof(OceanTurbulenceParameterEstimation), "..", "..", "examples")
+include(joinpath(examples_path, "intro_to_observations.jl"))
 data_path = generate_free_convection_synthetic_observations()
 observations = OneDimensionalTimeSeries(data_path, field_names=:b, normalize=ZScore)
 
