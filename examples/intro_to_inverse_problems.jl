@@ -26,7 +26,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
 
 using CairoMakie
-using ElectronDisplay #src
+# using ElectronDisplay #src
 using Distributions
 using JLD2
 
@@ -155,7 +155,7 @@ density!(ax_bottom, background_κz_samples)
 
 save("prior_visualization.svg", fig)
 
-display(fig) #src
+# display(fig) #src
 
 # ![](prior_visualization.svg)
 

@@ -21,7 +21,7 @@ using Oceananigans.Units
 using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
 
 using CairoMakie
-using ElectronDisplay #src
+# using ElectronDisplay #src
 
 # # Generating synthetic observations
 #
@@ -140,7 +140,7 @@ axislegend(ax_u, position=:lb, merge=true)
 
 save("intro_to_observations.svg", fig)
 
-display(fig) #src
+# display(fig) #src
 
 # ![](intro_to_observations.svg)
 
