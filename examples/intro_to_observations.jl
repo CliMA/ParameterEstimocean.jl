@@ -21,7 +21,7 @@ using Oceananigans.Units
 using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
 
 using CairoMakie
-using ElectronDisplay
+using ElectronDisplay #src
 
 # # Generating synthetic observations
 #
