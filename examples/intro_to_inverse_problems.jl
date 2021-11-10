@@ -65,8 +65,8 @@ function build_ensemble_simulation(observations; Nensemble=1)
     Lz = observations.grid.Lz
     f₀ = observations.metadata.coriolis.f
 
-    # We next extract the "true" free parameter values (here, the convective and background diffusivities
-    # and viscosities). We hope to show that EKI can calibrate all the parameters simultaneously.
+    ## We next extract the "true" free parameter values (here, the convective and background diffusivities
+    ## and viscosities). We hope to show that EKI can calibrate all the parameters simultaneously.
 
     file = jldopen(observations.path)
 
@@ -82,7 +82,7 @@ function build_ensemble_simulation(observations; Nensemble=1)
 
     close(file)
 
-    # First we set up an ensemble model,
+    ## Now we set up the ensemble model
 
     column_ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(Nensemble, 1), Hz=Hz)
 
