@@ -13,15 +13,12 @@
 # ```
 
 # First we load few things
-pushfirst!(LOAD_PATH, joinpath(@__DIR__, ".."))
 
 using OceanTurbulenceParameterEstimation
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
-
 using CairoMakie
-# using ElectronDisplay #src
 
 # # Generating synthetic observations
 #
@@ -81,7 +78,7 @@ end
 
 data_path = generate_free_convection_synthetic_observations()
 
-# # Loading observations
+# # Specificying observations
 #
 # When synthetic observations are constructed from simulation data, we
 # can select
@@ -91,18 +88,20 @@ data_path = generate_free_convection_synthetic_observations()
 # * Which data in the time-series to include via the `times` keyword.
 #   This can be used to change the initial condition for a calibration run.
 #
-# ## Loading observations with a single field:
+# For example, to build observations with a single field we write,
 
-observations = OneDimensionalTimeSeries(data_path, field_names=:b, normalize=ZScore)
+single_field_observations = OneDimensionalTimeSeries(data_path, field_names=:b, normalize=ZScore)
 
-# ## Loading observations with two fields:
+# To build observations with two fields we write
 
-observations = OneDimensionalTimeSeries(data_path, field_names=(:u, :b), normalize=ZScore)
+two_field_observations = OneDimensionalTimeSeries(data_path, field_names=(:u, :b), normalize=ZScore)
 
-# ## Loading observations with specified times
+# And to build observations with specified times we write
 
-times = observations.times[2:end]
-observations = OneDimensionalTimeSeries(data_path, field_names=(:u, :b), normalize=ZScore, times=times)
+times = single_field_observations.times[2:end]
+specified_times_observations = OneDimensionalTimeSeries(data_path, field_names=(:u, :b), normalize=ZScore, times=times)
+
+# Notice that in the last case, `specified_times_observations.times` is missing `0.0`.
 
 # # Visualizing observations
 
@@ -139,6 +138,7 @@ axislegend(ax_u, position=:lb, merge=true)
 
 save("intro_to_observations.svg", fig)
 
+# using ElectronDisplay #src
 # display(fig) #src
 
 # ![](intro_to_observations.svg)

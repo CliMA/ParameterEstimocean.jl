@@ -5,7 +5,8 @@
 # background and the convective diffusivities used to create some synthetic data.
 #
 # The calibration is done here using Ensemble Kalman Inversion. For more information about the 
-# algorithm refer to [EnsembleKalmanProcesses.jl documentation](https://clima.github.io/EnsembleKalmanProcesses.jl/stable/ensemble_kalman_inversion/).
+# algorithm refer to
+# [EnsembleKalmanProcesses.jl documentation](https://clima.github.io/EnsembleKalmanProcesses.jl/stable/ensemble_kalman_inversion/).
 
 # ## Install dependencies
 #
@@ -26,7 +27,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
 
 using CairoMakie
-# using ElectronDisplay #src
 using Distributions
 using JLD2
 
@@ -155,6 +155,7 @@ density!(ax_bottom, background_κz_samples)
 
 save("prior_visualization.svg", fig)
 
+# using ElectronDisplay #src
 # display(fig) #src
 
 # ![](prior_visualization.svg)
@@ -226,7 +227,8 @@ axislegend(ax, position=:rb)
 
 save("ensemble_simulation_demonstration.svg", fig)
 
-display(fig) #src
+# using ElectronDisplay #src
+# display(fig) #src
 
 # ![](ensemble_simulation_demonstration.svg)
 
