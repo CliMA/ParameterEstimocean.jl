@@ -37,11 +37,10 @@ function generate_free_convection_synthetic_observations(name = "convective_adju
                                                          N² = 1e-6)
     data_path = name * ".jld2"
 
-    if isfile(data_path) # Don't generate observations
+    if isfile(data_path)
         return data_path
     end
 
-    # "True" parameters to be estimated by calibration
     convective_κz = 1.0
     convective_νz = 0.9
     background_κz = 1e-4
