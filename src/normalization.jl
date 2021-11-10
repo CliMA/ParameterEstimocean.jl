@@ -41,7 +41,9 @@ end
 
 function normalize!(field, z_score::ZScore)
     field .-= z_score.μ
-    field ./= z_score.σ
+    if z_score.σ != 0
+        field ./= z_score.σ
+    end
     return nothing
 end
 
