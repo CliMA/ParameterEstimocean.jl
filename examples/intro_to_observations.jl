@@ -78,7 +78,7 @@ end
 
 data_path = generate_free_convection_synthetic_observations()
 
-# # Specificying observations
+# # Specifying observations
 #
 # When synthetic observations are constructed from simulation data, we
 # can select
@@ -138,8 +138,9 @@ axislegend(ax_u, position=:lb, merge=true)
 
 save("intro_to_observations.svg", fig)
 
-# using ElectronDisplay #src
-# display(fig) #src
-
 # ![](intro_to_observations.svg)
+
+# Hint: if using a REPL or notebook, try
+# `using Pkg; Pkg.add("ElectronDisplay"); using ElectronDisplay; display(fig)`
+# To see the figure in a window.
 

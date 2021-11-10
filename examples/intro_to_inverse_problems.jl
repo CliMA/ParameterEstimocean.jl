@@ -1,13 +1,10 @@
-# # Convective adjustment perfect model calibration -- Ensemble Kalman Inversion
+# # Intro to `InverseProblem`
 #
-# This example showcases a "perfect model calibration" of the convective adjustement problem. We use
-# output for buoyancy (``b``) to calibrate the convective adjustment closure and recover the 
-# background and the convective diffusivities used to create some synthetic data.
+# This example illustrates the construction of an "ensemble simulation" that can
+# evaluate an ensemble of column models given an ensemble of free parameter sets.
+# The example then builds an `InverseProblem` from observations, an ensemble simulation,
+# and a set of free parameters, and illustrates its basic usage.
 #
-# The calibration is done here using Ensemble Kalman Inversion. For more information about the 
-# algorithm refer to
-# [EnsembleKalmanProcesses.jl documentation](https://clima.github.io/EnsembleKalmanProcesses.jl/stable/ensemble_kalman_inversion/).
-
 # ## Install dependencies
 #
 # First let's make sure we have all required packages installed.
@@ -30,19 +27,11 @@ using CairoMakie
 using Distributions
 using JLD2
 
-# # Observations...
-#
-# We reuse some utilities from a previous example:
+# We reuse some utilities from a previous example to build observations:
 
 examples_path = joinpath(pathof(OceanTurbulenceParameterEstimation), "..", "..", "examples")
-
-# new block
 include(joinpath(examples_path, "intro_to_observations.jl"))
-
-# new block
 data_path = generate_free_convection_synthetic_observations()
-
-# new block
 observations = OneDimensionalTimeSeries(data_path, field_names=:b, normalize=ZScore)
 
 # # Building an "ensemble simulation"
@@ -154,9 +143,7 @@ ax_bottom = Axis(fig[2, 1], xlabel = "background κᶻ [m² s⁻¹]", ylabel = "
 density!(ax_bottom, background_κz_samples)
 
 save("prior_visualization.svg", fig)
-
-# using ElectronDisplay #src
-# display(fig) #src
+nothing # hide
 
 # ![](prior_visualization.svg)
 
@@ -199,9 +186,9 @@ y = observation_map(calibration)
 
 time_series_collector = calibration.time_series_collector
 times = time_series_collector.times
-Nt = length(times)
 
-# We extract the final save point and plot each solution:
+## Extract last save point and plot each solution component
+Nt = length(times)
 
 b = time_series_collector.field_time_serieses.b[Nt]
 t = times[Nt]
@@ -226,9 +213,7 @@ lines!(ax, b², z; label=b²_label)
 axislegend(ax, position=:rb)
 
 save("ensemble_simulation_demonstration.svg", fig)
-
-# using ElectronDisplay #src
-# display(fig) #src
+nothing # hide
 
 # ![](ensemble_simulation_demonstration.svg)
 
