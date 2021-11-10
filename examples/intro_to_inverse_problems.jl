@@ -57,16 +57,10 @@ ensemble of column models designed to reproduce `observations`.
 """
 function build_ensemble_simulation(observations; Nensemble=1)
 
-    ## First extract grid parameters and Coriolis parameters from the `observatons`,
-    ## which are fixed for every ensemble member:
-
     Nz = observations.grid.Nz
     Hz = observations.grid.Hz
     Lz = observations.grid.Lz
     f₀ = observations.metadata.coriolis.f
-
-    ## We next extract the "true" free parameter values (here, the convective and background diffusivities
-    ## and viscosities). We hope to show that EKI can calibrate all the parameters simultaneously.
 
     file = jldopen(observations.path)
 
@@ -81,8 +75,6 @@ function build_ensemble_simulation(observations; Nensemble=1)
     b_bcs = file["timeseries/b/serialized/boundary_conditions"]
 
     close(file)
-
-    ## Now we set up the ensemble model
 
     column_ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(Nensemble, 1), Hz=Hz)
 
