@@ -8,7 +8,6 @@ coverage:
     - "examples"
     - "test"
     - "src/Grids"
-    - "src/LossFunctions"
     - "src/Models"
     - "src/Observations"
     - "src/ParameterEstimation"
