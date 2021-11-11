@@ -48,7 +48,7 @@ free_parameters = FreeParameters(priors)
 
 calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
 
-# For more information about the above steps, see [Intro to Observations](@ref)
+# For more information about the above steps, see [Intro to observations](@ref)
 # and [Intro to `InverseProblem`](@ref).
 
 # # Ensemble Kalman Inversion
