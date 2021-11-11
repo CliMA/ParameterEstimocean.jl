@@ -125,11 +125,11 @@ for i in [1, 2, 3, 11]
     density!(axright, ensemble[:, 2], direction = :y)
 end
 
-vlines!(axmain, [convective_κz], color=:red)
-vlines!(axtop, [convective_κz], color=:red)
+vlines!(axmain, [θ★.convective_κz], color=:red)
+vlines!(axtop, [θ★.convective_κz], color=:red)
 
-hlines!(axmain, [background_κz], color=:red)
-hlines!(axright, [background_κz], color=:red)
+hlines!(axmain, [θ★.background_κz], color=:red)
+hlines!(axright, [θ★.background_κz], color=:red)
 
 colsize!(f.layout, 1, Fixed(300))
 colsize!(f.layout, 2, Fixed(200))
