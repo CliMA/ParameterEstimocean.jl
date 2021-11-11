@@ -53,7 +53,7 @@ pages = [
         "literated/intro_to_observations.md",
         "literated/intro_to_inverse_problems.md",
         "literated/perfect_convective_adjustment_calibration.md",
-        "perfect_baroclinic_adjustment_calibration.md"
+        "literated/perfect_baroclinic_adjustment_calibration.md"
        ],
     
     "Library" => [ 
