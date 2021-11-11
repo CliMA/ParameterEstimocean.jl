@@ -73,17 +73,17 @@ params = iterate!(eki; iterations = 10)
 θ̅(iteration) = [eki.iteration_summaries[iteration].ensemble_mean...]
 varθ(iteration) = eki.iteration_summaries[iteration].ensemble_variance
 
-weight_distances = [norm(θ̅(iter) - θ★) for iter in 1:iterations]
-output_distances = [norm(forward_map(calibration, θ̅(iter))[:, 1] - y) for iter in 1:iterations]
-ensemble_variances = [varθ(iter) for iter in 1:iterations]
+weight_distances = [norm(θ̅(iter) - [θ★[1], θ★[2]]) for iter in 1:eki.iteration]
+output_distances = [norm(forward_map(calibration, θ̅(iter))[:, 1] - y) for iter in 1:eki.iteration]
+ensemble_variances = [varθ(iter) for iter in 1:eki.iteration]
 
 f = Figure()
-lines(f[1, 1], 1:iterations, weight_distances, color = :red,
+lines(f[1, 1], 1:eki.iteration, weight_distances, color = :red,
       axis = (title = "Parameter distance",
               xlabel = "Iteration",
               ylabel = "|θ̅ₙ - θ⋆|",
               yscale = log10))
-lines(f[1, 2], 1:iterations, output_distances, color = :blue,
+lines(f[1, 2], 1:eki.iteration, output_distances, color = :blue,
       axis = (title = "Output distance",
               xlabel = "Iteration",
               ylabel="|G(θ̅ₙ) - y|",
@@ -96,7 +96,7 @@ ax3 = Axis(f[2, 1:2],
 
 for (i, pname) in enumerate(free_parameters.names)
     ev = getindex.(ensemble_variances, i)
-    lines!(ax3, 1:iterations, ev / ev[1], label=String(pname))
+    lines!(ax3, 1:eki.iteration, ev / ev[1], label=String(pname))
 end
 
 axislegend(ax3, position = :rt)
