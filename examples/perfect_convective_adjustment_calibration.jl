@@ -78,12 +78,12 @@ output_distances = [norm(forward_map(calibration, θ̅(iter))[:, 1] - y) for ite
 ensemble_variances = [varθ(iter) for iter in 1:eki.iteration]
 
 f = Figure()
-lines(f[1, 1], 1:eki.iteration, weight_distances, color = :red,
+lines(f[1, 1], 1:eki.iteration, weight_distances, color = :red, linewidth = 2,
       axis = (title = "Parameter distance",
               xlabel = "Iteration",
               ylabel = "|θ̅ₙ - θ⋆|",
               yscale = log10))
-lines(f[1, 2], 1:eki.iteration, output_distances, color = :blue,
+lines(f[1, 2], 1:eki.iteration, output_distances, color = :blue, linewidth = 2,
       axis = (title = "Output distance",
               xlabel = "Iteration",
               ylabel="|G(θ̅ₙ) - y|",
@@ -96,7 +96,7 @@ ax3 = Axis(f[2, 1:2],
 
 for (i, pname) in enumerate(free_parameters.names)
     ev = getindex.(ensemble_variances, i)
-    lines!(ax3, 1:eki.iteration, ev / ev[1], label=String(pname))
+    lines!(ax3, 1:eki.iteration, ev / ev[1], label=String(pname), linewidth = 2)
 end
 
 axislegend(ax3, position = :rt)
