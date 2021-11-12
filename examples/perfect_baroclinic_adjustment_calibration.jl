@@ -152,7 +152,7 @@ observations = OneDimensionalTimeSeries(data_path, field_names=(:b, :c), normali
 # ### Ensemble model
 
 # First we set up an ensemble model,
-ensemble_size = 10
+ensemble_size = 20
 
 slice_ensemble_size = SliceEnsembleSize(size=(Ny, Nz), ensemble=ensemble_size)
 @show ensemble_grid = RegularRectilinearGrid(size=slice_ensemble_size,
