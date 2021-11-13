@@ -152,7 +152,7 @@ observations = OneDimensionalTimeSeries(data_path, field_names=(:b, :c), normali
 # ### Ensemble model
 
 # First we set up an ensemble model,
-ensemble_size = 10
+ensemble_size = 20
 
 slice_ensemble_size = SliceEnsembleSize(size=(Ny, Nz), ensemble=ensemble_size)
 @show ensemble_grid = RegularRectilinearGrid(size=slice_ensemble_size,
@@ -248,9 +248,7 @@ eki = EnsembleKalmanInversion(calibration; noise_covariance = 1e-2)
 
 # and perform few iterations to see if we can converge to the true parameter values.
 
-iterations = 5
-
-params = iterate!(eki; iterations = iterations)
+params = iterate!(eki; iterations = 5)
 
 @show params
 
@@ -259,17 +257,17 @@ params = iterate!(eki; iterations = iterations)
 θ̅(iteration) = [eki.iteration_summaries[iteration].ensemble_mean...]
 varθ(iteration) = eki.iteration_summaries[iteration].ensemble_variance
 
-weight_distances = [norm(θ̅(iter) - θ★) for iter in 1:iterations]
-output_distances = [norm(forward_map(calibration, [θ̅(iter) for _ in 1:ensemble_size])[:, 1] - y) for iter in 1:iterations]
-ensemble_variances = [varθ(iter) for iter in 1:iterations]
+weight_distances = [norm(θ̅(iter) - θ★) for iter in 1:eki.iteration]
+output_distances = [norm(forward_map(calibration, [θ̅(iter) for _ in 1:ensemble_size])[:, 1] - y) for iter in 1:eki.iteration]
+ensemble_variances = [varθ(iter) for iter in 1:eki.iteration]
 
 f = Figure()
-lines(f[1, 1], 1:iterations, weight_distances, color = :red, linewidth = 2,
+lines(f[1, 1], 1:eki.iteration, weight_distances, color = :red, linewidth = 2,
       axis = (title = "Parameter distance",
               xlabel = "Iteration",
               ylabel="|θ̅ₙ - θ⋆|",
               yscale = log10))
-lines(f[1, 2], 1:iterations, output_distances, color = :blue, linewidth = 2,
+lines(f[1, 2], 1:eki.iteration, output_distances, color = :blue, linewidth = 2,
       axis = (title = "Output distance",
               xlabel = "Iteration",
               ylabel="|G(θ̅ₙ) - y|",
@@ -281,7 +279,7 @@ ax3 = Axis(f[2, 1:2], title = "Parameter convergence",
 
 for (i, pname) in enumerate(free_parameters.names)
     ev = getindex.(ensemble_variances, i)
-    lines!(ax3, 1:iterations, ev / ev[1], label = String(pname), linewidth = 2)
+    lines!(ax3, 1:eki.iteration, ev / ev[1], label = String(pname), linewidth = 2)
 end
 
 axislegend(ax3, position = :rt)

@@ -20,14 +20,10 @@
 # pkg"add OceanTurbulenceParameterEstimation, Oceananigans, Distributions, CairoMakie"
 # ```
 
-# We load some packages,
+using OceanTurbulenceParameterEstimation, LinearAlgebra, CairoMakie
 
-using OceanTurbulenceParameterEstimation
-using LinearAlgebra
-
-# and reuse some some code from a previous example to generate observations,
-
-examples_path = joinpath(pathof(OceanTurbulenceParameterEstimation), "..", "..", "examples")
+# We reuse some some code from a previous example to generate observations,
+@show examples_path = joinpath(pathof(OceanTurbulenceParameterEstimation), "..", "..", "examples")
 include(joinpath(examples_path, "intro_to_inverse_problems.jl"))
 
 data_path = generate_free_convection_synthetic_observations()
@@ -58,7 +54,7 @@ free_parameters = FreeParameters(priors)
 
 calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
 
-# For more information about the above steps, see [Intro to Observations](@ref)
+# For more information about the above steps, see [Intro to observations](@ref)
 # and [Intro to `InverseProblem`](@ref).
 
 # # Ensemble Kalman Inversion
@@ -75,8 +71,7 @@ eki = EnsembleKalmanInversion(calibration; noise_covariance = Matrix(Diagonal(no
 
 # and perform few iterations to see if we can converge to the true parameter values.
 
-iterations = 10
-params = iterate!(eki; iterations = iterations)
+params = iterate!(eki; iterations = 10)
 
 # Last, we visualize the outputs of EKI calibration.
 
@@ -85,20 +80,18 @@ params = iterate!(eki; iterations = iterations)
 θ̅(iteration) = [eki.iteration_summaries[iteration].ensemble_mean...]
 varθ(iteration) = eki.iteration_summaries[iteration].ensemble_variance
 
-weight_distances = [norm(θ̅(iter) - θ★) for iter in 1:iterations]
-output_distances = [norm(forward_map(calibration, θ̅(iter))[:, 1] - y) for iter in 1:iterations]
-
-ensemble_variances = [varθ(iter) for iter in 1:iterations]
+weight_distances = [norm(θ̅(iter) - [θ★[1], θ★[2]]) for iter in 1:eki.iteration]
+output_distances = [norm(forward_map(calibration, θ̅(iter))[:, 1] - y) for iter in 1:eki.iteration]
+ensemble_variances = [varθ(iter) for iter in 1:eki.iteration]
 
 f = Figure()
-
-lines(f[1, 1], 1:iterations, weight_distances, color = :red,
+lines(f[1, 1], 1:eki.iteration, weight_distances, color = :red, linewidth = 2,
       axis = (title = "Parameter distance",
               xlabel = "Iteration",
               ylabel = "|θ̅ₙ - θ⋆|",
               yscale = log10))
 
-lines(f[1, 2], 1:iterations, output_distances, color = :blue,
+lines(f[1, 2], 1:eki.iteration, output_distances, color = :blue, linewidth = 2,
       axis = (title = "Output distance",
               xlabel = "Iteration",
               ylabel="|G(θ̅ₙ) - y|",
@@ -112,7 +105,7 @@ ax3 = Axis(f[2, 1:2],
 
 for (i, pname) in enumerate(free_parameters.names)
     ev = getindex.(ensemble_variances, i)
-    lines!(ax3, 1:iterations, ev / ev[1], label=String(pname))
+    lines!(ax3, 1:eki.iteration, ev / ev[1], label=String(pname), linewidth = 2)
 end
 
 axislegend(ax3, position = :rt)
@@ -142,11 +135,11 @@ for i in [1, 2, 3, 11]
     density!(axright, ensemble[:, 2], direction = :y)
 end
 
-vlines!(axmain, [convective_κz], color=:red)
-vlines!(axtop, [convective_κz], color=:red)
+vlines!(axmain, [θ★.convective_κz], color=:red)
+vlines!(axtop, [θ★.convective_κz], color=:red)
 
-hlines!(axmain, [background_κz], color=:red)
-hlines!(axright, [background_κz], color=:red)
+hlines!(axmain, [θ★.background_κz], color=:red)
+hlines!(axright, [θ★.background_κz], color=:red)
 
 colsize!(f.layout, 1, Fixed(300))
 colsize!(f.layout, 2, Fixed(200))
