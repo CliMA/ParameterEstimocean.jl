@@ -176,7 +176,7 @@ y = observation_map(calibration)
 # Here we ensure that mapped output first ensemble member, which was run with the "true"
 # parameters, is identical to the mapped observations:
 
-@show G[:, 1] ≈ y
+G[:, 1] ≈ y
 
 # Visualizing forward model output
 #

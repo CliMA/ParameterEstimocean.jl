@@ -23,9 +23,8 @@ examples = [
   "intro_to_observations.jl",
   "intro_to_inverse_problems.jl",
   "perfect_convective_adjustment_calibration.jl",
-  # "convective_adjustment_perfect_model_calibration_eki.jl",
-  # "convective_adjustment_perfect_model_calibration_uki.jl",
-  # "baroclinic_adjustment_perfect_model_calibration.jl"
+  "unscented_perfect_convective_adjustment_calibration.jl",
+  "baroclinic_adjustment_perfect_model_calibration.jl"
 ]
 
 for example in examples
@@ -55,9 +54,8 @@ pages = [
         "literated/intro_to_observations.md",
         "literated/intro_to_inverse_problems.md",
         "literated/perfect_convective_adjustment_calibration.md",
-        # "literated/convective_adjustment_perfect_model_calibration_eki.md",
-        # "literated/convective_adjustment_perfect_model_calibration_uki.md",
-        # "literated/baroclinic_adjustment_perfect_model_calibration.md",
+        "literated/unscented_perfect_convective_adjustment_calibration.md",
+        "literated/baroclinic_adjustment_perfect_model_calibration.md",
         ],
     
     "Library" => [ 

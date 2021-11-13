@@ -1,6 +1,7 @@
 module InverseProblems
 
 using OrderedCollections
+using Suppressor: @suppress
 
 using ..Observations: obs_str, AbstractObservation, OneDimensionalTimeSeries, initialize_simulation!, FieldTimeSeriesCollector, 
                       observation_times, observation_names
@@ -162,7 +163,9 @@ function forward_run!(ip::InverseProblem, parameters)
 
     initialize_simulation!(simulation, observations, ip.time_series_collector)
 
-    run!(simulation)
+    @suppress run!(simulation)
+
+    return nothing
 end
 
 """

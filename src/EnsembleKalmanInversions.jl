@@ -3,12 +3,13 @@ module EnsembleKalmanInversions
 using Distributions
 using ProgressBars
 using Random
-using Suppressor
+using Printf
 using LinearAlgebra
+using Suppressor: @suppress
 using EnsembleKalmanProcesses.EnsembleKalmanProcessModule
 using EnsembleKalmanProcesses.ParameterDistributionStorage
 
-using ..InverseProblems: n_ensemble, observation_map, forward_map
+using ..InverseProblems: n_ensemble, observation_map, forward_map, tupify_parameters
 
 function lognormal_with_mean_std(mean, std)
     k = std^2 / mean^2 + 1
@@ -77,8 +78,7 @@ Base.show(io::IO, eki::EnsembleKalmanInversion) =
               "├── inverting_forward_map: ", typeof(eki.inverting_forward_map).name.wrapper, '\n',
               "├── iteration: $(eki.iteration)", '\n',
               "├── iteration_summaries: $(eki.iteration_summaries)", '\n',
-              "└── dropped_ensemble_members: $(eki.dropped_ensemble_members)", '\n'
-              )
+              "└── dropped_ensemble_members: $(eki.dropped_ensemble_members)")
 
 construct_noise_covariance(noise_covariance::AbstractMatrix, y) = noise_covariance
 
@@ -270,17 +270,45 @@ function IterationSummary(eki, parameters, forward_map)
     original_priors = eki.inverse_problem.free_parameters.priors
 
     ensemble_mean = mean(parameters, dims=2)
-    ensemble_mean_constrained = inverse_parameter_transform.(values(original_priors), ensemble_mean)
+    constrained_ensemble_mean = inverse_parameter_transform.(values(original_priors), ensemble_mean)
+    constrained_ensemble_mean = tupify_parameters(eki.inverse_problem, constrained_ensemble_mean)
+
     ensemble_variance = diag(cov(parameters, dims=2))
-    parameters_constrained = inverse_parameter_transform.(values(original_priors), parameters)
+    ensemble_variance = tupify_parameters(eki.inverse_problem, ensemble_variance)
+
+    constrained_parameters = inverse_parameter_transform.(values(original_priors), parameters)
+
+    constrained_parameters = [tupify_parameters(eki.inverse_problem, constrained_parameters[:, i])
+                              for i = 1:size(constrained_parameters, 2)]
 
     mean_square_errors = [
         mapreduce((x, y) -> (x - y)^2, +, eki.mapped_observations, view(forward_map, :, m)) / N_observations
         for m in 1:N_ensemble
     ]
 
-    return IterationSummary(parameters_constrained, ensemble_mean_constrained, ensemble_variance, mean_square_errors)
+    return IterationSummary(constrained_parameters, constrained_ensemble_mean, ensemble_variance, mean_square_errors)
 end
+
+function Base.show(io::IO, is::IterationSummary)
+    names = keys(is.ensemble_mean)
+    print(io, "IterationSummary(ensemble = ", length(is.mean_square_errors), ")", '\n',
+              "                      ", param_str.(keys(is.ensemble_mean))..., '\n',
+              "       ensemble_mean: ", param_str.(values(is.ensemble_mean))..., '\n',
+              "   ensemble_variance: ", param_str.(values(is.ensemble_variance))..., '\n',
+              particle_str.(1:length(is.parameters), is.mean_square_errors, is.parameters)...)
+
+    return nothing
+end
+
+quick_summary(iter, is) = println("Iter $iter", is.ensemble_mean)
+
+param_str(p::Symbol) = @sprintf("% 7s | ", string(p)[1:9])
+param_str(p::Number) = @sprintf("%1.3e | ", p)
+
+particle_str(particle, error, parameters) =
+    @sprintf("% 7s particle % 3d: ", " ", particle) * 
+    string(param_str.(values(parameters))...) *
+    @sprintf("error = %.3e", error) * "\n"
 
 function drop_ensemble_member!(eki, member)
     parameter_ensemble = eki.iteration_summary[end].parameters
@@ -300,31 +328,29 @@ Iterate the ensemble Kalman inversion problem `eki` forward by `iterations`.
 """
 function iterate!(eki::EnsembleKalmanInversion; iterations = 1)
 
+    inverse_problem = eki.inverse_problem 
     first_iteration = eki.iteration + 1
     final_iteration = eki.iteration + 1 + iterations
 
-    @suppress begin
-        for iter = ProgressBar(first_iteration:final_iteration)
-            θ = get_u_final(eki.ensemble_kalman_process) # (N_params, ensemble_size) array
-            G = eki.inverting_forward_map(θ) # (len(G), ensemble_size)
+    for iter = ProgressBar(first_iteration:final_iteration)
+        θ = get_u_final(eki.ensemble_kalman_process) # (N_params, ensemble_size) array
+        G = @suppress eki.inverting_forward_map(θ) # (len(G), ensemble_size)
 
-            # Save the parameter values and mean square error between forward map
-            # and observations at the current iteration
-            summary = IterationSummary(eki, θ, G)
+        # Save the parameter values and mean square error between forward map
+        # and observations at the current iteration
+        summary = IterationSummary(eki, θ, G)
 
-            @show summary.mean_square_errors
-            
-            eki.iteration = iter
-            push!(eki.iteration_summaries, summary)
+        eki.iteration = iter
+        push!(eki.iteration_summaries, summary)
+        quick_summary(iter, summary)
 
-            update_ensemble!(eki.ensemble_kalman_process, G)
-        end
+        update_ensemble!(eki.ensemble_kalman_process, G)
     end
 
     # Return ensemble mean (best guess for optimal parameters)
-    return eki.iteration_summaries[end].ensemble_mean
+    best_parameters = eki.iteration_summaries[end].ensemble_mean
 
-    return nothing
+    return tupify_parameters(eki.inverse_problem, best_parameters)
 end
 
 end # module
