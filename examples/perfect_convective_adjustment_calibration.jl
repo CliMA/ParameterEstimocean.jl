@@ -105,7 +105,7 @@ ax3 = Axis(f[2, 1:2],
 
 for (i, pname) in enumerate(free_parameters.names)
     ev = getindex.(ensemble_variances, i)
-    lines!(ax3, 1:eki.iteration, ev / ev[1], label=String(pname), linewidth = 2)
+    lines!(ax3, 1:eki.iteration, ev / ev[1], label = String(pname), linewidth = 2)
 end
 
 axislegend(ax3, position = :rt)
@@ -128,18 +128,18 @@ axmain = Axis(f[2, 1],
 axright = Axis(f[2, 2])
 scatters = []
 
-for i in [1, 2, 3, 11]
-    ensemble = transpose(eki.iteration_summaries[i].parameters)
+for iteration in [1, 2, 3, 11]
+    ensemble = transpose(eki.iteration_summaries[iteration].parameters)
     push!(scatters, scatter!(axmain, ensemble))
     density!(axtop, ensemble[:, 1])
     density!(axright, ensemble[:, 2], direction = :y)
 end
 
-vlines!(axmain, [θ★.convective_κz], color=:red)
-vlines!(axtop, [θ★.convective_κz], color=:red)
+vlines!(axmain, [θ★.convective_κz], color = :red)
+vlines!(axtop, [θ★.convective_κz], color = :red)
 
-hlines!(axmain, [θ★.background_κz], color=:red)
-hlines!(axright, [θ★.background_κz], color=:red)
+hlines!(axmain, [θ★.background_κz], color = :red)
+hlines!(axright, [θ★.background_κz], color = :red)
 
 colsize!(f.layout, 1, Fixed(300))
 colsize!(f.layout, 2, Fixed(200))
