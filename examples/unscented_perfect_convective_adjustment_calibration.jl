@@ -45,8 +45,8 @@ observations = OneDimensionalTimeSeries(data_path, field_names=:b, normalize=ZSc
 # can be drawn out of the distribution.
 
 priors = (
-    convective_κz = ConstrainedNormal(0.0, 1.0, 0.0, 4*convective_κz),
-    background_κz = ConstrainedNormal(0.0, 1.0, 0.0, 4*background_κz)
+    convective_κz = ConstrainedNormal(0.0, 1.0, 0.0, 4*θ★.convective_κz),
+    background_κz = ConstrainedNormal(0.0, 1.0, 0.0, 4*θ★.background_κz)
 )
 
 free_parameters = FreeParameters(priors)
