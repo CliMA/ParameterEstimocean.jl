@@ -257,7 +257,7 @@ end
 struct IterationSummary{P, M, V, E}
     parameters :: P # constrained
     ensemble_mean :: M # constrained
-    ensemble_variance :: V # unconstrained
+    ensemble_cov :: V # constrained
     mean_square_errors :: E
 end
 
@@ -265,9 +265,8 @@ function IterationSummary(eki, parameters, forward_map)
     N_observations, N_ensemble = size(forward_map)
     original_priors = eki.inverse_problem.free_parameters.priors
 
-    ensemble_mean = mean(parameters, dims=2)
-    ensemble_mean_constrained = inverse_parameter_transform.(values(original_priors), ensemble_mean)
-    ensemble_variance = diag(cov(parameters, dims=2))
+    ensemble_mean = inverse_parameter_transform.(values(original_priors), mean(parameters, dims=2))
+    ensemble_cov = inverse_covariance_transform(values(original_priors), parameters, cov(parameters, dims=2))
     parameters_constrained = inverse_parameter_transform.(values(original_priors), parameters)
 
     mean_square_errors = [
@@ -275,7 +274,7 @@ function IterationSummary(eki, parameters, forward_map)
         for m in 1:N_ensemble
     ]
 
-    return IterationSummary(parameters_constrained, ensemble_mean_constrained, ensemble_variance, mean_square_errors)
+    return IterationSummary(parameters_constrained, ensemble_mean, ensemble_cov, mean_square_errors)
 end
 
 function drop_ensemble_member!(eki, member)
@@ -336,47 +335,44 @@ function iterate!(eki::EnsembleKalmanInversion; iterations = 1)
     first_iteration = eki.iteration + 1
     final_iteration = eki.iteration + 1 + iterations
 
-    for iter = ProgressBar(first_iteration:final_iteration)
+    # θ = get_u_final(eki.ensemble_kalman_process) # (N_params, ensemble_size) array
+    # G = eki.inverting_forward_map(θ) # (len(G), ensemble_size)
+
+    for iter in ProgressBar(first_iteration:final_iteration)
+    
         θ = get_u_final(eki.ensemble_kalman_process) # (N_params, ensemble_size) array
         G = eki.inverting_forward_map(θ) # (len(G), ensemble_size)
-
+    
+        # Save the parameter values and mean square error between forward map
+        # and observations at the current iteration
+        summary = IterationSummary(eki, θ, G)
+        eki.iteration = iter
+        push!(eki.iteration_summaries, summary)
+    
         # ensemble_size vector of bits indicating whether a NaN occured for each particle
-        nan_values = vec(mapslices(any, isnan.(G); dims=1))
+        nan_values = vec(mapslices(any, isnan.(G); dims = 1))
         nan_columns = findall(nan_values) # indices of columns with `NaN`s
         nan_count = length(nan_columns)
         nan_percent = 100nan_count / size(θ, 2)
-
+    
         if nan_percent > 90
             error("The forward map for $(nan_percent)% of particles included NaNs. Consider reducing 
             the model time step, evolving the model for less time, or narrowing the parameter priors.")
         end
-
+    
         if nan_percent > 0
             @warn "The forward map for $nan_count particles ($(nan_percent)%) included NaNs. Resampling
                     $nan_count particles from a multivariate Normal distribution parameterized by the
                     ensemble mean and covariance."
-
+    
             found_θ, found_G = sample(eki, θ, G, nan_count)
             θ[:, nan_columns] .= found_θ
             G[:, nan_columns] .= found_G
-
-            @show any(isnan.(G))
-
+    
             new_process = EnsembleKalmanProcess(θ, eki.mapped_observations, eki.noise_covariance, eki.ensemble_kalman_process.process)
             eki.ensemble_kalman_process = new_process
         end
-
-        @show any(isnan.(G))
-
-        # Save the parameter values and mean square error between forward map
-        # and observations at the current iteration
-        summary = IterationSummary(eki, θ, G)
-
-        # @show summary.mean_square_errors
-        
-        eki.iteration = iter
-        push!(eki.iteration_summaries, summary)
-
+    
         update_ensemble!(eki.ensemble_kalman_process, G)
     end
 

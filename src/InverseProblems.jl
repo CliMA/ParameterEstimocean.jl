@@ -160,6 +160,7 @@ Run `ip.simulation` forward with `parameters` and return the data,
 transformed into an array format expected by `EnsembleKalmanProcesses.jl`.
 """
 function forward_map(ip, parameters)
+
     # Run the simulation forward and populate the time series collector
     # with model data.
     forward_run!(ip, parameters)
@@ -172,7 +173,7 @@ function forward_map(ip, parameters)
     output = transform_output(ip.output_map, ip.observations, ip.time_series_collector)
 
     # (output_size, ensemble_size)
-    return output[:, 1:length(parameters)]
+    return output
 end
 
 (ip::InverseProblem)(θ) = forward_map(ip, θ)
