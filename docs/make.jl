@@ -24,7 +24,7 @@ examples = [
   "intro_to_inverse_problems.jl",
   "perfect_convective_adjustment_calibration.jl",
   "unscented_perfect_convective_adjustment_calibration.jl",
-  "baroclinic_adjustment_perfect_model_calibration.jl"
+  "baroclinic_adjustment_perfect_model_calibration.jl",
   "perfect_baroclinic_adjustment_calibration.jl"
 ]
 
