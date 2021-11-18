@@ -34,7 +34,7 @@ using LinearAlgebra: norm
 κ_symmetric = 900.0   # [m² s⁻¹] symmetric diffusivity
 nothing #hide
 
-# We gather the "true" parameters in a vector ``θ_*``:
+# We gather the "true" parameters in a named tuple ``θ_*``:
 
 θ★ = (κ_skew = κ_skew, κ_symmetric = κ_symmetric)
 
@@ -222,7 +222,7 @@ save("visualize_prior_diffusivities_baroclinic_adjustment.svg", f); nothing #hid
 
 # ### The inverse problem
 
-# We can construct the inverse problem ``y = G(θ) + η``. Here, ``y`` are the `observations` and `G` is the
+# We can construct the inverse problem ``y = G(θ) + η``. Here, ``y`` are the `observations` and ``G`` is the
 # `ensemble_model`.
 calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
 

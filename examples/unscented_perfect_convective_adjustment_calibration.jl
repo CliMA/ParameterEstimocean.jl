@@ -91,7 +91,7 @@ save("visualize_prior_diffusivities_convective_adjustment_uki.svg", f); nothing 
 
 # ### The inverse problem
 
-# We can construct the inverse problem ``y = G(θ) + η``. Here, ``y`` are the `observations` and `G` is the
+# We can construct the inverse problem ``y = G(θ) + η``. Here, ``y`` are the `observations` and ``G`` is the
 # `ensemble_model`.
 calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
 

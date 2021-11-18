@@ -115,7 +115,7 @@ priors = (convective_κz = lognormal_with_mean_std(0.3, 0.5),
 
 free_parameters = FreeParameters(priors)
 
-# We also take the opportunity to collect a vector of the optimal parameters
+# We also take the opportunity to collect a named tuple of the optimal parameters
 
 θ★ = (convective_κz = θ★.convective_κz,
       background_κz = θ★.background_κz)
@@ -149,7 +149,7 @@ nothing # hide
 
 # # The `InverseProblem`
 
-# We can construct the inverse problem ``y = G(θ) + η``. Here, ``y`` are the `observations` and `G` is the
+# We can construct the inverse problem ``y = G(θ) + η``. Here, ``y`` are the `observations` and ``G`` is the
 # `ensemble_model`.
 
 calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
