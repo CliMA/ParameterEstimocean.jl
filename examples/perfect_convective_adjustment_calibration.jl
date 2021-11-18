@@ -71,11 +71,9 @@ eki = EnsembleKalmanInversion(calibration; noise_covariance = Matrix(Diagonal(no
 
 # and perform few iterations to see if we can converge to the true parameter values.
 
-params = iterate!(eki; iterations = 10)
+iterate!(eki; iterations = 10)
 
 # Last, we visualize the outputs of EKI calibration.
-
-θ★ = convective_κz, background_κz = [θ★.convective_κz, θ★.background_κz]
 
 θ̅(iteration) = [eki.iteration_summaries[iteration].ensemble_mean...]
 varθ(iteration) = eki.iteration_summaries[iteration].ensemble_variance
@@ -85,6 +83,7 @@ output_distances = [norm(forward_map(calibration, θ̅(iter))[:, 1] - y) for ite
 ensemble_variances = [varθ(iter) for iter in 1:eki.iteration]
 
 f = Figure()
+
 lines(f[1, 1], 1:eki.iteration, weight_distances, color = :red, linewidth = 2,
       axis = (title = "Parameter distance",
               xlabel = "Iteration",
@@ -129,10 +128,15 @@ axright = Axis(f[2, 2])
 scatters = []
 
 for iteration in [1, 2, 3, 11]
-    ensemble = transpose(eki.iteration_summaries[iteration].parameters)
-    push!(scatters, scatter!(axmain, ensemble))
-    density!(axtop, ensemble[:, 1])
-    density!(axright, ensemble[:, 2], direction = :y)
+    # Make parameter matrix
+    parameters = eki.iteration_summaries[iteration].parameters
+    Nensemble = length(parameters)
+    Nparameters = length(first(parameters))
+    parameter_ensemble_matrix = [parameters[i][j] for i=1:Nensemble, j=1:Nparameters]
+
+    push!(scatters, scatter!(axmain, parameter_ensemble_matrix))
+    density!(axtop, parameter_ensemble_matrix[:, 1])
+    density!(axright, parameter_ensemble_matrix[:, 2], direction = :y)
 end
 
 vlines!(axmain, [θ★.convective_κz], color = :red)
@@ -160,3 +164,4 @@ ylims!(axright, 5e-5, 35e-5)
 save("distributions_convective_adjustment_eki.svg", f); nothing #hide
 
 # ![](distributions_convective_adjustment_eki.svg)
+
