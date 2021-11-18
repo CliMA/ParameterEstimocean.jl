@@ -300,7 +300,7 @@ function Base.show(io::IO, is::IterationSummary)
     return nothing
 end
 
-quick_summary(iter, is) = println("Iter $iter", is.ensemble_mean)
+quick_summary(iter, is) = println("Iter $iter ", is.ensemble_mean)
 
 param_str(p::Symbol) = @sprintf("% 7s | ", string(p)[1:9])
 param_str(p::Number) = @sprintf("%1.3e | ", p)

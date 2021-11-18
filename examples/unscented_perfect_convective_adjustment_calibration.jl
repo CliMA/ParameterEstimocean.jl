@@ -97,8 +97,8 @@ calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
 
 # Next, we construct an `UnscentedKalmanInversion` (UKI) object,
 
-prior_mean = fill(0.0, Nθ) 
-prior_cov = Matrix(Diagonal(fill(1.0, Nθ)))
+prior_mean = fill(0.0, Nparameters) 
+prior_cov = Matrix(Diagonal(fill(1.0, Nparameters)))
 α_reg = 1.0   # regularization parameter 
 update_freq = 1
 noise_covariance = 0.05^2  # error is about 5%
@@ -108,8 +108,7 @@ uki = UnscentedKalmanInversion(calibration, prior_mean, prior_cov;
 
 # and perform few iterations to see if we can converge to the true parameter values.
 
-iterations = 10
-iterate!(uki; iterations = iterations)
+iterate!(uki; iterations = 10)
 
 # Last, we visualize the outputs of UKI calibration.
 
@@ -135,11 +134,11 @@ ax3 = Axis(f[3, 1],
 
 lines!(ax1, 1:N_iter, θ_mean[1, :])
 band!(ax1, 1:N_iter, θ_mean[1, :] .+ θθ_std_arr[1, :], θ_mean[1, :] .- θθ_std_arr[1, :])
-hlines!(ax1, [convective_κz], color=:red)
+hlines!(ax1, [θ★.convective_κz], color=:red)
 
 lines!(ax2, 1:N_iter, θ_mean[2, :])
 band!(ax2, 1:N_iter, θ_mean[2, :] .+ θθ_std_arr[2, :], θ_mean[2, :] .- θθ_std_arr[2, :])
-hlines!(ax2, [background_κz], color=:red)
+hlines!(ax2, [θ★.background_κz], color=:red)
 
 plot!(ax3, 2:N_iter, error)
 
