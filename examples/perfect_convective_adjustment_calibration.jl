@@ -128,7 +128,7 @@ axright = Axis(f[2, 2])
 scatters = []
 
 for iteration in [1, 2, 3, 11]
-    # Make parameter matrix
+    ## Make parameter matrix
     parameters = eki.iteration_summaries[iteration].parameters
     Nensemble = length(parameters)
     Nparameters = length(first(parameters))
