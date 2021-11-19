@@ -46,6 +46,30 @@ observations = OneDimensionalTimeSeries(data_path, field_names=:b, normalize=ZSc
 # the observations and the forward map.
 
 """
+    extract_parameters(observations, Nensemble)
+
+Extract parameters from a batch of observations.
+"""
+function extract_parameters(observations, Nensemble)
+    Nbatch = length(observations)
+    Qᵘ, Qᵇ, N², f = [zeros(Nensemble, Nbatch) for i = 1:4]
+
+    Nz = first(observations).grid.Nz
+    Hz = first(observations).grid.Hz
+    Lz = first(observations).grid.Lz
+    Δt = first(observations).metadata.Δt
+
+    for (j, obs) in enumerate(observations)
+        Qᵘ[:, j] .= obs.metadata.parameters.Qᵘ
+        Qᵇ[:, j] .= obs.metadata.parameters.Qᵇ
+        N²[:, j] .= obs.metadata.parameters.N²
+        f[:, j] .= obs.metadata.coriolis.f
+    end
+
+    return Qᵘ, Qᵇ, N², f, Δt, Lz, Nz, Hz
+end
+
+"""
     build_ensemble_simulation(observations; Nensemble=1)
 
 Returns an `Oceananigans.Simulation` representing an `Nensemble × 1`
@@ -53,56 +77,35 @@ ensemble of column models designed to reproduce `observations`.
 """
 function build_ensemble_simulation(observations; Nensemble=1)
 
-    Nz = observations.grid.Nz
-    Hz = observations.grid.Hz
-    Lz = observations.grid.Lz
-    f₀ = observations.metadata.coriolis.f
+    observations isa Vector || (obserations = [observations]) # Singleton batch
+    Nbatch = length(observations)
 
-    file = jldopen(observations.path)
+    Qᵘ, Qᵇ, N², f, Δt, Lz, Nz, Hz = extract_parameters(observations)
 
-    convective_κz = file["closure/convective_κz"]
-    background_κz = file["closure/background_κz"]
-    convective_νz = file["closure/convective_νz"]
-    background_νz = file["closure/background_νz"]
-    
-    Δt = file["parameters"].Δt
+    column_ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(Nensemble, Nbatch), Hz=Hz)
+    ensemble_grid = RectilinearGrid(size = column_ensemble_size, topology = (Flat, Flat, Bounded), z = (-Lz, 0))
 
-    u_bcs = file["timeseries/u/serialized/boundary_conditions"]
-    b_bcs = file["timeseries/b/serialized/boundary_conditions"]
+    coriolis_ensemble = [FPlane(f=f[i, j]) for i = 1:Nensemble, j=1:Nbatch]
+    closure_ensemble = [deepcopy(closure) for i = 1:Nensemble, j=1:Nbatch]
 
-    close(file)
-
-    column_ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(Nensemble, 1), Hz=Hz)
-
-    ensemble_grid = RectilinearGrid(size = column_ensemble_size,
-                                    topology = (Flat, Flat, Bounded),
-                                    z = (-Lz, 0))
-
-    closure = ConvectiveAdjustmentVerticalDiffusivity(; convective_κz, background_κz, convective_νz, background_νz)
-
-    ## Generate an ensemble of closures
-    Nex = ensemble_grid.Nx
-    Ney = ensemble_grid.Ny
-
-    closure_ensemble = [deepcopy(closure) for i = 1:Nex, j = 1:Ney]
+    u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
+    b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ), bottom = GradientBoundaryCondition(N²))
                         
     ensemble_model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
                                                  tracers = :b,
                                                  buoyancy = BuoyancyTracer(),
                                                  boundary_conditions = (; u=u_bcs, b=b_bcs),
-                                                 coriolis = FPlane(f=f₀),
+                                                 coriolis = coriolis_ensemble,
                                                  closure = closure_ensemble)
 
     ensemble_simulation = Simulation(ensemble_model; Δt=Δt, stop_time=observations.times[end])
 
-    optimal_parameters = (; convective_κz, background_κz, convective_νz, background_νz)
-
-    return ensemble_simulation, optimal_parameters
+    return ensemble_simulation, optimal_closure
 end
 
 # The following illustrations uses a simple ensemble simulation with two ensemble members:
 
-ensemble_simulation, θ★ = build_ensemble_simulation(observations; Nensemble=3)
+ensemble_simulation, closure★ = build_ensemble_simulation(observations; Nensemble=3)
 
 # # Free parameters
 #
@@ -117,8 +120,8 @@ free_parameters = FreeParameters(priors)
 
 # We also take the opportunity to collect a named tuple of the optimal parameters
 
-θ★ = (convective_κz = θ★.convective_κz,
-      background_κz = θ★.background_κz)
+θ★ = (convective_κz = closure★.convective_κz,
+      background_κz = closure★.background_κz)
 
 # ## Visualizing the priors
 #
