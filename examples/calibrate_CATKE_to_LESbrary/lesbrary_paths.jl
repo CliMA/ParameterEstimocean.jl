@@ -13,7 +13,7 @@ end
 # https://engaging-web.mit.edu/~alir/lesbrary/6DaySuite/
 function OneDimensionalTimeSeriesBatch(suite; first_iteration = 1, stride = 1, last_iteration = nothing, normalize = ZScore, Nz)
 
-   observations = []
+   observations = Vector{OneDimensionalTimeSeries}()
 
    for case in values(suite)
       path = case.filename
