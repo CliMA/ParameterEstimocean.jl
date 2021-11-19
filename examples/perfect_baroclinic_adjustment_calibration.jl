@@ -34,9 +34,9 @@ using LinearAlgebra: norm
 κ_symmetric = 900.0   # [m² s⁻¹] symmetric diffusivity
 nothing #hide
 
-# We gather the "true" parameters in a vector ``θ_*``:
+# We gather the "true" parameters in a named tuple ``θ_*``:
 
-θ★ = [κ_skew, κ_symmetric]
+θ★ = (κ_skew = κ_skew, κ_symmetric = κ_symmetric)
 
 # The experiment name and where the synthetic observations will be saved.
 experiment_name = "baroclinic_adjustment"
@@ -152,7 +152,7 @@ observations = OneDimensionalTimeSeries(data_path, field_names=(:b, :c), normali
 # ### Ensemble model
 
 # First we set up an ensemble model,
-ensemble_size = 10
+ensemble_size = 20
 
 slice_ensemble_size = SliceEnsembleSize(size=(Ny, Nz), ensemble=ensemble_size)
 @show ensemble_grid = RegularRectilinearGrid(size=slice_ensemble_size,
@@ -222,7 +222,7 @@ save("visualize_prior_diffusivities_baroclinic_adjustment.svg", f); nothing #hid
 
 # ### The inverse problem
 
-# We can construct the inverse problem ``y = G(θ) + η``. Here, ``y`` are the `observations` and `G` is the
+# We can construct the inverse problem ``y = G(θ) + η``. Here, ``y`` are the `observations` and ``G`` is the
 # `ensemble_model`.
 calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
 
@@ -232,7 +232,7 @@ calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
 # members with the true parameter values. We then confirm that the output of the `forward_map` matches
 # the observations to machine precision.
 
-x = forward_map(calibration, [θ★ for _ in 1:ensemble_size])
+G = forward_map(calibration, [θ★])
 y = observation_map(calibration)
 nothing #hide
 
@@ -240,7 +240,7 @@ nothing #hide
 # (here, ``2 N_y N_z``; the 2 comes from the two tracers we used as observations) and whose second dimension is
 # the `ensemble_size`. In the case above, all columns of `x` are identical.
 
-mean(x, dims=2) ≈ y
+mean(G, dims=2) ≈ y
 
 # Next, we construct an `EnsembleKalmanInversion` (EKI) object,
 
@@ -248,9 +248,7 @@ eki = EnsembleKalmanInversion(calibration; noise_covariance = 1e-2)
 
 # and perform few iterations to see if we can converge to the true parameter values.
 
-iterations = 5
-
-params = iterate!(eki; iterations = iterations)
+params = iterate!(eki; iterations = 5)
 
 @show params
 
@@ -259,17 +257,17 @@ params = iterate!(eki; iterations = iterations)
 θ̅(iteration) = [eki.iteration_summaries[iteration].ensemble_mean...]
 varθ(iteration) = eki.iteration_summaries[iteration].ensemble_variance
 
-weight_distances = [norm(θ̅(iter) - θ★) for iter in 1:iterations]
-output_distances = [norm(forward_map(calibration, [θ̅(iter) for _ in 1:ensemble_size])[:, 1] - y) for iter in 1:iterations]
-ensemble_variances = [varθ(iter) for iter in 1:iterations]
+weight_distances = [norm(θ̅(iter) - [θ★[1], θ★[2]]) for iter in 1:eki.iteration]
+output_distances = [norm(forward_map(calibration, θ̅(iter))[:, 1] - y) for iter in 1:eki.iteration]
+ensemble_variances = [varθ(iter) for iter in 1:eki.iteration]
 
 f = Figure()
-lines(f[1, 1], 1:iterations, weight_distances, color = :red, linewidth = 2,
+lines(f[1, 1], 1:eki.iteration, weight_distances, color = :red, linewidth = 2,
       axis = (title = "Parameter distance",
               xlabel = "Iteration",
               ylabel="|θ̅ₙ - θ⋆|",
               yscale = log10))
-lines(f[1, 2], 1:iterations, output_distances, color = :blue, linewidth = 2,
+lines(f[1, 2], 1:eki.iteration, output_distances, color = :blue, linewidth = 2,
       axis = (title = "Output distance",
               xlabel = "Iteration",
               ylabel="|G(θ̅ₙ) - y|",
@@ -281,7 +279,7 @@ ax3 = Axis(f[2, 1:2], title = "Parameter convergence",
 
 for (i, pname) in enumerate(free_parameters.names)
     ev = getindex.(ensemble_variances, i)
-    lines!(ax3, 1:iterations, ev / ev[1], label = String(pname), linewidth = 2)
+    lines!(ax3, 1:eki.iteration, ev / ev[1], label = String(pname), linewidth = 2)
 end
 
 axislegend(ax3, position = :rt)
@@ -293,37 +291,54 @@ save("summary_baroclinic_adjustment.svg", f); nothing #hide
 # if and how well they converge to the true diffusivity values.
 
 f = Figure()
+
 axtop = Axis(f[1, 1])
+
 axmain = Axis(f[2, 1],
               xlabel = "κ_skew [m² s⁻¹]",
               ylabel = "κ_symmetric [m² s⁻¹]")
+
 axright = Axis(f[2, 2])
 scatters = []
+
 for iteration in [1, 2, 3, 6]
-    ensemble = transpose(eki.iteration_summaries[iteration].parameters)
-    push!(scatters, scatter!(axmain, ensemble))
-    density!(axtop, ensemble[:, 1])
-    density!(axright, ensemble[:, 2], direction = :y)
+    ## Make parameter matrix
+    parameters = eki.iteration_summaries[iteration].parameters
+    Nensemble = length(parameters)
+    Nparameters = length(first(parameters))
+    parameter_ensemble_matrix = [parameters[i][j] for i=1:Nensemble, j=1:Nparameters]
+
+    push!(scatters, scatter!(axmain, parameter_ensemble_matrix))
+    density!(axtop, parameter_ensemble_matrix[:, 1])
+    density!(axright, parameter_ensemble_matrix[:, 2], direction = :y)
 end
-vlines!(axmain, [κ_skew], color=:red)
-vlines!(axtop, [κ_skew], color=:red)
-hlines!(axmain, [κ_symmetric], color=:red, alpha=0.6)
-hlines!(axright, [κ_symmetric], color=:red, alpha=0.6)
+
+vlines!(axmain, [κ_skew], color = :red)
+vlines!(axtop, [κ_skew], color = :red)
+
+hlines!(axmain, [κ_symmetric], color = :red)
+hlines!(axright, [κ_symmetric], color = :red)
+
 colsize!(f.layout, 1, Fixed(300))
 colsize!(f.layout, 2, Fixed(200))
+
 rowsize!(f.layout, 1, Fixed(200))
 rowsize!(f.layout, 2, Fixed(300))
+
 Legend(f[1, 2], scatters,
        ["Initial ensemble", "Iteration 1", "Iteration 2", "Iteration 5"],
        position = :lb)
+
 hidedecorations!(axtop, grid = false)
 hidedecorations!(axright, grid = false)
+
 xlims!(axmain, 350, 1350)
 xlims!(axtop, 350, 1350)
 ylims!(axmain, 650, 1750)
 ylims!(axright, 650, 1750)
 xlims!(axright, 0, 0.06)
 ylims!(axtop, 0, 0.06)
+
 save("distributions_baroclinic_adjustment.svg", f); nothing #hide 
 
 # ![](distributions_baroclinic_adjustment.svg)

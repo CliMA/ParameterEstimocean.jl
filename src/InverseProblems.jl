@@ -1,6 +1,7 @@
 module InverseProblems
 
 using OrderedCollections
+using Suppressor: @suppress
 
 using ..Observations: obs_str, AbstractObservation, OneDimensionalTimeSeries, initialize_simulation!, FieldTimeSeriesCollector, 
                       observation_times, observation_names
@@ -89,6 +90,7 @@ function Base.show(io::IO, ip::InverseProblem)
 end
 
 tupify_parameters(ip, θ) = NamedTuple{ip.free_parameters.names}(Tuple(θ))
+tupify_parameters(ip, θ::NamedTuple) = NamedTuple(name => θ[name] for name in ip.free_parameters.names)
 
 """
     expand_parameters(ip, θ)
@@ -96,22 +98,33 @@ tupify_parameters(ip, θ) = NamedTuple{ip.free_parameters.names}(Tuple(θ))
 Convert `θ` to `Vector{<:NamedTuple}`, where the elements
 correspond to `ip.free_parameters`.
 
-`θ` may be `Vector{<:Vector}` or `Matrix` (correpsonding to a parameter
-ensemble), or `Vector{<:Number}` (correpsonding to a single parameter vector).
+`θ` may represent an ensemble of parameter sets via:
+
+* `θ::Vector{<:Vector}` (caution: parameters must be ordered correctly!)
+* `θ::Matrix` (caution: parameters must be ordered correctly!)
+* `θ::Vector{<:NamedTuple}` 
+
+or a single parameter set if `θ::Vector{<:Number}`.
+
+If `length(θ)` is less the the number of ensemble members in `ip.simulation`, the
+last parameter set is copied to fill the parameter set ensemble.
 """
-function expand_parameters(ip, θ::Vector{<:Vector})
-    ensemble_capacity = n_ensemble(ip.time_series_collector.grid)
-    ensemble_size = length(θ)
-    
-    θs = [tupify_parameters(ip, p) for p in θ]
+function expand_parameters(ip, θ::Vector)
+    Nfewer = n_ensemble(ip) - length(θ)
+    Nfewer < 0 && throw(ArgumentError("There are $(-Nfewer) more parameter sets than ensemble members!"))
 
-    # feed redundant parameters in case ensemble_size < ensemble_capacity
-    full_θs = vcat(θs , [θs[end] for _ in 1:(ensemble_capacity - ensemble_size)])
+    θ = [tupify_parameters(ip, θi) for θi in θ]
 
-    return full_θs
+    # Fill out parameter set ensemble
+    Nfewer > 0 && append!(θ, [θ[end] for _ = 1:Nfewer])
+        
+    return θ
 end
 
-expand_parameters(ip, θ::Vector{<:Number}) = expand_parameters(ip, [θ,])
+# Expand single parameter vector
+expand_parameters(ip, θ::Vector{<:Number}) = expand_parameters(ip, [θ])
+
+# Convert matrix to vector of vectors
 expand_parameters(ip, θ::Matrix) = expand_parameters(ip, [θ[:, i] for i in 1:size(θ, 2)])
 
 #####
@@ -150,7 +163,9 @@ function forward_run!(ip::InverseProblem, parameters)
 
     initialize_simulation!(simulation, observations, ip.time_series_collector)
 
-    run!(simulation)
+    @suppress run!(simulation)
+
+    return nothing
 end
 
 """
