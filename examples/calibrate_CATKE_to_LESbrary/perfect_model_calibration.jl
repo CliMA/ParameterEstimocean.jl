@@ -40,7 +40,7 @@ true_closure = closure_with_parameters(closure, true_parameters)
 
 if generate_observations || !(isfile(data_path))
 
-    grid = RegularRectilinearGrid(size=Nz, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
+    grid = RectilinearGrid(size=Nz, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
 
     u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
     b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ), bottom = GradientBoundaryCondition(N²))
@@ -69,7 +69,7 @@ end
 data_path2 = "catke_perfect_model_observation2.jld2"
 if generate_observations || !(isfile(data_path2))
 
-    grid = RegularRectilinearGrid(size=Nz, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
+    grid = RectilinearGrid(size=Nz, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
 
     u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
     b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ*0.5), bottom = GradientBoundaryCondition(N²))
@@ -115,7 +115,7 @@ column_ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(Nx, Ny), Hz=1)
 ##### Set up ensemble model
 #####
 
-ensemble_grid = RegularRectilinearGrid(size=column_ensemble_size, z = (-Lz, 0), topology = (Flat, Flat, Bounded))
+ensemble_grid = RectilinearGrid(size=column_ensemble_size, z = (-Lz, 0), topology = (Flat, Flat, Bounded))
 closure_ensemble = [closure for i = 1:Nx, j = 1:Ny]
 
 function get_parameter(observation, parameter_path)
