@@ -18,7 +18,7 @@ function animate_LESbrary_suite(ce, directory; parameters=ce.default_parameters,
         Nz = truth_field[1].grid.Nz
         z = znodes(truth_field[1])[1:Nz-1]
         Nz_catke = catke_field[1].grid.Nz
-        z_catke = parent(catke_field[1].grid.zᵃᵃᶜ)[1:Nz_catke-1]
+        z_catke = znodes(catke_field[1])[1:Nz_catke-1]
         p = Plots.plot(legend=false, plot_titlefontsize=20, xlims=x_lims[name])
         for t = t
             truth_profile = truth_field[t+13].data[1:Nz-1]
