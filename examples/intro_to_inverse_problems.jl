@@ -46,18 +46,18 @@ observations = OneDimensionalTimeSeries(data_path, field_names=:b, normalize=ZSc
 # the observations and the forward map.
 
 """
-    extract_parameters(observations, Nensemble)
+    extract_perfect_parameters(observations, Nensemble)
 
-Extract parameters from a batch of observations.
+Extract parameters from a batch of "perfect" observations.
 """
-function extract_parameters(observations, Nensemble)
+function extract_perfect_parameters(observations, Nensemble)
     Nbatch = length(observations)
     Qᵘ, Qᵇ, N², f = [zeros(Nensemble, Nbatch) for i = 1:4]
 
     Nz = first(observations).grid.Nz
     Hz = first(observations).grid.Hz
     Lz = first(observations).grid.Lz
-    Δt = first(observations).metadata.Δt
+    Δt = first(observations).metadata.parameters.Δt
 
     for (j, obs) in enumerate(observations)
         Qᵘ[:, j] .= obs.metadata.parameters.Qᵘ
@@ -66,7 +66,11 @@ function extract_parameters(observations, Nensemble)
         f[:, j] .= obs.metadata.coriolis.f
     end
 
-    return Qᵘ, Qᵇ, N², f, Δt, Lz, Nz, Hz
+    file = jldopen(first(observations).path)
+    closure = file["serialized/closure"]
+    close(file)
+
+    return Qᵘ, Qᵇ, N², f, Δt, Lz, Nz, Hz, closure
 end
 
 """
@@ -77,10 +81,10 @@ ensemble of column models designed to reproduce `observations`.
 """
 function build_ensemble_simulation(observations; Nensemble=1)
 
-    observations isa Vector || (obserations = [observations]) # Singleton batch
+    observations isa Vector || (observations = [observations]) # Singleton batch
     Nbatch = length(observations)
 
-    Qᵘ, Qᵇ, N², f, Δt, Lz, Nz, Hz = extract_parameters(observations)
+    Qᵘ, Qᵇ, N², f, Δt, Lz, Nz, Hz, closure = extract_parameters(observations, Nensemble)
 
     column_ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(Nensemble, Nbatch), Hz=Hz)
     ensemble_grid = RectilinearGrid(size = column_ensemble_size, topology = (Flat, Flat, Bounded), z = (-Lz, 0))
@@ -90,17 +94,19 @@ function build_ensemble_simulation(observations; Nensemble=1)
 
     u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
     b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ), bottom = GradientBoundaryCondition(N²))
-                        
+
+    tracers = first(observations).metadata.parameters.tracers
+
     ensemble_model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
-                                                 tracers = :b,
+                                                 tracers = tracers,
                                                  buoyancy = BuoyancyTracer(),
                                                  boundary_conditions = (; u=u_bcs, b=b_bcs),
                                                  coriolis = coriolis_ensemble,
                                                  closure = closure_ensemble)
 
-    ensemble_simulation = Simulation(ensemble_model; Δt=Δt, stop_time=observations.times[end])
+    ensemble_simulation = Simulation(ensemble_model; Δt=Δt, stop_time=first(observations).times[end])
 
-    return ensemble_simulation, optimal_closure
+    return ensemble_simulation, closure
 end
 
 # The following illustrations uses a simple ensemble simulation with two ensemble members:
