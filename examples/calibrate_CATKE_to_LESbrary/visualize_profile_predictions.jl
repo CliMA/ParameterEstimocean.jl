@@ -66,7 +66,7 @@ function visualize!(ip::InverseProblem, parameters;
             truth = getproperty(data, field)
             prediction = getproperty(predictions_batch[i], field)
 
-            z = field ∈ [:u, :v] ? data.grid.zF[1:data.grid.Nz] : data.grid.zC[1:data.grid.Nz]
+            z = field ∈ [:u, :v] ? data.grid.zᵃᵃᶠ[1:data.grid.Nz] : data.grid.zᵃᵃᶜ[1:data.grid.Nz]
 
             to_plot = field ∈ data.relevant_fields
 
