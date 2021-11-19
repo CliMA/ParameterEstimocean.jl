@@ -26,7 +26,7 @@ using OceanTurbulenceParameterEstimation, LinearAlgebra, CairoMakie
 @show examples_path = joinpath(pathof(OceanTurbulenceParameterEstimation), "..", "..", "examples")
 include(joinpath(examples_path, "intro_to_inverse_problems.jl"))
 
-data_path = generate_synthetic_observations()
+data_path = generate_free_convection_synthetic_observations()
 observations = OneDimensionalTimeSeries(data_path, field_names=:b, normalize=ZScore)
 
 # and an ensemble_simulation,

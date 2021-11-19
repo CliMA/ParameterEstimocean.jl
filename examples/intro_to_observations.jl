@@ -24,27 +24,28 @@ using CairoMakie
 #
 # We define a utility function for constructing synthetic observations,
 
-function generate_free_convection_synthetic_observations(name = "convective_adjustment";
-                                                         Nz = 32,
-                                                         Lz = 64,
-                                                         Qᵇ = +1e-8,
-                                                         Qᵘ = -1e-5,
-                                                         Δt = 10.0,
-                                                         f₀ = 1e-4,
-                                                         N² = 1e-6)
+default_closure = ConvectiveAdjustmentVerticalDiffusivity(; convective_κz = 1.0
+                                                            convective_νz = 0.9
+                                                            background_κz = 1e-4
+                                                            background_νz = 1e-5)
+
+function generate_synthetic_observations(name = "convective_adjustment";
+                                         Nz = 32,
+                                         Lz = 64,
+                                         Qᵇ = +1e-8,
+                                         Qᵘ = -1e-5,
+                                         Δt = 10.0,
+                                         f₀ = 1e-4,
+                                         N² = 1e-6,
+                                         closure = default_closure)
+
     data_path = name * ".jld2"
 
     if isfile(data_path)
         return data_path
     end
-
-    convective_κz = 1.0
-    convective_νz = 0.9
-    background_κz = 1e-4
-    background_νz = 1e-5
-
+    
     grid = RectilinearGrid(size=32, z=(-64, 0), topology=(Flat, Flat, Bounded))
-    closure = ConvectiveAdjustmentVerticalDiffusivity(; convective_κz, background_κz, convective_νz, background_νz)
     u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
     b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ), bottom = GradientBoundaryCondition(N²))
 
@@ -59,7 +60,10 @@ function generate_free_convection_synthetic_observations(name = "convective_adju
     
     simulation = Simulation(model; Δt, stop_time=12hours)
 
-    init_with_parameters(file, model) = file["parameters"] = (; Qᵇ, Qᵘ, Δt)
+    function init_with_parameters(file, model)
+        file["parameters"] = (; Qᵇ, Qᵘ, Δt)
+        file["serialized/closure"] = closure
+    end
     
     simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
                                                           schedule = TimeInterval(4hour),
@@ -76,7 +80,7 @@ end
 
 # and invoke it:
 
-data_path = generate_free_convection_synthetic_observations()
+data_path = generate_synthetic_observations()
 
 # # Specifying observations
 #
