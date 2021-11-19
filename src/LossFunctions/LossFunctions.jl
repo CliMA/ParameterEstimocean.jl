@@ -7,7 +7,7 @@ using ..OceanTurbulenceParameterEstimation.Models
 
 using Oceananigans
 using Oceananigans: AbstractModel
-using Oceananigans.Grids: RegularRectilinearGrid
+using Oceananigans.Grids: RectilinearGrid
 using Oceananigans.Fields: CenterField, AbstractField, AbstractDataField, interior
 
 using Statistics

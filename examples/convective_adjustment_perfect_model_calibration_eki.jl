@@ -65,7 +65,7 @@ nothing #hide
 # ## Generate synthetic observations
 
 if generate_observations || !(isfile(data_path))
-    grid = RegularRectilinearGrid(size=Nz, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
+    grid = RectilinearGrid(size=Nz, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
     closure = ConvectiveAdjustmentVerticalDiffusivity(; convective_κz, background_κz, convective_νz, background_νz)
     coriolis = FPlane(f=f₀)
 
@@ -109,7 +109,7 @@ ensemble_size = 50
 
 column_ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(ensemble_size, length(observations)), Hz=1)
 
-@show ensemble_grid = RegularRectilinearGrid(size=column_ensemble_size,
+@show ensemble_grid = RectilinearGrid(size=column_ensemble_size,
                                              topology = (Flat, Flat, Bounded),
                                              z = (-Lz, 0))
 

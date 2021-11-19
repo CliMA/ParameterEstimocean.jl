@@ -35,7 +35,7 @@ background_νz = 1e-5
     ##### Generate synthetic observations
     #####
 
-    grid = RegularRectilinearGrid(size=Nz, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
+    grid = RectilinearGrid(size=Nz, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
     closure = ConvectiveAdjustmentVerticalDiffusivity(; convective_κz, background_κz, convective_νz, background_νz)
     coriolis = FPlane(f=f₀)
 

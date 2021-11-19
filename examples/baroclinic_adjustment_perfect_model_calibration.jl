@@ -68,7 +68,7 @@ gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = κ_ske
 # ## Generate synthetic observations
 
 if generate_observations || !(isfile(data_path))
-    grid = RegularRectilinearGrid(topology = (Flat, Bounded, Bounded), 
+    grid = RectilinearGrid(topology = (Flat, Bounded, Bounded), 
                                   size = (Ny, Nz), 
                                   y = (-Ly/2, Ly/2),
                                   z = (-Lz, 0),
@@ -155,7 +155,7 @@ observations = OneDimensionalTimeSeries(data_path, field_names=(:b, :c), normali
 ensemble_size = 10
 
 slice_ensemble_size = SliceEnsembleSize(size=(Ny, Nz), ensemble=ensemble_size)
-@show ensemble_grid = RegularRectilinearGrid(size=slice_ensemble_size,
+@show ensemble_grid = RectilinearGrid(size=slice_ensemble_size,
                                              topology = (Flat, Bounded, Bounded),
                                              y = (-Ly/2, Ly/2),
                                              z = (-Lz, 0),
