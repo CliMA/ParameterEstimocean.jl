@@ -400,7 +400,7 @@ uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
 
 [[Oceananigans]]
 deps = ["Adapt", "CUDA", "CUDAKernels", "Crayons", "CubedSphere", "Dates", "FFTW", "Glob", "InteractiveUtils", "JLD2", "KernelAbstractions", "LinearAlgebra", "Logging", "MPI", "NCDatasets", "OffsetArrays", "OrderedCollections", "PencilFFTs", "Pkg", "Printf", "Random", "Rotations", "SafeTestsets", "SeawaterPolynomials", "Statistics", "StructArrays", "Tullio"]
-git-tree-sha1 = "e8f67d03a4e4b8c263eb1327e808164b0768a9ff"
+git-tree-sha1 = "9c595bbe9a6e555495791c486a21372881a1f77b"
 repo-rev = "ncc-glw/gm"
 repo-url = "https://github.com/CliMA/Oceananigans.jl.git"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
