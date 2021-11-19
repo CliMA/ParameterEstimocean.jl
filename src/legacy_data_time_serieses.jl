@@ -11,7 +11,7 @@ function legacy_data_field_time_serieses(path, field_names, times)
 
     close(file)
 
-    grid = RectilinearGrid(size=Nz, halo=Nz, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
+    grid = RectilinearGrid(size=Nz, halo=Hz, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
 
     assumed_location = (Nothing, Nothing, Center)
 
