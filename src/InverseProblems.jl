@@ -31,7 +31,7 @@ abstract type AbstractOutputMap end
 
 output_map_type(fp) = output_map_str(fp)
 
-struct ConcatenatedOutputMap{T} end
+struct ConcatenatedOutputMap end
 
 output_map_str(::ConcatenatedOutputMap) = "ConcatenatedOutputMap"
 
