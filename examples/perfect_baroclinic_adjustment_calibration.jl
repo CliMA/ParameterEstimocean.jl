@@ -1,4 +1,4 @@
-# # Baroclinic adjustment perfect model calibration
+# # Perfect baroclinic adjustment calibration with Ensemble Kalman Inversion
 #
 # This example showcases a "perfect model calibration" of the two-dimensional baroclinic adjustement
 # problem (depth-latitude) with eddies parametrized using Gent-McWilliams--Redi isoneutral diffusion
@@ -27,7 +27,7 @@ using LinearAlgebra: norm
 
 # ## Set up the problem and generate observations
 
-# Define the  "true" skew and symmetrid diffusivity coefficients. These are the parameter values that we
+# Define the  "true" skew and symmetric diffusivity coefficients. These are the parameter values that we
 # use to generate the data. Then, we'll see if the EKI calibration can recover these values.
 
 κ_skew = 1000.0       # [m² s⁻¹] skew diffusivity
@@ -147,7 +147,7 @@ end
 
 observations = OneDimensionalTimeSeries(data_path, field_names=(:b, :c), normalize=ZScore)
 
-# ## Calibration with Ensemble Kalman Inversions
+# ## Calibration with Ensemble Kalman Inversion
 
 # ### Ensemble model
 
