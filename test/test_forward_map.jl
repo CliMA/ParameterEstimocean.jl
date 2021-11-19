@@ -23,7 +23,7 @@ using Distributions
 
     function build_simulation(size=Nz)
         N² = 1e-5
-        grid = RegularRectilinearGrid(size=size, z=(-128, 0), topology=(Flat, Flat, Bounded))
+        grid = RectilinearGrid(size=size, z=(-128, 0), topology=(Flat, Flat, Bounded))
         u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(-1e-4))
         b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(1e-7), bottom = GradientBoundaryCondition(N²))
         model = HydrostaticFreeSurfaceModel(grid = grid,
@@ -94,7 +94,7 @@ using Distributions
 
         ensemble_size = 1
         column_ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(ensemble_size, 1), Hz=1)
-        ensemble_grid = RegularRectilinearGrid(size=column_ensemble_size, z = (-128, 0), topology = (Flat, Flat, Bounded))
+        ensemble_grid = RectilinearGrid(size=column_ensemble_size, z = (-128, 0), topology = (Flat, Flat, Bounded))
         closure_ensemble = [default_closure() for i = 1:ensemble_grid.Nx, j = 1:ensemble_grid.Ny]
 
         N² = 1e-5

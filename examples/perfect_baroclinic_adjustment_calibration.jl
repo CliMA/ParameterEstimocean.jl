@@ -68,11 +68,11 @@ gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = κ_ske
 # ## Generate synthetic observations
 
 if generate_observations || !(isfile(data_path))
-    grid = RegularRectilinearGrid(topology = (Flat, Bounded, Bounded), 
-                                  size = (Ny, Nz), 
-                                  y = (-Ly/2, Ly/2),
-                                  z = (-Lz, 0),
-                                  halo = (3, 3))
+    grid = RectilinearGrid(topology = (Flat, Bounded, Bounded), 
+                           size = (Ny, Nz), 
+                           y = (-Ly/2, Ly/2),
+                           z = (-Lz, 0),
+                           halo = (3, 3))
     
     model = HydrostaticFreeSurfaceModel(architecture = architecture,
                                         grid = grid,
@@ -112,24 +112,7 @@ if generate_observations || !(isfile(data_path))
 
     set!(model, b=bᵢ, c=cᵢ)
     
-    wall_clock = [time_ns()]
-    
-    function print_progress(sim)
-        @printf("[%05.2f%%] i: %d, t: %s, wall time: %s, max(u): (%6.8e, %6.8e, %6.8e) m/s\n",
-                100 * (sim.model.clock.time / sim.stop_time),
-                sim.model.clock.iteration,
-                prettytime(sim.model.clock.time),
-                prettytime(1e-9 * (time_ns() - wall_clock[1])),
-                maximum(abs, sim.model.velocities.u),
-                maximum(abs, sim.model.velocities.v),
-                maximum(abs, sim.model.velocities.w))
-    
-        wall_clock[1] = time_ns()
-        
-        return nothing
-    end
-    
-    simulation = Simulation(model, Δt=Δt, stop_time=stop_time, progress=print_progress, iteration_interval=48)
+    simulation = Simulation(model, Δt=Δt, stop_time=stop_time)
     
     simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
                                                           schedule = TimeInterval(save_interval),
@@ -155,7 +138,7 @@ observations = OneDimensionalTimeSeries(data_path, field_names=(:b, :c), normali
 ensemble_size = 20
 
 slice_ensemble_size = SliceEnsembleSize(size=(Ny, Nz), ensemble=ensemble_size)
-@show ensemble_grid = RegularRectilinearGrid(size=slice_ensemble_size,
+@show ensemble_grid = RectilinearGrid(size=slice_ensemble_size,
                                              topology = (Flat, Bounded, Bounded),
                                              y = (-Ly/2, Ly/2),
                                              z = (-Lz, 0),

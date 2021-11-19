@@ -43,7 +43,7 @@ function generate_free_convection_synthetic_observations(name = "convective_adju
     background_κz = 1e-4
     background_νz = 1e-5
 
-    grid = RegularRectilinearGrid(size=32, z=(-64, 0), topology=(Flat, Flat, Bounded))
+    grid = RectilinearGrid(size=32, z=(-64, 0), topology=(Flat, Flat, Bounded))
     closure = ConvectiveAdjustmentVerticalDiffusivity(; convective_κz, background_κz, convective_νz, background_νz)
     u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
     b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ), bottom = GradientBoundaryCondition(N²))

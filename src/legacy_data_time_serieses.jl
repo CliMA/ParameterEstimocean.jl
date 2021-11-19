@@ -2,7 +2,7 @@ using JLD2
 
 function legacy_data_field_time_serieses(path, field_names, times)
 
-    # Build a grid, assuming it's a 1D RegularRectilinearGrid
+    # Build a grid, assuming it's a 1D RectilinearGrid
     file = jldopen(path)
 
     Nz = file["grid/Nz"]
@@ -11,7 +11,7 @@ function legacy_data_field_time_serieses(path, field_names, times)
 
     close(file)
 
-    grid = RegularRectilinearGrid(size=Nz, halo=Nz, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
+    grid = RectilinearGrid(size=Nz, halo=Hz, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
 
     assumed_location = (Nothing, Nothing, Center)
 

@@ -15,7 +15,7 @@ using Oceananigans.OutputReaders: InMemory
 using Oceananigans.Fields: interior, location
 using Oceananigans.Grids: Flat, Bounded,
                           Face, Center,
-                          RegularRectilinearGrid, offset_data,
+                          RectilinearGrid, offset_data,
                           topology, halo_size,
                           interior_parent_indices
 
@@ -131,8 +131,8 @@ expand_parameters(ip, θ::Matrix) = expand_parameters(ip, [θ[:, i] for i in 1:s
 ##### Forward map evaluation given vector-of-vector (one parameter vector for each ensemble member)
 #####
 
-const OneDimensionalEnsembleGrid = RegularRectilinearGrid{<:Any, Flat, Flat, Bounded}
-const TwoDimensionalEnsembleGrid = RegularRectilinearGrid{<:Any, Flat, Bounded, Bounded}
+const OneDimensionalEnsembleGrid = RectilinearGrid{<:Any, Flat, Flat, Bounded}
+const TwoDimensionalEnsembleGrid = RectilinearGrid{<:Any, Flat, Bounded, Bounded}
 
 n_ensemble(grid::Union{OneDimensionalEnsembleGrid, TwoDimensionalEnsembleGrid}) = grid.Nx
 n_observations(grid::OneDimensionalEnsembleGrid) = grid.Ny
@@ -331,10 +331,10 @@ function transpose_model_output(time_series_collector, observations)
     return transposed_output
 end
 
-function drop_y_dimension(grid::RegularRectilinearGrid{<:Any, <:Flat, <:Flat, <:Bounded})
+function drop_y_dimension(grid::RectilinearGrid{<:Any, <:Flat, <:Flat, <:Bounded})
     new_size = ColumnEnsembleSize(Nz=grid.Nz, ensemble=(grid.Nx, 1), Hz=grid.Hz)
-    z_domain = (grid.zF[1], grid.zF[grid.Nz])
-    new_grid = RegularRectilinearGrid(size=new_size, z=z_domain, topology=(Flat, Flat, Bounded))
+    z_domain = (grid.zᵃᵃᶠ[1], grid.zᵃᵃᶠ[grid.Nz])
+    new_grid = RectilinearGrid(size=new_size, z=z_domain, topology=(Flat, Flat, Bounded))
     return new_grid
 end
 

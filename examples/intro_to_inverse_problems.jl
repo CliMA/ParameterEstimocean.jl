@@ -74,9 +74,9 @@ function build_ensemble_simulation(observations; Nensemble=1)
 
     column_ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(Nensemble, 1), Hz=Hz)
 
-    ensemble_grid = RegularRectilinearGrid(size = column_ensemble_size,
-                                           topology = (Flat, Flat, Bounded),
-                                           z = (-Lz, 0))
+    ensemble_grid = RectilinearGrid(size = column_ensemble_size,
+                                    topology = (Flat, Flat, Bounded),
+                                    z = (-Lz, 0))
 
     closure = ConvectiveAdjustmentVerticalDiffusivity(; convective_κz, background_κz, convective_νz, background_νz)
 
