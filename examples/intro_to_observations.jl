@@ -24,9 +24,9 @@ using CairoMakie
 #
 # We define a utility function for constructing synthetic observations,
 
-default_closure = ConvectiveAdjustmentVerticalDiffusivity(; convective_κz = 1.0
-                                                            convective_νz = 0.9
-                                                            background_κz = 1e-4
+default_closure = ConvectiveAdjustmentVerticalDiffusivity(; convective_κz = 1.0,
+                                                            convective_νz = 0.9,
+                                                            background_κz = 1e-4,
                                                             background_νz = 1e-5)
 
 function generate_synthetic_observations(name = "convective_adjustment";
