@@ -20,9 +20,11 @@ const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
 const OUTPUT_DIR   = joinpath(@__DIR__, "src/literated")
 
 examples = [
-  "convective_adjustment_perfect_model_calibration_eki.jl",
-  "convective_adjustment_perfect_model_calibration_uki.jl",
-  "baroclinic_adjustment_perfect_model_calibration.jl"
+  "intro_to_observations.jl",
+  "intro_to_inverse_problems.jl",
+  "perfect_convective_adjustment_calibration.jl",
+  "unscented_perfect_convective_adjustment_calibration.jl",
+  "perfect_baroclinic_adjustment_calibration.jl"
 ]
 
 for example in examples
@@ -49,9 +51,11 @@ pages = [
     "Installation Instructions" => "installation_instructions.md",
     
     "Examples" => [ 
-        "literated/convective_adjustment_perfect_model_calibration_eki.md",
-        "literated/convective_adjustment_perfect_model_calibration_uki.md",
-        "literated/baroclinic_adjustment_perfect_model_calibration.md",
+        "literated/intro_to_observations.md",
+        "literated/intro_to_inverse_problems.md",
+        "literated/perfect_convective_adjustment_calibration.md",
+        "literated/unscented_perfect_convective_adjustment_calibration.md",
+        "literated/perfect_baroclinic_adjustment_calibration.md"
         ],
     
     "Library" => [ 

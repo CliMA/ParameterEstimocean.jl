@@ -36,7 +36,7 @@ true_closure = closure_with_parameters(closure, true_parameters)
 
 function generate_truth_data!(name; Qᵘ, Qᵇ, f₀)
 
-    grid = RectilinearGrid(size = Nz, z = (-Lz, 0), topology = (Flat, Flat, Bounded))
+    grid = RectilinearGrid(size=Nz, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
 
     u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
     b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ), bottom = GradientBoundaryCondition(N²))

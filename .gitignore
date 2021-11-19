@@ -28,6 +28,7 @@ Untracked/
 statprof/
 Results/
 *.png
+*.svg
 *.mp4
 *.pdf
 *.txt

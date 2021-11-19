@@ -1,6 +1,7 @@
 module InverseProblems
 
 using OrderedCollections
+using Suppressor: @suppress
 
 using ..Observations: obs_str, AbstractObservation, OneDimensionalTimeSeries, initialize_simulation!, FieldTimeSeriesCollector,
     observation_times, observation_names
@@ -13,10 +14,10 @@ using Oceananigans: short_show, run!, fields, FieldTimeSeries, CPU
 using Oceananigans.OutputReaders: InMemory
 using Oceananigans.Fields: interior, location
 using Oceananigans.Grids: Flat, Bounded,
-    Face, Center,
-    RectilinearGrid, offset_data,
-    topology, halo_size,
-    interior_parent_indices
+                          Face, Center,
+                          RectilinearGrid, offset_data,
+                          topology, halo_size,
+                          interior_parent_indices
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SingleColumnGrid, YZSliceGrid, ColumnEnsembleSize
 
@@ -89,6 +90,7 @@ function Base.show(io::IO, ip::InverseProblem)
 end
 
 tupify_parameters(ip, θ) = NamedTuple{ip.free_parameters.names}(Tuple(θ))
+tupify_parameters(ip, θ::NamedTuple) = NamedTuple(name => θ[name] for name in ip.free_parameters.names)
 
 """
     expand_parameters(ip, θ)
@@ -96,30 +98,41 @@ tupify_parameters(ip, θ) = NamedTuple{ip.free_parameters.names}(Tuple(θ))
 Convert `θ` to `Vector{<:NamedTuple}`, where the elements
 correspond to `ip.free_parameters`.
 
-`θ` may be `Vector{<:Vector}` or `Matrix` (correpsonding to a parameter
-ensemble), or `Vector{<:Number}` (correpsonding to a single parameter vector).
+`θ` may represent an ensemble of parameter sets via:
+
+* `θ::Vector{<:Vector}` (caution: parameters must be ordered correctly!)
+* `θ::Matrix` (caution: parameters must be ordered correctly!)
+* `θ::Vector{<:NamedTuple}` 
+
+or a single parameter set if `θ::Vector{<:Number}`.
+
+If `length(θ)` is less the the number of ensemble members in `ip.simulation`, the
+last parameter set is copied to fill the parameter set ensemble.
 """
-function expand_parameters(ip, θ::Vector{<:Vector})
-    ensemble_capacity = n_ensemble(ip.time_series_collector.grid)
-    ensemble_size = length(θ)
+function expand_parameters(ip, θ::Vector)
+    Nfewer = n_ensemble(ip) - length(θ)
+    Nfewer < 0 && throw(ArgumentError("There are $(-Nfewer) more parameter sets than ensemble members!"))
 
-    θs = [tupify_parameters(ip, p) for p in θ]
+    θ = [tupify_parameters(ip, θi) for θi in θ]
 
-    # feed redundant parameters in case ensemble_size < ensemble_capacity
-    full_θs = vcat(θs, [θs[end] for _ = 1:(ensemble_capacity-ensemble_size)])
-
-    return full_θs
+    # Fill out parameter set ensemble
+    Nfewer > 0 && append!(θ, [θ[end] for _ = 1:Nfewer])
+        
+    return θ
 end
 
-expand_parameters(ip, θ::Vector{<:Number}) = expand_parameters(ip, [θ,])
-expand_parameters(ip, θ::Matrix) = expand_parameters(ip, [θ[:, i] for i = 1:size(θ, 2)])
+# Expand single parameter vector
+expand_parameters(ip, θ::Vector{<:Number}) = expand_parameters(ip, [θ])
+
+# Convert matrix to vector of vectors
+expand_parameters(ip, θ::Matrix) = expand_parameters(ip, [θ[:, i] for i in 1:size(θ, 2)])
 
 #####
 ##### Forward map evaluation given vector-of-vector (one parameter vector for each ensemble member)
 #####
 
-const OneDimensionalEnsembleGrid = RectilinearGrid{<:Any,Flat,Flat,Bounded}
-const TwoDimensionalEnsembleGrid = RectilinearGrid{<:Any,Flat,Bounded,Bounded}
+const OneDimensionalEnsembleGrid = RectilinearGrid{<:Any, Flat, Flat, Bounded}
+const TwoDimensionalEnsembleGrid = RectilinearGrid{<:Any, Flat, Bounded, Bounded}
 
 n_ensemble(grid::Union{OneDimensionalEnsembleGrid,TwoDimensionalEnsembleGrid}) = grid.Nx
 n_observations(grid::OneDimensionalEnsembleGrid) = grid.Ny
@@ -150,7 +163,9 @@ function forward_run!(ip::InverseProblem, parameters)
 
     initialize_simulation!(simulation, observations, ip.time_series_collector)
 
-    run!(simulation)
+    @suppress run!(simulation)
+
+    return nothing
 end
 
 """
@@ -317,10 +332,10 @@ function transpose_model_output(time_series_collector, observations)
     return transposed_output
 end
 
-function drop_y_dimension(grid::RectilinearGrid{<:Any,<:Flat,<:Flat,<:Bounded})
-    new_size = ColumnEnsembleSize(Nz = grid.Nz, ensemble = (grid.Nx, 1), Hz = grid.Hz)
-    z_domain = (grid.zF[1], grid.zF[grid.Nz])
-    new_grid = RectilinearGrid(size = new_size, z = z_domain, topology = (Flat, Flat, Bounded))
+function drop_y_dimension(grid::RectilinearGrid{<:Any, <:Flat, <:Flat, <:Bounded})
+    new_size = ColumnEnsembleSize(Nz=grid.Nz, ensemble=(grid.Nx, 1), Hz=grid.Hz)
+    z_domain = (grid.zᵃᵃᶠ[1], grid.zᵃᵃᶠ[grid.Nz])
+    new_grid = RectilinearGrid(size=new_size, z=z_domain, topology=(Flat, Flat, Bounded))
     return new_grid
 end
 
