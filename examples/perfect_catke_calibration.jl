@@ -10,57 +10,41 @@
 using OceanTurbulenceParameterEstimation, LinearAlgebra, CairoMakie
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity, MixingLength, SurfaceTKEFlux
 
-# We reuse some some code from a previous example to generate observations,
 examples_path = joinpath(pathof(OceanTurbulenceParameterEstimation), "..", "..", "examples")
 include(joinpath(examples_path, "intro_to_inverse_problems.jl"))
 
 mixing_length = MixingLength(Cᴬu=0.1, Cᴬc=0.1, Cᴬe=0.1, Cᴷuʳ=0.0, Cᴷcʳ=0.0, Cᴷeʳ=0.0)
 catke = CATKEVerticalDiffusivity(mixing_length=mixing_length)
-data_path = generate_synthetic_observations("catke", closure=catke, tracers=(:b, :e))
+data_path = generate_synthetic_observations("catke", closure=catke, tracers=(:b, :e), Δt=10.0)
 observations = OneDimensionalTimeSeries(data_path, field_names=(:u, :v, :b, :e), normalize=ZScore)
-
-# and an ensemble_simulation,
 
 ensemble_simulation, closure★ = build_ensemble_simulation(observations; Nensemble=50)
 
-# # The `InverseProblem`
-#
-# To build an inverse problem we first define free parameters.
-# Here we calibrate `convective_κz` and `background_κz`, using
-# log-normal priors to prevent the parameters from becoming negative:
-
-priors = (Cᴰ = lognormal_with_mean_std(1.0, 0.5),
-          Cᴷu⁻ = lognormal_with_mean_std(1.0, 0.1),
-          Cᴷc⁻ = lognormal_with_mean_std(1.0, 0.1),
-          Cᴷe⁻ = lognormal_with_mean_std(1.0, 0.1),
-          Cᴸᵇ = lognormal_with_mean_std(2.0, 0.2),
+priors = (Cᴷu⁻ = lognormal_with_mean_std(0.01, 0.1),
+          Cᴷc⁻ = lognormal_with_mean_std(0.01, 0.1),
+          Cᴷe⁻ = lognormal_with_mean_std(0.01, 0.1),
+          Cᴸᵇ = lognormal_with_mean_std(0.2, 0.1),
+          Cᴰ = lognormal_with_mean_std(1.0, 0.5),
           CᵂwΔ = lognormal_with_mean_std(1.0, 0.2))
 
 free_parameters = FreeParameters(priors)
-
-# The `InverseProblem` is then constructed from `observations`, `ensemble_simulation`, and
-# `free_parameters`,
 
 calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
 
 # # Ensemble Kalman Inversion
 
-noise_variance = observation_map_variance_across_time(calibration)[1, :, 1] .+ 1e-5
+noise_variance = observation_map_variance_across_time(calibration)[1, :, 1] .+ 1e-2
 
 eki = EnsembleKalmanInversion(calibration; noise_covariance = Matrix(Diagonal(noise_variance)))
 
-# and perform few iterations to see if we can converge to the true parameter values.
+θ★ = iterate!(eki; iterations = 10)
 
-iterate!(eki; iterations = 10)
+mean_θ = map(summary -> collect(values(summary.ensemble_mean)), eki.iteration_summaries)
+ensemble_variances = map(summary -> summary.ensemble_variance, eki.iteration_summaries)
+θ★v = collect(values(θ★))
 
-# Last, we visualize the outputs of EKI calibration.
-
-θ̅(iteration) = [eki.iteration_summaries[iteration].ensemble_mean...]
-varθ(iteration) = eki.iteration_summaries[iteration].ensemble_variance
-
-weight_distances = [norm(θ̅(iter) - [θ★[1], θ★[2]]) for iter in 1:eki.iteration]
-output_distances = [norm(forward_map(calibration, θ̅(iter))[:, 1] - y) for iter in 1:eki.iteration]
-ensemble_variances = [varθ(iter) for iter in 1:eki.iteration]
+weight_distances = [norm(θ̄ - θ★v) for θ̄ in mean_θ]
+output_distances = [norm(forward_map(calibration, θ̄)[:, 1] - y) for θ̄ in mean_θ]
 
 f = Figure()
 
@@ -101,8 +85,8 @@ f = Figure()
 axtop = Axis(f[1, 1])
 
 axmain = Axis(f[2, 1],
-              xlabel = "convective_κz [m² s⁻¹]",
-              ylabel = "background_κz [m² s⁻¹]")
+              xlabel = "Cᴷu⁻ [m² s⁻¹]",
+              ylabel = "Cᴷc⁻ [m² s⁻¹]")
 
 axright = Axis(f[2, 2])
 scatters = []
@@ -119,11 +103,11 @@ for iteration in [1, 2, 3, 11]
     density!(axright, parameter_ensemble_matrix[:, 2], direction = :y)
 end
 
-vlines!(axmain, [θ★.convective_κz], color = :red)
-vlines!(axtop, [θ★.convective_κz], color = :red)
+vlines!(axmain, [θ★.Cᴷu⁻], color = :red)
+vlines!(axtop, [θ★.Cᴷu⁻], color = :red)
 
-hlines!(axmain, [θ★.background_κz], color = :red)
-hlines!(axright, [θ★.background_κz], color = :red)
+hlines!(axmain, [θ★.Cᴷc⁻], color = :red)
+hlines!(axright, [θ★.Cᴷc⁻], color = :red)
 
 colsize!(f.layout, 1, Fixed(300))
 colsize!(f.layout, 2, Fixed(200))
