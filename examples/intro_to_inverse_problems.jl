@@ -84,7 +84,7 @@ function build_ensemble_simulation(observations; Nensemble=1)
     observations isa Vector || (observations = [observations]) # Singleton batch
     Nbatch = length(observations)
 
-    Qᵘ, Qᵇ, N², f, Δt, Lz, Nz, Hz, closure = extract_parameters(observations, Nensemble)
+    Qᵘ, Qᵇ, N², f, Δt, Lz, Nz, Hz, closure = extract_perfect_parameters(observations, Nensemble)
 
     column_ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(Nensemble, Nbatch), Hz=Hz)
     ensemble_grid = RectilinearGrid(size = column_ensemble_size, topology = (Flat, Flat, Bounded), z = (-Lz, 0))
