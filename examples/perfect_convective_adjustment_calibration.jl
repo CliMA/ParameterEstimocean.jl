@@ -76,7 +76,7 @@ iterate!(eki; iterations = 10)
 # Last, we visualize the outputs of EKI calibration.
 
 θ̅(iteration) = [eki.iteration_summaries[iteration].ensemble_mean...]
-varθ(iteration) = eki.iteration_summaries[iteration].ensemble_variance
+varθ(iteration) = eki.iteration_summaries[iteration].ensemble_var
 
 weight_distances = [norm(θ̅(iter) - [θ★[1], θ★[2]]) for iter in 1:eki.iteration]
 output_distances = [norm(forward_map(calibration, θ̅(iter))[:, 1] - y) for iter in 1:eki.iteration]
