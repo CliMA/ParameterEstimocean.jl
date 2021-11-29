@@ -121,8 +121,6 @@ if generate_observations || !(isfile(data_path))
                                                           field_slicer = nothing,
                                                           force = true)
 
-    pop!(simulation.diagnostics, :nan_checker)      # remove the `nan_checker`
-    
     run!(simulation)
 end
 
