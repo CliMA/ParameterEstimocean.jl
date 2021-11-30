@@ -1,4 +1,3 @@
-#=
 # # Perfect convective adjustment calibration with Ensemble Kalman Inversion
 #
 # This example calibrates a convective adjustment model in the "perfect model context".
@@ -75,7 +74,6 @@ eki = EnsembleKalmanInversion(calibration; noise_covariance = Matrix(Diagonal(no
 iterate!(eki; iterations = 10)
 
 # Last, we visualize the outputs of EKI calibration.
-=#
 
 θ̅(iteration) = [eki.iteration_summaries[iteration].ensemble_mean...]
 varθ(iteration) = eki.iteration_summaries[iteration].ensemble_var
