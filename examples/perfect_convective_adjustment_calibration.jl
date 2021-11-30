@@ -1,3 +1,4 @@
+#=
 # # Perfect convective adjustment calibration with Ensemble Kalman Inversion
 #
 # This example calibrates a convective adjustment model in the "perfect model context".
@@ -74,6 +75,7 @@ eki = EnsembleKalmanInversion(calibration; noise_covariance = Matrix(Diagonal(no
 iterate!(eki; iterations = 10)
 
 # Last, we visualize the outputs of EKI calibration.
+=#
 
 θ̅(iteration) = [eki.iteration_summaries[iteration].ensemble_mean...]
 varθ(iteration) = eki.iteration_summaries[iteration].ensemble_var
@@ -87,14 +89,12 @@ f = Figure()
 lines(f[1, 1], 1:eki.iteration, weight_distances, color = :red, linewidth = 2,
       axis = (title = "Parameter distance",
               xlabel = "Iteration",
-              ylabel = "|θ̅ₙ - θ⋆|",
-              yscale = log10))
+              ylabel = "|θ̅ₙ - θ★|"))
 
 lines(f[1, 2], 1:eki.iteration, output_distances, color = :blue, linewidth = 2,
       axis = (title = "Output distance",
               xlabel = "Iteration",
-              ylabel="|G(θ̅ₙ) - y|",
-              yscale = log10))
+              ylabel = "|G(θ̅ₙ) - y|"))
 
 ax3 = Axis(f[2, 1:2],
            title = "Parameter convergence",
