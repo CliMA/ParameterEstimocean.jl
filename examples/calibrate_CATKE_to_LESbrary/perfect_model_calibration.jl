@@ -162,8 +162,6 @@ pop!(ensemble_simulation.diagnostics, :nan_checker)
 
 # ensemble_simulation = Simulation(ensemble_model; Δt, stop_time)
 
-# pop!(ensemble_simulation.diagnostics, :nan_checker)
-
 #####
 ##### Build free parameters
 #####
