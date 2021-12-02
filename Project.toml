@@ -23,6 +23,10 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Distributions = "0.25"
 EnsembleKalmanProcesses = "0.1"
 JLD2 = "0.4"
+<<<<<<< HEAD
+=======
+Oceananigans = "0.66.3, 0.67"
+>>>>>>> main
 OffsetArrays = "1"
 OrderedCollections = "1"
 ProgressBars = "1"
