@@ -158,10 +158,6 @@ ensemble_simulation = Simulation(ensemble_model; Δt, stop_time)
 
 ensemble_simulation
 
-# We removed the `nan_checker` checker since we would ideally want to be able to proceed with the
-# Ensemble Kalman Inversion (EKI) iteration step even if one of the models of the ensemble ends up
-# blowing up.
-
 # ### Free parameters
 #
 # We construct some prior distributions for our free parameters. We found that it often helps to

@@ -148,8 +148,6 @@ set!(ensemble_model, b = (x, y, z) -> N² * z)
 
 ensemble_simulation = Simulation(ensemble_model; Δt, stop_time)
 
-pop!(ensemble_simulation.diagnostics, :nan_checker)
-
 # #####
 # ##### Set up ensemble model
 # #####
