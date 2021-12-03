@@ -233,10 +233,10 @@ end
 Returns
 =======
 
-`mean :: Matrix{Float64}`: `N_θ` × `N_iter` mean matrix
-`cov :: Vector{Matrix{Float64}}`: `N_iter` vector of `N_θ` × `N_θ` covariance matrix
-`std :: Matrix{Float64}`: `N_iter` × `N_θ` standard deviation matrix
-`err :: Vector{Float64}`: `N_iter` error array
+- `mean :: Matrix{Float64}`: `N_iterations` × `N_parameters` mean matrix
+- `cov :: Vector{Matrix{Float64}}`: `N_iterations` vector of `N_parameters` × `N_parameters` covariance matrix
+- `std :: Matrix{Float64}`: `N_iterations` × `N_parameters` standard deviation matrix
+- `err :: Vector{Float64}`: `N_iterations` error array
 """
 function UnscentedKalmanInversionPostprocess(eki)
     original_priors = eki.inverse_problem.free_parameters.priors
