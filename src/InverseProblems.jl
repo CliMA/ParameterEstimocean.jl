@@ -3,8 +3,8 @@ module InverseProblems
 using OrderedCollections
 using Suppressor: @suppress
 
-using ..Observations: obs_str, AbstractObservation, OneDimensionalTimeSeries, initialize_simulation!, FieldTimeSeriesCollector, 
-                      observation_times, observation_names
+using ..Observations: obs_str, AbstractObservation, OneDimensionalTimeSeries, initialize_simulation!, FieldTimeSeriesCollector,
+    observation_times, observation_names
 
 using ..TurbulenceClosureParameters: free_parameters_str, update_closure_ensemble_member!
 
@@ -50,12 +50,12 @@ output_map_str(::ConcatenatedVectorNormMap) = "ConcatenatedVectorNormMap"
 ##### InverseProblems
 #####
 
-struct InverseProblem{F, O, S, T, P}
-    observations :: O
-    simulation :: S
-    time_series_collector :: T
-    free_parameters :: P
-    output_map :: F
+struct InverseProblem{F,O,S,T,P}
+    observations::O
+    simulation::S
+    time_series_collector::T
+    free_parameters::P
+    output_map::F
 end
 
 """
@@ -63,7 +63,7 @@ end
 
 Return an `InverseProblem`.
 """
-function InverseProblem(observations, simulation, free_parameters; output_map=ConcatenatedOutputMap(), time_series_collector=nothing)
+function InverseProblem(observations, simulation, free_parameters; output_map = ConcatenatedOutputMap(), time_series_collector = nothing)
 
     if isnothing(time_series_collector) # attempt to construct automagically
         simulation_fields = fields(simulation.model)
@@ -81,10 +81,10 @@ function Base.show(io::IO, ip::InverseProblem)
     out_map_str = output_map_str(ip.output_map)
 
     print(io, "InverseProblem{$out_map_type}", '\n',
-              "├── observations: $(obs_str(ip.observations))", '\n',    
-              "├── simulation: $sim_str", '\n',
-              "├── free_parameters: $(free_parameters_str(ip.free_parameters))", '\n',
-              "└── output map: $out_map_str")
+        "├── observations: $(obs_str(ip.observations))", '\n',
+        "├── simulation: $sim_str", '\n',
+        "├── free_parameters: $(free_parameters_str(ip.free_parameters))", '\n',
+        "└── output map: $out_map_str")
 
     return nothing
 end
@@ -134,10 +134,10 @@ expand_parameters(ip, θ::Matrix) = expand_parameters(ip, [θ[:, i] for i in 1:s
 const OneDimensionalEnsembleGrid = RectilinearGrid{<:Any, Flat, Flat, Bounded}
 const TwoDimensionalEnsembleGrid = RectilinearGrid{<:Any, Flat, Bounded, Bounded}
 
-n_ensemble(grid::Union{OneDimensionalEnsembleGrid, TwoDimensionalEnsembleGrid}) = grid.Nx
+n_ensemble(grid::Union{OneDimensionalEnsembleGrid,TwoDimensionalEnsembleGrid}) = grid.Nx
 n_observations(grid::OneDimensionalEnsembleGrid) = grid.Ny
 n_observations(grid::TwoDimensionalEnsembleGrid) = 1
-n_z(grid::Union{OneDimensionalEnsembleGrid, TwoDimensionalEnsembleGrid}) = grid.Nz
+n_z(grid::Union{OneDimensionalEnsembleGrid,TwoDimensionalEnsembleGrid}) = grid.Nz
 n_y(grid::TwoDimensionalEnsembleGrid) = grid.Ny
 n_ensemble(ip::InverseProblem) = n_ensemble(ip.simulation.model.grid)
 
@@ -157,7 +157,7 @@ function forward_run!(ip::InverseProblem, parameters)
 
     θ = expand_parameters(ip, parameters)
 
-    for p in 1:length(θ)
+    for p = 1:length(θ)
         update_closure_ensemble_member!(closures, p, θ[p])
     end
 
@@ -175,6 +175,7 @@ Run `ip.simulation` forward with `parameters` and return the data,
 transformed into an array format expected by `EnsembleKalmanProcesses.jl`.
 """
 function forward_map(ip, parameters)
+
     # Run the simulation forward and populate the time series collector
     # with model data.
     forward_run!(ip, parameters)
@@ -187,7 +188,7 @@ function forward_map(ip, parameters)
     output = transform_output(ip.output_map, ip.observations, ip.time_series_collector)
 
     # (output_size, ensemble_size)
-    return output[:, 1:length(parameters)]
+    return output
 end
 
 (ip::InverseProblem)(θ) = forward_map(ip, θ)
@@ -202,7 +203,7 @@ function transform_observations(::ConcatenatedOutputMap, observation::OneDimensi
         Nx, Ny, Nz, Nt = size(field_time_series_data)
         field_time_series_data = reshape(field_time_series_data, Nx, Ny * Nz * Nt)
 
-        normalize!(field_time_series_data, observation.normalization[field_name])
+        # normalize!(field_time_series_data, observation.normalization[field_name])
 
         push!(flattened_normalized_data, field_time_series_data)
     end
@@ -234,27 +235,27 @@ function observation_map_variance_across_time(map::ConcatenatedOutputMap, observ
     Nx, Ny, Nz, Nt = size(interior(example_field_time_series))
 
     # Assume all fields have the same size
-    b = reshape(a, Nx, Ny * Nz, Nt, N_fields); # (Nx, Ny*Nz, Nt, Nfields)
+    b = reshape(a, Nx, Ny * Nz, Nt, N_fields) # (Nx, Ny*Nz, Nt, Nfields)
 
-    c = cat((b[:, :, :, i] for i in 1:N_fields)..., dims=2) # (Nx, Ny*Nz*Nfields, Nt)
+    c = cat((b[:, :, :, i] for i = 1:N_fields)..., dims = 2) # (Nx, Ny*Nz*Nfields, Nt)
 
-    ds = [reshape(var(c[:, :, 1:t], dims=3), Nx, Ny * Nz, N_fields) for t in 1:Nt]
+    ds = [reshape(var(c[:, :, 1:t], dims = 3), Nx, Ny * Nz, N_fields) for t = 1:Nt]
 
-    e = cat(ds..., dims=2)
+    e = cat(ds..., dims = 2)
 
     replace!(e, NaN => 0) # variance for first time step is zero
 
-    return reshape(e, Nx, Ny*Nz*Nt*N_fields)
+    return reshape(e, Nx, Ny * Nz * Nt * N_fields)
 end
 
-observation_map_variance_across_time(map::ConcatenatedOutputMap, observations::Vector) = 
+observation_map_variance_across_time(map::ConcatenatedOutputMap, observations::Vector) =
     hcat(Tuple(observation_map_variance_across_time(map, observation) for observation in observations)...)
 
 observation_map_variance_across_time(ip::InverseProblem) = observation_map_variance_across_time(ip.output_map, ip.observations)
 
 function transform_output(map::ConcatenatedOutputMap,
-                          observations::Union{OneDimensionalTimeSeries, Vector{<:OneDimensionalTimeSeries}},
-                          time_series_collector)
+    observations::Union{OneDimensionalTimeSeries,Vector{<:OneDimensionalTimeSeries}},
+    time_series_collector)
 
     # transposed_output isa Vector{OneDimensionalTimeSeries} where OneDimensionalTimeSeries is Nx by Nz by Nt
     transposed_output = transpose_model_output(time_series_collector, observations)
@@ -265,15 +266,15 @@ end
 vectorize(observation) = [observation]
 vectorize(observations::Vector) = observations
 
-const YZSliceObservations = OneDimensionalTimeSeries{<:Any, <:YZSliceGrid}
+const YZSliceObservations = OneDimensionalTimeSeries{<:Any,<:YZSliceGrid}
 
 function transpose_model_output(time_series_collector, observations::YZSliceObservations)
     return OneDimensionalTimeSeries(time_series_collector.field_time_serieses,
-                                    time_series_collector.grid,
-                                    time_series_collector.times,
-                                    nothing,
-                                    nothing,
-                                    observations.normalization)
+        time_series_collector.grid,
+        time_series_collector.times,
+        nothing,
+        nothing,
+        observations.normalization)
 end
 
 """
@@ -300,7 +301,7 @@ function transpose_model_output(time_series_collector, observations)
 
     for j = 1:n_batch
         observation = observations[j]
-        time_serieses = OrderedDict{Any, Any}()
+        time_serieses = OrderedDict{Any,Any}()
 
         for name in keys(observation.field_time_serieses)
             loc = LX, LY, LZ = location(observation.field_time_serieses[name])
@@ -311,7 +312,7 @@ function transpose_model_output(time_series_collector, observations)
             raw_data = parent(field_time_series.data)
             data = OffsetArray(view(raw_data, :, j:j, :, :), 0, 0, -Hz, 0)
 
-            time_series = FieldTimeSeries{LX, LY, LZ, InMemory}(data, CPU(), grid, nothing, times)
+            time_series = FieldTimeSeries{LX,LY,LZ,InMemory}(data, CPU(), grid, nothing, times)
             time_serieses[name] = time_series
         end
 
@@ -319,11 +320,11 @@ function transpose_model_output(time_series_collector, observations)
         time_serieses = NamedTuple(name => time_series for (name, time_series) in time_serieses)
 
         batch_output = OneDimensionalTimeSeries(time_serieses,
-                                                grid,
-                                                times,
-                                                nothing,
-                                                nothing,
-                                                observation.normalization) 
+            grid,
+            times,
+            nothing,
+            nothing,
+            observation.normalization)
 
         push!(transposed_output, batch_output)
     end

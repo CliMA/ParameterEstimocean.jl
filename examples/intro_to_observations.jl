@@ -116,7 +116,7 @@ ax_u = Axis(fig[1, 2], xlabel = "Velocities [m s⁻¹]")
 
 z = znodes(Center, observations.grid)
 
-colorcycle = [:black, :red, :blue, :orange]
+colorcycle = [:black, :red, :blue, :orange, :pink]
 
 for i = 1:length(observations.times)
     b = observations.field_time_serieses.b[i]
