@@ -424,9 +424,9 @@ version = "0.21.0+0"
 
 [[Glib_jll]]
 deps = ["Artifacts", "Gettext_jll", "JLLWrappers", "Libdl", "Libffi_jll", "Libiconv_jll", "Libmount_jll", "PCRE_jll", "Pkg", "Zlib_jll"]
-git-tree-sha1 = "7bf67e9a481712b3dbe9cb3dac852dc4b1162e02"
+git-tree-sha1 = "74ef6288d071f58033d54fd6708d4bc23a8b8972"
 uuid = "7746bdde-850d-59dc-9ae8-88ece973131d"
-version = "2.68.3+0"
+version = "2.68.3+1"
 
 [[Glob]]
 git-tree-sha1 = "4df9f7e06108728ebf00a0a11edee4b29a482bb2"
@@ -464,9 +464,9 @@ version = "1.12.0+1"
 
 [[HarfBuzz_jll]]
 deps = ["Artifacts", "Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "Graphite2_jll", "JLLWrappers", "Libdl", "Libffi_jll", "Pkg"]
-git-tree-sha1 = "8a954fed8ac097d5be04921d595f741115c1b2ad"
+git-tree-sha1 = "129acf094d168394e80ee1dc4bc06ec835e510a3"
 uuid = "2e76f6c2-a576-52d4-95c1-20adfe4de566"
-version = "2.8.1+0"
+version = "2.8.1+1"
 
 [[IOCapture]]
 deps = ["Logging", "Random"]
@@ -713,9 +713,9 @@ version = "0.19.1"
 
 [[MPICH_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "09864c823da1a606dbc151534c1a134fd5506170"
+git-tree-sha1 = "480a8be51647c9dec19ff2211e26c9f30787840b"
 uuid = "7cb0a576-ebde-5e09-9194-50597f1243b4"
-version = "3.4.2+1"
+version = "3.4.2+2"
 
 [[MacroTools]]
 deps = ["Markdown", "Random"]
@@ -761,9 +761,9 @@ uuid = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
 
 [[MicrosoftMPI_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "bb2fe65544e6efd883bb2060088df7dfb7273b41"
+git-tree-sha1 = "a16aa086d335ed7e0170c5265247db29172af2f9"
 uuid = "9237b28f-5490-5468-be7b-bb81f5f5e6cf"
-version = "10.1.3+1"
+version = "10.1.3+2"
 
 [[Missings]]
 deps = ["DataAPI"]
@@ -815,12 +815,10 @@ uuid = "510215fc-4207-5dde-b226-833fc4488ee2"
 version = "0.4.0"
 
 [[Oceananigans]]
-deps = ["Adapt", "CUDA", "CUDAKernels", "Crayons", "CubedSphere", "Dates", "FFTW", "Glob", "InteractiveUtils", "JLD2", "KernelAbstractions", "LinearAlgebra", "Logging", "MPI", "NCDatasets", "OffsetArrays", "OrderedCollections", "PencilFFTs", "Pkg", "Printf", "Random", "Rotations", "SafeTestsets", "SeawaterPolynomials", "Statistics", "StructArrays", "Tullio"]
-git-tree-sha1 = "9c595bbe9a6e555495791c486a21372881a1f77b"
-repo-rev = "ncc-glw/gm"
-repo-url = "https://github.com/CliMA/Oceananigans.jl.git"
+deps = ["Adapt", "CUDA", "CUDAKernels", "Crayons", "CubedSphere", "Dates", "DocStringExtensions", "FFTW", "Glob", "InteractiveUtils", "JLD2", "KernelAbstractions", "LinearAlgebra", "Logging", "MPI", "NCDatasets", "OffsetArrays", "OrderedCollections", "PencilFFTs", "Pkg", "Printf", "Random", "Rotations", "SafeTestsets", "SeawaterPolynomials", "Statistics", "StructArrays", "Tullio"]
+git-tree-sha1 = "a691196967418cdbadef5c9fa5a5f05703f5973b"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
-version = "0.66.2"
+version = "0.66.3"
 
 [[OffsetArrays]]
 deps = ["Adapt"]
@@ -852,9 +850,9 @@ uuid = "05823500-19ac-5b8b-9628-191a04bc5112"
 
 [[OpenMPI_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "872077914c8a8cab9ea1430f338ae6b59258577d"
+git-tree-sha1 = "08334c7cd6cb033274bc90918ece2174b5f84cc7"
 uuid = "fe0851c0-eecd-5654-98d4-656369965a5c"
-version = "4.1.1+3"
+version = "4.1.1+5"
 
 [[OpenSSL_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]

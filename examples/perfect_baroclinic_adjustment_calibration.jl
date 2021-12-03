@@ -156,13 +156,7 @@ closure_ensemble = [deepcopy(gent_mcwilliams_diffusivity) for i = 1:ensemble_siz
 
 ensemble_simulation = Simulation(ensemble_model; Δt, stop_time)
 
-pop!(ensemble_simulation.diagnostics, :nan_checker)
-
 ensemble_simulation
-
-# We removed the `nan_checker` checker since we would ideally want to be able to proceed with the
-# Ensemble Kalman Inversion (EKI) iteration step even if one of the models of the ensemble ends up
-# blowing up.
 
 # ### Free parameters
 #
