@@ -84,7 +84,7 @@ end
 observation_times(observation) = observation.times
 
 function observation_times(obs::Vector)
-    @assert all([o.times == obs[1].times for o in obs]) "Observations must have the same times."
+    @assert all([o.times ≈ obs[1].times for o in obs]) "Observations must have the same times."
     return observation_times(first(obs))
 end
 
