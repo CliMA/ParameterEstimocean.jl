@@ -220,9 +220,9 @@ for p1 = 1:N_param, p2 = 1:N_param
         scatters = []
         for iteration in [1, 2, 3, N_iter]
             ensemble = transpose(eki.iteration_summaries[iteration].parameters[[p1, p2], :])
-            push!(scatters, CairoMakie.scatter!(axmain, ensemble))
-            CairoMakie.density!(axtop, ensemble[:, 1])
-            CairoMakie.density!(axright, ensemble[:, 2], direction = :y)
+            push!(scatters, scatter!(axmain, ensemble))
+            density!(axtop, ensemble[:, 1])
+            density!(axright, ensemble[:, 2], direction = :y)
         end
         vlines!(axmain, [true_parameters[p1]], color = :red)
         vlines!(axtop, [true_parameters[p1]], color = :red)
@@ -237,12 +237,12 @@ for p1 = 1:N_param, p2 = 1:N_param
             position = :lb)
         hidedecorations!(axtop, grid = false)
         hidedecorations!(axright, grid = false)
-        # CairoMakie.xlims!(axmain, 350, 1350)
-        # CairoMakie.xlims!(axtop, 350, 1350)
-        # CairoMakie.ylims!(axmain, 650, 1750)
-        # CairoMakie.ylims!(axright, 650, 1750)
-        CairoMakie.xlims!(axright, 0, 10)
-        CairoMakie.ylims!(axtop, 0, 10)
+        # xlims!(axmain, 350, 1350)
+        # xlims!(axtop, 350, 1350)
+        # ylims!(axmain, 650, 1750)
+        # ylims!(axright, 650, 1750)
+        xlims!(axright, 0, 10)
+        ylims!(axtop, 0, 10)
         save("eki_$(pname1)_$(pname2).png", f)
     end
 end
