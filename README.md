@@ -6,6 +6,8 @@ Continuous Integration: [![Build Status](https://github.com/CliMA/OceanTurbulenc
 
 Code Coverage: [![codecov](https://codecov.io/gh/CliMA/OceanTurbulenceParameterEstimation.jl/branch/main/graph/badge.svg?token=cPeTALmiPU)](https://codecov.io/gh/CliMA/OceanTurbulenceParameterEstimation.jl)
 
+Stable Release Documentation: [![Build Status](https://img.shields.io/badge/documentation-stable%20release-blue)](https://clima.github.io/OceanTurbulenceParameterEstimation.jl/stable)
+
 Latest Documentation: [![Build Status](https://img.shields.io/badge/documentation-in%20development-orange)](https://clima.github.io/OceanTurbulenceParameterEstimation.jl/dev)
 
 
