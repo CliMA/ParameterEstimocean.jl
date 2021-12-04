@@ -5,8 +5,8 @@ import Oceananigans.Fields: interior
 import Oceananigans.Grids: topology, interior_parent_indices
 
 function variance(field)
-    field_mean = mean(field)
-    variance = mean(f_ijk -> (f_ijk - field_mean)^2, field)
+    field_mean = mean(interior(field))
+    variance = mean(f_ijk -> (f_ijk - field_mean)^2, interior(field))
     return variance
 end
 

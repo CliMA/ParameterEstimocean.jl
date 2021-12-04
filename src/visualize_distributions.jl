@@ -6,13 +6,13 @@ vals = [inverse_parameter_transform(cn, x) for x in rand(convert_prior(cn), 1000
 
 f = Figure()
 axtop = Axis(f[1, 1])
-CairoMakie.density!(axtop, vals)
-CairoMakie.density!(axtop, rand(lognormal_with_mean_std(0.5e-5,0.25e-5), 10000000))
-CairoMakie.xlims!(0,2e-5)
+density!(axtop, vals)
+density!(axtop, rand(lognormal_with_mean_std(0.5e-5,0.25e-5), 10000000))
+xlims!(0,2e-5)
 save("visualize_ConstrainedNormal.png", f)
 display(f)
 
-CairoMakie.density!(axright, ensemble[:, 2], direction = :y)
+density!(axright, ensemble[:, 2], direction = :y)
 
 vlines!(axmain, [convective_κz], color=:red)
 vlines!(axtop, [convective_κz], color=:red)

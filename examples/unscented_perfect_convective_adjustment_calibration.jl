@@ -45,8 +45,8 @@ observations = OneDimensionalTimeSeries(data_path, field_names=:b, normalize=ZSc
 # can be drawn out of the distribution.
 
 priors = (
-    convective_κz = ConstrainedNormal(0.0, 1.0, 0.0, 4*θ★.convective_κz),
-    background_κz = ConstrainedNormal(0.0, 1.0, 0.0, 4*θ★.background_κz)
+    convective_κz = ConstrainedNormal(0.0, 1.0, 0.0, 4 * θ★.convective_κz),
+    background_κz = ConstrainedNormal(0.0, 1.0, 0.0, 4 * θ★.background_κz)
 )
 
 free_parameters = FreeParameters(priors)
@@ -54,7 +54,7 @@ free_parameters = FreeParameters(priors)
 # and an ensemble_simulation,
 
 Nparameters = length(priors)
-Nensemble = 2Nparameters + 1
+Nensemble = 2 * Nparameters + 1
 
 ensemble_simulation, θ★ = build_ensemble_simulation(observations; Nensemble)
 
@@ -110,13 +110,13 @@ uki = UnscentedKalmanInversion(calibration, prior_mean, prior_cov;
 
 iterate!(uki; iterations = 10)
 
-# Last, we visualize the outputs of UKI calibration.
+# Last, we visualize the outputs of UKI calibration:
 
 θ_mean, θθ_cov, θθ_std_arr, error =  UnscentedKalmanInversionPostprocess(uki)
 
 N_iter = size(θ_mean, 2)
 
-f = Figure(resolution = (800, 800))
+f = Figure(resolution = (800, 600))
 ax1 = Axis(f[1, 1],
            xlabel = "iterations",
            xticks = 1:N_iter,
@@ -127,25 +127,32 @@ ax2 = Axis(f[2, 1],
            xticks = 1:N_iter,
            ylabel = "background_κz [m² s⁻¹]")
 
-ax3 = Axis(f[3, 1],
-           xlabel = "iterations",
-           ylabel = "error",
-           xticks = 1:N_iter)
-
-lines!(ax1, 1:N_iter, θ_mean[1, :])
 band!(ax1, 1:N_iter, θ_mean[1, :] .+ θθ_std_arr[1, :], θ_mean[1, :] .- θθ_std_arr[1, :])
+lines!(ax1, Float64.(1:N_iter), θ_mean[1, :])
 hlines!(ax1, [θ★.convective_κz], color=:red)
 
-lines!(ax2, 1:N_iter, θ_mean[2, :])
 band!(ax2, 1:N_iter, θ_mean[2, :] .+ θθ_std_arr[2, :], θ_mean[2, :] .- θθ_std_arr[2, :])
+lines!(ax2, 1:N_iter, θ_mean[2, :])
 hlines!(ax2, [θ★.background_κz], color=:red)
-
-plot!(ax3, 2:N_iter, error)
 
 xlims!(ax1, 0.5, N_iter+0.5)
 xlims!(ax2, 0.5, N_iter+0.5)
-xlims!(ax3, 0.5, N_iter+0.5)
 
 save("uki_results.svg", f); nothing #hide 
 
 # ![](uki_results.svg)
+
+# and the error:
+
+f = Figure(resolution = (800, 300))
+
+lines(f[1, 1], 2:N_iter, error, color = :red, linewidth = 2,
+               axis = (xlabel = "iterations",
+                       xticks = 1:N_iter,
+                       ylabel = "error"))
+
+xlims!(0.5, N_iter+0.5)
+
+save("uki_error.svg", f); nothing #hide 
+
+# ![](uki_error.svg)
