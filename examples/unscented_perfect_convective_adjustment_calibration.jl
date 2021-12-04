@@ -56,9 +56,7 @@ free_parameters = FreeParameters(priors)
 Nparameters = length(priors)
 Nensemble = 2 * Nparameters + 1
 
-ensemble_simulation, θ★ = build_ensemble_simulation(observations; Nensemble)
-
-θ★ = NamedTuple(name => θ★[name] for name in keys(priors))
+ensemble_simulation, closure★ = build_ensemble_simulation(observations; Nensemble)
 
 # To visualize the prior distributions we randomly sample out values from then and plot the p.d.f.
 
