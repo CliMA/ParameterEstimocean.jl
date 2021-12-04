@@ -128,4 +128,3 @@ ylims!(axright, 5e-5, 35e-5)
 save("distributions_convective_adjustment_eki.svg", f); nothing #hide
 
 # ![](distributions_convective_adjustment_eki.svg)
-=#
