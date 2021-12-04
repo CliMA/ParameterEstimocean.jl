@@ -23,7 +23,7 @@
 using OceanTurbulenceParameterEstimation, LinearAlgebra, CairoMakie
 
 # We reuse some some code from a previous example to generate observations,
-@show examples_path = joinpath(pathof(OceanTurbulenceParameterEstimation), "..", "..", "examples")
+examples_path = joinpath(pathof(OceanTurbulenceParameterEstimation), "..", "..", "examples")
 include(joinpath(examples_path, "intro_to_inverse_problems.jl"))
 
 data_path = generate_synthetic_observations()
@@ -31,7 +31,7 @@ observations = OneDimensionalTimeSeries(data_path, field_names=:b, normalize=ZSc
 
 # and an ensemble_simulation,
 
-ensemble_simulation, θ★ = build_ensemble_simulation(observations; Nensemble=50)
+ensemble_simulation, closure★ = build_ensemble_simulation(observations; Nensemble=50)
 
 # The handy utility function `build_ensemble_simulation` also tells us the optimal
 # parameters that were used when generating the synthetic observations:
