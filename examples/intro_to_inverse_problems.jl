@@ -200,17 +200,19 @@ b¹ = interior(b)[2, 1, :]
 b² = interior(b)[3, 1, :]
 
 fig = Figure()
-ax = Axis(fig[1, 1], xlabel = "Buoyancy [m s⁻²]")
+ax = Axis(fig[1, 1],
+          xlabel = "Buoyancy [m s⁻²]",
+          ylabel = "Depth [m]")
 
 b★_label = "true b at t = " * prettytime(t)
 b¹_label = "b with $θ¹"
 b²_label = "b with $θ²"
 
-lines!(ax, b★, z; label=b★_label)
-lines!(ax, b¹, z; label=b¹_label)
-lines!(ax, b², z; label=b²_label)
+lines!(ax, b★, z; label=b★_label, linewidth=2)
+lines!(ax, b¹, z; label=b¹_label, linewidth=2)
+lines!(ax, b², z; label=b²_label, linewidth=2)
 
-axislegend(ax, position=:rb)
+axislegend(ax, position=:lt)
 
 save("ensemble_simulation_demonstration.svg", fig)
 nothing # hide
