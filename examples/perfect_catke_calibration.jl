@@ -32,33 +32,41 @@ free_parameters = FreeParameters(priors)
 calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
 
 # # Ensemble Kalman Inversion
+#
+# Next, we construct an `EnsembleKalmanInversion` (EKI) object,
+#
+# The calibration is done here using Ensemble Kalman Inversion. For more information about the 
+# algorithm refer to
+# [EnsembleKalmanProcesses.jl documentation](https://clima.github.io/EnsembleKalmanProcesses.jl/stable/ensemble_kalman_inversion/).
 
-noise_variance = observation_map_variance_across_time(calibration)[1, :, 1] .+ 1e-2
+noise_variance = observation_map_variance_across_time(calibration)[1, :, 1] .+ 1e-5
 
 eki = EnsembleKalmanInversion(calibration; noise_covariance = Matrix(Diagonal(noise_variance)))
 
-θ★ = iterate!(eki; iterations = 10)
+# and perform few iterations to see if we can converge to the true parameter values.
 
-mean_θ = map(summary -> collect(values(summary.ensemble_mean)), eki.iteration_summaries)
-ensemble_variances = map(summary -> summary.ensemble_variance, eki.iteration_summaries)
-θ★v = collect(values(θ★))
+iterate!(eki; iterations = 10)
 
-weight_distances = [norm(θ̄ - θ★v) for θ̄ in mean_θ]
-output_distances = [norm(forward_map(calibration, θ̄)[:, 1] - y) for θ̄ in mean_θ]
+# Last, we visualize the outputs of EKI calibration.
+
+θ̅(iteration) = [eki.iteration_summaries[iteration].ensemble_mean...]
+varθ(iteration) = eki.iteration_summaries[iteration].ensemble_var
+
+weight_distances = [norm(θ̅(iter) - [θ★[1], θ★[2]]) for iter in 1:eki.iteration]
+output_distances = [norm(forward_map(calibration, θ̅(iter))[:, 1] - y) for iter in 1:eki.iteration]
+ensemble_variances = [varθ(iter) for iter in 1:eki.iteration]
 
 f = Figure()
 
 lines(f[1, 1], 1:eki.iteration, weight_distances, color = :red, linewidth = 2,
       axis = (title = "Parameter distance",
               xlabel = "Iteration",
-              ylabel = "|θ̅ₙ - θ⋆|",
-              yscale = log10))
+              ylabel = "|θ̅ₙ - θ★|"))
 
 lines(f[1, 2], 1:eki.iteration, output_distances, color = :blue, linewidth = 2,
       axis = (title = "Output distance",
               xlabel = "Iteration",
-              ylabel="|G(θ̅ₙ) - y|",
-              yscale = log10))
+              ylabel = "|G(θ̅ₙ) - y|"))
 
 ax3 = Axis(f[2, 1:2],
            title = "Parameter convergence",
@@ -73,9 +81,9 @@ end
 
 axislegend(ax3, position = :rt)
 
-save("summary_convective_adjustment_eki.svg", f); nothing #hide
+save("summary_catke_eki.svg", f); nothing #hide
 
-# ![](summary_convective_adjustment_eki.svg)
+# ![](summary_catke_eki.svg)
 
 # And also we plot the the distributions of the various model ensembles for few EKI iterations to see
 # if and how well they converge to the true diffusivity values.
@@ -125,7 +133,6 @@ xlims!(axtop, -0.25, 3.2)
 ylims!(axmain, 5e-5, 35e-5)
 ylims!(axright, 5e-5, 35e-5)
 
-save("distributions_convective_adjustment_eki.svg", f); nothing #hide
+save("distributions_catke_eki.svg", f); nothing #hide
 
-# ![](distributions_convective_adjustment_eki.svg)
-=#
+# ![](distributions_catke_eki.svg)

@@ -23,7 +23,7 @@
 using OceanTurbulenceParameterEstimation, LinearAlgebra, CairoMakie
 
 # We reuse some some code from a previous example to generate observations,
-@show examples_path = joinpath(pathof(OceanTurbulenceParameterEstimation), "..", "..", "examples")
+examples_path = joinpath(pathof(OceanTurbulenceParameterEstimation), "..", "..", "examples")
 include(joinpath(examples_path, "intro_to_inverse_problems.jl"))
 
 data_path = generate_synthetic_observations()

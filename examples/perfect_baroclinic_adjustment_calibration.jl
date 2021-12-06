@@ -311,8 +311,8 @@ xlims!(axmain, 350, 1350)
 xlims!(axtop, 350, 1350)
 ylims!(axmain, 650, 1750)
 ylims!(axright, 650, 1750)
-xlims!(axright, 0, 0.06)
-ylims!(axtop, 0, 0.06)
+xlims!(axright, 0, 0.025)
+ylims!(axtop, 0, 0.025)
 
 save("distributions_baroclinic_adjustment.svg", f); nothing #hide 
 
