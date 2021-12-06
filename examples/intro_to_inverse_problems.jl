@@ -119,7 +119,7 @@ ensemble_simulation, closure★ = build_ensemble_simulation(observations; Nensem
 # constrain the prior distributions so that neither very high nor very low values for diffusivities
 # can be drawn out of the distribution.
 
-priors = (convective_κz = lognormal_with_mean_std(0.3, 0.5),
+priors = (convective_κz = lognormal_with_mean_std(0.3, 0.05),
           background_κz = lognormal_with_mean_std(2.5e-4, 0.25e-4))
 
 free_parameters = FreeParameters(priors)

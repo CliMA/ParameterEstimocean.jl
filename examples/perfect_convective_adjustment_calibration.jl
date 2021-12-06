@@ -31,12 +31,12 @@ observations = OneDimensionalTimeSeries(data_path, field_names=:b, normalize=ZSc
 
 # and an ensemble_simulation,
 
-ensemble_simulation, θ★ = build_ensemble_simulation(observations; Nensemble=50)
+ensemble_simulation, closure★ = build_ensemble_simulation(observations; Nensemble=50)
 
 # The handy utility function `build_ensemble_simulation` also tells us the optimal
 # parameters that were used when generating the synthetic observations:
 
-θ★
+θ★ = (convective_κz = closure★.convective_κz, background_κz = closure★.background_κz)
 
 # # The `InverseProblem`
 #
@@ -44,7 +44,7 @@ ensemble_simulation, θ★ = build_ensemble_simulation(observations; Nensemble=5
 # Here we calibrate `convective_κz` and `background_κz`, using
 # log-normal priors to prevent the parameters from becoming negative:
 
-priors = (convective_κz = lognormal_with_mean_std(0.3, 0.5),
+priors = (convective_κz = lognormal_with_mean_std(0.3, 0.05),
           background_κz = lognormal_with_mean_std(2.5e-4, 0.25e-4))
 
 free_parameters = FreeParameters(priors)

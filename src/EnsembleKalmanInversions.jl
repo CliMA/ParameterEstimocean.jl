@@ -74,11 +74,10 @@ Base.show(io::IO, eki::EnsembleKalmanInversion) =
               "├── inverse_problem: ", typeof(eki.inverse_problem).name.wrapper, '\n',
               "├── parameter_distribution: ", typeof(eki.parameter_distribution).name.wrapper, '\n',
               "├── ensemble_kalman_process: ", typeof(eki.ensemble_kalman_process), '\n',
-              "├── mapped_observations: ", typeof(eki.mapped_observations), '\n',
-              "├── noise_covariance: ", typeof(eki.noise_covariance), '\n',
+              "├── mapped_observations: ", summary(eki.mapped_observations), '\n',
+              "├── noise_covariance: ", summary(eki.noise_covariance), '\n',
               "├── inverting_forward_map: ", typeof(eki.inverting_forward_map).name.wrapper, '\n',
               "├── iteration: $(eki.iteration)", '\n',
-              "├── iteration_summaries: $(eki.iteration_summaries)", '\n',
               "└── dropped_ensemble_members: $(eki.dropped_ensemble_members)")
 
 construct_noise_covariance(noise_covariance::AbstractMatrix, y) = noise_covariance
@@ -297,7 +296,7 @@ function Base.show(io::IO, is::IterationSummary)
     print(io, "IterationSummary(ensemble = ", length(is.mean_square_errors), ")", '\n',
               "                      ", param_str.(keys(is.ensemble_mean))..., '\n',
               "       ensemble_mean: ", param_str.(values(is.ensemble_mean))..., '\n',
-              "   ensemble_variance: ", param_str.(values(is.ensemble_variance))..., '\n',
+              "   ensemble_variance: ", param_str.(values(is.ensemble_var))..., '\n',
               particle_str.(1:length(is.parameters), is.mean_square_errors, is.parameters)...)
 
     return nothing
