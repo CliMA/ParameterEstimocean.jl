@@ -203,7 +203,7 @@ function transform_observations(::ConcatenatedOutputMap, observation::OneDimensi
         Nx, Ny, Nz, Nt = size(field_time_series_data)
         field_time_series_data = reshape(field_time_series_data, Nx, Ny * Nz * Nt)
 
-        # normalize!(field_time_series_data, observation.normalization[field_name])
+        normalize!(field_time_series_data, observation.normalization[field_name])
 
         push!(flattened_normalized_data, field_time_series_data)
     end

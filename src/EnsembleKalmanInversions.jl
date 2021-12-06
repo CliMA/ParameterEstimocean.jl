@@ -39,15 +39,19 @@ convert_prior(prior::ConstrainedNormal) = Normal(prior.μ, prior.σ)
 # Convert parameters to unconstrained for EKI
 forward_parameter_transform(prior::LogNormal, parameter) = log(parameter ^ sf(prior))
 forward_parameter_transform(prior::Normal, parameter) = parameter * sf(prior)
-forward_parameter_transform(cn::ConstrainedNormal, parameter) = log((cn.upper_bound - parameter)/(cn.upper_bound - cn.lower_bound))
+forward_parameter_transform(cn::ConstrainedNormal, parameter) =
+    log((cn.upper_bound - parameter) / (cn.upper_bound - cn.lower_bound))
 
 # Convert parameters from unconstrained (EKI) to constrained
 inverse_parameter_transform(prior::LogNormal, parameter) = exp(parameter / sf(prior))
 inverse_parameter_transform(prior::Normal, parameter) = parameter / sf(prior)
-inverse_parameter_transform(cn::ConstrainedNormal, parameter) = cn.lower_bound+(cn.upper_bound - cn.lower_bound)/(1 + exp(parameter))
+inverse_parameter_transform(cn::ConstrainedNormal, parameter) =
+    cn.lower_bound + (cn.upper_bound - cn.lower_bound) / (1 + exp(parameter))
 
 # Convert covariance from unconstrained (EKI) to constrained
-inverse_covariance_transform(::Tuple{Vararg{LogNormal}}, parameters, covariance) = Diagonal(exp.(parameters)) * covariance * Diagonal(exp.(parameters))
+inverse_covariance_transform(::Tuple{Vararg{LogNormal}}, parameters, covariance) =
+    Diagonal(exp.(parameters)) * covariance * Diagonal(exp.(parameters))
+
 inverse_covariance_transform(::Tuple{Vararg{Normal}}, parameters, covariance) = covariance
 
 function inverse_covariance_transform(cn::Tuple{Vararg{ConstrainedNormal}}, parameters, covariance)
@@ -127,6 +131,7 @@ Arguments
                                                      `noise_covariance`.
 """
 function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2)
+
     free_parameters = inverse_problem.free_parameters
     original_priors = free_parameters.priors
 
@@ -204,6 +209,7 @@ Arguments
 """
 function UnscentedKalmanInversion(inverse_problem, prior_mean, prior_cov;
                                   noise_covariance = 1e-2, α_reg = 1, update_freq = 0)
+
     free_parameters = inverse_problem.free_parameters
     original_priors = free_parameters.priors
 
@@ -289,7 +295,11 @@ function IterationSummary(eki, parameters, forward_map)
         for m in 1:N_ensemble
     ]
 
-    return IterationSummary(constrained_parameters, constrained_ensemble_mean, constrained_ensemble_covariance, constrained_ensemble_variance, mean_square_errors)
+    return IterationSummary(constrained_parameters,
+                            constrained_ensemble_mean,
+                            constrained_ensemble_covariance,
+                            constrained_ensemble_variance,
+                            mean_square_errors)
 end
 
 function Base.show(io::IO, is::IterationSummary)
@@ -393,7 +403,7 @@ function iterate!(eki::EnsembleKalmanInversion; iterations = 1)
     
         if nan_percent > 90
             error("The forward map for $(nan_percent)% of particles included NaNs. Consider reducing 
-            the model time step, evolving the model for less time, or narrowing the parameter priors.")
+                  the model time step, evolving the model for less time, or narrowing the parameter priors.")
         end
     
         if nan_percent > 0

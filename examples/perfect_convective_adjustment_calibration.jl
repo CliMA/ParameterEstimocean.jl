@@ -36,7 +36,7 @@ ensemble_simulation, closure★ = build_ensemble_simulation(observations; Nensem
 # The handy utility function `build_ensemble_simulation` also tells us the optimal
 # parameters that were used when generating the synthetic observations:
 
-θ★ = (convective_κz = closure★.convective_κz, background_κz = closure★.background_κz)
+@show θ★ = (convective_κz = closure★.convective_κz, background_κz = closure★.background_κz)
 
 # # The `InverseProblem`
 #
@@ -44,8 +44,8 @@ ensemble_simulation, closure★ = build_ensemble_simulation(observations; Nensem
 # Here we calibrate `convective_κz` and `background_κz`, using
 # log-normal priors to prevent the parameters from becoming negative:
 
-priors = (convective_κz = lognormal_with_mean_std(0.3, 0.05),
-          background_κz = lognormal_with_mean_std(2.5e-4, 0.25e-4))
+priors = (convective_κz = lognormal_with_mean_std(0.3, 0.5),
+          background_κz = lognormal_with_mean_std(2.5e-4, 2.5e-5))
 
 free_parameters = FreeParameters(priors)
 
