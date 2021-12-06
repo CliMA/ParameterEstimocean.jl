@@ -34,7 +34,7 @@ using EnsembleKalmanProcesses.ParameterDistributionStorage
 examples_path = joinpath(pathof(OceanTurbulenceParameterEstimation), "..", "..", "examples")
 include(joinpath(examples_path, "intro_to_inverse_problems.jl"))
 
-data_path = generate_free_convection_synthetic_observations()
+data_path = generate_synthetic_observations()
 observations = OneDimensionalTimeSeries(data_path, field_names=:b, normalize=ZScore)
 
 
@@ -56,9 +56,7 @@ free_parameters = FreeParameters(priors)
 Nparameters = length(priors)
 Nensemble = 2 * Nparameters + 1
 
-ensemble_simulation, θ★ = build_ensemble_simulation(observations; Nensemble)
-
-θ★ = NamedTuple(name => θ★[name] for name in keys(priors))
+ensemble_simulation, closure★ = build_ensemble_simulation(observations; Nensemble)
 
 # To visualize the prior distributions we randomly sample out values from then and plot the p.d.f.
 

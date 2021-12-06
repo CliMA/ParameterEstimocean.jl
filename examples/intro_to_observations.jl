@@ -24,51 +24,40 @@ using CairoMakie
 #
 # We define a utility function for constructing synthetic observations,
 
-function generate_free_convection_synthetic_observations(name = "convective_adjustment";
-                                                         Nz = 32,
-                                                         Lz = 64,
-                                                         Qᵇ = +1e-8,
-                                                         Qᵘ = -1e-5,
-                                                         Δt = 10.0,
-                                                         f₀ = 1e-4,
-                                                         N² = 1e-6)
+default_closure = ConvectiveAdjustmentVerticalDiffusivity(; convective_κz = 1.0,
+                                                            convective_νz = 0.9,
+                                                            background_κz = 1e-4,
+                                                            background_νz = 1e-5)
+
+function generate_synthetic_observations(name = "convective_adjustment"; Nz = 32, Lz = 64,
+                                         Qᵇ = +1e-8, Qᵘ = -1e-5, f₀ = 1e-4, N² = 1e-6,
+                                         Δt = 10.0, stop_time = 12hours,
+                                         tracers = :b, closure = default_closure)
+
     data_path = name * ".jld2"
-
-    if isfile(data_path)
-        return data_path
-    end
-
-    convective_κz = 1.0
-    convective_νz = 0.9
-    background_κz = 1e-4
-    background_νz = 1e-5
-
-    grid = RectilinearGrid(size=32, z=(-64, 0), topology=(Flat, Flat, Bounded))
-    closure = ConvectiveAdjustmentVerticalDiffusivity(; convective_κz, background_κz, convective_νz, background_νz)
+    isfile(data_path) && return data_path
+    
+    grid = RectilinearGrid(size=Nz, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
     u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
     b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ), bottom = GradientBoundaryCondition(N²))
 
-    model = HydrostaticFreeSurfaceModel(grid = grid,
-                                        tracers = :b,
-                                        buoyancy = BuoyancyTracer(),
-                                        boundary_conditions = (; u=u_bcs, b=b_bcs),
-                                        coriolis = FPlane(f=f₀),
-                                        closure = closure)
-                                        
-    set!(model, b = (x, y, z) -> N² * z)
-    
-    simulation = Simulation(model; Δt, stop_time=12hours)
+    model = HydrostaticFreeSurfaceModel(; grid, tracers, closure,
+                                          buoyancy = BuoyancyTracer(),
+                                          boundary_conditions = (; u=u_bcs, b=b_bcs),
+                                          coriolis = FPlane(f=f₀))
 
-    init_with_parameters(file, model) = file["parameters"] = (; Qᵇ, Qᵘ, Δt)
+    set!(model, b = (x, y, z) -> N² * z)
+    simulation = Simulation(model; Δt, stop_time)
+    init_with_parameters(file, model) = file["parameters"] = (; Qᵇ, Qᵘ, Δt, N², tracers=(:b, :e))
     
     simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
-                                                          schedule = TimeInterval(4hour),
+                                                          schedule = TimeInterval(stop_time/3),
                                                           prefix = name,
                                                           array_type = Array{Float64},
                                                           field_slicer = nothing,
                                                           init = init_with_parameters,
                                                           force = true)
-    
+
     run!(simulation)
 
     return data_path
@@ -76,7 +65,7 @@ end
 
 # and invoke it:
 
-data_path = generate_free_convection_synthetic_observations()
+data_path = generate_synthetic_observations()
 
 # # Specifying observations
 #
@@ -111,8 +100,8 @@ observations = OneDimensionalTimeSeries(data_path, field_names=(:u, :v, :b), nor
 
 fig = Figure()
 
-ax_b = Axis(fig[1, 1], xlabel = "Buoyancy [m s⁻²]")
-ax_u = Axis(fig[1, 2], xlabel = "Velocities [m s⁻¹]")
+ax_b = Axis(fig[1, 1], xlabel = "Buoyancy [10⁻⁴ m s⁻²]", ylabel = "Depth [m]")
+ax_u = Axis(fig[1, 2], xlabel = "Velocities [m s⁻¹]", ylabel = "Depth [m]")
 
 z = znodes(Center, observations.grid)
 
@@ -128,7 +117,7 @@ for i = 1:length(observations.times)
     u_label = i == 1 ? "u, " * label : label
     v_label = i == 1 ? "v, " * label : label
 
-    lines!(ax_b, interior(b)[1, 1, :], z; label, color=colorcycle[i])
+    lines!(ax_b, 1e4 * interior(b)[1, 1, :], z; label, color=colorcycle[i]) # convert units from m s⁻² to 10⁻⁴ m s⁻²
     lines!(ax_u, interior(u)[1, 1, :], z; linestyle=:solid, color=colorcycle[i], label=u_label)
     lines!(ax_u, interior(v)[1, 1, :], z; linestyle=:dash, color=colorcycle[i], label=v_label)
 end
@@ -143,4 +132,3 @@ save("intro_to_observations.svg", fig)
 # Hint: if using a REPL or notebook, try
 # `using Pkg; Pkg.add("ElectronDisplay"); using ElectronDisplay; display(fig)`
 # To see the figure in a window.
-

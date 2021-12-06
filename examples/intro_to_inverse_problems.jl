@@ -31,7 +31,7 @@ using JLD2
 
 examples_path = joinpath(pathof(OceanTurbulenceParameterEstimation), "..", "..", "examples")
 include(joinpath(examples_path, "intro_to_observations.jl"))
-data_path = generate_free_convection_synthetic_observations()
+data_path = generate_synthetic_observations()
 observations = OneDimensionalTimeSeries(data_path, field_names=:b, normalize=ZScore)
 
 # # Building an "ensemble simulation"
@@ -46,6 +46,34 @@ observations = OneDimensionalTimeSeries(data_path, field_names=:b, normalize=ZSc
 # the observations and the forward map.
 
 """
+    extract_perfect_parameters(observations, Nensemble)
+
+Extract parameters from a batch of "perfect" observations.
+"""
+function extract_perfect_parameters(observations, Nensemble)
+    Nbatch = length(observations)
+    Qᵘ, Qᵇ, N², f = [zeros(Nensemble, Nbatch) for i = 1:4]
+
+    Nz = first(observations).grid.Nz
+    Hz = first(observations).grid.Hz
+    Lz = first(observations).grid.Lz
+    Δt = first(observations).metadata.parameters.Δt
+
+    for (j, obs) in enumerate(observations)
+        Qᵘ[:, j] .= obs.metadata.parameters.Qᵘ
+        Qᵇ[:, j] .= obs.metadata.parameters.Qᵇ
+        N²[:, j] .= obs.metadata.parameters.N²
+        f[:, j] .= obs.metadata.coriolis.f
+    end
+
+    file = jldopen(first(observations).path)
+    closure = file["serialized/closure"]
+    close(file)
+
+    return Qᵘ, Qᵇ, N², f, Δt, Lz, Nz, Hz, closure
+end
+
+"""
     build_ensemble_simulation(observations; Nensemble=1)
 
 Returns an `Oceananigans.Simulation` representing an `Nensemble × 1`
@@ -53,56 +81,37 @@ ensemble of column models designed to reproduce `observations`.
 """
 function build_ensemble_simulation(observations; Nensemble=1)
 
-    Nz = observations.grid.Nz
-    Hz = observations.grid.Hz
-    Lz = observations.grid.Lz
-    f₀ = observations.metadata.coriolis.f
+    observations isa Vector || (observations = [observations]) # Singleton batch
+    Nbatch = length(observations)
 
-    file = jldopen(observations.path)
+    Qᵘ, Qᵇ, N², f, Δt, Lz, Nz, Hz, closure = extract_perfect_parameters(observations, Nensemble)
 
-    convective_κz = file["closure/convective_κz"]
-    background_κz = file["closure/background_κz"]
-    convective_νz = file["closure/convective_νz"]
-    background_νz = file["closure/background_νz"]
-    
-    Δt = file["parameters"].Δt
+    column_ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(Nensemble, Nbatch), Hz=Hz)
+    ensemble_grid = RectilinearGrid(size = column_ensemble_size, topology = (Flat, Flat, Bounded), z = (-Lz, 0))
 
-    u_bcs = file["timeseries/u/serialized/boundary_conditions"]
-    b_bcs = file["timeseries/b/serialized/boundary_conditions"]
+    coriolis_ensemble = [FPlane(f=f[i, j]) for i = 1:Nensemble, j=1:Nbatch]
+    closure_ensemble = [deepcopy(closure) for i = 1:Nensemble, j=1:Nbatch]
 
-    close(file)
+    u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
+    b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ), bottom = GradientBoundaryCondition(N²))
 
-    column_ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(Nensemble, 1), Hz=Hz)
+    tracers = first(observations).metadata.parameters.tracers
 
-    ensemble_grid = RectilinearGrid(size = column_ensemble_size,
-                                    topology = (Flat, Flat, Bounded),
-                                    z = (-Lz, 0))
-
-    closure = ConvectiveAdjustmentVerticalDiffusivity(; convective_κz, background_κz, convective_νz, background_νz)
-
-    ## Generate an ensemble of closures
-    Nex = ensemble_grid.Nx
-    Ney = ensemble_grid.Ny
-
-    closure_ensemble = [deepcopy(closure) for i = 1:Nex, j = 1:Ney]
-                        
     ensemble_model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
-                                                 tracers = :b,
+                                                 tracers = tracers,
                                                  buoyancy = BuoyancyTracer(),
                                                  boundary_conditions = (; u=u_bcs, b=b_bcs),
-                                                 coriolis = FPlane(f=f₀),
+                                                 coriolis = coriolis_ensemble,
                                                  closure = closure_ensemble)
 
-    ensemble_simulation = Simulation(ensemble_model; Δt=Δt, stop_time=observations.times[end])
+    ensemble_simulation = Simulation(ensemble_model; Δt=Δt, stop_time=first(observations).times[end])
 
-    optimal_parameters = (; convective_κz, background_κz, convective_νz, background_νz)
-
-    return ensemble_simulation, optimal_parameters
+    return ensemble_simulation, closure
 end
 
 # The following illustrations uses a simple ensemble simulation with two ensemble members:
 
-ensemble_simulation, θ★ = build_ensemble_simulation(observations; Nensemble=3)
+ensemble_simulation, closure★ = build_ensemble_simulation(observations; Nensemble=3)
 
 # # Free parameters
 #
@@ -110,15 +119,15 @@ ensemble_simulation, θ★ = build_ensemble_simulation(observations; Nensemble=3
 # constrain the prior distributions so that neither very high nor very low values for diffusivities
 # can be drawn out of the distribution.
 
-priors = (convective_κz = lognormal_with_mean_std(0.3, 0.5),
+priors = (convective_κz = lognormal_with_mean_std(0.3, 0.05),
           background_κz = lognormal_with_mean_std(2.5e-4, 0.25e-4))
 
 free_parameters = FreeParameters(priors)
 
 # We also take the opportunity to collect a named tuple of the optimal parameters
 
-θ★ = (convective_κz = θ★.convective_κz,
-      background_κz = θ★.background_κz)
+θ★ = (convective_κz = closure★.convective_κz,
+      background_κz = closure★.background_κz)
 
 # ## Visualizing the priors
 #
