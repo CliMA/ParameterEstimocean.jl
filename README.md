@@ -19,7 +19,7 @@ To install, use Julia's  built-in package manager (accessed by pressing `]` in t
 
 ```julia
 julia>]
-(v1.6) pkg> add OceanTurbulenceParameterEstimation
+(v1.6) pkg> add https://github.com/CliMA/OceanTurbulenceParameterEstimation.jl
 (v1.6) pkg> instantiate
 ```
 
@@ -28,7 +28,7 @@ install the version on the `#main` branch (or any other branch or commit), e.g.
 
 ```julia
 julia>]
-(v1.6) pkg> add OceanTurbulenceParameterEstimation#main
+(v1.6) pkg> add https://github.com/CliMA/OceanTurbulenceParameterEstimation.jl#main
 (v1.6) pkg> instantiate
 ```
 
