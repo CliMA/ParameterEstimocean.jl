@@ -10,6 +10,8 @@ Stable Release Documentation: [![Build Status](https://img.shields.io/badge/docu
 
 Latest Documentation: [![Build Status](https://img.shields.io/badge/documentation-in%20development-orange)](https://clima.github.io/OceanTurbulenceParameterEstimation.jl/dev)
 
+Zenodo: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5762810.svg)](https://doi.org/10.5281/zenodo.5762810)
+
 
 ## Installation
 
@@ -29,3 +31,11 @@ julia>]
 (v1.6) pkg> add OceanTurbulenceParameterEstimation#main
 (v1.6) pkg> instantiate
 ```
+
+
+## Citing
+
+The code is citable via [zenodo](https://zenodo.org). Please cite as:
+
+> Adeline Hillier, Gregory L. Wagner, and Navid C. Constantinou. (2021). CliMA/OceanTurbulenceParameterEstimation.jl: OceanTurbulenceParameterEstimation.jl v0.1.0 (Version v0.1.0). Zenodo. [http://doi.org/10.5281/zenodo.5762810](http://doi.org/10.5281/zenodo.5762810)
+
