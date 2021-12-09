@@ -51,11 +51,11 @@ output_map_str(::ConcatenatedVectorNormMap) = "ConcatenatedVectorNormMap"
 #####
 
 struct InverseProblem{F,O,S,T,P}
-    observations::O
-    simulation::S
-    time_series_collector::T
-    free_parameters::P
-    output_map::F
+    observations :: O
+    simulation :: S
+    time_series_collector :: T
+    free_parameters :: P
+    output_map :: F
 end
 
 """
