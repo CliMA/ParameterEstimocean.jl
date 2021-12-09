@@ -45,6 +45,7 @@ data_path = generate_synthetic_observations("catke",
                                             Lz = 64,
                                             Δt = 10.0,
                                             stop_time = 12hours,
+                                            overwrite = true,
                                             Qᵘ = -1e-4,
                                             Qᵇ = 1e-8,
                                             N² = 1e-5)
@@ -87,48 +88,48 @@ axislegend(ax_e, position=:rb)
 display(fig)
 
 # Well, that looks like a boundary layer, in some respects.
+# 
+# # Calibration
+#
+# Next, we build a simulation of an ensemble of column models to calibrate
+# CATKE using Ensemble Kalman Inversion.
 
-#####
-##### Calibrate...
-#####
+ensemble_simulation, closure★ = build_ensemble_simulation(observations; Nensemble=60)
 
-#=
-
-ensemble_simulation, closure★ = build_ensemble_simulation(observations; Nensemble=50)
-
-# The "perfect" parameters are
-
-θ★ = (
-      Cᴷu⁻ = catke.mixing_length.Cᴷu⁻,
-      Cᴷc⁻ = catke.mixing_length.Cᴷc⁻,
-      Cᴷe⁻ = catke.mixing_length.Cᴷe⁻,
-      Cᴸᵇ  = catke.mixing_length.Cᴸᵇ,
-      Cᴰ   = catke.Cᴰ,
-      CᵂwΔ = catke.surface_TKE_flux.CᵂwΔ)
-
-# We use priors that are a little "off",
+# We choose to calibrate a subset of the CATKE parameters,
 
 priors = (
-          Cᴷu⁻ = lognormal_with_mean_std(0.01, 0.1),
-          Cᴷc⁻ = lognormal_with_mean_std(0.01, 0.1),
-          Cᴷe⁻ = lognormal_with_mean_std(0.01, 0.1),
-          Cᴸᵇ  = lognormal_with_mean_std(0.2, 0.1),
-          Cᴰ   = lognormal_with_mean_std(1.0, 0.5),
-          CᵂwΔ = lognormal_with_mean_std(1.0, 0.2))
+          Cᴬu = lognormal_with_mean_std(0.05, 0.01),
+          Cᴬc = lognormal_with_mean_std(0.05, 0.01),
+          Cᴬe = lognormal_with_mean_std(0.05, 0.01),
+         )
 
 free_parameters = FreeParameters(priors)
 
+## Perfect parameters...
+θ★ = (
+      Cᴬu = catke.mixing_length.Cᴬu,
+      Cᴬc = catke.mixing_length.Cᴬc,
+      Cᴬe = catke.mixing_length.Cᴬe,
+     )
+
 calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
 
+y = observation_map(calibration)
+G = forward_map(calibration, θ★)
+@show G[:, 1] ≈ y
+
+#=
 # # Ensemble Kalman Inversion
 #
 # Next, we construct an `EnsembleKalmanInversion` (EKI) object,
 #
 # The calibration is done here using Ensemble Kalman Inversion. For more information about the 
 # algorithm refer to
-# [EnsembleKalmanProcesses.jl documentation](https://clima.github.io/EnsembleKalmanProcesses.jl/stable/ensemble_kalman_inversion/).
+# [EnsembleKalmanProcesses.jl documentation](
+# https://clima.github.io/EnsembleKalmanProcesses.jl/stable/ensemble_kalman_inversion/).
 
-noise_variance = observation_map_variance_across_time(calibration)[1, :, 1] .+ 1e-2
+noise_variance = observation_map_variance_across_time(calibration)[1, :, 1] .+ 1e-3
 eki = EnsembleKalmanInversion(calibration; noise_covariance = Matrix(Diagonal(noise_variance)))
 iterate!(eki; iterations = 20)
 
@@ -143,7 +144,6 @@ names = keys(θ★)
 absolute_error = NamedTuple(name => map(θ -> θ[p] - θ★[p], ensemble_mean_θ) for (p, name) in enumerate(names))
 relative_error = NamedTuple(name => absolute_error[name] ./ θ★[name] for name in names)
 
-y = observation_map(calibration)
 output_distances = map(θ -> norm(forward_map(calibration, θ)[:, 1:1] - y), ensemble_mean_θ)
 
 fig = Figure()
@@ -233,11 +233,10 @@ axislegend(ax, position=:lt)
 
 display(fig)
 
+#=
 # And also we plot the the distributions of the various model ensembles for few EKI iterations to see
 # if and how well they converge to the true diffusivity values.
-=#
 
-#=
 fig = Figure()
 
 ax1 = Axis(fig[1, 1])
@@ -282,4 +281,5 @@ display(fig)
 # save("distributions_catke_eki.svg", fig); nothing # hide
 
 # ![](distributions_catke_eki.svg)
+=#
 =#

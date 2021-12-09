@@ -31,11 +31,11 @@ default_closure = ConvectiveAdjustmentVerticalDiffusivity(; convective_κz = 1.0
 
 function generate_synthetic_observations(name = "convective_adjustment"; Nz = 32, Lz = 64,
                                          Qᵇ = +1e-8, Qᵘ = -1e-5, f₀ = 1e-4, N² = 1e-6,
-                                         Δt = 10.0, stop_time = 12hours,
+                                         Δt = 10.0, stop_time = 12hours, overwrite=false,
                                          tracers = :b, closure = default_closure)
 
     data_path = name * ".jld2"
-    isfile(data_path) && return data_path
+    isfile(data_path) && !overwrite && return data_path
     
     grid = RectilinearGrid(size=Nz, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
     u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
@@ -45,8 +45,6 @@ function generate_synthetic_observations(name = "convective_adjustment"; Nz = 32
                                           buoyancy = BuoyancyTracer(),
                                           boundary_conditions = (u=u_bcs, b=b_bcs),
                                           coriolis = FPlane(f=f₀))
-
-    @show model.closure
 
     set!(model, b = (x, y, z) -> N² * z)
     simulation = Simulation(model; Δt, stop_time)

@@ -223,8 +223,7 @@ lines!(ax, b², z; label=b²_label, linewidth=2)
 
 axislegend(ax, position=:lt)
 
-save("ensemble_simulation_demonstration.svg", fig)
-nothing # hide
+save("ensemble_simulation_demonstration.svg", fig); nothing # hide
 
 # ![](ensemble_simulation_demonstration.svg)
 
