@@ -437,10 +437,10 @@ function resample!(resampler::NaNResampler, G, θ, eki)
 
     if nan_fraction > resampler.abort_fraction
         error("The forward map for $(100nan_fraction)% of particles included NaNs. Consider \n" *
-              "    1. Increasing the `abort_fraction` for `resampler = NaNResampler(abort_fraction=0.0)` \n"
-              "        when constructing `EnsembleKalmanInversion`; \n"
-              "    2. Reducing the time-step for `InverseProblem.simulation`, \n"
-              "    3. Evolving `InverseProblem.simulation` for less time \n"
+              "    1. Increasing the `abort_fraction` for `resampler = NaNResampler(abort_fraction=0.0)` \n" *
+              "        when constructing `EnsembleKalmanInversion`; \n" *
+              "    2. Reducing the time-step for `InverseProblem.simulation`, \n" *
+              "    3. Evolving `InverseProblem.simulation` for less time \n" *
               "    4. Narrowing `FreeParameters` priors.")
     end
 
