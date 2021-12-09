@@ -9,7 +9,8 @@
 
 using OceanTurbulenceParameterEstimation, LinearAlgebra, CairoMakie
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity, MixingLength, SurfaceTKEFlux
-using ElectronDisplay
+
+# using ElectronDisplay
 
 # # Perfect observations of CATKE-driven mixing
 #
@@ -85,7 +86,11 @@ axislegend(ax_b, position=:rb)
 axislegend(ax_u, position=:lb, merge=true)
 axislegend(ax_e, position=:rb)
 
-display(fig)
+##display(fig)
+
+save("synthetic_catke_observations.svg", fig); nothing # hide
+
+# ![](synthetic_catke_observations.svg)
 
 # Well, that looks like a boundary layer, in some respects.
 # 
@@ -94,32 +99,27 @@ display(fig)
 # Next, we build a simulation of an ensemble of column models to calibrate
 # CATKE using Ensemble Kalman Inversion.
 
-ensemble_simulation, closure★ = build_ensemble_simulation(observations; Nensemble=60)
+ensemble_simulation, closure★ = build_ensemble_simulation(observations; Nensemble=100)
 
 # We choose to calibrate a subset of the CATKE parameters,
 
-priors = (
-          Cᴬu = lognormal_with_mean_std(0.05, 0.01),
+priors = (Cᴬu = lognormal_with_mean_std(0.05, 0.01),
           Cᴬc = lognormal_with_mean_std(0.05, 0.01),
-          Cᴬe = lognormal_with_mean_std(0.05, 0.01),
-         )
+          Cᴬe = lognormal_with_mean_std(0.05, 0.01))
 
 free_parameters = FreeParameters(priors)
 
 ## Perfect parameters...
-θ★ = (
-      Cᴬu = catke.mixing_length.Cᴬu,
+θ★ = (Cᴬu = catke.mixing_length.Cᴬu,
       Cᴬc = catke.mixing_length.Cᴬc,
-      Cᴬe = catke.mixing_length.Cᴬe,
-     )
+      Cᴬe = catke.mixing_length.Cᴬe)
 
 calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
 
-y = observation_map(calibration)
-G = forward_map(calibration, θ★)
-@show G[:, 1] ≈ y
+# y = observation_map(calibration)
+# G = forward_map(calibration, θ★)
+# @show G[:, 1] ≈ y
 
-#=
 # # Ensemble Kalman Inversion
 #
 # Next, we construct an `EnsembleKalmanInversion` (EKI) object,
@@ -169,13 +169,15 @@ end
 
 axislegend(ax3, position = :rt)
 
-display(fig)
+##display(fig)
 
-#save("summary_catke_eki.svg", fig); nothing #hide
-# ![](summary_catke_eki.svg)
+save("perfect_catke_calibration_summary.svg", fig); nothing #hide
+
+# ![](perfect_catke_calibration_summary.svg)
 
 final_mean_θ = eki.iteration_summaries[end].ensemble_mean
-forward_run!(calibration, [θ★, final_mean_θ])
+#forward_run!(calibration, [θ★, final_mean_θ])
+forward_run!(calibration, θ★)
 
 time_series_collector = calibration.time_series_collector
 times = time_series_collector.times
@@ -231,9 +233,8 @@ lines!(ax, v★, z; label=v★_label, linestyle=:dash, linewidth=2)
 lines!(ax, v¹, z; label=v¹_label, linestyle=:dash, linewidth=2)
 axislegend(ax, position=:lt)
 
-display(fig)
+##display(fig)
 
-#=
 # And also we plot the the distributions of the various model ensembles for few EKI iterations to see
 # if and how well they converge to the true diffusivity values.
 
@@ -271,15 +272,8 @@ Legend(fig[1, 2], scatters, ["Initial ensemble", "Iteration 1", "Iteration 2", "
 hidedecorations!(ax1, grid = false)
 hidedecorations!(ax3, grid = false)
 
-#xlims!(ax2, -0.25, 3.2)
-#xlims!(ax1, -0.25, 3.2)
-#ylims!(ax2, 5e-5, 35e-5)
-#ylims!(ax3, 5e-5, 35e-5)
+##display(fig)
 
-display(fig)
+save("perfect_catke_calibration_parameter_distributions.svg", fig); nothing # hide
 
-# save("distributions_catke_eki.svg", fig); nothing # hide
-
-# ![](distributions_catke_eki.svg)
-=#
-=#
+# ![](perfect_catke_calibration_parameter_distributions.svg)
