@@ -43,12 +43,14 @@ function generate_synthetic_observations(name = "convective_adjustment"; Nz = 32
 
     model = HydrostaticFreeSurfaceModel(; grid, tracers, closure,
                                           buoyancy = BuoyancyTracer(),
-                                          boundary_conditions = (; u=u_bcs, b=b_bcs),
+                                          boundary_conditions = (u=u_bcs, b=b_bcs),
                                           coriolis = FPlane(f=f₀))
+
+    @show model.closure
 
     set!(model, b = (x, y, z) -> N² * z)
     simulation = Simulation(model; Δt, stop_time)
-    init_with_parameters(file, model) = file["parameters"] = (; Qᵇ, Qᵘ, Δt, N², tracers=(:b, :e))
+    init_with_parameters(file, model) = file["parameters"] = (; Qᵇ, Qᵘ, Δt, N², tracers=keys(model.tracers))
     
     simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
                                                           schedule = TimeInterval(stop_time/3),
@@ -100,8 +102,8 @@ observations = OneDimensionalTimeSeries(data_path, field_names=(:u, :v, :b), nor
 
 fig = Figure()
 
-ax_b = Axis(fig[1, 1], xlabel = "Buoyancy [10⁻⁴ m s⁻²]", ylabel = "Depth [m]")
-ax_u = Axis(fig[1, 2], xlabel = "Velocities [m s⁻¹]", ylabel = "Depth [m]")
+ax_b = Axis(fig[1, 1], xlabel = "Buoyancy [m s⁻²]", ylabel = "z [m]")
+ax_u = Axis(fig[1, 2], xlabel = "Velocities [m s⁻¹]", ylabel = "z [m]")
 
 z = znodes(Center, observations.grid)
 
@@ -117,7 +119,7 @@ for i = 1:length(observations.times)
     u_label = i == 1 ? "u, " * label : label
     v_label = i == 1 ? "v, " * label : label
 
-    lines!(ax_b, 1e4 * interior(b)[1, 1, :], z; label, color=colorcycle[i]) # convert units from m s⁻² to 10⁻⁴ m s⁻²
+    lines!(ax_b, interior(b)[1, 1, :], z; label, color=colorcycle[i])
     lines!(ax_u, interior(u)[1, 1, :], z; linestyle=:solid, color=colorcycle[i], label=u_label)
     lines!(ax_u, interior(v)[1, 1, :], z; linestyle=:dash, color=colorcycle[i], label=v_label)
 end
