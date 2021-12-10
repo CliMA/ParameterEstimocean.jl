@@ -57,9 +57,9 @@ observations = OneDimensionalTimeSeries(data_path, field_names=(:u, :v, :b, :e),
 
 fig = Figure()
 
-ax_b = Axis(fig[1, 1], xlabel = "Buoyancy [m s⁻²]", ylabel = "z [m]")
-ax_u = Axis(fig[1, 2], xlabel = "Velocities [m s⁻¹]", ylabel = "z [m]")
-ax_e = Axis(fig[1, 3], xlabel = "Turbulent kinetic energy [m² s⁻²]", ylabel = "z [m]")
+ax_b = Axis(fig[1, 1], xlabel = "Buoyancy\n[10⁻⁴ m s⁻²]", ylabel = "z [m]")
+ax_u = Axis(fig[1, 2], xlabel = "Velocities\n[m s⁻¹]", ylabel = "z [m]")
+ax_e = Axis(fig[1, 3], xlabel = "Turbulent kinetic energy\n[10⁻⁴ m² s⁻²]", ylabel = "z [m]")
 
 z = znodes(Center, observations.grid)
 
@@ -76,10 +76,10 @@ for i = 1:length(observations.times)
     u_label = i == 1 ? "u, " * label : label
     v_label = i == 1 ? "v, " * label : label
 
-    lines!(ax_b, interior(b)[1, 1, :], z; label, color=colorcycle[i])
+    lines!(ax_b, 1e4 * interior(b)[1, 1, :], z; label, color=colorcycle[i]) # convert units m s⁻² -> 10⁻⁴ m s⁻²
     lines!(ax_u, interior(u)[1, 1, :], z; linestyle=:solid, color=colorcycle[i], label=u_label)
     lines!(ax_u, interior(v)[1, 1, :], z; linestyle=:dash, color=colorcycle[i], label=v_label)
-    lines!(ax_e, interior(e)[1, 1, :], z; label, color=colorcycle[i])
+    lines!(ax_e, 1e4 * interior(e)[1, 1, :], z; label, color=colorcycle[i]) # convert units m² s⁻² -> 10⁻⁴ m² s⁻²
 end
 
 axislegend(ax_b, position=:rb)
