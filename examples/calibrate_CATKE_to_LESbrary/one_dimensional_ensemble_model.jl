@@ -11,7 +11,7 @@ function get_parameter(observation, parameter_path)
 end
 
 """
-    OneDimensionalEnsembleModel(observations::OneDimensionalTimeSeriesBatch; architecture = CPU(), ensemble_size = 50, kwargs...)
+    OneDimensionalEnsembleModel(observations::SyntheticObservationsBatch; architecture = CPU(), ensemble_size = 50, kwargs...)
 
 Build an Oceananigans `HydrostaticFreeSurfaceModel` with many independent 
 columns. The model grid is given by the data in `observations`, and the
@@ -25,7 +25,7 @@ conditions so that many independent columns can be evolved at once with much of 
 split among the columns. The `Nx` rows of vertical columns are each reserved for an "ensemble" member
 whose attached parameter value (updated at each iteration of EKI) sets the diffusivity closure
 used to predict the model solution for the `Ny` physical scenarios described by the simulation-specific 
-`OneDimensionalTimeSeries` objects in `observations`.
+`SyntheticObservations` objects in `observations`.
 """
 function OneDimensionalEnsembleModel(observations;
     architecture = CPU(),

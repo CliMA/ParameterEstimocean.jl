@@ -28,7 +28,7 @@ function visualize!(ip::InverseProblem, parameters;
 
     forward_run!(ip, parameters)
 
-    # Vector of OneDimensionalTimeSeries objects, one for each observation
+    # Vector of SyntheticObservations objects, one for each observation
     predictions = transpose_model_output(ip.time_series_collector, observations)
         
     fig = Figure(resolution = (200*(length(field_names)+1), 200*(length(ip.observations)+1)), font = "CMU Serif")
