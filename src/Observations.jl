@@ -42,6 +42,7 @@ function observation_names(ts_vector::Vector{<:SyntheticObservations})
     for ts in ts_vector
         push!(names, observation_names(ts)...)
     end
+
     return names
 end
 
@@ -85,6 +86,7 @@ observation_times(observation) = observation.times
 
 function observation_times(obs::Vector)
     @assert all([o.times ≈ obs[1].times for o in obs]) "Observations must have the same times."
+    
     return observation_times(first(obs))
 end
 
@@ -113,6 +115,7 @@ end
 
 """
     column_ensemble_interior(observations::Vector{<:SyntheticObservations}, field_name, time_indices::Vector, N_ens)
+
 Returns an `N_cases × N_ens × Nz` array of the interior of a field `field_name` defined on a 
 `OneDimensionalEnsembleGrid` of size `N_cases × N_ens × Nz`, given a list of `SyntheticObservations` objects
 containing the `N_cases` single-column fields at time index in `time_index`.
@@ -165,10 +168,9 @@ struct FieldTimeSeriesCollector{G, D, F, T}
 end
 
 """
-    FieldTimeSeriesCollector(fields)
+    FieldTimeSeriesCollector(collected_fields, times; architecture=CPU())
 
 Returns a `FieldTimeSeriesCollector` for `fields` of `simulation`.
-
 `fields` is a `NamedTuple` of `AbstractField`s that are to be collected.
 """
 function FieldTimeSeriesCollector(collected_fields, times; architecture=CPU())
