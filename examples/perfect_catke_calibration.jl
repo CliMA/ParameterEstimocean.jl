@@ -16,7 +16,7 @@ include(joinpath(examples_path, "intro_to_inverse_problems.jl"))
 mixing_length = MixingLength(Cᴬu=0.1, Cᴬc=0.1, Cᴬe=0.1, Cᴷuʳ=0.0, Cᴷcʳ=0.0, Cᴷeʳ=0.0)
 catke = CATKEVerticalDiffusivity(mixing_length=mixing_length)
 data_path = generate_synthetic_observations("catke", closure=catke, tracers=(:b, :e), Δt=10.0)
-observations = OneDimensionalTimeSeries(data_path, field_names=(:u, :v, :b, :e), normalize=ZScore)
+observations = SyntheticObservations(data_path, field_names=(:u, :v, :b, :e), normalize=ZScore)
 
 ensemble_simulation, closure★ = build_ensemble_simulation(observations; Nensemble=50)
 

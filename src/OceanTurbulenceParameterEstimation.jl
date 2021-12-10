@@ -1,7 +1,7 @@
 module OceanTurbulenceParameterEstimation
 
 export
-    OneDimensionalTimeSeries,
+    SyntheticObservations,
     InverseProblem,
     FreeParameters, 
     IdentityNormalization,
@@ -24,7 +24,7 @@ include("InverseProblems.jl")
 include("EnsembleKalmanInversions.jl")
 
 using .Observations:
-    OneDimensionalTimeSeries,
+    SyntheticObservations,
     ZScore
 
 using .TurbulenceClosureParameters: FreeParameters
