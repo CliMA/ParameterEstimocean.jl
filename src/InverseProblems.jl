@@ -142,13 +142,13 @@ n_y(grid::TwoDimensionalEnsembleGrid) = grid.Ny
 n_ensemble(ip::InverseProblem) = n_ensemble(ip.simulation.model.grid)
 
 """ Transform and return `ip.observations` appropriate for `ip.output_map`. """
-observation_map(ip::InverseProblem) = transform_observations(ip.output_map, ip.observations)
+observation_map(ip::InverseProblem) = transform_time_series(ip.output_map, ip.observations)
 
 """
     forward_run!(ip, parameters)
 
-Initialize `ip.simulation` with `parameters` and run it forward.
-Output will be stored in `ip.time_series_collector`.
+Initialize `ip.simulation` with `parameters` and run it forward. Output is stored
+in `ip.time_series_collector`.
 """
 function forward_run!(ip::InverseProblem, parameters)
     observations = ip.observations
@@ -193,17 +193,23 @@ end
 
 (ip::InverseProblem)(θ) = forward_map(ip, θ)
 
-function transform_observations(::ConcatenatedOutputMap, observation::OneDimensionalTimeSeries)
+
+"""
+    transform_time_series(::ConcatenatedOutputMap, time_series::OneDimensionalTimeSeries)
+
+Concatenates flattened, normalized data for each field in the `time_series`.
+"""
+function transform_time_series(::ConcatenatedOutputMap, time_series::OneDimensionalTimeSeries)
     flattened_normalized_data = []
 
-    for field_name in keys(observation.field_time_serieses)
-        field_time_series = observation.field_time_serieses[field_name]
+    for field_name in keys(time_series.field_time_serieses)
+        field_time_series = time_series.field_time_serieses[field_name]
         field_time_series_data = Array(interior(field_time_series))
 
         Nx, Ny, Nz, Nt = size(field_time_series_data)
         field_time_series_data = reshape(field_time_series_data, Nx, Ny * Nz * Nt)
 
-        normalize!(field_time_series_data, observation.normalization[field_name])
+        normalize!(field_time_series_data, time_series.normalization[field_name])
 
         push!(flattened_normalized_data, field_time_series_data)
     end
@@ -213,8 +219,13 @@ function transform_observations(::ConcatenatedOutputMap, observation::OneDimensi
     return Matrix(transpose(transformed))
 end
 
-transform_observations(map, observations::Vector) =
-    vcat(Tuple(transform_observations(map, observation) for observation in observations)...)
+"""
+    transform_time_series(map, time_serieses::Vector)
+
+Return the `transform_time_series` of each `time_series` in `time_serieses` vector.
+"""
+transform_time_series(map, time_serieses::Vector) =
+    vcat(Tuple(transform_time_series(map, time_series) for time_series in time_serieses)...)
 
 """
     observation_map_variance_across_time(map::ConcatenatedOutputMap, observation::OneDimensionalTimeSeries)
@@ -227,7 +238,7 @@ function observation_map_variance_across_time(map::ConcatenatedOutputMap, observ
 
     N_fields = length(keys(observation.field_time_serieses))
 
-    a = transform_observations(map, observation)
+    a = transform_time_series(map, observation)
     a = transpose(a) # (Nx, Ny*Nz*Nt)
 
     example_field_time_series = values(observation.field_time_serieses)[1]
@@ -260,7 +271,7 @@ function transform_output(map::ConcatenatedOutputMap,
     # transposed_output isa Vector{OneDimensionalTimeSeries} where OneDimensionalTimeSeries is Nx by Nz by Nt
     transposed_output = transpose_model_output(time_series_collector, observations)
 
-    return transform_observations(map, transposed_output)
+    return transform_time_series(map, transposed_output)
 end
 
 vectorize(observation) = [observation]
