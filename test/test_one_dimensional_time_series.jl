@@ -30,7 +30,7 @@ convective_νz = 0.9
 background_κz = 1e-4
 background_νz = 1e-5
 
-@testset "OneDimensionalTimeSeries" begin
+@testset "SyntheticObservations" begin
     #####
     ##### Generate synthetic observations
     #####
@@ -67,9 +67,9 @@ background_νz = 1e-5
 
     data_path = experiment_name * ".jld2"
 
-    b_observations = OneDimensionalTimeSeries(data_path, field_names=:b)
-    ub_observations = OneDimensionalTimeSeries(data_path, field_names=(:u, :b))
-    uvb_observations = OneDimensionalTimeSeries(data_path, field_names=(:u, :v, :b))
+    b_observations = SyntheticObservations(data_path, field_names=:b)
+    ub_observations = SyntheticObservations(data_path, field_names=(:u, :b))
+    uvb_observations = SyntheticObservations(data_path, field_names=(:u, :v, :b))
 
     @test keys(b_observations.field_time_serieses) == tuple(:b)
     @test keys(ub_observations.field_time_serieses) == tuple(:u, :b)

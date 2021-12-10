@@ -32,7 +32,7 @@ using JLD2
 examples_path = joinpath(pathof(OceanTurbulenceParameterEstimation), "..", "..", "examples")
 include(joinpath(examples_path, "intro_to_observations.jl"))
 data_path = generate_synthetic_observations()
-observations = OneDimensionalTimeSeries(data_path, field_names=:b, normalize=ZScore)
+observations = SyntheticObservations(data_path, field_names=:b, normalize=ZScore)
 
 # # Building an "ensemble simulation"
 #

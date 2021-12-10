@@ -32,20 +32,27 @@ struct IdentityNormalization <: AbstractNormalization end
 
 IdentityNormalization(field_time_series) = IdentityNormalization()
 
-normalize!(field, ::IdentityNormalization) = nothing
-
 struct ZScore{T} <: AbstractNormalization
     μ :: T
     σ :: T
 end
 
-function normalize!(field, z_score::ZScore)
-    field .-= z_score.μ
-    if z_score.σ != 0
-        field ./= z_score.σ
+"""
+    normalize!(field, normalization)
+
+Normalize `field` using `normalization`.
+"""
+normalize!(field, ::IdentityNormalization) = nothing
+
+function normalize!(field, normalization::ZScore)
+    field .-= normalization.μ
+
+    if normalization.σ != 0
+        field ./= normalization.σ
     else
         @warn "data seems to be all zeros -- just saying"
     end
+
     return nothing
 end
 
@@ -59,8 +66,15 @@ end
          :)
 =#
 
-function ZScore(field_time_series)
+"""
+    ZScore(field_time_series::FieldTimeSeries)
+
+Return the `ZScore` normalization of a `FieldTimeSeries` after computing
+its mean and its variance.
+"""
+function ZScore(field_time_series::FieldTimeSeries)
     μ = mean(interior(field_time_series))
     σ = sqrt(mean_variance(field_time_series))
+    
     return ZScore(μ, σ)
 end

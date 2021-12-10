@@ -122,7 +122,7 @@ end
 
 # ## Load truth data as observations
 
-observations = OneDimensionalTimeSeries(data_path, field_names=(:b, :c), normalize=ZScore)
+observations = SyntheticObservations(data_path, field_names=(:b, :c), normalize=ZScore)
 
 # ## Calibration with Ensemble Kalman Inversion
 

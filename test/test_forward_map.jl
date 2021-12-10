@@ -54,7 +54,7 @@ using Distributions
     run!(truth_simulation)
 
     data_path = experiment_name * ".jld2"
-    observations = OneDimensionalTimeSeries(data_path, field_names=(:u, :b), normalize=ZScore)
+    observations = SyntheticObservations(data_path, field_names=(:u, :b), normalize=ZScore)
 
     #####
     ##### Make model data
