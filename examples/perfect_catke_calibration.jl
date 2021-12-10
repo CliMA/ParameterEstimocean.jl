@@ -233,6 +233,10 @@ lines!(ax, v★, z; label=v★_label, linestyle=:dash, linewidth=2)
 lines!(ax, v¹, z; label=v¹_label, linestyle=:dash, linewidth=2)
 axislegend(ax, position=:lt)
 
+save("perfect_catke_calibration_particle_realizations.svg", fig); nothing # hide
+
+# ![](perfect_catke_calibration_particle_realizations.svg)
+
 ##display(fig)
 
 # And also we plot the the distributions of the various model ensembles for few EKI iterations to see
