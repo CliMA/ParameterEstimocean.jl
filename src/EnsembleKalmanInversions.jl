@@ -265,6 +265,11 @@ function UnscentedKalmanInversionPostprocess(eki)
     return θ_mean, θθ_cov, θθ_std_arr, eki.ensemble_kalman_process.err
 end
 
+"""
+    struct IterationSummary{P, M, C, V, E}
+
+Container with information about each iteration of the Ensemble Kalman Process.
+"""
 struct IterationSummary{P, M, C, V, E}
     parameters :: P # constrained
     ensemble_mean :: M # constrained
@@ -273,6 +278,11 @@ struct IterationSummary{P, M, C, V, E}
     mean_square_errors :: E
 end
 
+"""
+    IterationSummary(eki, parameters, forward_map)
+
+Return the summary for Ensemble Kalman Process `eki` with free `parameters` and `forward_map`.
+"""
 function IterationSummary(eki, parameters, forward_map)
     N_observations, N_ensemble = size(forward_map)
     original_priors = eki.inverse_problem.free_parameters.priors
@@ -282,7 +292,7 @@ function IterationSummary(eki, parameters, forward_map)
     constrained_ensemble_mean = tupify_parameters(eki.inverse_problem, constrained_ensemble_mean)
 
     ensemble_covariance = cov(parameters, dims=2)
-    constrained_ensemble_covariance = inverse_covariance_transform(values(original_priors), parameters, cov(parameters, dims=2))
+    constrained_ensemble_covariance = inverse_covariance_transform(values(original_priors), parameters, ensemble_covariance)
     constrained_ensemble_variance = tupify_parameters(eki.inverse_problem, diag(constrained_ensemble_covariance))
 
     constrained_parameters = inverse_parameter_transform.(values(original_priors), parameters)
@@ -303,7 +313,6 @@ function IterationSummary(eki, parameters, forward_map)
 end
 
 function Base.show(io::IO, is::IterationSummary)
-    names = keys(is.ensemble_mean)
     print(io, "IterationSummary(ensemble = ", length(is.mean_square_errors), ")", '\n',
               "                      ", param_str.(keys(is.ensemble_mean))..., '\n',
               "       ensemble_mean: ", param_str.(values(is.ensemble_mean))..., '\n',
