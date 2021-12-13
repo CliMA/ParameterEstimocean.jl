@@ -37,7 +37,7 @@ convert_prior(prior::Normal) = Normal(sf(prior) * prior.μ, sf(prior) * prior.σ
 convert_prior(prior::ConstrainedNormal) = Normal(prior.μ, prior.σ)
 
 # Convert parameters to unconstrained for EKI
-forward_parameter_transform(prior::LogNormal, parameter) = log(parameter ^ sf(prior))
+forward_parameter_transform(prior::LogNormal, parameter) = log(parameter^sf(prior))
 forward_parameter_transform(prior::Normal, parameter) = parameter * sf(prior)
 forward_parameter_transform(cn::ConstrainedNormal, parameter) =
     log((cn.upper_bound - parameter) / (cn.upper_bound - cn.lower_bound))
@@ -57,7 +57,7 @@ inverse_covariance_transform(::Tuple{Vararg{Normal}}, parameters, covariance) = 
 function inverse_covariance_transform(cn::Tuple{Vararg{ConstrainedNormal}}, parameters, covariance)
     upper_bound = [cn[i].upper_bound for i = 1:length(cn)]
     lower_bound = [cn[i].lower_bound for i = 1:length(cn)]
-    dT = Diagonal(-(upper_bound - lower_bound) .* exp.(parameters)./(1.0 .+ exp.(parameters)).^2) 
+    dT = Diagonal(-(upper_bound - lower_bound) .* exp.(parameters) ./ (1 .+ exp.(parameters)).^2) 
     return dT * covariance * dT'
 end
 
@@ -355,8 +355,8 @@ function sample(eki, θ, G, n)
     Σ = cov(θ, dims=2)
     ens_dist = MvNormal(μ, Σ)
 
-    found_θ = zeros((n_params,0))
-    found_G = zeros((G_length,0))
+    found_θ = zeros((n_params, 0))
+    found_G = zeros((G_length, 0))
 
     while size(found_θ, 2) < n
         θ_sample = rand(ens_dist, ens_size)
