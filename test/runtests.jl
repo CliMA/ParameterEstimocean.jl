@@ -1,4 +1,4 @@
-using OceanTurbulenceParameterEstimation, Test, Documenter, Distributions
+using Documenter, Distributions, Test
 
 include("test_synthetic_observations.jl")
 include("test_forward_map.jl")
