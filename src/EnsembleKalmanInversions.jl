@@ -57,7 +57,7 @@ inverse_covariance_transform(::Tuple{Vararg{Normal}}, parameters, covariance) = 
 function inverse_covariance_transform(cn::Tuple{Vararg{ConstrainedNormal}}, parameters, covariance)
     upper_bound = [cn[i].upper_bound for i = 1:length(cn)]
     lower_bound = [cn[i].lower_bound for i = 1:length(cn)]
-    dT = Diagonal(-(upper_bound - lower_bound) .* exp.(parameters) ./ (1 .+ exp.(parameters)).^2) 
+    dT = Diagonal(@. -(upper_bound - lower_bound) * exp(parameters) / (1 + exp(parameters))^2) 
     return dT * covariance * dT'
 end
 
