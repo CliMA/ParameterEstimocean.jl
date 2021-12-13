@@ -100,7 +100,7 @@ Example
 =======
 
 ```jldoctest
-julia> using OceanTurbulenceParameterEstimation
+julia> using OceanTurbulenceParameterEstimation.TurbulenceClosureParameters: closure_with_parameters
 
 julia> struct ClosureSubModel; a; b end
 
@@ -112,7 +112,7 @@ Closure(ClosureSubModel(1, 2), 3)
 julia> parameters = (a = 12, d = 7)
 (a = 12, d = 7)
 
-julia> OceanTurbulenceParameterEstimation.TurbulenceClosureParameters.closure_with_parameters(closure, parameters)
+julia> closure_with_parameters(closure, parameters)
 Closure(ClosureSubModel(12, 2), 3)
 ```
 """
@@ -127,6 +127,11 @@ closure_with_parameters(closure::AbstractTurbulenceClosure{TD}, parameters) wher
 closure_with_parameters(closures::Tuple, parameters) =
     Tuple(closure_with_parameters(closure, parameters) for closure in closures)
 
+"""
+    update_closure_ensemble_member!(closures, p_ensemble, parameters)
+
+Use `parameters` to update closure from `closures` that corresponds to ensemble member `p_ensemble`.
+"""
 update_closure_ensemble_member!(closures::AbstractVector, p_ensemble, parameters) =
     closures[p_ensemble] = closure_with_parameters(closures[p_ensemble], parameters)
 
@@ -134,6 +139,7 @@ function update_closure_ensemble_member!(closures::AbstractMatrix, p_ensemble, p
     for j in 1:size(closures, 2) # Assume that ensemble varies along first dimension
         closures[p_ensemble, j] = closure_with_parameters(closures[p_ensemble, j], parameters)
     end
+    
     return nothing
 end
 

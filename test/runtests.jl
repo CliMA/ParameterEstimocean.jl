@@ -1,5 +1,6 @@
 using Test
 
-include("test_one_dimensional_time_series.jl")
+include("test_synthetic_observations.jl")
 include("test_forward_map.jl")
 include("test_ensemble_column_models.jl")
+include("test_turbulence_closure_parameters.jl")

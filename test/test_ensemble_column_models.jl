@@ -8,14 +8,13 @@ using Suppressor
 const CAVD = ConvectiveAdjustmentVerticalDiffusivity
 
 @testset "Ensembles of models with different closures" begin
-
     Nz = 16
     Hz = 1
     grid = RectilinearGrid(size=Nz, z=(-10, 10), topology=(Flat, Flat, Bounded), halo=1)
 
     closures = [CAVD(background_κz=1.0) CAVD(background_κz=1.1)
                 CAVD(background_κz=1.2) CAVD(background_κz=1.3)]
-                
+
     @test size(closures) == (2, 2)
     @test closures[2, 1].background_κz == 1.2
 
@@ -51,18 +50,16 @@ const CAVD = ConvectiveAdjustmentVerticalDiffusivity
         @info "Testing IsotropicDiffusivity ensemble member ($i, $j)..."
         @test parent(ensemble_model.tracers.c)[i, j, :] == parent(models[i, j].tracers.c)[1, 1, :]
     end
-
 end
 
 @testset "Ensembles of models with different Coriolis parameters" begin
-
     Nz = 2
     Hz = 1
     grid = RectilinearGrid(size=Nz, z=(-1, 0), topology=(Flat, Flat, Bounded), halo=1)
 
     coriolises = [FPlane(f=0.0) FPlane(f=0.5)
                   FPlane(f=1.0) FPlane(f=1.1)]
-                
+
     Δt = 0.01
 
     @test size(coriolises) == (2, 2)
@@ -93,5 +90,4 @@ end
         @test parent(ensemble_model.velocities.u)[i, j, :] == parent(models[i, j].velocities.u)[1, 1, :]
         @test parent(ensemble_model.velocities.v)[i, j, :] == parent(models[i, j].velocities.v)[1, 1, :]
     end
-
 end
