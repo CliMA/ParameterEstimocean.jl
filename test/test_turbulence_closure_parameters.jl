@@ -32,7 +32,7 @@ const CATKE = CATKEVerticalDiffusivity
 
     @info "Testing closure_with_parameters on CATKEVerticalDiffusivity"
 
-    @suppress catke_closure = CATKE()
+    catke_closure = @suppress CATKE()
     new_Cᴷuʳ = 1e3
     mixing_length = MixingLength(Cᴷuʳ = new_Cᴷuʳ)
     new_catke_closure = closure_with_parameters(catke_closure, (mixing_length = mixing_length,))
@@ -52,7 +52,7 @@ const CATKE = CATKEVerticalDiffusivity
     new_CᴷRiʷ = 100.0
     mixing_length = MixingLength(CᴷRiʷ = new_CᴷRiʷ)
 
-    @suppress closures = [CATKE() CATKE()
+    closures = @suppress [CATKE() CATKE()
                           CATKE() CATKE()
                           CATKE() CATKE()]
 
