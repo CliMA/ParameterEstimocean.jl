@@ -29,11 +29,12 @@ const CAVD = ConvectiveAdjustmentVerticalDiffusivity
 
     new_background_κz, new_convective_νz = 100.0, 10.0
 
-    update_closure_ensemble_member!(closures, 2, (background_κz = new_background_κz, convective_νz = new_convective_νz))
+    ensemble_member_no = 2
+    update_closure_ensemble_member!(closures, ensemble_member_no, (background_κz = new_background_κz, convective_νz = new_convective_νz))
 
     @info "Testing update_closure_ensemble_member!"
     for j in 1:2
-        @test closures[2, j].background_κz == new_background_κz
-        @test closures[2, j].convective_νz == new_convective_νz
+        @test closures[ensemble_member_no, j].background_κz == new_background_κz
+        @test closures[ensemble_member_no, j].convective_νz == new_convective_νz
     end
 end
