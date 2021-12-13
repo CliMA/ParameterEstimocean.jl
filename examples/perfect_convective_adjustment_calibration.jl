@@ -69,6 +69,7 @@ noise_variance = observation_map_variance_across_time(calibration)[1, :, 1] .+ 1
 
 eki = EnsembleKalmanInversion(calibration; noise_covariance = Matrix(Diagonal(noise_variance)))
 
+#=
 # and perform few iterations to see if we can converge to the true parameter values.
 
 iterate!(eki; iterations = 10)
@@ -162,4 +163,4 @@ ylims!(axright, 5e-5, 35e-5)
 save("distributions_convective_adjustment_eki.svg", f); nothing #hide
 
 # ![](distributions_convective_adjustment_eki.svg)
-
+=#
