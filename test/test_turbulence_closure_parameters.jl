@@ -1,5 +1,3 @@
-using Test
-using OceanTurbulenceParameterEstimation
 using Oceananigans
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
@@ -11,7 +9,7 @@ using OceanTurbulenceParameterEstimation.TurbulenceClosureParameters: closure_wi
 const CAVD = ConvectiveAdjustmentVerticalDiffusivity
 const CATKE = CATKEVerticalDiffusivity
 
-@testset "TurbulenceClosureParameters module" begin
+@testset "TurbulenceClosureParameters tests" begin
     Nz = 16
     Hz = 1
     grid = RectilinearGrid(size=Nz, z=(-10, 10), topology=(Flat, Flat, Bounded), halo=1)
