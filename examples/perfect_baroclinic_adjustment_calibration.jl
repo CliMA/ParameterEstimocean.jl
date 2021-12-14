@@ -68,14 +68,14 @@ gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = κ_ske
 # ## Generate synthetic observations
 
 if generate_observations || !(isfile(data_path))
-    grid = RectilinearGrid(topology = (Flat, Bounded, Bounded), 
+    grid = RectilinearGrid(architecture = architecture,
+                           topology = (Flat, Bounded, Bounded), 
                            size = (Ny, Nz), 
                            y = (-Ly/2, Ly/2),
                            z = (-Lz, 0),
                            halo = (3, 3))
     
-    model = HydrostaticFreeSurfaceModel(architecture = architecture,
-                                        grid = grid,
+    model = HydrostaticFreeSurfaceModel(grid = grid,
                                         tracers = (:b, :c),
                                         buoyancy = BuoyancyTracer(),
                                         coriolis = BetaPlane(latitude=-45),
