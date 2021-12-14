@@ -91,9 +91,9 @@ function parameter_ensemble(eki::EnsembleKalmanInversion)
 end
                                              
 function parameter_ensemble(ensemble_kalman_process, priors)
-    unconstrained_parameters = get_u_final(eki.ensemble_kalman_process) # (N_params, ensemble_size) array
+    unconstrained_parameters = get_u_final(ensemble_kalman_process) # (N_params, ensemble_size) array
     ensemble_size = size(unconstrained_parameters, 2)
-    return [inverse_parameter_transform(priors, θ[:, n]) for n in 1:ensemble_size]
+    return [inverse_parameter_transform(priors, unconstrained_parameters[:, n]) for n in 1:ensemble_size]
 end
 
 Base.show(io::IO, eki::EnsembleKalmanInversion) = 
