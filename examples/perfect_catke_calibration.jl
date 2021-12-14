@@ -248,16 +248,19 @@ ax1 = Axis(fig[1, 1])
 ax2 = Axis(fig[2, 1], xlabel = "Cᴷu⁻ [m² s⁻¹]", ylabel = "Cᴷc⁻ [m² s⁻¹]")
 ax3 = Axis(fig[2, 2])
 scatters = []
+labels = String[]
 
-for iteration in [1, 2, 3, 11]
+for iteration in [0, 1, 2, 10]
     ## Make parameter matrix
     parameters = eki.iteration_summaries[iteration].parameters
     Nensemble = length(parameters)
     parameter_ensemble_matrix = [parameters[i][j] for i=1:Nensemble, j=1:2]
 
-    push!(scatters, scatter!(ax2, parameter_ensemble_matrix))
-    density!(ax1, parameter_ensemble_matrix[:, 1])
-    density!(ax3, parameter_ensemble_matrix[:, 2], direction = :y)
+    label = iteration == 0 ? "Initial ensemble" : "Iteration $iteration"
+    push!(labels, label)
+    push!(scatters, scatter!(axmain, parameter_ensemble_matrix))
+    density!(axtop, parameter_ensemble_matrix[:, 1])
+    density!(axright, parameter_ensemble_matrix[:, 2], direction = :y)
 end
 
 vlines!(ax1, [θ★.Cᴷu⁻], color = :red)
@@ -270,8 +273,7 @@ colsize!(fig.layout, 2, Fixed(200))
 rowsize!(fig.layout, 1, Fixed(200))
 rowsize!(fig.layout, 2, Fixed(300))
 
-Legend(fig[1, 2], scatters, ["Initial ensemble", "Iteration 1", "Iteration 2", "Iteration 10"],
-       position = :lb)
+Legend(f[1, 2], scatters, labels, position = :lb)
 
 hidedecorations!(ax1, grid = false)
 hidedecorations!(ax3, grid = false)

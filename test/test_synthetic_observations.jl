@@ -1,9 +1,9 @@
+using Test
+using OceanTurbulenceParameterEstimation
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
-
-using OceanTurbulenceParameterEstimation
 
 #####
 ##### Parameters
@@ -30,7 +30,7 @@ convective_νz = 0.9
 background_κz = 1e-4
 background_νz = 1e-5
 
-@testset "SyntheticObservations" begin
+@testset "SyntheticObservations tests" begin
     #####
     ##### Generate synthetic observations
     #####

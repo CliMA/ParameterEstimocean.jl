@@ -283,14 +283,13 @@ vectorize(observations::Vector) = observations
 
 const YZSliceObservations = SyntheticObservations{<:Any,<:YZSliceGrid}
 
-function transpose_model_output(time_series_collector, observations::YZSliceObservations)
-    return SyntheticObservations(time_series_collector.field_time_serieses,
-        time_series_collector.grid,
-        time_series_collector.times,
-        nothing,
-        nothing,
-        observations.normalization)
-end
+transpose_model_output(time_series_collector, observations::YZSliceObservations) =
+    SyntheticObservations(time_series_collector.field_time_serieses,
+                          time_series_collector.grid,
+                          time_series_collector.times,
+                          nothing,
+                          nothing,
+                          observations.normalization)
 
 """
     transpose_model_output(time_series_collector, observations)
