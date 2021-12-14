@@ -415,8 +415,8 @@ end
 Iterate the ensemble Kalman inversion problem `eki` forward by `iterations`.
 """
 function iterate!(eki::EnsembleKalmanInversion; iterations = 1)
-    first_iteration = eki.iteration + 1
-    final_iteration = eki.iteration + 1 + iterations
+    first_iteration = eki.iteration
+    final_iteration = eki.iteration + iterations
 
     # θ = get_u_final(eki.ensemble_kalman_process) # (N_params, ensemble_size) array
     # G = eki.inverting_forward_map(θ) # (len(G), ensemble_size)
