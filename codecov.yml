@@ -1,16 +1,15 @@
+comment: false
+
 coverage:
   range: 50..90
   round: down
   precision: 2
 
   ignore:
+    - "docs"
     - "projects"
     - "examples"
     - "test"
-    - "src/Grids"
-    - "src/Models"
-    - "src/Observations"
-    - "src/ParameterEstimation"
 
   status:
     project:
@@ -21,5 +20,3 @@ coverage:
       default:
         target: auto
         threshold: 20%
-
-comment: false
