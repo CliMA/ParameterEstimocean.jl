@@ -273,7 +273,7 @@ function UnscentedKalmanInversion(inverse_problem, prior_mean, prior_cov;
                                   G,
                                   0,
                                   OffsetArray([], -1),
-                                 Set())
+                                  Set())
 
     summary = IterationSummary(eki)
     push!(eki.iteration_summaries, summary)
