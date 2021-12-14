@@ -275,14 +275,17 @@ axmain = Axis(f[2, 1],
 
 axright = Axis(f[2, 2])
 scatters = []
+labels = String[]
 
-for iteration in [1, 2, 3, 6]
+for iteration in [0, 1, 2, 5]
     ## Make parameter matrix
     parameters = eki.iteration_summaries[iteration].parameters
     Nensemble = length(parameters)
     Nparameters = length(first(parameters))
     parameter_ensemble_matrix = [parameters[i][j] for i=1:Nensemble, j=1:Nparameters]
 
+    label = iteration == 0 ? "Initial ensemble" : "Iteration $iteration"
+    push!(labels, label)
     push!(scatters, scatter!(axmain, parameter_ensemble_matrix))
     density!(axtop, parameter_ensemble_matrix[:, 1])
     density!(axright, parameter_ensemble_matrix[:, 2], direction = :y)
@@ -300,9 +303,7 @@ colsize!(f.layout, 2, Fixed(200))
 rowsize!(f.layout, 1, Fixed(200))
 rowsize!(f.layout, 2, Fixed(300))
 
-Legend(f[1, 2], scatters,
-       ["Initial ensemble", "Iteration 1", "Iteration 2", "Iteration 5"],
-       position = :lb)
+Legend(f[1, 2], scatters, labels, position = :lb)
 
 hidedecorations!(axtop, grid = false)
 hidedecorations!(axright, grid = false)

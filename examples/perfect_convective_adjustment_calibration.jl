@@ -124,7 +124,7 @@ axmain = Axis(f[2, 1],
 
 axright = Axis(f[2, 2])
 scatters = []
-labels = []
+labels = String[]
 
 for iteration in [0, 1, 2, 10]
     ## Make parameter matrix
