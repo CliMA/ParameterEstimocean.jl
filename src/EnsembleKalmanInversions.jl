@@ -14,6 +14,11 @@ using EnsembleKalmanProcesses.EnsembleKalmanProcessModule: sample_distribution
 
 using ..InverseProblems: n_ensemble, observation_map, forward_map, tupify_parameters
 
+function new_function_to_test_codecov(x)
+    x *= 2
+    return x
+end
+
 function lognormal_with_mean_std(mean, std)
     k = std^2 / mean^2 + 1
     μ = log(mean / sqrt(k))
