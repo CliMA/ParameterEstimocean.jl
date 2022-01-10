@@ -14,10 +14,10 @@ using Oceananigans: short_show, run!, fields, FieldTimeSeries, CPU
 using Oceananigans.OutputReaders: InMemory
 using Oceananigans.Fields: interior, location
 using Oceananigans.Grids: Flat, Bounded,
-                          Face, Center,
-                          RectilinearGrid, offset_data,
-                          topology, halo_size,
-                          interior_parent_indices
+    Face, Center,
+    RectilinearGrid, offset_data,
+    topology, halo_size,
+    interior_parent_indices
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SingleColumnGrid, YZSliceGrid, ColumnEnsembleSize
 
@@ -117,15 +117,15 @@ function expand_parameters(ip, θ::Vector)
 
     # Fill out parameter set ensemble
     Nfewer > 0 && append!(θ, [θ[end] for _ = 1:Nfewer])
-        
+
     return θ
 end
 
-# Expand single parameter vector
-expand_parameters(ip, θ::Vector{<:Number}) = expand_parameters(ip, [θ])
+# Expand single parameter set
+expand_parameters(ip, θ::Union{NamedTuple,Vector{<:Number}}) = expand_parameters(ip, [θ])
 
 # Convert matrix to vector of vectors
-expand_parameters(ip, θ::Matrix) = expand_parameters(ip, [θ[:, i] for i in 1:size(θ, 2)])
+expand_parameters(ip, θ::Matrix) = expand_parameters(ip, [θ[:, i] for i = 1:size(θ, 2)])
 
 #####
 ##### Forward map evaluation given vector-of-vector (one parameter vector for each ensemble member)
@@ -281,11 +281,11 @@ const YZSliceObservations = SyntheticObservations{<:Any,<:YZSliceGrid}
 
 transpose_model_output(time_series_collector, observations::YZSliceObservations) =
     SyntheticObservations(time_series_collector.field_time_serieses,
-                          time_series_collector.grid,
-                          time_series_collector.times,
-                          nothing,
-                          nothing,
-                          observations.normalization)
+        time_series_collector.grid,
+        time_series_collector.times,
+        nothing,
+        nothing,
+        observations.normalization)
 
 """
     transpose_model_output(time_series_collector, observations)
@@ -343,9 +343,9 @@ function transpose_model_output(time_series_collector, observations)
 end
 
 function drop_y_dimension(grid::RectilinearGrid{<:Any, <:Flat, <:Flat, <:Bounded})
-    new_size = ColumnEnsembleSize(Nz=grid.Nz, ensemble=(grid.Nx, 1), Hz=grid.Hz)
+    new_size = ColumnEnsembleSize(Nz = grid.Nz, ensemble = (grid.Nx, 1), Hz = grid.Hz)
     z_domain = (grid.zᵃᵃᶠ[1], grid.zᵃᵃᶠ[grid.Nz])
-    new_grid = RectilinearGrid(size=new_size, z=z_domain, topology=(Flat, Flat, Bounded))
+    new_grid = RectilinearGrid(size = new_size, z = z_domain, topology = (Flat, Flat, Bounded))
     return new_grid
 end
 
