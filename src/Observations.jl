@@ -13,7 +13,6 @@ import Oceananigans.Fields: set!
 abstract type AbstractObservation end
 
 include("normalization.jl")
-include("legacy_data_time_serieses.jl")
 
 """
     SyntheticObservations{F, G, T, P, M} <: AbstractObservation
@@ -49,27 +48,24 @@ end
 obs_str(ts::SyntheticObservations) = "SyntheticObservations of $(keys(ts.field_time_serieses)) on $(short_show(ts.grid))"
 obs_str(ts::Vector{<:SyntheticObservations}) = "Vector of SyntheticObservations of $(keys(ts[1].field_time_serieses)) on $(short_show(ts[1].grid))"
 
-tupleit(t) = try
-    Tuple(t)
-catch
-    tuple(t)
-end
+tupleit(t) =
+    try
+        Tuple(t)
+    catch
+        tuple(t)
+    end
 
 const not_metadata_names = ("serialized", "timeseries")
 
 read_group(group::JLD2.Group) = NamedTuple(Symbol(subgroup) => read_group(group[subgroup]) for subgroup in keys(group))
 read_group(group) = group
 
-function SyntheticObservations(path; field_names, normalize=IdentityNormalization, times=nothing, grid=nothing)
+function SyntheticObservations(path; field_names, normalize = IdentityNormalization, times = nothing, field_time_serieses = nothing)
     field_names = tupleit(field_names)
 
-    field_time_serieses = try
-        NamedTuple(name => FieldTimeSeries(path, string(name); times) for name in field_names)
-    catch
-        legacy_data_field_time_serieses(path, field_names, times)
-    end
+    field_time_serieses === nothing && (field_time_serieses = NamedTuple(name => FieldTimeSeries(path, string(name); times) for name in field_names))
 
-    grid === nothing && (grid = first(field_time_serieses).grid)
+    grid = first(field_time_serieses).grid
     times = first(field_time_serieses).times
 
     # validate_data(fields, grid, times) # might be a good idea to validate the data...
@@ -86,7 +82,7 @@ observation_times(observation) = observation.times
 
 function observation_times(obs::Vector)
     @assert all([o.times ≈ obs[1].times for o in obs]) "Observations must have the same times."
-    
+
     return observation_times(first(obs))
 end
 
@@ -94,9 +90,7 @@ end
 ##### set! for simulation models and observations
 #####
 
-default_initial_condition(ts, name) = 0
-
-function set!(model, ts::SyntheticObservations, index=1)
+function set!(model, ts::SyntheticObservations, index = 1)
     # Set initial condition
     for name in keys(fields(model))
 
@@ -106,7 +100,7 @@ function set!(model, ts::SyntheticObservations, index=1)
             ts_field = ts.field_time_serieses[name][index]
             set!(model_field, ts_field)
         else
-            set!(model_field, 0) #default_initial_condition(ts, Val(name)))
+            set!(model_field, 0)
         end
     end
 
@@ -140,12 +134,12 @@ function column_ensemble_interior(observations::Vector{<:SyntheticObservations},
     return ensemble_interior
 end
 
-function set!(model, observations::Vector{<:SyntheticObservations}, index=1)
+function set!(model, observations::Vector{<:SyntheticObservations}, index = 1)
 
     for name in keys(fields(model))
 
         model_field = fields(model)[name]
-        
+
         field_ts_data = column_ensemble_interior(observations, name, index, model.grid.Nx)
 
         arch = architecture(model_field)
@@ -153,7 +147,7 @@ function set!(model, observations::Vector{<:SyntheticObservations}, index=1)
         # Reshape `field_ts_data` to the size of `model_field`'s interior
         reshaped_data = arch_array(arch, reshape(field_ts_data, size(model_field)))
 
-        # Sets the interior of field `field_ts_data` to values of `ts_field_data`
+        # Sets the interior of field `model_field` to values of `reshaped_data`
         model_field .= reshaped_data
     end
 
@@ -173,7 +167,7 @@ end
 Returns a `FieldTimeSeriesCollector` for `fields` of `simulation`.
 `fields` is a `NamedTuple` of `AbstractField`s that are to be collected.
 """
-function FieldTimeSeriesCollector(collected_fields, times; architecture=CPU())
+function FieldTimeSeriesCollector(collected_fields, times; architecture = CPU())
 
     grid = collected_fields[1].grid
     field_time_serieses = Dict{Symbol, Any}()
@@ -207,8 +201,8 @@ function (collector::FieldTimeSeriesCollector)(simulation)
     return nothing
 end
 
-function initialize_simulation!(simulation, observations, time_series_collector, time_index=1)
-    set!(simulation.model, observations, time_index) 
+function initialize_simulation!(simulation, observations, time_series_collector, time_index = 1)
+    set!(simulation.model, observations, time_index)
 
     times = observation_times(observations)
 
@@ -233,10 +227,10 @@ summarize_metadata(metadata) = keys(metadata)
 
 Base.show(io::IO, ts::SyntheticObservations) =
     print(io, "SyntheticObservations with fields $(propertynames(ts.field_time_serieses))", '\n',
-              "├── times: $(ts.times)", '\n',    
-              "├── grid: $(short_show(ts.grid))", '\n',
-              "├── path: \"$(ts.path)\"", '\n',
-              "├── metadata: ", summarize_metadata(ts.metadata), '\n',
-              "└── normalization: $(short_show(ts.normalization))")
+        "├── times: $(ts.times)", '\n',
+        "├── grid: $(short_show(ts.grid))", '\n',
+        "├── path: \"$(ts.path)\"", '\n',
+        "├── metadata: ", summarize_metadata(ts.metadata), '\n',
+        "└── normalization: $(short_show(ts.normalization))")
 
 end # module
