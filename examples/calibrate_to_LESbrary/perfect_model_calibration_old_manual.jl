@@ -11,18 +11,8 @@ include("lesbrary_paths.jl")
 include("parameters.jl")
 include("visualize_profile_predictions.jl")
 
-#####
-##### Simulation parameters
-#####
-
-Nz = 32
-Lz = 64
-Δt = 10.0
-N² = 1e-6
-stop_time = 1day
-save_interval = 1hours
-ensemble_size = 100
-generate_observations = true
+examples_path = joinpath(pathof(OceanTurbulenceParameterEstimation), "..", "..", "examples")
+include(joinpath(examples_path, "intro_to_inverse_problems.jl"))
 
 #####
 ##### Generate synthetic observations
@@ -34,61 +24,28 @@ closure = closure_with_parameter_set(CATKEVerticalDiffusivity(Float64;), paramet
 true_parameters = (Cᵟu = 0.5, CᴷRiʷ = 1.0, Cᵂu★ = 2.0, CᵂwΔ = 1.0, Cᴷeʳ = 5.0, Cᵟc = 0.5, Cᴰ = 2.0, Cᴷc⁻ = 0.5, Cᴷe⁻ = 0.2, Cᴷcʳ = 3.0, Cᴸᵇ = 1.0, CᴷRiᶜ = 1.0, Cᴷuʳ = 4.0, Cᴷu⁻ = 1.2, Cᵟe = 0.5)
 true_closure = closure_with_parameters(closure, true_parameters)
 
-function generate_truth_data!(name; Qᵘ, Qᵇ, f₀)
-
-    grid = RectilinearGrid(size=Nz, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
-
-    u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
-    b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ), bottom = GradientBoundaryCondition(N²))
-
-    model = HydrostaticFreeSurfaceModel(grid = grid,
-        tracers = (:b, :e),
-        buoyancy = BuoyancyTracer(),
-        boundary_conditions = (; u = u_bcs, b = b_bcs),
-        coriolis = FPlane(f = f₀),
-        closure = true_closure)
-
-    set!(model, b = (x, y, z) -> N² * z)
-
-    simulation = Simulation(model; Δt, stop_time)
-
-    simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
-        schedule = TimeInterval(save_interval),
-        prefix = joinpath(@__DIR__, name),
-        array_type = Array{Float64},
-        field_slicer = nothing,
-        force = true)
-
-    run!(simulation)
-end
+# kwargs = (tracers = (:b, :e), stop_time = 1day, Δt = 10seconds, save_interval = 1hours)
+kwargs = (tracers = (:b, :e), stop_time = 60.0, Δt = 10.0, save_interval = 20.0)
 
 experiment_name = "perfect_model_observation1"
-data_path = joinpath(@__DIR__, experiment_name * ".jld2")
-
-if generate_observations || !(isfile(data_path))
-    generate_truth_data!(experiment_name; Qᵘ = 2e-5, Qᵇ = 2e-8, f₀ = 1e-4)
-end
+data_path = generate_synthetic_observations(experiment_name; Qᵘ = 2e-5, Qᵇ = 2e-8, f₀ = 1e-4, kwargs...)
 
 experiment_name2 = "perfect_model_observation2"
-data_path2 = joinpath(@__DIR__, experiment_name2 * ".jld2")
-
-if generate_observations || !(isfile(data_path2))
-    generate_truth_data!(experiment_name2; Qᵘ = -5e-5, Qᵇ = 0, f₀ = -1e-4)
-end
+data_path2 = generate_synthetic_observations(experiment_name2; Qᵘ = -5e-5, Qᵇ = 0, f₀ = -1e-4, kwargs...)
 
 #####
-##### Load truth data as observations
+##### Load synthetic observations
 #####
-
-# observations = SixDaySuite("/Users/adelinehillier/.julia/dev")
 
 observation1 = SyntheticObservations(data_path, field_names = (:b, :e, :u, :v), normalize = ZScore)
 observation2 = SyntheticObservations(data_path2, field_names = (:b, :e, :u, :v), normalize = ZScore)
 observations = [observation1, observation2]
 
-Nx = ensemble_size
+Nx = 100
 Ny = length(observations)
 column_ensemble_size = ColumnEnsembleSize(Nz = Nz, ensemble = (Nx, Ny), Hz = 1)
+
+ensemble_simulation, closure★ = build_ensemble_simulation(observations; Nensemble = 100)
 
 #####
 ##### Set up ensemble model

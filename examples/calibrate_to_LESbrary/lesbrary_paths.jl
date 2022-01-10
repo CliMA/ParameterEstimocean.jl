@@ -1,7 +1,11 @@
 using OrderedCollections
+using Oceananigans.OutputReaders: FieldTimeSeries
+
 #####
 ##### The LESbrary (so to speak)
 #####
+
+include("./legacy_data_time_serieses.jl")
 
 function get_times(path)
    file = jldopen(path)
@@ -21,7 +25,10 @@ function SyntheticObservationsBatch(suite; first_iteration = 1, stride = 1, last
       last_iteration = isnothing(last_iteration) ? length(times) : last_iteration
       times = times[first_iteration:stride:last_iteration]
       field_names = case.fields
-      observation = SyntheticObservations(path; field_names, normalize, times)
+
+      field_time_serieses = legacy_data_field_time_serieses(path, field_names, times, Nz = Nz)
+
+      observation = SyntheticObservations(path; field_names, normalize, times, field_time_serieses)
       push!(observations, observation)
    end
 
@@ -84,13 +91,13 @@ function SixDaySuite(directory; first_iteration = 13, stride = 1, last_iteration
          fields = (:b, :e)),
       "6d_strong_wind" => (
          filename = joinpath(directory, "strong_wind/instantaneous_statistics.jld2"),
-         fields = (:b, :u, :v, :e)), 
+         fields = (:b, :u, :v, :e)),
       "6d_strong_wind_no_rotation" => (
          filename = joinpath(directory, "strong_wind_no_rotation/instantaneous_statistics.jld2"),
-         fields = (:b, :u, :e)), 
+         fields = (:b, :u, :e)),
       "6d_strong_wind_weak_cooling" => (
          filename = joinpath(directory, "strong_wind_weak_cooling/instantaneous_statistics.jld2"),
-         fields = (:b, :u, :v, :e)), 
+         fields = (:b, :u, :v, :e)),
       "6d_weak_wind_strong_cooling" => (
          filename = joinpath(directory, "weak_wind_strong_cooling/instantaneous_statistics.jld2"),
          fields = (:b, :u, :v, :e)),

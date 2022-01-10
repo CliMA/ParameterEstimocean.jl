@@ -3,7 +3,6 @@ pushfirst!(LOAD_PATH, joinpath(@__DIR__, "../.."))
 using Oceananigans
 using Plots, LinearAlgebra, Distributions, JLD2
 using Oceananigans.Units
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using OceanTurbulenceParameterEstimation
 
