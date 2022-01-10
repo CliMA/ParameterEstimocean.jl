@@ -3,14 +3,14 @@
 using OceanTurbulenceParameterEstimation, LinearAlgebra, CairoMakie
 using Oceananigans.Units
 
-include("./lesbrary_paths.jl")
-include("./one_dimensional_ensemble_model.jl")
+include("utils/lesbrary_paths.jl")
+include("utils/one_dimensional_ensemble_model.jl")
 
 # Build an observation from "free convection" LESbrary simulation
 
-LESbrary_directory = "/Users/adelinehillier/Desktop/dev/2DaySuite/"
+LESbrary_directory = "/Users/adelinehillier/Desktop/dev/4DaySuite/"
 
-suite = OrderedDict("6d_free_convection" => (
+suite = OrderedDict("4d_free_convection" => (
     filename = joinpath(LESbrary_directory, "free_convection/instantaneous_statistics.jld2"),
     fields = (:b,)))
 
@@ -23,19 +23,20 @@ closure = ConvectiveAdjustmentVerticalDiffusivity(;
 
 # Build an ensemble simulation based on observation
 
+ensemble_size = 30
 ensemble_model = OneDimensionalEnsembleModel(observations;
     architecture = CPU(),
-    ensemble_size = 30,
+    ensemble_size = ensemble_size,
     closure = closure
 )
 
-ensemble_simulation = Simulation(ensemble_model; Δt = 10seconds, stop_time = 2days)
+ensemble_simulation = Simulation(ensemble_model; Δt = 10seconds, stop_time = 4days)
 
 # Specify priors and build `InverseProblem`
 
 priors = (
-    convective_κz = ConstrainedNormal(0.0, 1.0, 0.1, 1),
-    background_κz = ConstrainedNormal(0.0, 1.0, 0e-4, 1e-4)
+    convective_κz = ConstrainedNormal(0.0, 1.0, 0.1, 1.0),
+    background_κz = ConstrainedNormal(0.0, 1.0, 0.0, 10e-4)
 )
 
 free_parameters = FreeParameters(priors)
@@ -51,8 +52,8 @@ iterate!(eki; iterations = iterations)
 
 # Visualize the outputs of EKI calibration. Plots will be stored in `directory`.
 
-directory = "ConvAdj_to_LESbrary_EKI/"
-isdir(directory) || mkdir(directory)
+directory = "calibrate_convadj_to_lesbrary/$(iterations)_iters_$(ensemble_size)_particles/"
+isdir(directory) || mkpath(directory)
 
 ### Parameter convergence plot
 
@@ -141,7 +142,7 @@ lines(f[1, 1], iter_range, output_distances, color = :blue, linewidth = 2,
         yscale = log10))
 save(joinpath(directory, "conv_adj_to_LESbrary_error_convergence_summary.pdf"), f);
 
-include("examples/calibrate_CATKE_to_LESbrary/visualize_profile_predictions.jl")
+include("./utils/visualize_profile_predictions.jl")
 visualize!(calibration, ensemble_means[end];
     field_names = (:b,),
     directory = directory,
@@ -176,17 +177,17 @@ ensemble_model = OneDimensionalEnsembleModel(observations;
     architecture = CPU(),
     ensemble_size = ni * nj,
     closure = closure)
-ensemble_simulation = Simulation(ensemble_model; Δt = 10seconds, stop_time = 2days)
+ensemble_simulation = Simulation(ensemble_model; Δt = 10seconds, stop_time = 6days)
 calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
 
 y = observation_map(calibration)
 
 using FileIO
 a = forward_map(calibration, params) .- y
-save("./ConvAdj_to_LESbrary/loss_landscape_6d.jld2", "a", a)
+save("./ConvAdj_to_LESbrary/loss_landscape_4d.jld2", "a", a)
 
-# a = load("./ConvAdj_to_LESbrary/loss_landscape.jld2")["a"]
-zc = [mapslices(norm, (a), dims = 1)...]
+# a = load("./ConvAdj_to_LESbrary/loss_landscape_4d.jld2")["a"]
+zc = [mapslices(norm, a, dims = 1)...]
 
 # 2D contour plot with EKI particles superimposed
 begin
@@ -236,11 +237,6 @@ begin
         ylabel = "background_κz",
         zlabel = "MSE loss"
     )
-
-    # hidespines!(ax1, 
-    #         grid = false,
-    #         ticks = false,
-    #         ticklabels = false)
 
     CairoMakie.surface!(ax1, xc, yc, zc, colorscheme = :thermal)
 
