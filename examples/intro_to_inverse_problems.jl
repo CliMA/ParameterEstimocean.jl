@@ -32,7 +32,7 @@ using JLD2
 examples_path = joinpath(pathof(OceanTurbulenceParameterEstimation), "..", "..", "examples")
 include(joinpath(examples_path, "intro_to_observations.jl"))
 data_path = generate_synthetic_observations()
-observations = SyntheticObservations(data_path, field_names=:b, normalize=ZScore)
+observations = SyntheticObservations(data_path, field_names = :b, normalize = ZScore)
 
 # # Building an "ensemble simulation"
 #
@@ -79,18 +79,18 @@ end
 Returns an `Oceananigans.Simulation` representing an `Nensemble × 1`
 ensemble of column models designed to reproduce `observations`.
 """
-function build_ensemble_simulation(observations; Nensemble=1)
+function build_ensemble_simulation(observations; Nensemble = 1)
 
     observations isa Vector || (observations = [observations]) # Singleton batch
     Nbatch = length(observations)
 
     Qᵘ, Qᵇ, N², f, Δt, Lz, Nz, Hz, closure = extract_perfect_parameters(observations, Nensemble)
 
-    column_ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(Nensemble, Nbatch), Hz=Hz)
+    column_ensemble_size = ColumnEnsembleSize(Nz = Nz, ensemble = (Nensemble, Nbatch), Hz = Hz)
     ensemble_grid = RectilinearGrid(size = column_ensemble_size, topology = (Flat, Flat, Bounded), z = (-Lz, 0))
 
-    coriolis_ensemble = [FPlane(f=f[i, j]) for i = 1:Nensemble, j=1:Nbatch]
-    closure_ensemble = [deepcopy(closure) for i = 1:Nensemble, j=1:Nbatch]
+    coriolis_ensemble = [FPlane(f = f[i, j]) for i = 1:Nensemble, j = 1:Nbatch]
+    closure_ensemble = [deepcopy(closure) for i = 1:Nensemble, j = 1:Nbatch]
 
     u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
     b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ), bottom = GradientBoundaryCondition(N²))
@@ -98,20 +98,20 @@ function build_ensemble_simulation(observations; Nensemble=1)
     tracers = first(observations).metadata.parameters.tracers
 
     ensemble_model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
-                                                 tracers = tracers,
-                                                 buoyancy = BuoyancyTracer(),
-                                                 boundary_conditions = (; u=u_bcs, b=b_bcs),
-                                                 coriolis = coriolis_ensemble,
-                                                 closure = closure_ensemble)
+        tracers = tracers,
+        buoyancy = BuoyancyTracer(),
+        boundary_conditions = (; u = u_bcs, b = b_bcs),
+        coriolis = coriolis_ensemble,
+        closure = closure_ensemble)
 
-    ensemble_simulation = Simulation(ensemble_model; Δt=Δt, stop_time=first(observations).times[end])
+    ensemble_simulation = Simulation(ensemble_model; Δt = Δt, stop_time = first(observations).times[end])
 
     return ensemble_simulation, closure
 end
 
 # The following illustrations uses a simple ensemble simulation with two ensemble members:
 
-ensemble_simulation, closure★ = build_ensemble_simulation(observations; Nensemble=3)
+ensemble_simulation, closure★ = build_ensemble_simulation(observations; Nensemble = 3)
 
 # # Free parameters
 #
@@ -120,14 +120,14 @@ ensemble_simulation, closure★ = build_ensemble_simulation(observations; Nensem
 # can be drawn out of the distribution.
 
 priors = (convective_κz = lognormal_with_mean_std(0.3, 0.05),
-          background_κz = lognormal_with_mean_std(2.5e-4, 0.25e-4))
+    background_κz = lognormal_with_mean_std(2.5e-4, 0.25e-4))
 
 free_parameters = FreeParameters(priors)
 
 # We also take the opportunity to collect a named tuple of the optimal parameters
 
 θ★ = (convective_κz = closure★.convective_κz,
-      background_κz = closure★.background_κz)
+    background_κz = closure★.background_κz)
 
 # ## Visualizing the priors
 #
@@ -170,10 +170,10 @@ calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
 # the observations to machine precision.
 
 θ¹ = (convective_κz = 0.8 * θ★.convective_κz,
-      background_κz = 9.0 * θ★.background_κz)
+    background_κz = 9.0 * θ★.background_κz)
 
 θ² = (convective_κz = 2.0 * θ★.convective_κz,
-      background_κz = 0.1 * θ★.background_κz)
+    background_κz = 0.1 * θ★.background_κz)
 
 θ_ensemble = [θ★, θ¹, θ²]
 
@@ -210,18 +210,18 @@ b² = interior(b)[3, 1, :]
 
 fig = Figure()
 ax = Axis(fig[1, 1],
-          xlabel = "Buoyancy [m s⁻²]",
-          ylabel = "Depth [m]")
+    xlabel = "Buoyancy [m s⁻²]",
+    ylabel = "Depth [m]")
 
 b★_label = "true b at t = " * prettytime(t)
 b¹_label = "b with $θ¹"
 b²_label = "b with $θ²"
 
-lines!(ax, b★, z; label=b★_label, linewidth=2)
-lines!(ax, b¹, z; label=b¹_label, linewidth=2)
-lines!(ax, b², z; label=b²_label, linewidth=2)
+lines!(ax, b★, z; label = b★_label, linewidth = 2)
+lines!(ax, b¹, z; label = b¹_label, linewidth = 2)
+lines!(ax, b², z; label = b²_label, linewidth = 2)
 
-axislegend(ax, position=:lt)
+axislegend(ax, position = :lt)
 
 save("ensemble_simulation_demonstration.svg", fig)
 nothing # hide

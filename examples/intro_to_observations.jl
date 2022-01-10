@@ -30,33 +30,33 @@ default_closure = ConvectiveAdjustmentVerticalDiffusivity(; convective_κz = 1.0
                                                             background_νz = 1e-5)
 
 function generate_synthetic_observations(name = "convective_adjustment"; Nz = 32, Lz = 64,
-                                         Qᵇ = +1e-8, Qᵘ = -1e-5, f₀ = 1e-4, N² = 1e-6,
-                                         Δt = 10.0, stop_time = 12hours,
-                                         tracers = :b, closure = default_closure)
+    Qᵇ = +1e-8, Qᵘ = -1e-5, f₀ = 1e-4, N² = 1e-6,
+    Δt = 10.0, stop_time = 12hours,
+    tracers = :b, closure = default_closure)
 
     data_path = name * ".jld2"
     isfile(data_path) && return data_path
-    
-    grid = RectilinearGrid(size=Nz, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
+
+    grid = RectilinearGrid(size = Nz, z = (-Lz, 0), topology = (Flat, Flat, Bounded))
     u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
     b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ), bottom = GradientBoundaryCondition(N²))
 
     model = HydrostaticFreeSurfaceModel(; grid, tracers, closure,
-                                          buoyancy = BuoyancyTracer(),
-                                          boundary_conditions = (; u=u_bcs, b=b_bcs),
-                                          coriolis = FPlane(f=f₀))
+        buoyancy = BuoyancyTracer(),
+        boundary_conditions = (; u = u_bcs, b = b_bcs),
+        coriolis = FPlane(f = f₀))
 
     set!(model, b = (x, y, z) -> N² * z)
     simulation = Simulation(model; Δt, stop_time)
-    init_with_parameters(file, model) = file["parameters"] = (; Qᵇ, Qᵘ, Δt, N², tracers=(:b, :e))
-    
+    init_with_parameters(file, model) = file["parameters"] = (; Qᵇ, Qᵘ, Δt, N², tracers = (:b, :e))
+
     simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
-                                                          schedule = TimeInterval(stop_time/3),
-                                                          prefix = name,
-                                                          array_type = Array{Float64},
-                                                          field_slicer = nothing,
-                                                          init = init_with_parameters,
-                                                          force = true)
+        schedule = TimeInterval(stop_time / 3),
+        prefix = name,
+        array_type = Array{Float64},
+        field_slicer = nothing,
+        init = init_with_parameters,
+        force = true)
 
     run!(simulation)
 
