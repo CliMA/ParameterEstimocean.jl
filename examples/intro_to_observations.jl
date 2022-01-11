@@ -35,7 +35,7 @@ function generate_synthetic_observations(name = "convective_adjustment"; Nz = 32
                                          tracers = :b, closure = default_closure)
 
     data_path = name * ".jld2"
-    isfile(data_path) && return data_path
+    isfile(data_path) && (@warn("File $data_path already exists. Please delete this file if you wish to generate new data."); return data_path)
     
     grid = RectilinearGrid(size=Nz, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
     u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
@@ -49,7 +49,7 @@ function generate_synthetic_observations(name = "convective_adjustment"; Nz = 32
     set!(model, b = (x, y, z) -> N² * z)
     simulation = Simulation(model; Δt, stop_time)
     init_with_parameters(file, model) = file["parameters"] = (; Qᵇ, Qᵘ, Δt, N², tracers=(:b, :e))
-    
+
     simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
                                                           schedule = TimeInterval(stop_time/3),
                                                           prefix = name,
