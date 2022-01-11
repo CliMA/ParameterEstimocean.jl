@@ -3,6 +3,8 @@ module Observations
 using Oceananigans
 using Oceananigans: short_show, fields
 using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
+using Oceananigans.Grids: pop_flat_elements, topology, halo_size
 using Oceananigans.Fields
 using Oceananigans.Utils: SpecifiedTimes
 using Oceananigans.Architectures: arch_array, architecture
@@ -60,13 +62,56 @@ const not_metadata_names = ("serialized", "timeseries")
 read_group(group::JLD2.Group) = NamedTuple(Symbol(subgroup) => read_group(group[subgroup]) for subgroup in keys(group))
 read_group(group) = group
 
-function SyntheticObservations(path; field_names, normalize = IdentityNormalization, times = nothing, field_time_serieses = nothing)
+function with_size(new_size, old_grid)
+
+    topo = topology(old_grid)
+
+    x = cpu_face_constructor_x(old_grid)
+    y = cpu_face_constructor_y(old_grid)
+    z = cpu_face_constructor_z(old_grid)
+
+    # Remove elements of size and new_halo in Flat directions as expected by grid
+    # constructor
+    new_size = pop_flat_elements(new_size, topo)
+    halo = pop_flat_elements(halo_size(old_grid), topo)
+
+    new_grid = RectilinearGrid(architecture(old_grid), eltype(old_grid);
+                               size = new_size,
+                               x = x, y = y, z = z,
+                               topology = topo,
+                               halo = halo)
+
+    return new_grid
+end
+    
+function SyntheticObservations(path; field_names, normalize = IdentityNormalization, times = nothing, field_time_serieses = nothing, grid_size = nothing)
     field_names = tupleit(field_names)
 
     field_time_serieses === nothing && (field_time_serieses = NamedTuple(name => FieldTimeSeries(path, string(name); times) for name in field_names))
 
     grid = first(field_time_serieses).grid
     times = first(field_time_serieses).times
+
+    if !isnothing(grid_size) # regrid! field_time_serieses on a new grid
+
+        new_field_time_serieses = Dict()
+    
+        # Re-grid the data in `field_time_serieses`
+        for (field_name, ts) in field_time_serieses
+
+            new_grid = with_size(size, grid)
+            empty_field_time_series = FieldTimeSeries(new_grid, infer_location(field_name), times)
+
+            # Loop over time steps to re-grid each constituent field in `field_time_series`
+            for n = 1:length(times)
+                regrid!(empty_field_time_series[n], ts[n])
+            end
+        
+            new_field_time_serieses[field_name] = empty_field_time_series
+        end
+    
+        field_time_serieses = NamedTuple(new_field_time_serieses)
+    end
 
     # validate_data(fields, grid, times) # might be a good idea to validate the data...
     file = jldopen(path)
