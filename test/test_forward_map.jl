@@ -118,7 +118,8 @@ using OceanTurbulenceParameterEstimation.InverseProblems: transpose_model_output
 
         y = observation_map(calibration)
         
-        @test x₁[:, 1:1] == y && x₂[:, 1:1] == y
+        @test x₁[:, 1:1] == y
+        @test x₂[:, 1:1] == y
     end
 
     @testset "Two-member (2x1) transposition of model output" begin
