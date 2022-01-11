@@ -102,7 +102,7 @@ function set!(model, ts::SyntheticObservations, index=1)
 
         model_field = fields(model)[name]
 
-        if name in keys(ts.field_time_serieses)
+        if name ∈ keys(ts.field_time_serieses)
             ts_field = ts.field_time_serieses[name][index]
             set!(model_field, ts_field)
         else
@@ -215,6 +215,7 @@ function initialize_simulation!(simulation, observations, time_series_collector,
     initial_time = times[time_index]
     simulation.model.clock.time = initial_time
     simulation.model.clock.iteration = 0
+    simulation.model.timestepper.previous_Δt = Inf
 
     # Zero out time series data
     for time_series in time_series_collector.field_time_serieses

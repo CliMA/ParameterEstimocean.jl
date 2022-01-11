@@ -1,4 +1,5 @@
 using Test
+using LinearAlgebra
 using OceanTurbulenceParameterEstimation
 using Oceananigans
 using Oceananigans.Units
@@ -6,44 +7,45 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
 
 using OceanTurbulenceParameterEstimation.Observations: FieldTimeSeriesCollector, initialize_simulation!, observation_times
-using OceanTurbulenceParameterEstimation.InverseProblems: transpose_model_output
+using OceanTurbulenceParameterEstimation.InverseProblems: transpose_model_output, forward_run!
 
 @testset "Forward map tests" begin
 
-    Nz = 8
-    experiment_name = "forward_map_test"
-
     # Generate synthetic observations
+    Nz = 8
+    N² = 1e-5
+    stop_iteration = 3*60*10
+    experiment_name = "forward_map_test"
 
     default_closure() = ConvectiveAdjustmentVerticalDiffusivity(; convective_κz=1.0,
                                                                   background_κz=1e-5,
                                                                   convective_νz=0.9,
                                                                   background_νz=1e-4)
 
-    model_kwargs = (tracers = :b, buoyancy = BuoyancyTracer(), coriolis = FPlane(f=1e-4))
+    model_kwargs = (
+        tracers = :b,
+        buoyancy = BuoyancyTracer(),
+        coriolis = FPlane(f=1e-4),
+        boundary_conditions = (u = FieldBoundaryConditions(top = FluxBoundaryCondition(-1e-4)),
+                               b = FieldBoundaryConditions(top = FluxBoundaryCondition(1e-7), bottom = GradientBoundaryCondition(N²)))
+    )
 
     function build_simulation(size=Nz)
-        N² = 1e-5
         grid = RectilinearGrid(size=size, z=(-128, 0), topology=(Flat, Flat, Bounded))
-        u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(-1e-4))
-        b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(1e-7), bottom = GradientBoundaryCondition(N²))
-        model = HydrostaticFreeSurfaceModel(; grid = grid,
-                                              model_kwargs,
-                                              boundary_conditions = (; u=u_bcs, b=b_bcs),
-                                              closure = default_closure())
+        model = HydrostaticFreeSurfaceModel(; grid,
+                                              closure = default_closure(),
+                                              model_kwargs...)
                                         
-        set!(model, b = (x, y, z) -> N² * z)
+        #set!(model, b = (x, y, z) -> N² * z)
 
-        simulation = Simulation(model; Δt=20.0, stop_iteration=3*60*10)
+        simulation = Simulation(model; Δt=20.0, stop_iteration)
 
         return simulation
     end
 
     # Make observations
-
     truth_simulation = build_simulation()
     model = truth_simulation.model
-    stop_iteration = truth_simulation.stop_iteration
     truth_simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
                                                                 schedule = IterationInterval(round(Int, stop_iteration / 10)),
                                                                 prefix = experiment_name,
@@ -54,7 +56,9 @@ using OceanTurbulenceParameterEstimation.InverseProblems: transpose_model_output
     run!(truth_simulation)
 
     data_path = experiment_name * ".jld2"
-    observations = SyntheticObservations(data_path, field_names=(:u, :b), normalize=ZScore)
+    #observations = SyntheticObservations(data_path, field_names=(:u, :b), normalize=ZScore)
+    #observations = SyntheticObservations(data_path, field_names=(:b, :u), normalize=ZScore)
+    observations = SyntheticObservations(data_path, field_names=:u, normalize=ZScore)
 
     #####
     ##### Make model data
@@ -67,20 +71,39 @@ using OceanTurbulenceParameterEstimation.InverseProblems: transpose_model_output
 
         time_series_collector = FieldTimeSeriesCollector(collected_fields, observation_times(observations))
 
+        # Test initialize_simulation!
+        @info "  Testing initialize_simulation!..."
+        random_initial_condition(x, y, z) = rand()
+        for field in fields(test_simulation.model)
+            set!(field, random_initial_condition)
+        end
+
+        test_u = test_simulation.model.velocities.u
+        test_v = test_simulation.model.velocities.v
+        test_b = test_simulation.model.tracers.b
+        @test !all(test_u .== 0)
+        @test !all(test_v .== 0)
+        @test !all(test_b .== 0)
+
+        test_simulation.stop_iteration = Inf
         initialize_simulation!(test_simulation, observations, time_series_collector)
+
+        @test all(test_v .== 0)
+
         run!(test_simulation)
 
+        @info "  Testing transpose_model_output..."
         output = transpose_model_output(time_series_collector, observations)[1]
 
-        test_b = output.field_time_serieses.b
-        truth_b = observations.field_time_serieses.b
+        #test_b = output.field_time_serieses.b
+        #truth_b = observations.field_time_serieses.b
         test_u = output.field_time_serieses.u
         truth_u = observations.field_time_serieses.u
 
-        @test interior(test_b) == interior(truth_b)
+        #@test interior(test_b) == interior(truth_b)
         @test interior(test_u) == interior(truth_u)
 
-        # Now test forward_map and observation_map
+        @info "  Testing forward_map and output_map..."
         closure = default_closure()
 
         priors = (
@@ -97,31 +120,44 @@ using OceanTurbulenceParameterEstimation.InverseProblems: transpose_model_output
         ensemble_grid = RectilinearGrid(size=column_ensemble_size, z = (-128, 0), topology = (Flat, Flat, Bounded))
         closure_ensemble = [default_closure() for i = 1:ensemble_grid.Nx, j = 1:ensemble_grid.Ny]
 
-        N² = 1e-5
-        ensemble_u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(-1e-4))
-        ensemble_b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(1e-7), bottom = GradientBoundaryCondition(N²))
-
         ensemble_model = HydrostaticFreeSurfaceModel(; grid = ensemble_grid,
-                                                       model_kwargs,
-                                                       boundary_conditions = (; u=ensemble_u_bcs, b=ensemble_b_bcs),
-                                                       closure = closure_ensemble)
+                                                       closure = closure_ensemble,
+                                                       model_kwargs...)
 
-        set!(ensemble_model, b = (x, y, z) -> N² * z)
-
-        ensemble_simulation = Simulation(ensemble_model; Δt=20.0, stop_iteration=3*60*10)
+        ensemble_simulation = Simulation(ensemble_model; Δt=20.0)
 
         calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
-        optimal_parameters = [getproperty(closure, p) for p in keys(priors)]
+        optimal_parameters = NamedTuple(name => getproperty(closure, name) for name in keys(priors))
+
+        @show ensemble_simulation.model.clock
+        @show ensemble_simulation.Δt
+
+        @show "First forward run..."
+        forward_run!(calibration, optimal_parameters)
+        truth_u = observations.field_time_serieses.u
+        test_u = calibration.time_series_collector.field_time_serieses.u
+        @test interior(test_u) == interior(truth_u)
+
+        parent(ensemble_simulation.model.velocities.v) .= 0
+
+        @show "Second forward run..."
+        forward_run!(calibration, optimal_parameters)
+        truth_u = observations.field_time_serieses.u
+        test_u = calibration.time_series_collector.field_time_serieses.u
+        @test interior(test_u) == interior(truth_u)
         
-        x₁ = forward_map(calibration,  [optimal_parameters for _ in 1:1])
-        x₂ = forward_map(calibration,  [optimal_parameters for _ in 1:1])
+        #=
+        x₁ = forward_map(calibration, optimal_parameters)
+        x₂ = forward_map(calibration, optimal_parameters)
 
         y = observation_map(calibration)
         
         @test x₁[:, 1:1] == y
         @test x₂[:, 1:1] == y
+        =#
     end
 
+    #=
     @testset "Two-member (2x1) transposition of model output" begin
         ensemble_size = 2
         column_ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(ensemble_size, 1), Hz=1)
@@ -169,4 +205,5 @@ using OceanTurbulenceParameterEstimation.InverseProblems: transpose_model_output
             end
         end
     end
+    =#
 end
