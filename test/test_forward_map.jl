@@ -103,6 +103,7 @@ using OceanTurbulenceParameterEstimation.InverseProblems: transpose_model_output
         ensemble_model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
                                                     tracers = :b,
                                                     buoyancy = BuoyancyTracer(),
+                                                    coriolis = FPlane(f=1e-4),
                                                     boundary_conditions = (; u=ensemble_u_bcs, b=ensemble_b_bcs),
                                                     closure = closure_ensemble)
 
@@ -117,7 +118,7 @@ using OceanTurbulenceParameterEstimation.InverseProblems: transpose_model_output
         x₂ = forward_map(calibration,  [optimal_parameters for _ in 1:1])
 
         y = observation_map(calibration)
-        
+
         @test x₁[:, 1:1] == y && x₂[:, 1:1] == y
     end
 
