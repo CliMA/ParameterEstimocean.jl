@@ -1,4 +1,4 @@
-using Documenter, Distributions, Test
+using Documenter, Test
 
 include("test_synthetic_observations.jl")
 include("test_forward_map.jl")

@@ -1,5 +1,6 @@
 using Test
 using LinearAlgebra
+using Distributions
 using OceanTurbulenceParameterEstimation
 using Oceananigans
 using Oceananigans.Units
@@ -36,7 +37,7 @@ using OceanTurbulenceParameterEstimation.InverseProblems: transpose_model_output
                                               closure = default_closure(),
                                               model_kwargs...)
                                         
-        #set!(model, b = (x, y, z) -> N² * z)
+        set!(model, b = (x, y, z) -> N² * z)
 
         simulation = Simulation(model; Δt=20.0, stop_iteration)
 
@@ -56,10 +57,8 @@ using OceanTurbulenceParameterEstimation.InverseProblems: transpose_model_output
     run!(truth_simulation)
 
     data_path = experiment_name * ".jld2"
-    #observations = SyntheticObservations(data_path, field_names=(:u, :b), normalize=ZScore)
-    #observations = SyntheticObservations(data_path, field_names=(:b, :u), normalize=ZScore)
-    observations = SyntheticObservations(data_path, field_names=:u, normalize=ZScore)
-
+    observations = SyntheticObservations(data_path, field_names=(:u, :b), normalize=ZScore)
+    
     #####
     ##### Make model data
     #####
@@ -95,12 +94,12 @@ using OceanTurbulenceParameterEstimation.InverseProblems: transpose_model_output
         @info "  Testing transpose_model_output..."
         output = transpose_model_output(time_series_collector, observations)[1]
 
-        #test_b = output.field_time_serieses.b
-        #truth_b = observations.field_time_serieses.b
+        test_b = output.field_time_serieses.b
+        truth_b = observations.field_time_serieses.b
         test_u = output.field_time_serieses.u
         truth_u = observations.field_time_serieses.u
 
-        #@test interior(test_b) == interior(truth_b)
+        @test interior(test_b) == interior(truth_b)
         @test interior(test_u) == interior(truth_u)
 
         @info "  Testing forward_map and output_map..."
@@ -129,24 +128,18 @@ using OceanTurbulenceParameterEstimation.InverseProblems: transpose_model_output
         calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
         optimal_parameters = NamedTuple(name => getproperty(closure, name) for name in keys(priors))
 
-        @show ensemble_simulation.model.clock
-        @show ensemble_simulation.Δt
-
-        @show "First forward run..."
         forward_run!(calibration, optimal_parameters)
         truth_u = observations.field_time_serieses.u
         test_u = calibration.time_series_collector.field_time_serieses.u
+        @test interior(test_b) == interior(truth_b)
         @test interior(test_u) == interior(truth_u)
 
-        parent(ensemble_simulation.model.velocities.v) .= 0
-
-        @show "Second forward run..."
         forward_run!(calibration, optimal_parameters)
         truth_u = observations.field_time_serieses.u
         test_u = calibration.time_series_collector.field_time_serieses.u
+        @test interior(test_b) == interior(truth_b)
         @test interior(test_u) == interior(truth_u)
         
-        #=
         x₁ = forward_map(calibration, optimal_parameters)
         x₂ = forward_map(calibration, optimal_parameters)
 
@@ -154,10 +147,8 @@ using OceanTurbulenceParameterEstimation.InverseProblems: transpose_model_output
         
         @test x₁[:, 1:1] == y
         @test x₂[:, 1:1] == y
-        =#
     end
 
-    #=
     @testset "Two-member (2x1) transposition of model output" begin
         ensemble_size = 2
         column_ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(ensemble_size, 1), Hz=1)
@@ -205,5 +196,4 @@ using OceanTurbulenceParameterEstimation.InverseProblems: transpose_model_output
             end
         end
     end
-    =#
 end
