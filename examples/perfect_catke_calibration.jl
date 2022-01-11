@@ -116,9 +116,9 @@ free_parameters = FreeParameters(priors)
 
 calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
 
-# y = observation_map(calibration)
-# G = forward_map(calibration, θ★)
-# @show G[:, 1] ≈ y
+y = observation_map(calibration)
+G = forward_map(calibration, θ★)
+@show G[:, 1] ≈ y
 
 # # Ensemble Kalman Inversion
 #
