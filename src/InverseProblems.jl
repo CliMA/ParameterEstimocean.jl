@@ -126,7 +126,8 @@ function expand_parameters(ip, θ::Vector)
 end
 
 # Expand single parameter vector
-expand_parameters(ip, θ::Union{Vector{<:Number}, NamedTuple}) = expand_parameters(ip, [θ])
+expand_parameters(ip, θ::Vector{<:Number}) = expand_parameters(ip, [θ])
+expand_parameters(ip, θ::NamedTuple) = expand_parameters(ip, [θ])
 
 # Convert matrix to vector of vectors
 expand_parameters(ip, θ::Matrix) = expand_parameters(ip, [θ[:, i] for i in 1:size(θ, 2)])
@@ -168,7 +169,7 @@ function forward_run!(ip::InverseProblem, parameters)
     initialize_simulation!(simulation, observations, ip.time_series_collector)
 
     @suppress run!(simulation)
-
+    
     return nothing
 end
 

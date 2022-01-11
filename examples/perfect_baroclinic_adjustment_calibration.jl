@@ -64,14 +64,14 @@ gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = κ_ske
 # ## Generate synthetic observations
 
 if generate_observations || !(isfile(data_path))
-    grid = RectilinearGrid(topology = (Flat, Bounded, Bounded), 
+    grid = RectilinearGrid(architecture,
+                           topology = (Flat, Bounded, Bounded), 
                            size = (Ny, Nz), 
                            y = (-Ly/2, Ly/2),
                            z = (-Lz, 0),
                            halo = (3, 3))
     
-    model = HydrostaticFreeSurfaceModel(architecture = architecture,
-                                        grid = grid,
+    model = HydrostaticFreeSurfaceModel(grid = grid,
                                         tracers = (:b, :c),
                                         buoyancy = BuoyancyTracer(),
                                         coriolis = BetaPlane(latitude=-45),
@@ -132,16 +132,16 @@ observations = SyntheticObservations(data_path, field_names=(:b, :c), normalize=
 ensemble_size = 20
 
 slice_ensemble_size = SliceEnsembleSize(size=(Ny, Nz), ensemble=ensemble_size)
-@show ensemble_grid = RectilinearGrid(size=slice_ensemble_size,
-                                             topology = (Flat, Bounded, Bounded),
-                                             y = (-Ly/2, Ly/2),
-                                             z = (-Lz, 0),
-                                             halo=(3, 3))
+@show ensemble_grid = RectilinearGrid(architecture,
+                                      size=slice_ensemble_size,
+                                      topology = (Flat, Bounded, Bounded),
+                                      y = (-Ly/2, Ly/2),
+                                      z = (-Lz, 0),
+                                      halo=(3, 3))
 
 closure_ensemble = [deepcopy(gent_mcwilliams_diffusivity) for i = 1:ensemble_size] 
 
-@show ensemble_model = HydrostaticFreeSurfaceModel(architecture = architecture,
-                                                   grid = ensemble_grid,
+@show ensemble_model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
                                                    tracers = (:b, :c),
                                                    buoyancy = BuoyancyTracer(),
                                                    coriolis = BetaPlane(latitude=-45),
