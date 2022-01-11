@@ -245,7 +245,7 @@ save("perfect_catke_calibration_particle_realizations.svg", fig); nothing # hide
 fig = Figure()
 
 ax1 = Axis(fig[1, 1])
-ax2 = Axis(fig[2, 1], xlabel = "Cᴷu⁻ [m² s⁻¹]", ylabel = "Cᴷc⁻ [m² s⁻¹]")
+ax2 = Axis(fig[2, 1], xlabel = "Cᴬu [m² s⁻¹]", ylabel = "Cᴬc [m² s⁻¹]")
 ax3 = Axis(fig[2, 2])
 scatters = []
 labels = String[]
@@ -263,10 +263,10 @@ for iteration in [0, 1, 10, 20]
     density!(ax3, parameter_ensemble_matrix[:, 2], direction = :y)
 end
 
-vlines!(ax1, [θ★.Cᴷu⁻], color = :red)
-vlines!(ax2, [θ★.Cᴷu⁻], color = :red)
-hlines!(ax2, [θ★.Cᴷc⁻], color = :red)
-hlines!(ax3, [θ★.Cᴷc⁻], color = :red)
+vlines!(ax1, [θ★.Cᴬu], color = :red)
+vlines!(ax2, [θ★.Cᴬu], color = :red)
+hlines!(ax2, [θ★.Cᴬc], color = :red)
+hlines!(ax3, [θ★.Cᴬc], color = :red)
 
 colsize!(fig.layout, 1, Fixed(300))
 colsize!(fig.layout, 2, Fixed(200))
