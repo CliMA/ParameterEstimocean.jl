@@ -29,6 +29,7 @@ struct SyntheticObservations{F, G, T, P, M, N} <: AbstractObservation
                     path :: P
                 metadata :: M
            normalization :: N
+end
 
 observation_names(ts::SyntheticObservations) = keys(ts.field_time_serieses)
 
@@ -50,10 +51,10 @@ obs_str(ts::SyntheticObservations) = "SyntheticObservations of $(keys(ts.field_t
 obs_str(ts::Vector{<:SyntheticObservations}) = "Vector of SyntheticObservations of $(keys(ts[1].field_time_serieses)) on $(short_show(ts[1].grid))"
 
 tupleit(t) = try
-     Tuple(t)
- catch
-     tuple(t)
- end
+    Tuple(t)
+catch
+    tuple(t)
+end
 
 const not_metadata_names = ("serialized", "timeseries")
 
@@ -226,15 +227,15 @@ end
 Returns a `FieldTimeSeriesCollector` for `fields` of `simulation`.
 `fields` is a `NamedTuple` of `AbstractField`s that are to be collected.
 """
-function FieldTimeSeriesCollector(collected_fields, times; architecture = CPU())
+function FieldTimeSeriesCollector(collected_fields, times; architecture=CPU())
 
     grid = collected_fields[1].grid
-    field_time_serieses = Dict{Symbol,Any}()
+    field_time_serieses = Dict{Symbol, Any}()
 
     for name in keys(collected_fields)
         field = collected_fields[name]
         LX, LY, LZ = location(field)
-        field_time_series = FieldTimeSeries{LX,LY,LZ}(architecture, field.grid, times)
+        field_time_series = FieldTimeSeries{LX, LY, LZ}(architecture, field.grid, times)
         field_time_serieses[name] = field_time_series
     end
 

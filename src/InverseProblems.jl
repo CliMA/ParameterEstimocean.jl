@@ -14,10 +14,10 @@ using Oceananigans: short_show, run!, fields, FieldTimeSeries, CPU
 using Oceananigans.OutputReaders: InMemory
 using Oceananigans.Fields: interior, location
 using Oceananigans.Grids: Flat, Bounded,
-    Face, Center,
-    RectilinearGrid, offset_data,
-    topology, halo_size,
-    interior_parent_indices
+                          Face, Center,
+                          RectilinearGrid, offset_data,
+                          topology, halo_size,
+                          interior_parent_indices
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SingleColumnGrid, YZSliceGrid, ColumnEnsembleSize
 
@@ -136,7 +136,7 @@ expand_parameters(ip, θ::Matrix) = expand_parameters(ip, [θ[:, i] for i = 1:si
 #####
 
 const OneDimensionalEnsembleGrid = RectilinearGrid{<:Any, Flat, Flat, Bounded}
- const TwoDimensionalEnsembleGrid = RectilinearGrid{<:Any, Flat, Bounded, Bounded}
+const TwoDimensionalEnsembleGrid = RectilinearGrid{<:Any, Flat, Bounded, Bounded}
 
 n_ensemble(grid::Union{OneDimensionalEnsembleGrid,TwoDimensionalEnsembleGrid}) = grid.Nx
 n_observations(grid::OneDimensionalEnsembleGrid) = grid.Ny
