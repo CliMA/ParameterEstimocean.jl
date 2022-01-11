@@ -31,7 +31,11 @@ abstract type AbstractOutputMap end
 
 output_map_type(fp) = output_map_str(fp)
 
-struct ConcatenatedOutputMap end
+struct ConcatenatedOutputMap{T}
+    time_indices::T
+end
+
+ConcatenatedOutputMap(; time_indices = Colon()) = ConcatenatedOutputMap(time_indices)
 
 output_map_str(::ConcatenatedOutputMap) = "ConcatenatedOutputMap"
 
@@ -131,8 +135,8 @@ expand_parameters(ip, θ::Matrix) = expand_parameters(ip, [θ[:, i] for i = 1:si
 ##### Forward map evaluation given vector-of-vector (one parameter vector for each ensemble member)
 #####
 
-const OneDimensionalEnsembleGrid = RectilinearGrid{<:Any, Flat, Flat, Bounded}
-const TwoDimensionalEnsembleGrid = RectilinearGrid{<:Any, Flat, Bounded, Bounded}
+const OneDimensionalEnsembleGrid = RectilinearGrid{<:Any,Flat,Flat,Bounded}
+const TwoDimensionalEnsembleGrid = RectilinearGrid{<:Any,Flat,Bounded,Bounded}
 
 n_ensemble(grid::Union{OneDimensionalEnsembleGrid,TwoDimensionalEnsembleGrid}) = grid.Nx
 n_observations(grid::OneDimensionalEnsembleGrid) = grid.Ny
@@ -199,14 +203,15 @@ end
 
 Concatenates flattened, normalized data for each field in the `time_series`.
 """
-function transform_time_series(::ConcatenatedOutputMap, time_series::SyntheticObservations)
+function transform_time_series(output_map::ConcatenatedOutputMap, time_series::SyntheticObservations)
     flattened_normalized_data = []
 
     for field_name in keys(time_series.field_time_serieses)
         field_time_series = time_series.field_time_serieses[field_name]
-        field_time_series_data = Array(interior(field_time_series))
+        field_time_series_data = Array(interior(field_time_series))[:, :, :, output_map.time_indices]
 
         Nx, Ny, Nz, Nt = size(field_time_series_data)
+
         field_time_series_data = reshape(field_time_series_data, Nx, Ny * Nz * Nt)
 
         normalize!(field_time_series_data, time_series.normalization[field_name])
@@ -342,7 +347,7 @@ function transpose_model_output(time_series_collector, observations)
     return transposed_output
 end
 
-function drop_y_dimension(grid::RectilinearGrid{<:Any, <:Flat, <:Flat, <:Bounded})
+function drop_y_dimension(grid::RectilinearGrid{<:Any,<:Flat,<:Flat,<:Bounded})
     new_size = ColumnEnsembleSize(Nz = grid.Nz, ensemble = (grid.Nx, 1), Hz = grid.Hz)
     z_domain = (grid.zᵃᵃᶠ[1], grid.zᵃᵃᶠ[grid.Nz])
     new_grid = RectilinearGrid(size = new_size, z = z_domain, topology = (Flat, Flat, Bounded))

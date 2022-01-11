@@ -14,7 +14,7 @@ suite = OrderedDict("4d_free_convection" => (
     filename = joinpath(LESbrary_directory, "free_convection/instantaneous_statistics.jld2"),
     fields = (:b,)))
 
-observations = SyntheticObservationsBatch(suite; first_iteration = 13, stride = 132, last_iteration = nothing, normalize = ZScore, Nz = 32)
+observations = SyntheticObservationsBatch(suite; first_iteration = 13, last_iteration = nothing, normalize = ZScore, Nz = 32)
 
 closure = ConvectiveAdjustmentVerticalDiffusivity(;
     convective_κz = 1.0,
@@ -41,7 +41,7 @@ priors = (
 
 free_parameters = FreeParameters(priors)
 
-calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
+calibration = InverseProblem(observations, ensemble_simulation, free_parameters; output_map = ConcatenatedOutputMap([132, 164]))
 
 # Ensemble Kalman Inversion
 
