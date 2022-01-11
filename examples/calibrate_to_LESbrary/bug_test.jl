@@ -12,13 +12,7 @@ halo = ColumnEnsembleSize(Nz = sz.Nz)
 
 grid = RectilinearGrid(size = sz, halo = halo, z = (-128, 0), topology = (Flat, Flat, Bounded))
 
-closure = [CATKEVerticalDiffusivity() for i = 1:Ex, j = 1:Ey]
-
-# closure = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1,
-#     background_κz = 1e-5,
-#     convective_νz = 1e-3,
-#     background_νz = 1e-4)
-# closure = [closure for i = 1:Ex, j = 1:Ey]
+closure = [ConvectiveAdjustmentVerticalDiffusivity() for i = 1:Ex, j = 1:Ey]
 
 Qᵇ = [+1e-8 for i = 1:Ex, j = 1:Ey]
 Qᵘ = [-1e-4 for i = 1:Ex, j = 1:Ey]
@@ -45,7 +39,6 @@ times = [Δt * (n - 1) for n = 1:stop_iteration]
 
 field_names = (:u,)
 
-# function build_simulation_and_time_series_collector()
 simulation = Simulation(model; Δt = Δt, stop_iteration = stop_iteration)
 
 simulation_fields = fields(simulation.model)
@@ -53,9 +46,6 @@ simulation_fields = fields(simulation.model)
 fields_to_collect = NamedTuple(name => simulation_fields[name] for name in field_names)
 
 time_series_collector = FieldTimeSeriesCollector(fields_to_collect, times)
-
-#     return simulation, time_series_collector
-# end
 
 function initialize!(simulation, time_series_collector)
 
@@ -102,11 +92,7 @@ function forward_map(simulation, time_series_collector)
     return output
 end
 
-# simulation, time_series_collector = build_simulation_and_time_series_collector()
-
 x = forward_map(simulation, time_series_collector)[:, 1:1]
-
-# simulation, time_series_collector = build_simulation_and_time_series_collector()
 
 y = forward_map(simulation, time_series_collector)[:, 1:1]
 
