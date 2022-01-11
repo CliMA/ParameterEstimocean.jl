@@ -103,9 +103,9 @@ ensemble_simulation, closure★ = build_ensemble_simulation(observations; Nensem
 
 # We choose to calibrate a subset of the CATKE parameters,
 
-priors = (Cᴬu = lognormal_with_mean_std(0.05, 0.01),
-          Cᴬc = lognormal_with_mean_std(0.05, 0.01),
-          Cᴬe = lognormal_with_mean_std(0.05, 0.01))
+priors = (Cᴬu = lognormal_with_mean_std(0.05, 0.02),
+          Cᴬc = lognormal_with_mean_std(0.6, 0.1),
+          Cᴬe = lognormal_with_mean_std(0.2, 0.05))
 
 free_parameters = FreeParameters(priors)
 
@@ -250,7 +250,7 @@ ax3 = Axis(fig[2, 2])
 scatters = []
 labels = String[]
 
-for iteration in [0, 1, 2, 10]
+for iteration in [0, 1, 10, 20]
     ## Make parameter matrix
     parameters = eki.iteration_summaries[iteration].parameters
     Nensemble = length(parameters)
@@ -258,9 +258,9 @@ for iteration in [0, 1, 2, 10]
 
     label = iteration == 0 ? "Initial ensemble" : "Iteration $iteration"
     push!(labels, label)
-    push!(scatters, scatter!(axmain, parameter_ensemble_matrix))
-    density!(axtop, parameter_ensemble_matrix[:, 1])
-    density!(axright, parameter_ensemble_matrix[:, 2], direction = :y)
+    push!(scatters, scatter!(ax2, parameter_ensemble_matrix))
+    density!(ax1, parameter_ensemble_matrix[:, 1])
+    density!(ax3, parameter_ensemble_matrix[:, 2], direction = :y)
 end
 
 vlines!(ax1, [θ★.Cᴷu⁻], color = :red)
@@ -273,7 +273,7 @@ colsize!(fig.layout, 2, Fixed(200))
 rowsize!(fig.layout, 1, Fixed(200))
 rowsize!(fig.layout, 2, Fixed(300))
 
-Legend(f[1, 2], scatters, labels, position = :lb)
+Legend(fig[1, 2], scatters, labels, position = :lb)
 
 hidedecorations!(ax1, grid = false)
 hidedecorations!(ax3, grid = false)
