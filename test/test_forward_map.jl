@@ -20,16 +20,17 @@ using OceanTurbulenceParameterEstimation.InverseProblems: transpose_model_output
                                                                   convective_νz=0.9,
                                                                   background_νz=1e-4)
 
+    model_kwargs = (tracers = :b, buoyancy = BuoyancyTracer(), coriolis = FPlane(f=1e-4))
+
     function build_simulation(size=Nz)
         N² = 1e-5
         grid = RectilinearGrid(size=size, z=(-128, 0), topology=(Flat, Flat, Bounded))
         u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(-1e-4))
         b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(1e-7), bottom = GradientBoundaryCondition(N²))
-        model = HydrostaticFreeSurfaceModel(grid = grid,
-                                            tracers = :b,
-                                            buoyancy = BuoyancyTracer(),
-                                            boundary_conditions = (; u=u_bcs, b=b_bcs),
-                                            closure = default_closure())
+        model = HydrostaticFreeSurfaceModel(; grid = grid,
+                                              model_kwargs,
+                                              boundary_conditions = (; u=u_bcs, b=b_bcs),
+                                              closure = default_closure())
                                         
         set!(model, b = (x, y, z) -> N² * z)
 
@@ -100,12 +101,10 @@ using OceanTurbulenceParameterEstimation.InverseProblems: transpose_model_output
         ensemble_u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(-1e-4))
         ensemble_b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(1e-7), bottom = GradientBoundaryCondition(N²))
 
-        ensemble_model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
-                                                    tracers = :b,
-                                                    buoyancy = BuoyancyTracer(),
-                                                    coriolis = FPlane(f=1e-4),
-                                                    boundary_conditions = (; u=ensemble_u_bcs, b=ensemble_b_bcs),
-                                                    closure = closure_ensemble)
+        ensemble_model = HydrostaticFreeSurfaceModel(; grid = ensemble_grid,
+                                                       model_kwargs,
+                                                       boundary_conditions = (; u=ensemble_u_bcs, b=ensemble_b_bcs),
+                                                       closure = closure_ensemble)
 
         set!(ensemble_model, b = (x, y, z) -> N² * z)
 
