@@ -8,9 +8,9 @@ include("utils/one_dimensional_ensemble_model.jl")
 
 # Build an observation from "free convection" LESbrary simulation
 
-LESbrary_directory = "/Users/adelinehillier/Desktop/dev/4DaySuite/"
+LESbrary_directory = "/Users/adelinehillier/Desktop/dev/2DaySuite/"
 
-suite = OrderedDict("4d_free_convection" => (
+suite = OrderedDict("2d_free_convection" => (
     filename = joinpath(LESbrary_directory, "free_convection/instantaneous_statistics.jld2"),
     fields = (:b,)))
 
@@ -183,10 +183,10 @@ calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
 y = observation_map(calibration)
 
 using FileIO
-a = forward_map(calibration, params) .- y
-save("./ConvAdj_to_LESbrary/loss_landscape_4d.jld2", "a", a)
+# a = forward_map(calibration, params) .- y
+# save("./ConvAdj_to_LESbrary/loss_landscape_4d.jld2", "a", a)
 
-# a = load("./ConvAdj_to_LESbrary/loss_landscape_4d.jld2")["a"]
+a = load("./ConvAdj_to_LESbrary/loss_landscape.jld2")["a"]
 zc = [mapslices(norm, a, dims = 1)...]
 
 # 2D contour plot with EKI particles superimposed

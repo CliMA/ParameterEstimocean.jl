@@ -28,7 +28,7 @@ function SyntheticObservationsBatch(suite; first_iteration = 1, stride = 1, last
 
       field_time_serieses = legacy_data_field_time_serieses(path, field_names, times)
 
-      observation = SyntheticObservations(path; field_names, normalize, times, field_time_serieses, (1, 1, Nz))
+      observation = SyntheticObservations(path; field_names, normalize, times, field_time_serieses, grid_size = (1, 1, Nz))
       push!(observations, observation)
    end
 

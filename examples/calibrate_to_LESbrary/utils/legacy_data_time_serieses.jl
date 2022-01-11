@@ -36,7 +36,7 @@ function legacy_data_field_time_serieses(path, field_names, times)
     b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ), bottom = GradientBoundaryCondition(b_bottom))
     u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ), bottom = GradientBoundaryCondition(u_bottom))
 
-    old_grid = RectilinearGrid(size = old_Nz, halo = Hz, z = (-Lz, 0), topology = (Flat, Flat, Bounded))
+    grid = RectilinearGrid(size = old_Nz, halo = Hz, z = (-Lz, 0), topology = (Flat, Flat, Bounded))
 
     boundary_conditions = (; u = u_bcs, b = b_bcs)
 
@@ -46,8 +46,6 @@ function legacy_data_field_time_serieses(path, field_names, times)
         grid = grid,
         boundary_conditions = boundary_conditions)
                                      for name in field_names)
-
-    field_time_serieses = NamedTuple(name => generate_field_time_series(name) for name in field_names)
 
     return field_time_serieses
 end
