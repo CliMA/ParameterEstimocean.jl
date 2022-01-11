@@ -32,7 +32,7 @@ abstract type AbstractOutputMap end
 output_map_type(fp) = output_map_str(fp)
 
 struct ConcatenatedOutputMap{T}
-    time_indices::T
+    time_indices :: T
 end
 
 ConcatenatedOutputMap(; time_indices = Colon()) = ConcatenatedOutputMap(time_indices)
@@ -54,12 +54,12 @@ output_map_str(::ConcatenatedVectorNormMap) = "ConcatenatedVectorNormMap"
 ##### InverseProblems
 #####
 
-struct InverseProblem{F,O,S,T,P}
-    observations::O
-    simulation::S
-    time_series_collector::T
-    free_parameters::P
-    output_map::F
+struct InverseProblem{F, O, S, T, P}
+    observations :: O
+    simulation :: S
+    time_series_collector :: T
+    free_parameters :: P
+    output_map :: F
 end
 
 """
