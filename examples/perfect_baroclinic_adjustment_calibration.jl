@@ -88,7 +88,9 @@ if generate_observations || !(isfile(data_path))
 
     """
     Linear ramp from 0 to 1 between -Δy/2 and +Δy/2.
+
     For example:
+    
     y < y₀           => ramp = 0
     y₀ < y < y₀ + Δy => ramp = y / Δy
     y > y₀ + Δy      => ramp = 1

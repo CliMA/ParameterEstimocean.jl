@@ -99,14 +99,14 @@ end
 
 Base.show(io::IO, eki::EnsembleKalmanInversion) =
     print(io, "EnsembleKalmanInversion", '\n',
-        "├── inverse_problem: ", typeof(eki.inverse_problem).name.wrapper, '\n',
-        "├── parameter_distribution: ", typeof(eki.parameter_distribution).name.wrapper, '\n',
-        "├── ensemble_kalman_process: ", typeof(eki.ensemble_kalman_process), '\n',
-        "├── mapped_observations: ", summary(eki.mapped_observations), '\n',
-        "├── noise_covariance: ", summary(eki.noise_covariance), '\n',
-        "├── inverting_forward_map: ", typeof(eki.inverting_forward_map).name.wrapper, '\n',
-        "├── iteration: $(eki.iteration)", '\n',
-        "└── dropped_ensemble_members: $(eki.dropped_ensemble_members)")
+              "├── inverse_problem: ", typeof(eki.inverse_problem).name.wrapper, '\n',
+              "├── parameter_distribution: ", typeof(eki.parameter_distribution).name.wrapper, '\n',
+              "├── ensemble_kalman_process: ", typeof(eki.ensemble_kalman_process), '\n',
+              "├── mapped_observations: ", summary(eki.mapped_observations), '\n',
+              "├── noise_covariance: ", summary(eki.noise_covariance), '\n',
+              "├── inverting_forward_map: ", typeof(eki.inverting_forward_map).name.wrapper, '\n',
+              "├── iteration: $(eki.iteration)", '\n',
+              "└── dropped_ensemble_members: $(eki.dropped_ensemble_members)")
 
 construct_noise_covariance(noise_covariance::AbstractMatrix, y) = noise_covariance
 
@@ -154,7 +154,7 @@ Arguments
                                                      it's converted to an identity matrix scaled by
                                                      `noise_covariance`.
 """
-function EnsembleKalmanInversion(inverse_problem; noise_covariance = 1e-2)
+function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2)
 
     free_parameters = inverse_problem.free_parameters
     original_priors = free_parameters.priors
@@ -163,14 +163,14 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance = 1e-2)
     no_constraints = [[no_constraint()] for _ in transformed_priors]
 
     parameter_distribution = ParameterDistribution(transformed_priors,
-        no_constraints,
-        collect(string.(free_parameters.names)))
+                                                   no_constraints,
+                                                   collect(string.(free_parameters.names)))
 
     ek_process = Inversion()
     initial_ensemble = sample_distribution(parameter_distribution, n_ensemble(inverse_problem))
 
     # Build EKP-friendly observations "y" and the covariance matrix of observational uncertainty "Γy"
-    y = dropdims(observation_map(inverse_problem), dims = 2) # length(forward_map_output) column vector
+    y = dropdims(observation_map(inverse_problem), dims=2) # length(forward_map_output) column vector
     Γy = construct_noise_covariance(noise_covariance, y)
 
     # The closure G(θ) maps (N_params, ensemble_size) array to (length(forward_map_output), ensemble_size)
@@ -183,14 +183,14 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance = 1e-2)
     ensemble_kalman_process = EnsembleKalmanProcess(initial_ensemble, y, Γy, ek_process)
 
     eki = EnsembleKalmanInversion(inverse_problem,
-        parameter_distribution,
-        ensemble_kalman_process,
-        y,
-        Γy,
-        inverting_forward_map,
-        0,
-        OffsetArray([], -1),
-        Set())
+                                  parameter_distribution,
+                                  ensemble_kalman_process,
+                                  y,
+                                  Γy,
+                                  inverting_forward_map,
+                                  0,
+                                  OffsetArray([], -1),
+                                  Set())
 
     summary = IterationSummary(eki)
     push!(eki.iteration_summaries, summary)
@@ -243,7 +243,7 @@ Arguments
                        posterior covariance with an uninformative prior
 """
 function UnscentedKalmanInversion(inverse_problem, prior_mean, prior_cov;
-    noise_covariance = 1e-2, α_reg = 1, update_freq = 0)
+                                  noise_covariance = 1e-2, α_reg = 1, update_freq = 0)
 
     free_parameters = inverse_problem.free_parameters
     original_priors = free_parameters.priors
@@ -253,7 +253,7 @@ function UnscentedKalmanInversion(inverse_problem, prior_mean, prior_cov;
     parameter_distribution = ParameterDistribution(transformed_priors, no_constraints, collect(string.(free_parameters.names)))
 
     # Build EKP-friendly observations "y" and the covariance matrix of observational uncertainty "Γy"
-    y = dropdims(observation_map(inverse_problem), dims = 2) # length(forward_map_output) column vector
+    y = dropdims(observation_map(inverse_problem), dims=2) # length(forward_map_output) column vector
     Γy = construct_noise_covariance(noise_covariance, y)
 
     # The closure G(θ) maps (N_params, ensemble_size) array to (length(forward_map_output), ensemble_size)
@@ -266,14 +266,14 @@ function UnscentedKalmanInversion(inverse_problem, prior_mean, prior_cov;
     ensemble_kalman_process = EnsembleKalmanProcess(y, Γy, Unscented(prior_mean, prior_cov, α_reg, update_freq))
 
     eki = EnsembleKalmanInversion(inverse_problem,
-        parameter_distribution,
-        ensemble_kalman_process,
-        y,
-        Γy,
-        G,
-        0,
-        OffsetArray([], -1),
-        Set())
+                                  parameter_distribution,
+                                  ensemble_kalman_process,
+                                  y,
+                                  Γy,
+                                  G,
+                                  0,
+                                  OffsetArray([], -1),
+                                  Set())
 
     summary = IterationSummary(eki)
     push!(eki.iteration_summaries, summary)
@@ -335,11 +335,11 @@ function IterationSummary(eki, parameters, forward_map)
     N_observations, N_ensemble = size(forward_map)
     original_priors = eki.inverse_problem.free_parameters.priors
 
-    ensemble_mean = mean(parameters, dims = 2)
+    ensemble_mean = mean(parameters, dims=2)
     constrained_ensemble_mean = inverse_parameter_transform.(values(original_priors), ensemble_mean)
     constrained_ensemble_mean = tupify_parameters(eki.inverse_problem, constrained_ensemble_mean)
 
-    ensemble_covariance = cov(parameters, dims = 2)
+    ensemble_covariance = cov(parameters, dims=2)
     constrained_ensemble_covariance = inverse_covariance_transform(values(original_priors), parameters, ensemble_covariance)
     constrained_ensemble_variance = tupify_parameters(eki.inverse_problem, diag(constrained_ensemble_covariance))
 
@@ -354,20 +354,20 @@ function IterationSummary(eki, parameters, forward_map)
     ]
 
     return IterationSummary(constrained_parameters,
-        constrained_ensemble_mean,
-        constrained_ensemble_covariance,
-        constrained_ensemble_variance,
-        mean_square_errors)
+                            constrained_ensemble_mean,
+                            constrained_ensemble_covariance,
+                            constrained_ensemble_variance,
+                            mean_square_errors)
 end
 
 function IterationSummary(eki, parameters)
     original_priors = eki.inverse_problem.free_parameters.priors
 
-    ensemble_mean = mean(parameters, dims = 2)
+    ensemble_mean = mean(parameters, dims=2)
     constrained_ensemble_mean = inverse_parameter_transform.(values(original_priors), ensemble_mean)
     constrained_ensemble_mean = tupify_parameters(eki.inverse_problem, constrained_ensemble_mean)
 
-    ensemble_covariance = cov(parameters, dims = 2)
+    ensemble_covariance = cov(parameters, dims=2)
     constrained_ensemble_covariance = inverse_covariance_transform(values(original_priors), parameters, ensemble_covariance)
     constrained_ensemble_variance = tupify_parameters(eki.inverse_problem, diag(constrained_ensemble_covariance))
 
@@ -377,10 +377,10 @@ function IterationSummary(eki, parameters)
                               for i = 1:size(constrained_parameters, 2)]
 
     return IterationSummary(constrained_parameters,
-        constrained_ensemble_mean,
-        constrained_ensemble_covariance,
-        constrained_ensemble_variance,
-        fill(NaN, size(constrained_parameters, 2)))
+                            constrained_ensemble_mean,
+                            constrained_ensemble_covariance,
+                            constrained_ensemble_variance,
+                            fill(NaN, size(constrained_parameters, 2)))
 end
 
 """
@@ -395,11 +395,10 @@ end
 
 function Base.show(io::IO, is::IterationSummary)
     print(io, "IterationSummary(ensemble = ", length(is.mean_square_errors), ")", '\n',
-        "                      ", param_str.(keys(is.ensemble_mean))..., '\n',
-        "       ensemble_mean: ", param_str.(values(is.ensemble_mean))..., '\n',
-        "   ensemble_variance: ", param_str.(values(is.ensemble_var))..., '\n',
-        particle_str.(1:length(is.parameters), is.mean_square_errors, is.parameters)...)
-
+              "                      ", param_str.(keys(is.ensemble_mean))..., '\n',
+              "       ensemble_mean: ", param_str.(values(is.ensemble_mean))..., '\n',
+              "   ensemble_variance: ", param_str.(values(is.ensemble_var))..., '\n',
+              particle_str.(1:length(is.parameters), is.mean_square_errors, is.parameters)...) 
     return nothing
 end
 
@@ -441,8 +440,8 @@ function sample(eki, θ, G, n)
     n_params, ens_size = size(θ)
     G_length = size(G, 1)
 
-    μ = [mean(θ, dims = 2)...]
-    Σ = cov(θ, dims = 2)
+    μ = [mean(θ, dims=2)...]
+    Σ = cov(θ, dims=2)
     ens_dist = MvNormal(μ, Σ)
 
     found_θ = zeros((n_params, 0))
@@ -452,7 +451,7 @@ function sample(eki, θ, G, n)
         θ_sample = rand(ens_dist, ens_size)
         G_sample = eki.inverting_forward_map(θ_sample)
 
-        nan_values = vec(mapslices(any, isnan.(G_sample); dims = 1))
+        nan_values = vec(mapslices(any, isnan.(G_sample); dims=1))
         success_columns = findall(Bool.(1 .- nan_values))
 
         found_θ = hcat(found_θ, θ_sample[:, success_columns])
@@ -483,7 +482,7 @@ function iterate!(eki::EnsembleKalmanInversion; iterations = 1)
         push!(eki.iteration_summaries, summary)
 
         # ensemble_size vector of bits indicating whether a NaN occured for each particle
-        nan_values = vec(mapslices(any, isnan.(G); dims = 1))
+        nan_values = vec(mapslices(any, isnan.(G); dims=1))
         nan_columns = findall(nan_values) # indices of columns with `NaN`s
         nan_count = length(nan_columns)
         nan_percent = 100nan_count / size(θ, 2)

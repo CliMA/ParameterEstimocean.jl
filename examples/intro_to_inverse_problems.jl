@@ -47,6 +47,7 @@ observations = SyntheticObservations(data_path, field_names=:b, normalize=ZScore
 
 """
     extract_perfect_parameters(observations, Nensemble)
+
 Extract parameters from a batch of "perfect" observations.
 """
 function extract_perfect_parameters(observations, Nensemble)
@@ -74,6 +75,7 @@ end
 
 """
     build_ensemble_simulation(observations; Nensemble=1)
+
 Returns an `Oceananigans.Simulation` representing an `Nensemble × 1`
 ensemble of column models designed to reproduce `observations`.
 """
@@ -225,3 +227,4 @@ save("ensemble_simulation_demonstration.svg", fig)
 nothing # hide
 
 # ![](ensemble_simulation_demonstration.svg)
+

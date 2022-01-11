@@ -32,7 +32,7 @@ abstract type AbstractOutputMap end
 output_map_type(fp) = output_map_str(fp)
 
 struct ConcatenatedOutputMap{T}
-    time_indices :: T
+    time_indices::T
 end
 
 ConcatenatedOutputMap(; time_indices = Colon()) = ConcatenatedOutputMap(time_indices)
@@ -54,12 +54,12 @@ output_map_str(::ConcatenatedVectorNormMap) = "ConcatenatedVectorNormMap"
 ##### InverseProblems
 #####
 
-struct InverseProblem{F, O, S, T, P}
-    observations :: O
-    simulation :: S
-    time_series_collector :: T
-    free_parameters :: P
-    output_map :: F
+struct InverseProblem{F,O,S,T,P}
+    observations::O
+    simulation::S
+    time_series_collector::T
+    free_parameters::P
+    output_map::F
 end
 
 """
@@ -135,8 +135,8 @@ expand_parameters(ip, θ::Matrix) = expand_parameters(ip, [θ[:, i] for i = 1:si
 ##### Forward map evaluation given vector-of-vector (one parameter vector for each ensemble member)
 #####
 
-const OneDimensionalEnsembleGrid = RectilinearGrid{<:Any,Flat,Flat,Bounded}
-const TwoDimensionalEnsembleGrid = RectilinearGrid{<:Any,Flat,Bounded,Bounded}
+const OneDimensionalEnsembleGrid = RectilinearGrid{<:Any, Flat, Flat, Bounded}
+ const TwoDimensionalEnsembleGrid = RectilinearGrid{<:Any, Flat, Bounded, Bounded}
 
 n_ensemble(grid::Union{OneDimensionalEnsembleGrid,TwoDimensionalEnsembleGrid}) = grid.Nx
 n_observations(grid::OneDimensionalEnsembleGrid) = grid.Ny
@@ -286,11 +286,11 @@ const YZSliceObservations = SyntheticObservations{<:Any,<:YZSliceGrid}
 
 transpose_model_output(time_series_collector, observations::YZSliceObservations) =
     SyntheticObservations(time_series_collector.field_time_serieses,
-        time_series_collector.grid,
-        time_series_collector.times,
-        nothing,
-        nothing,
-        observations.normalization)
+                          time_series_collector.grid,
+                          time_series_collector.times,
+                          nothing,
+                          nothing,
+                          observations.normalization)
 
 """
     transpose_model_output(time_series_collector, observations)
@@ -347,10 +347,10 @@ function transpose_model_output(time_series_collector, observations)
     return transposed_output
 end
 
-function drop_y_dimension(grid::RectilinearGrid{<:Any,<:Flat,<:Flat,<:Bounded})
-    new_size = ColumnEnsembleSize(Nz = grid.Nz, ensemble = (grid.Nx, 1), Hz = grid.Hz)
+function drop_y_dimension(grid::RectilinearGrid{<:Any, <:Flat, <:Flat, <:Bounded})
+    new_size = ColumnEnsembleSize(Nz=grid.Nz, ensemble=(grid.Nx, 1), Hz=grid.Hz)
     z_domain = (grid.zᵃᵃᶠ[1], grid.zᵃᵃᶠ[grid.Nz])
-    new_grid = RectilinearGrid(size = new_size, z = z_domain, topology = (Flat, Flat, Bounded))
+    new_grid = RectilinearGrid(size=new_size, z=z_domain, topology=(Flat, Flat, Bounded))
     return new_grid
 end
 
