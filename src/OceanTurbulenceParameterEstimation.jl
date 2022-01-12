@@ -3,18 +3,19 @@ module OceanTurbulenceParameterEstimation
 export
     SyntheticObservations,
     InverseProblem,
-    FreeParameters, 
+    FreeParameters,
     IdentityNormalization,
     ZScore,
     forward_map,
     forward_run!,
     observation_map,
     observation_map_variance_across_time,
+    ConcatenatedOutputMap,
     eki,
     lognormal_with_mean_std,
     iterate!,
     EnsembleKalmanInversion,
-    UnscentedKalmanInversion, 
+    UnscentedKalmanInversion,
     UnscentedKalmanInversionPostprocess,
     ConstrainedNormal
 
@@ -34,12 +35,13 @@ using .InverseProblems:
     forward_map,
     forward_run!,
     observation_map,
-    observation_map_variance_across_time
+    observation_map_variance_across_time,
+    ConcatenatedOutputMap
 
 using .EnsembleKalmanInversions:
     iterate!,
     EnsembleKalmanInversion,
-    UnscentedKalmanInversion, 
+    UnscentedKalmanInversion,
     UnscentedKalmanInversionPostprocess,
     ConstrainedNormal,
     lognormal_with_mean_std
