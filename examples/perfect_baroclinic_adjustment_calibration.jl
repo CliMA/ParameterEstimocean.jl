@@ -68,14 +68,14 @@ gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = κ_ske
 # ## Generate synthetic observations
 
 if generate_observations || !(isfile(data_path))
-    grid = RectilinearGrid(topology = (Flat, Bounded, Bounded), 
+    grid = RectilinearGrid(architecture,
+                           topology = (Flat, Bounded, Bounded), 
                            size = (Ny, Nz), 
                            y = (-Ly/2, Ly/2),
                            z = (-Lz, 0),
                            halo = (3, 3))
     
-    model = HydrostaticFreeSurfaceModel(architecture = architecture,
-                                        grid = grid,
+    model = HydrostaticFreeSurfaceModel(grid = grid,
                                         tracers = (:b, :c),
                                         buoyancy = BuoyancyTracer(),
                                         coriolis = BetaPlane(latitude=-45),
@@ -126,7 +126,7 @@ end
 
 # ## Load truth data as observations
 
-observations = OneDimensionalTimeSeries(data_path, field_names=(:b, :c), normalize=ZScore)
+observations = SyntheticObservations(data_path, field_names=(:b, :c), normalize=ZScore)
 
 # ## Calibration with Ensemble Kalman Inversion
 
@@ -136,16 +136,16 @@ observations = OneDimensionalTimeSeries(data_path, field_names=(:b, :c), normali
 ensemble_size = 20
 
 slice_ensemble_size = SliceEnsembleSize(size=(Ny, Nz), ensemble=ensemble_size)
-@show ensemble_grid = RectilinearGrid(size=slice_ensemble_size,
-                                             topology = (Flat, Bounded, Bounded),
-                                             y = (-Ly/2, Ly/2),
-                                             z = (-Lz, 0),
-                                             halo=(3, 3))
+@show ensemble_grid = RectilinearGrid(architecture,
+                                      size=slice_ensemble_size,
+                                      topology = (Flat, Bounded, Bounded),
+                                      y = (-Ly/2, Ly/2),
+                                      z = (-Lz, 0),
+                                      halo=(3, 3))
 
 closure_ensemble = [deepcopy(gent_mcwilliams_diffusivity) for i = 1:ensemble_size] 
 
-@show ensemble_model = HydrostaticFreeSurfaceModel(architecture = architecture,
-                                                   grid = ensemble_grid,
+@show ensemble_model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
                                                    tracers = (:b, :c),
                                                    buoyancy = BuoyancyTracer(),
                                                    coriolis = BetaPlane(latitude=-45),
@@ -275,14 +275,17 @@ axmain = Axis(f[2, 1],
 
 axright = Axis(f[2, 2])
 scatters = []
+labels = String[]
 
-for iteration in [1, 2, 3, 6]
+for iteration in [0, 1, 2, 5]
     ## Make parameter matrix
     parameters = eki.iteration_summaries[iteration].parameters
     Nensemble = length(parameters)
     Nparameters = length(first(parameters))
     parameter_ensemble_matrix = [parameters[i][j] for i=1:Nensemble, j=1:Nparameters]
 
+    label = iteration == 0 ? "Initial ensemble" : "Iteration $iteration"
+    push!(labels, label)
     push!(scatters, scatter!(axmain, parameter_ensemble_matrix))
     density!(axtop, parameter_ensemble_matrix[:, 1])
     density!(axright, parameter_ensemble_matrix[:, 2], direction = :y)
@@ -300,9 +303,7 @@ colsize!(f.layout, 2, Fixed(200))
 rowsize!(f.layout, 1, Fixed(200))
 rowsize!(f.layout, 2, Fixed(300))
 
-Legend(f[1, 2], scatters,
-       ["Initial ensemble", "Iteration 1", "Iteration 2", "Iteration 5"],
-       position = :lb)
+Legend(f[1, 2], scatters, labels, position = :lb)
 
 hidedecorations!(axtop, grid = false)
 hidedecorations!(axright, grid = false)

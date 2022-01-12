@@ -16,7 +16,7 @@ include(joinpath(examples_path, "intro_to_inverse_problems.jl"))
 mixing_length = MixingLength(Cᴬu=0.1, Cᴬc=0.1, Cᴬe=0.1, Cᴷuʳ=0.0, Cᴷcʳ=0.0, Cᴷeʳ=0.0)
 catke = CATKEVerticalDiffusivity(mixing_length=mixing_length)
 data_path = generate_synthetic_observations("catke", closure=catke, tracers=(:b, :e), Δt=10.0)
-observations = OneDimensionalTimeSeries(data_path, field_names=(:u, :v, :b, :e), normalize=ZScore)
+observations = SyntheticObservations(data_path, field_names=(:u, :v, :b, :e), normalize=ZScore)
 
 ensemble_simulation, closure★ = build_ensemble_simulation(observations; Nensemble=50)
 
@@ -98,14 +98,17 @@ axmain = Axis(f[2, 1],
 
 axright = Axis(f[2, 2])
 scatters = []
+labels = String[]
 
-for iteration in [1, 2, 3, 11]
+for iteration in [0, 1, 2, 10]
     ## Make parameter matrix
     parameters = eki.iteration_summaries[iteration].parameters
     Nensemble = length(parameters)
     Nparameters = length(first(parameters))
     parameter_ensemble_matrix = [parameters[i][j] for i=1:Nensemble, j=1:Nparameters]
 
+    label = iteration == 0 ? "Initial ensemble" : "Iteration $iteration"
+    push!(labels, label)
     push!(scatters, scatter!(axmain, parameter_ensemble_matrix))
     density!(axtop, parameter_ensemble_matrix[:, 1])
     density!(axright, parameter_ensemble_matrix[:, 2], direction = :y)
@@ -122,8 +125,7 @@ colsize!(f.layout, 2, Fixed(200))
 rowsize!(f.layout, 1, Fixed(200))
 rowsize!(f.layout, 2, Fixed(300))
 
-Legend(f[1, 2], scatters, ["Initial ensemble", "Iteration 1", "Iteration 2", "Iteration 10"],
-       position = :lb)
+Legend(f[1, 2], scatters, labels, position = :lb)
 
 hidedecorations!(axtop, grid = false)
 hidedecorations!(axright, grid = false)

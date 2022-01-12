@@ -2,7 +2,7 @@ name = "OceanTurbulenceParameterEstimation"
 uuid = "eca81dc5-87a6-4430-aec8-c76695404a43"
 license = "MIT"
 authors = ["Adeline Hillier <adelineh2000@gmail.com>", "Gregory L. Wagner <wagner.greg@gmail.com>", "Navid C. Constantinou <navidcy@gmail.com>", "and co-contributors"]
-version = "0.1.0"
+version = "0.2.0"
 
 [deps]
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
@@ -24,7 +24,7 @@ CUDA = "3"
 Distributions = "0.25"
 EnsembleKalmanProcesses = "0.1"
 JLD2 = "0.4"
-Oceananigans = "0.66.3, 0.67"
+Oceananigans = "0.67"
 OffsetArrays = "1"
 OrderedCollections = "1"
 ProgressBars = "1"
@@ -32,7 +32,8 @@ Suppressor = "0.2"
 
 [extras]
 Coverage = "a2441757-f6aa-5fb2-8edb-039e3f45d037"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "Coverage"]
+test = ["Test", "Documenter", "Coverage"]

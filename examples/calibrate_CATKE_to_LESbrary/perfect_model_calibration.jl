@@ -82,8 +82,8 @@ end
 
 # observations = SixDaySuite("/Users/adelinehillier/.julia/dev")
 
-observation1 = OneDimensionalTimeSeries(data_path, field_names = (:b, :e, :u, :v), normalize = ZScore)
-observation2 = OneDimensionalTimeSeries(data_path2, field_names = (:b, :e, :u, :v), normalize = ZScore)
+observation1 = SyntheticObservations(data_path, field_names = (:b, :e, :u, :v), normalize = ZScore)
+observation2 = SyntheticObservations(data_path2, field_names = (:b, :e, :u, :v), normalize = ZScore)
 observations = [observation1, observation2]
 
 Nx = ensemble_size

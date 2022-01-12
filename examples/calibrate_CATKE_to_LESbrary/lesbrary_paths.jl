@@ -11,9 +11,9 @@ function get_times(path)
 end
 
 # https://engaging-web.mit.edu/~alir/lesbrary/6DaySuite/
-function OneDimensionalTimeSeriesBatch(suite; first_iteration = 1, stride = 1, last_iteration = nothing, normalize = ZScore, Nz)
+function SyntheticObservationsBatch(suite; first_iteration = 1, stride = 1, last_iteration = nothing, normalize = ZScore, Nz)
 
-   observations = Vector{OneDimensionalTimeSeries}()
+   observations = Vector{SyntheticObservations}()
 
    for case in values(suite)
       path = case.filename
@@ -21,7 +21,7 @@ function OneDimensionalTimeSeriesBatch(suite; first_iteration = 1, stride = 1, l
       last_iteration = isnothing(last_iteration) ? length(times) : last_iteration
       times = times[first_iteration:stride:last_iteration]
       field_names = case.fields
-      observation = OneDimensionalTimeSeries(path; field_names, normalize, times)
+      observation = SyntheticObservations(path; field_names, normalize, times)
       push!(observations, observation)
    end
 
@@ -49,7 +49,7 @@ function TwoDaySuite(directory; first_iteration = 13, stride = 1, last_iteration
          fields = (:b, :u, :v, :e)),
    )
 
-   return OneDimensionalTimeSeriesBatch(suite; first_iteration, stride, last_iteration, normalize, Nz)
+   return SyntheticObservationsBatch(suite; first_iteration, stride, last_iteration, normalize, Nz)
 end
 
 # https://engaging-web.mit.edu/~alir/lesbrary/4DaySuite/
@@ -73,7 +73,7 @@ function FourDaySuite(directory; first_iteration = 13, stride = 1, last_iteratio
          fields = (:b, :u, :v, :e)),
    )
 
-   return OneDimensionalTimeSeriesBatch(suite; first_iteration, stride, last_iteration, normalize, Nz)
+   return SyntheticObservationsBatch(suite; first_iteration, stride, last_iteration, normalize, Nz)
 end
 
 function SixDaySuite(directory; first_iteration = 13, stride = 1, last_iteration = nothing, normalize = ZScore, Nz = 128)
@@ -96,7 +96,7 @@ function SixDaySuite(directory; first_iteration = 13, stride = 1, last_iteration
          fields = (:b, :u, :v, :e)),
    )
 
-   return OneDimensionalTimeSeriesBatch(suite; first_iteration, stride, last_iteration, normalize, Nz)
+   return SyntheticObservationsBatch(suite; first_iteration, stride, last_iteration, normalize, Nz)
 end
 
 function GeneralStrat(directory)
