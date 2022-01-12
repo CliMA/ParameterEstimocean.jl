@@ -109,15 +109,24 @@ priors = (Cᴬu = lognormal_with_mean_std(0.05, 0.02),
 
 free_parameters = FreeParameters(priors)
 
-## Perfect parameters...
-θ★ = (Cᴬu = catke.mixing_length.Cᴬu,
-      Cᴬc = catke.mixing_length.Cᴬc,
-      Cᴬe = catke.mixing_length.Cᴬe)
+# The handy utility function `build_ensemble_simulation` also tells us the optimal
+# parameters that were used when generating the synthetic observations:
+
+@show θ★ = (Cᴬu = closure★.mixing_length.Cᴬu,
+            Cᴬc = closure★.mixing_length.Cᴬc,
+            Cᴬe = closure★.mixing_length.Cᴬe)
+
+# We construct the `InverseProblem` from `observations`, `ensemble_simulation`, and
+# `free_parameters`,
 
 calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
 
+# We can check that the first ensemble member of the mapped output, which was run with the "true"
+# parameters, is identical to the mapped observations:
+
+G = forward_map(calibration, θ_ensemble)
 y = observation_map(calibration)
-G = forward_map(calibration, θ★)
+
 @show G[:, 1] ≈ y
 
 # # Ensemble Kalman Inversion
@@ -129,8 +138,12 @@ G = forward_map(calibration, θ★)
 # [EnsembleKalmanProcesses.jl documentation](
 # https://clima.github.io/EnsembleKalmanProcesses.jl/stable/ensemble_kalman_inversion/).
 
-noise_variance = observation_map_variance_across_time(calibration)[1, :, 1] .+ 1e-3
+noise_variance = observation_map_variance_across_time(calibration)[1, :, 1] .+ 1e-4
+
 eki = EnsembleKalmanInversion(calibration; noise_covariance = Matrix(Diagonal(noise_variance)))
+
+# and perform few iterations to see if we can converge to the true parameter values.
+
 iterate!(eki; iterations = 20)
 
 # Last, we visualize the outputs of EKI calibration.
