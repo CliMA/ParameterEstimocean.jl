@@ -15,14 +15,15 @@ parameter_set = CATKEParametersRiDependent
 closure = closure_with_parameters(CATKEVerticalDiffusivity(Float64;), parameter_set.settings)
 
 # Pick the secret `true_parameters`
-true_parameters = (Cᵟu = 0.5, CᴷRiʷ = 1.0, Cᵂu★ = 2.0, CᵂwΔ = 1.0, Cᴷeʳ = 5.0, Cᵟc = 0.5, Cᴰ = 2.0, Cᴷc⁻ = 0.5, Cᴷe⁻ = 0.2, Cᴷcʳ = 3.0, Cᴸᵇ = 1.0, CᴷRiᶜ = 1.0, Cᴷuʳ = 4.0, Cᴷu⁻ = 1.2, Cᵟe = 0.5)
+true_parameters = (Cᵟu = 0.5, CᴷRiʷ = 1.0, Cᵂu★ = 2.0, CᵂwΔ = 1.0, Cᴷeʳ = 5.0, Cᵟc = 0.5, Cᴰ = 2.0, Cᴷc⁻ = 0.5, Cᴷe⁻ = 0.2, Cᴷcʳ = 3.0, Cᴸᵇ = 1.0, CᴷRiᶜ = 1.0, Cᴷuʳ = 4.0, Cᴷu⁻ = 0.8, Cᵟe = 0.5)
 true_closure = closure_with_parameters(closure, true_parameters)
 
 # Generate and load synthetic observations
-kwargs = (tracers = (:b, :e), stop_time = 60.0, Δt = 10.0)
+kwargs = (tracers = (:b, :e), Δt = 10.0, stop_time = 4hours)
 
-observ_path1 = generate_synthetic_observations("perfect_model_observation1"; Qᵘ = 2e-5, Qᵇ = 2e-8, f₀ = 1e-4, closure = true_closure, kwargs...)
-observ_path2 = generate_synthetic_observations("perfect_model_observation2"; Qᵘ = -5e-5, Qᵇ = 0, f₀ = -1e-4, closure = true_closure, kwargs...)
+# Note: if an output file of the same name already exist, `generate_synthetic_observations` will return the existing path and skip re-generating the data.
+observ_path1 = generate_synthetic_observations("perfect_model_observation1"; Qᵘ = 2e-4, Qᵇ = 4e-8, f₀ = 1e-4, closure = true_closure, kwargs...)
+observ_path2 = generate_synthetic_observations("perfect_model_observation2"; Qᵘ = -1e-4, Qᵇ = 0, f₀ = 0, closure = true_closure, kwargs...)
 observation1 = SyntheticObservations(observ_path1, field_names = (:b, :e, :u, :v), normalize = ZScore)
 observation2 = SyntheticObservations(observ_path2, field_names = (:b, :e, :u, :v), normalize = ZScore)
 observations = [observation1, observation2]
@@ -35,24 +36,26 @@ build_prior(name) = ConstrainedNormal(0.0, 1.0, bounds(name) .* 0.5...)
 free_parameters = FreeParameters(named_tuple_map(names(parameter_set), build_prior))
 
 # Pack everything into Inverse Problem `calibration`
-calibration = InverseProblem(observations, ensemble_simulation, free_parameters);
+calibration = InverseProblem(observations, ensemble_simulation, free_parameters, output_map = ConcatenatedOutputMap());
 
 # Make sure the forward map evaluated on the true parameters matches the observation map
 x = forward_map(calibration, true_parameters)[:, 1:1];
 y = observation_map(calibration);
 @show x == y
 
-directory = "calibrate_catke_to_lesbrary/"
+directory = "calibrate_catke_to_perfect_model/"
 isdir(directory) || mkpath(directory)
 
 visualize!(calibration, true_parameters;
-    field_names = [:u, :v, :b, :e],
+    field_names = (:u, :v, :b, :e),
     directory = directory,
     filename = "perfect_model_visual_true_params.png"
 )
 
 # Calibrate
-eki = EnsembleKalmanInversion(calibration; noise_covariance = 1e-2)
+
+noise_covariance = Matrix(Diagonal(observation_map_variance_across_time(calibration)[1, :, 1] .+ 1e-5))
+eki = EnsembleKalmanInversion(calibration; noise_covariance = noise_covariance)
 params = iterate!(eki; iterations = 5)
 
 ###
@@ -139,10 +142,6 @@ for pname1 in pnames, pname2 in pnames
             position = :lb)
         hidedecorations!(axtop, grid = false)
         hidedecorations!(axright, grid = false)
-        # xlims!(axmain, 350, 1350)
-        # xlims!(axtop, 350, 1350)
-        # ylims!(axmain, 650, 1750)
-        # ylims!(axright, 650, 1750)
         xlims!(axright, 0, 10)
         ylims!(axtop, 0, 10)
         save(joinpath(directory, "eki_$(pname1)_$(pname2).png"), f)
@@ -166,5 +165,4 @@ lines(f[1, 2], iter_range, output_distances, color = :blue, linewidth = 2,
         ylabel = "|G(θ̅ₙ) - y|",
         yscale = log10))
 
-axislegend(ax3, position = :rt)
 save(joinpath(directory, "error_convergence_summary.png"), f);

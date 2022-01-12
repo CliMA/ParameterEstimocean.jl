@@ -41,11 +41,11 @@ function legacy_data_field_time_serieses(path, field_names, times)
     boundary_conditions = (; u = u_bcs, b = b_bcs)
 
     field_time_serieses = NamedTuple(name => FieldTimeSeries(path, string(name);
-        times = times,
-        location = infer_location(name),
-        grid = grid,
-        boundary_conditions = boundary_conditions)
-                                     for name in field_names)
+                                                             times = times,
+                                                             location = infer_location(name),
+                                                             grid = grid,
+                                                             boundary_conditions = boundary_conditions)
+                                    for name in field_names)
 
     return field_time_serieses
 end

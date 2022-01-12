@@ -473,8 +473,6 @@ function iterate!(eki::EnsembleKalmanInversion; iterations = 1)
         θ = get_u_final(eki.ensemble_kalman_process) # (N_params, ensemble_size) array
         G = eki.inverting_forward_map(θ) # (len(G), ensemble_size)
 
-        @show size(G)
-
         # Save the parameter values and mean square error between forward map
         # and observations at the current iteration
         summary = IterationSummary(eki, θ, G)

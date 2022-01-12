@@ -234,7 +234,7 @@ function FieldTimeSeriesCollector(collected_fields, times; architecture=CPU())
 
     for name in keys(collected_fields)
         field = collected_fields[name]
-        LX, LY, LZ = Oceananigans.Fields.location(field)
+        LX, LY, LZ = location(field)
         field_time_series = FieldTimeSeries{LX, LY, LZ}(architecture, field.grid, times)
         field_time_serieses[name] = field_time_series
     end

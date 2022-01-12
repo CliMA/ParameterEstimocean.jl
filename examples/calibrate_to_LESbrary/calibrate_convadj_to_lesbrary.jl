@@ -32,7 +32,7 @@ ensemble_model = OneDimensionalEnsembleModel(observations;
 
 ensemble_simulation = Simulation(ensemble_model; Δt = 10seconds, stop_time = 4days)
 
-# Specify priors and build `InverseProblem`
+# Specify priors
 
 priors = (
     convective_κz = ConstrainedNormal(0.0, 1.0, 0.1, 1.0),
@@ -41,7 +41,13 @@ priors = (
 
 free_parameters = FreeParameters(priors)
 
-calibration = InverseProblem(observations, ensemble_simulation, free_parameters; output_map = ConcatenatedOutputMap([132, 164]))
+# Specify an output map that tracks 3 uniformly spaced time steps, ignoring the initial condition
+track_times = floor.(range(1, stop = length(observations[1].times), length = 3))
+popfirst!(track_times)
+output_map = ConcatenatedOutputMap(track_times)
+
+# Build `InverseProblem`
+calibration = InverseProblem(observations, ensemble_simulation, free_parameters; output_map = output_map)
 
 # Ensemble Kalman Inversion
 
@@ -119,10 +125,6 @@ for pname1 in pnames, pname2 in pnames
             position = :lb)
         hidedecorations!(axtop, grid = false)
         hidedecorations!(axright, grid = false)
-        # xlims!(axmain, 350, 1350)
-        # xlims!(axtop, 350, 1350)
-        # ylims!(axmain, 650, 1750)
-        # ylims!(axright, 650, 1750)
         xlims!(axright, 0, 10)
         ylims!(axtop, 0, 10)
         save(joinpath(directory, "conv_adj_to_LESbrary_eki_$(pname1)_$(pname2).pdf"), f)
@@ -184,9 +186,9 @@ y = observation_map(calibration)
 
 using FileIO
 # a = forward_map(calibration, params) .- y
-# save("./ConvAdj_to_LESbrary/loss_landscape_4d.jld2", "a", a)
+# save("calibrate_convadj_to_lesbrary/loss_landscape.jld2", "a", a)
 
-a = load("./ConvAdj_to_LESbrary/loss_landscape.jld2")["a"]
+a = load("calibrate_convadj_to_lesbrary/loss_landscape.jld2")["a"]
 zc = [mapslices(norm, a, dims = 1)...]
 
 # 2D contour plot with EKI particles superimposed
