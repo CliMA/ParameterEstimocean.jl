@@ -103,9 +103,9 @@ ensemble_simulation, closure★ = build_ensemble_simulation(observations; Nensem
 
 # We choose to calibrate a subset of the CATKE parameters,
 
-priors = (Cᴬu = lognormal_with_mean_std(0.05, 0.02),
+priors = (Cᴬu = lognormal_with_mean_std(0.05, 0.01),
           Cᴬc = lognormal_with_mean_std(0.6, 0.1),
-          Cᴬe = lognormal_with_mean_std(0.2, 0.05))
+          Cᴬe = lognormal_with_mean_std(0.2, 0.04))
 
 free_parameters = FreeParameters(priors)
 
