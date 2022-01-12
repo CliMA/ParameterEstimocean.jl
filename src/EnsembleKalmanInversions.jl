@@ -193,7 +193,7 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampl
                                   inverting_forward_map,
                                   0,
                                   OffsetArray([], -1),
-                                  Set())
+                                  resampler)
 
     return eki
 end
@@ -243,7 +243,7 @@ Arguments
                        posterior covariance with an uninformative prior
 """
 function UnscentedKalmanInversion(inverse_problem, prior_mean, prior_cov;
-                                  noise_covariance = 1e-2, α_reg = 1, update_freq = 0, resampler=nothing)
+                                  noise_covariance = 1e-2, α_reg = 1, update_freq = 0, resampler = nothing)
 
     free_parameters = inverse_problem.free_parameters
     original_priors = free_parameters.priors
@@ -273,10 +273,7 @@ function UnscentedKalmanInversion(inverse_problem, prior_mean, prior_cov;
                                   G,
                                   0,
                                   OffsetArray([], -1),
-                                  Set())
-
-    summary = IterationSummary(eki)
-    push!(eki.iteration_summaries, summary)
+                                  resampler)
 
     return eki
 end
@@ -412,6 +409,16 @@ particle_str(particle, error, parameters) =
     string(param_str.(values(parameters))...) *
     @sprintf("error = %.3e", error) * "\n"
 
+#     no_nan_columns(X)
+# For an array `X`, returns a list of column indices that do not contain `NaN`s.
+function no_nan_columns(X)
+    # vector of bits indicating whether a NaN exists in each column
+    nan_values = vec(mapslices(any, isnan.(X); dims=1))
+    success_columns = findall(Bool.(1 .- nan_values))
+    return success_columns
+end
+
+
 """
     sample(eki, θ, G, n)
 
@@ -429,9 +436,7 @@ function sample(eki, θ, G, n)
     n_params, ens_size = size(θ)
     G_length = size(G, 1)
 
-    μ = [mean(θ, dims=2)...]
-    Σ = cov(θ, dims=2)
-    ens_dist = MvNormal(μ, Σ)
+    ens_dist = eki.resampler.distribution(θ, G)
 
     found_θ = zeros((n_params, 0))
     found_G = zeros((G_length, 0))
@@ -440,8 +445,7 @@ function sample(eki, θ, G, n)
         θ_sample = rand(ens_dist, ens_size)
         G_sample = eki.inverting_forward_map(θ_sample)
 
-        nan_values = vec(mapslices(any, isnan.(G_sample); dims=1))
-        success_columns = findall(Bool.(1 .- nan_values))
+        success_columns = no_nan_columns(G_sample)
 
         found_θ = hcat(found_θ, θ_sample[:, success_columns])
         found_G = hcat(found_G, G_sample[:, success_columns])
@@ -483,6 +487,22 @@ end
 ##### Resampling
 #####
 
+abstract type EnsembleDistribution end
+
+function ensemble_dist(θ)
+    μ = collect(mean(θ, dims=2))
+    Σ = cov(θ, dims=2)
+    return MvNormal(μ, Σ)
+end
+
+struct FullEnsembleDistribution <: EnsembleDistribution end
+
+(::FullEnsembleDistribution)(θ, G) = ensemble_dist(θ)
+
+struct SuccessfulEnsembleDistribution <: EnsembleDistribution end
+
+(::SuccessfulEnsembleDistribution)(θ, G) = ensemble_dist(θ[:, no_nan_columns(G)])
+
 resample!(::Nothing, args...) = nothing
 
 struct NaNResampler{D}
@@ -490,14 +510,12 @@ struct NaNResampler{D}
     distribution :: D
 end
 
-NaNResampler(; abort_fraction=0.0, distribution=FullEnsembleDistribution()) = 
+NaNResampler(; abort_fraction=0.0, distribution=FullEnsembleDistribution()) = NaNResampler(abort_fraction, distribution)
 
 function resample!(resampler::NaNResampler, G, θ, eki)
 
-    # ensemble_size vector of bits indicating whether a NaN occured for each particle
-    nan_values = vec(mapslices(any, isnan.(G); dims = 1))
-    nan_columns = findall(nan_values) # indices of columns with `NaN`s
-    nan_count = length(nan_columns)
+    success_columns = no_nan_columns(G) # indices of columns (particles) without `NaN`s
+    nan_count = size(G, 2) - length(nan_columns)
     nan_fraction = nan_count / size(θ, 2)
 
     if nan_fraction > resampler.abort_fraction
