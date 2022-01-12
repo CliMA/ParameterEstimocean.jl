@@ -124,7 +124,7 @@ calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
 # We can check that the first ensemble member of the mapped output, which was run with the "true"
 # parameters, is identical to the mapped observations:
 
-G = forward_map(calibration, θ_ensemble)
+G = forward_map(calibration, θ★)
 y = observation_map(calibration)
 
 @show G[:, 1] ≈ y
