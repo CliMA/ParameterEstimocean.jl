@@ -1,7 +1,9 @@
 using Oceananigans
+using JLD2
 using Oceananigans.Architectures: arch_array
 using Oceananigans: AbstractModel
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 
 function get_parameter(observation, parameter_path)
     file = jldopen(observation.path)
@@ -9,6 +11,9 @@ function get_parameter(observation, parameter_path)
     close(file)
     return parameter
 end
+
+vectorize(observation) = [observation]
+vectorize(observations::Vector) = observations
 
 """
     OneDimensionalEnsembleModel(observations::SyntheticObservationsBatch; architecture = CPU(), ensemble_size = 50, kwargs...)
