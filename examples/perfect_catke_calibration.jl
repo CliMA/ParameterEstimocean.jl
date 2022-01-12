@@ -58,8 +58,8 @@ observations = SyntheticObservations(data_path, field_names=(:u, :v, :b, :e), no
 fig = Figure()
 
 ax_b = Axis(fig[1, 1], xlabel = "Buoyancy\n[10⁻⁴ m s⁻²]", ylabel = "z [m]")
-ax_u = Axis(fig[1, 2], xlabel = "Velocities\n[m s⁻¹]", ylabel = "z [m]")
-ax_e = Axis(fig[1, 3], xlabel = "Turbulent kinetic energy\n[10⁻⁴ m² s⁻²]", ylabel = "z [m]")
+ax_u = Axis(fig[1, 2], xlabel = "Velocities\n[m s⁻¹]")
+ax_e = Axis(fig[1, 3], xlabel = "Turbulent kinetic energy\n[10⁻⁴ m² s⁻²]")
 
 z = znodes(Center, observations.grid)
 
@@ -99,7 +99,7 @@ save("synthetic_catke_observations.svg", fig); nothing # hide
 # Next, we build a simulation of an ensemble of column models to calibrate
 # CATKE using Ensemble Kalman Inversion.
 
-ensemble_simulation, closure★ = build_ensemble_simulation(observations; Nensemble=20)
+ensemble_simulation, closure★ = build_ensemble_simulation(observations; Nensemble=50)
 
 # We choose to calibrate a subset of the CATKE parameters,
 
@@ -138,7 +138,7 @@ y = observation_map(calibration)
 # [EnsembleKalmanProcesses.jl documentation](
 # https://clima.github.io/EnsembleKalmanProcesses.jl/stable/ensemble_kalman_inversion/).
 
-noise_variance = observation_map_variance_across_time(calibration)[1, :, 1] .+ 1e-4
+noise_variance = (observation_map_variance_across_time(calibration)[1, :, 1] .+ 1) .* 1e-3
 
 eki = EnsembleKalmanInversion(calibration; noise_covariance = Matrix(Diagonal(noise_variance)))
 
@@ -155,29 +155,29 @@ ensemble_mean_θ = map(summary -> collect(values(summary.ensemble_mean)), eki.it
 
 names = keys(θ★)
 absolute_error = NamedTuple(name => map(θ -> θ[p] - θ★[p], ensemble_mean_θ) for (p, name) in enumerate(names))
-relative_error = NamedTuple(name => absolute_error[name] ./ θ★[name] for name in names)
+relative_error = NamedTuple(name => abs.(absolute_error[name]) ./ θ★[name] for name in names)
 
 output_distances = map(θ -> norm(forward_map(calibration, θ)[:, 1:1] - y), ensemble_mean_θ)
 
 fig = Figure()
 
-ax_error = Axis(fig[1, 1], title = "Parameter distance", xlabel = "Iteration", ylabel = "|⟨θₙ⟩ - θ★|")
+ax_error = Axis(fig[1, 1], title = "Parameter distance", xlabel = "Iteration", ylabel = "|⟨θₙ⟩ - θ★| / θ★")
 
 for name in names
-    lines!(ax_error, relative_error[name], linewidth=2, label=string(name))
+    lines!(ax_error, 0:eki.iteration, parent(relative_error[name]), linewidth=2, label=string(name))
 end
 
 axislegend(ax_error, position=:rt)
 
-lines(fig[1, 2], output_distances, color = :blue, linewidth = 2,
+lines(fig[1, 2], 0:eki.iteration, parent(output_distances), color = :blue, linewidth = 2,
       axis = (title = "Output distance", xlabel = "Iteration", ylabel = "|G(⟨θₙ⟩) - y|"))
 
 ax3 = Axis(fig[2, 1:2], title = "Parameter convergence", xlabel = "Iteration",
            ylabel = "Relative change ensemble variance", yscale = log10)
 
 for (p, name) in enumerate(free_parameters.names)
-    θp_variances = [θ_variances[iter][p] for iter = 1:eki.iteration]
-    lines!(ax3, θp_variances / θp_variances[1], label = String(name), linewidth = 2)
+    θp_variances = [θ_variances[iter][p] for iter = 0:eki.iteration]
+    lines!(ax3, 0:eki.iteration, parent(θp_variances / θp_variances[1]), label = String(name), linewidth = 2)
 end
 
 axislegend(ax3, position = :rt)
