@@ -192,9 +192,6 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2)
                                   OffsetArray([], -1),
                                   Set())
 
-    summary = IterationSummary(eki)
-    push!(eki.iteration_summaries, summary)
-
     return eki
 end
 
@@ -473,12 +470,6 @@ function iterate!(eki::EnsembleKalmanInversion; iterations = 1)
         θ = get_u_final(eki.ensemble_kalman_process) # (N_params, ensemble_size) array
         G = eki.inverting_forward_map(θ) # (len(G), ensemble_size)
 
-        # Save the parameter values and mean square error between forward map
-        # and observations at the current iteration
-        summary = IterationSummary(eki, θ, G)
-        eki.iteration += 1
-        push!(eki.iteration_summaries, summary)
-
         # ensemble_size vector of bits indicating whether a NaN occured for each particle
         nan_values = vec(mapslices(any, isnan.(G); dims=1))
         nan_columns = findall(nan_values) # indices of columns with `NaN`s
@@ -502,6 +493,12 @@ function iterate!(eki::EnsembleKalmanInversion; iterations = 1)
             new_process = EnsembleKalmanProcess(θ, eki.mapped_observations, eki.noise_covariance, eki.ensemble_kalman_process.process)
             eki.ensemble_kalman_process = new_process
         end
+
+        # Save the parameter values and mean square error between forward map
+        # and observations at the current iteration
+        summary = IterationSummary(eki, θ, G)
+        eki.iteration += 1
+        push!(eki.iteration_summaries, summary)
 
         update_ensemble!(eki.ensemble_kalman_process, G)
     end
