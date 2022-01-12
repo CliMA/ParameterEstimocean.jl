@@ -73,7 +73,7 @@ function visualize!(ip::InverseProblem, parameters;
 
             grid = observation.grid
 
-            z = field ∈ [:u, :v] ? data.grid.zᵃᵃᶠ[1:data.grid.Nz] : data.grid.zᵃᵃᶜ[1:data.grid.Nz]
+            z = field_name ∈ [:u, :v] ? grid.zᵃᵃᶠ[1:grid.Nz] : grid.zᵃᵃᶜ[1:grid.Nz]
 
             to_plot = field_name ∈ keys(observation.field_time_serieses)
 
