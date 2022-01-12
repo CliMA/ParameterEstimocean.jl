@@ -35,6 +35,10 @@ function generate_synthetic_observations(name = "convective_adjustment"; Nz = 32
                                          tracers = :b, closure = default_closure)
 
     data_path = name * ".jld2"
+<<<<<<< HEAD
+=======
+  
+>>>>>>> aa56c1013e0516f4c553da1ee3f2ad3b0e742f26
     isfile(data_path) && (@warn("Using existing data at $data_path. Please delete this file if you wish to generate new data."); return data_path)
     
     grid = RectilinearGrid(size=Nz, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
