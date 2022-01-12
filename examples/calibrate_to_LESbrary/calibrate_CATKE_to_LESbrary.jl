@@ -3,14 +3,26 @@ pushfirst!(LOAD_PATH, joinpath(@__DIR__, "../.."))
 using Oceananigans
 using Plots, LinearAlgebra, Distributions, JLD2
 using Oceananigans.Units
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using OceanTurbulenceParameterEstimation
 
-include("lesbrary_paths.jl")
-include("one_dimensional_ensemble_model.jl")
-include("parameters.jl")
-include("visualize_profile_predictions.jl")
+include("utils/lesbrary_paths.jl")
+include("utils/one_dimensional_ensemble_model.jl")
+include("utils/parameters.jl")
+include("utils/visualize_profile_predictions.jl")
+
+# two_day_suite_dir = "/Users/gregorywagner/Projects/OceanTurbulenceParameterEstimation/data/2DaySuite"
+# four_day_suite_dir = "/Users/gregorywagner/Projects/OceanTurbulenceParameterEstimation/data/4DaySuite"
+# six_day_suite_dir = "/Users/gregorywagner/Projects/OceanTurbulenceParameterEstimation/data/6DaySuite"
+
+# two_day_suite = TwoDaySuite(two_day_suite_dir)
+# four_day_suite = FourDaySuite(four_day_suite_dir)
+# six_day_suite = SixDaySuite(six_day_suite_dir)
+
+# calibration = InverseProblem(two_day_suite, parameters; relative_weights = relative_weight_options["all_but_e"],
+#                              architecture = GPU(), ensemble_size = 10, Δt = 30.0)
+
+# validation = InverseProblem(four_day_suite, calibration; Nz = 32);
 
 #####
 ##### Set up ensemble model
@@ -20,9 +32,9 @@ include("visualize_profile_predictions.jl")
 ##
 ##
 
-directory = "/Users/adelinehillier/Desktop/dev/"
+lesbrary_directory = "/Users/adelinehillier/Desktop/dev/"
 
-observations = TwoDaySuite(directory; first_iteration = 13, last_iteration = nothing, normalize = ZScore, Nz = 128)
+observations = TwoDaySuite(lesbrary_directory; first_iteration = 13, last_iteration = nothing, normalize = ZScore, Nz = 128)
 
 parameter_set = CATKEParametersRiDependent
 closure = closure_with_parameter_set(CATKEVerticalDiffusivity(Float64;), parameter_set)
@@ -61,6 +73,7 @@ iterations = 5
 # eki = EnsembleKalmanInversion(calibration; noise_covariance = 1e-2)
 # params = iterate!(eki; iterations = iterations)
 
+directory = 
 # visualize!(calibration, params;
 #     field_names = [:u, :v, :b, :e],
 #     directory = @__DIR__,
