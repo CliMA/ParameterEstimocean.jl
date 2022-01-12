@@ -195,9 +195,6 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampl
                                   OffsetArray([], -1),
                                   Set())
 
-    summary = IterationSummary(eki)
-    push!(eki.iteration_summaries, summary)
-
     return eki
 end
 
@@ -465,14 +462,14 @@ function iterate!(eki::EnsembleKalmanInversion; iterations = 1)
         θ = get_u_final(eki.ensemble_kalman_process) # (N_params, ensemble_size) array
         G = eki.inverting_forward_map(θ) # (len(G), ensemble_size)
 
+        resample!(eki.resampler, G, θ, eki)
+       
         # Save the parameter values and mean square error between forward map
         # and observations at the current iteration
         summary = IterationSummary(eki, θ, G)
         eki.iteration += 1
         push!(eki.iteration_summaries, summary)
 
-        resample!(eki.resampler, G, θ, eki)
-       
         update_ensemble!(eki.ensemble_kalman_process, G)
     end
 
