@@ -10,7 +10,7 @@ include("utils/visualize_profile_predictions.jl")
 examples_path = joinpath(pathof(OceanTurbulenceParameterEstimation), "../../examples")
 include(joinpath(examples_path, "intro_to_inverse_problems.jl"))
 
-# Pick a parameter set defined in `./parameters.jl`
+# Pick a parameter set defined in `./utils/parameters.jl`
 parameter_set = CATKEParametersRiDependent
 closure = closure_with_parameters(CATKEVerticalDiffusivity(Float64;), parameter_set.settings)
 
@@ -19,17 +19,17 @@ true_parameters = (Cᵟu = 0.5, CᴷRiʷ = 1.0, Cᵂu★ = 2.0, CᵂwΔ = 1.0, C
 true_closure = closure_with_parameters(closure, true_parameters)
 
 # Generate and load synthetic observations
-kwargs = (tracers = (:b, :e), Δt = 10.0, stop_time = 4hours)
+kwargs = (tracers = (:b, :e), Δt = 10.0, stop_time = 1day)
 
 # Note: if an output file of the same name already exist, `generate_synthetic_observations` will return the existing path and skip re-generating the data.
-observ_path1 = generate_synthetic_observations("perfect_model_observation1"; Qᵘ = 2e-4, Qᵇ = 4e-8, f₀ = 1e-4, closure = true_closure, kwargs...)
-observ_path2 = generate_synthetic_observations("perfect_model_observation2"; Qᵘ = -1e-4, Qᵇ = 0, f₀ = 0, closure = true_closure, kwargs...)
+observ_path1 = generate_synthetic_observations("perfect_model_observation1"; Qᵘ = 3e-5, Qᵇ = 7e-9, f₀ = 1e-4, closure = true_closure, kwargs...)
+observ_path2 = generate_synthetic_observations("perfect_model_observation2"; Qᵘ = -2e-5, Qᵇ = 3e-9, f₀ = 0, closure = true_closure, kwargs...)
 observation1 = SyntheticObservations(observ_path1, field_names = (:b, :e, :u, :v), normalize = ZScore)
 observation2 = SyntheticObservations(observ_path2, field_names = (:b, :e, :u, :v), normalize = ZScore)
 observations = [observation1, observation2]
 
 # Set up ensemble model
-ensemble_simulation, closure = build_ensemble_simulation(observations; Nensemble = 50)
+ensemble_simulation, closure = build_ensemble_simulation(observations; Nensemble = 100)
 
 # Build free parameters
 build_prior(name) = ConstrainedNormal(0.0, 1.0, bounds(name) .* 0.5...)
