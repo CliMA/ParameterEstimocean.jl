@@ -50,7 +50,7 @@ function normalize!(field, normalization::ZScore)
     if normalization.σ != 0
         field ./= normalization.σ
     else
-        @warn "data seems to be all zeros -- just saying"
+        @warn "Field data seems to be all zeros -- just saying."
     end
 
     return nothing

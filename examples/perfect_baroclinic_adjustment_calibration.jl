@@ -32,7 +32,7 @@ using LinearAlgebra: norm
 
 κ_skew = 1000.0       # [m² s⁻¹] skew diffusivity
 κ_symmetric = 900.0   # [m² s⁻¹] symmetric diffusivity
-nothing #hide
+nothing # hide
 
 # We gather the "true" parameters in a named tuple ``θ_*``:
 
@@ -44,20 +44,16 @@ data_path = experiment_name * ".jld2"
 
 # The domain, number of grid points, and other parameters.
 architecture = CPU()      # CPU or GPU?
-
 Ly = 1000kilometers       # north-south extent [m]
 Lz = 1kilometers          # depth [m]
-
 Ny = 64                   # grid points in north-south direction
 Nz = 16                   # grid points in the vertical
-
 Δt = 10minute             # time-step
-
 stop_time = 1days         # length of run
 save_interval = 0.25days  # save observation every so often
 
 generate_observations = true
-nothing #hide
+nothing # hide
 
 # The isopycnal skew-symmetric diffusivity closure.
 gerdes_koberle_willebrand_tapering = FluxTapering(1e-2)
@@ -90,7 +86,7 @@ if generate_observations || !(isfile(data_path))
     Linear ramp from 0 to 1 between -Δy/2 and +Δy/2.
 
     For example:
-
+    
     y < y₀           => ramp = 0
     y₀ < y < y₀ + Δy => ramp = y / Δy
     y > y₀ + Δy      => ramp = 1
@@ -181,19 +177,16 @@ samples(prior) = [inverse_parameter_transform(prior, x) for x in rand(convert_pr
 samples_κ_skew = samples(priors.κ_skew)
 samples_κ_symmetric = samples(priors.κ_symmetric)
 
-f = Figure()
-axtop = Axis(f[1, 1],
-             xlabel = "diffusivities [m² s⁻¹]",
-             ylabel = "p.d.f.")
+fig = Figure()
+ax = Axis(fig[1, 1], xlabel = "Diffusivities [m² s⁻¹]", ylabel = "PDF")
 densities = []
-push!(densities, density!(axtop, samples_κ_skew))
-push!(densities, density!(axtop, samples_κ_symmetric))
-Legend(f[1, 2], densities, ["κ_skew", "κ_symmetric"], position = :lb)
+push!(densities, density!(ax, samples_κ_skew))
+push!(densities, density!(ax, samples_κ_symmetric))
+Legend(fig[1, 2], densities, ["κ_skew", "κ_symmetric"], position = :lb)
 
-save("visualize_prior_diffusivities_baroclinic_adjustment.svg", f); nothing #hide 
+save("visualize_prior_diffusivities_baroclinic_adjustment.svg", fig); nothing # hide 
 
 # ![](visualize_prior_diffusivities_baroclinic_adjustment.svg)
-
 
 # ### The inverse problem
 

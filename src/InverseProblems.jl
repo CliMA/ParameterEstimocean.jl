@@ -31,7 +31,11 @@ abstract type AbstractOutputMap end
 
 output_map_type(fp) = output_map_str(fp)
 
-struct ConcatenatedOutputMap end
+struct ConcatenatedOutputMap{T}
+    time_indices::T
+end
+
+ConcatenatedOutputMap(; time_indices = Colon()) = ConcatenatedOutputMap(time_indices)
 
 output_map_str(::ConcatenatedOutputMap) = "ConcatenatedOutputMap"
 
@@ -63,7 +67,11 @@ end
 
 Return an `InverseProblem`.
 """
-function InverseProblem(observations, simulation, free_parameters; output_map = ConcatenatedOutputMap(), time_series_collector = nothing)
+function InverseProblem(observations,
+                        simulation,
+                        free_parameters;
+                        output_map = ConcatenatedOutputMap(),
+                        time_series_collector = nothing)
 
     if isnothing(time_series_collector) # attempt to construct automagically
         simulation_fields = fields(simulation.model)
@@ -117,16 +125,16 @@ function expand_parameters(ip, θ::Vector)
 
     # Fill out parameter set ensemble
     Nfewer > 0 && append!(θ, [θ[end] for _ = 1:Nfewer])
-        
+
     return θ
 end
 
-# Expand single parameter vector
-expand_parameters(ip, θ::Vector{<:Number}) = expand_parameters(ip, [θ])
+# Expand single parameter set
+expand_parameters(ip, θ::Union{NamedTuple,Vector{<:Number}}) = expand_parameters(ip, [θ])
 expand_parameters(ip, θ::NamedTuple) = expand_parameters(ip, [θ])
 
 # Convert matrix to vector of vectors
-expand_parameters(ip, θ::Matrix) = expand_parameters(ip, [θ[:, i] for i in 1:size(θ, 2)])
+expand_parameters(ip, θ::Matrix) = expand_parameters(ip, [θ[:, i] for i = 1:size(θ, 2)])
 
 #####
 ##### Forward map evaluation given vector-of-vector (one parameter vector for each ensemble member)
@@ -135,10 +143,10 @@ expand_parameters(ip, θ::Matrix) = expand_parameters(ip, [θ[:, i] for i in 1:s
 const OneDimensionalEnsembleGrid = RectilinearGrid{<:Any, Flat, Flat, Bounded}
 const TwoDimensionalEnsembleGrid = RectilinearGrid{<:Any, Flat, Bounded, Bounded}
 
-n_ensemble(grid::Union{OneDimensionalEnsembleGrid,TwoDimensionalEnsembleGrid}) = grid.Nx
+n_ensemble(grid::Union{OneDimensionalEnsembleGrid, TwoDimensionalEnsembleGrid}) = grid.Nx
 n_observations(grid::OneDimensionalEnsembleGrid) = grid.Ny
 n_observations(grid::TwoDimensionalEnsembleGrid) = 1
-n_z(grid::Union{OneDimensionalEnsembleGrid,TwoDimensionalEnsembleGrid}) = grid.Nz
+n_z(grid::Union{OneDimensionalEnsembleGrid, TwoDimensionalEnsembleGrid}) = grid.Nz
 n_y(grid::TwoDimensionalEnsembleGrid) = grid.Ny
 n_ensemble(ip::InverseProblem) = n_ensemble(ip.simulation.model.grid)
 
@@ -200,14 +208,15 @@ end
 
 Concatenates flattened, normalized data for each field in the `time_series`.
 """
-function transform_time_series(::ConcatenatedOutputMap, time_series::SyntheticObservations)
+function transform_time_series(output_map::ConcatenatedOutputMap, time_series::SyntheticObservations)
     flattened_normalized_data = []
 
     for field_name in keys(time_series.field_time_serieses)
         field_time_series = time_series.field_time_serieses[field_name]
-        field_time_series_data = Array(interior(field_time_series))
+        field_time_series_data = Array(interior(field_time_series))[:, :, :, output_map.time_indices]
 
         Nx, Ny, Nz, Nt = size(field_time_series_data)
+
         field_time_series_data = reshape(field_time_series_data, Nx, Ny * Nz * Nt)
 
         normalize!(field_time_series_data, time_series.normalization[field_name])
