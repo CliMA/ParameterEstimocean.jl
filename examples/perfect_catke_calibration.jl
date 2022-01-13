@@ -10,8 +10,6 @@
 using OceanTurbulenceParameterEstimation, LinearAlgebra, CairoMakie
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity, MixingLength, SurfaceTKEFlux
 
-# using ElectronDisplay
-
 # # Perfect observations of CATKE-driven mixing
 #
 # Our first task is to generate synthetic observations, using
@@ -189,7 +187,7 @@ save("perfect_catke_calibration_summary.svg", fig); nothing #hide
 # ![](perfect_catke_calibration_summary.svg)
 
 final_mean_θ = eki.iteration_summaries[end].ensemble_mean
-forward_run!(calibration, θ★)
+forward_run!(calibration, [θ★, final_mean_θ])
 
 time_series_collector = calibration.time_series_collector
 times = time_series_collector.times
@@ -290,8 +288,17 @@ Legend(fig[1, 2], scatters, labels, position = :lb)
 hidedecorations!(ax1, grid = false)
 hidedecorations!(ax3, grid = false)
 
+xlims!(ax1, 0.025, 0.125)
+xlims!(ax2, 0.025, 0.125)
+ylims!(ax2, 0.35, 0.9)
+ylims!(ax3, 0.35, 0.9)
+
 ##display(fig)
 
 save("perfect_catke_calibration_parameter_distributions.svg", fig); nothing # hide
 
 # ![](perfect_catke_calibration_parameter_distributions.svg)
+
+# Hint: if using a REPL or notebook, try
+# `using Pkg; Pkg.add("ElectronDisplay"); using ElectronDisplay; display(fig)`
+# To see the figure in a window.
