@@ -18,7 +18,7 @@ using OceanTurbulenceParameterEstimation
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
-#using CairoMakie
+using CairoMakie
 
 # # Generating synthetic observations
 #

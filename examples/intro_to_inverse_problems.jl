@@ -24,7 +24,7 @@ using Oceananigans.Units
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
 
-#using CairoMakie
+using CairoMakie
 using Distributions
 using JLD2
 

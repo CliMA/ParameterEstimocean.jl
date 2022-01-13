@@ -7,7 +7,7 @@
 # pkg"add OceanTurbulenceParameterEstimation, Oceananigans, Distributions, CairoMakie"
 # ```
 
-using OceanTurbulenceParameterEstimation, LinearAlgebra #, CairoMakie
+using OceanTurbulenceParameterEstimation, LinearAlgebra, CairoMakie
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity, MixingLength, SurfaceTKEFlux
 
 # using ElectronDisplay
