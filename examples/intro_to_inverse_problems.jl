@@ -19,11 +19,12 @@
 using OceanTurbulenceParameterEstimation
 
 using Oceananigans
+using Oceananigans.Architectures: arch_array
 using Oceananigans.Units
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
 
-using CairoMakie
+#using CairoMakie
 using Distributions
 using JLD2
 
@@ -74,12 +75,12 @@ function extract_perfect_parameters(observations, Nensemble)
 end
 
 """
-    build_ensemble_simulation(observations; Nensemble=1)
+    build_ensemble_simulation(observations, arch=CPU(); Nensemble=1)
 
 Returns an `Oceananigans.Simulation` representing an `Nensemble × 1`
 ensemble of column models designed to reproduce `observations`.
 """
-function build_ensemble_simulation(observations; Nensemble=1)
+function build_ensemble_simulation(observations, arch=CPU(); Nensemble=1)
 
     observations isa Vector || (observations = [observations]) # Singleton batch
     Nbatch = length(observations)
@@ -87,10 +88,10 @@ function build_ensemble_simulation(observations; Nensemble=1)
     Qᵘ, Qᵇ, N², f, Δt, Lz, Nz, Hz, closure = extract_perfect_parameters(observations, Nensemble)
 
     column_ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(Nensemble, Nbatch), Hz=Hz)
-    ensemble_grid = RectilinearGrid(size = column_ensemble_size, topology = (Flat, Flat, Bounded), z = (-Lz, 0))
+    ensemble_grid = RectilinearGrid(arch, size = column_ensemble_size, topology = (Flat, Flat, Bounded), z = (-Lz, 0))
 
-    coriolis_ensemble = [FPlane(f=f[i, j]) for i = 1:Nensemble, j=1:Nbatch]
-    closure_ensemble = [deepcopy(closure) for i = 1:Nensemble, j=1:Nbatch]
+    coriolis_ensemble = arch_array(arch, [FPlane(f=f[i, j]) for i = 1:Nensemble, j=1:Nbatch])
+    closure_ensemble = arch_array(arch, [deepcopy(closure) for i = 1:Nensemble, j=1:Nbatch])
 
     u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
     b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ), bottom = GradientBoundaryCondition(N²))
@@ -109,6 +110,7 @@ function build_ensemble_simulation(observations; Nensemble=1)
     return ensemble_simulation, closure
 end
 
+#=
 # The following illustrations uses a simple ensemble simulation with two ensemble members:
 
 ensemble_simulation, closure★ = build_ensemble_simulation(observations; Nensemble=3)
@@ -226,4 +228,4 @@ axislegend(ax, position=:lt)
 save("ensemble_simulation_demonstration.svg", fig); nothing # hide
 
 # ![](ensemble_simulation_demonstration.svg)
-
+=#

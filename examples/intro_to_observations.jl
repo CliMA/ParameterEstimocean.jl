@@ -18,7 +18,7 @@ using OceanTurbulenceParameterEstimation
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
-using CairoMakie
+#using CairoMakie
 
 # # Generating synthetic observations
 #
@@ -64,6 +64,7 @@ function generate_synthetic_observations(name = "convective_adjustment"; Nz = 32
     return data_path
 end
 
+#=
 # and invoke it:
 
 data_path = generate_synthetic_observations()
@@ -133,3 +134,4 @@ save("intro_to_observations.svg", fig)
 # Hint: if using a REPL or notebook, try
 # `using Pkg; Pkg.add("ElectronDisplay"); using ElectronDisplay; display(fig)`
 # To see the figure in a window.
+=#

@@ -332,7 +332,7 @@ function transpose_model_output(time_series_collector, observations)
             raw_data = parent(field_time_series.data)
             data = OffsetArray(view(raw_data, :, j:j, :, :), 0, 0, -Hz, 0)
 
-            time_series = FieldTimeSeries{LX,LY,LZ,InMemory}(data, CPU(), grid, nothing, times)
+            time_series = FieldTimeSeries{LX, LY, LZ, InMemory}(data, CPU(), grid, nothing, times)
             time_serieses[name] = time_series
         end
 
