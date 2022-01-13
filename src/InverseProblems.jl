@@ -67,7 +67,11 @@ end
 
 Return an `InverseProblem`.
 """
-function InverseProblem(observations, simulation, free_parameters; output_map = ConcatenatedOutputMap(), time_series_collector = nothing)
+function InverseProblem(observations,
+                        simulation,
+                        free_parameters;
+                        output_map = ConcatenatedOutputMap(),
+                        time_series_collector = nothing)
 
     if isnothing(time_series_collector) # attempt to construct automagically
         simulation_fields = fields(simulation.model)
@@ -139,10 +143,10 @@ expand_parameters(ip, θ::Matrix) = expand_parameters(ip, [θ[:, i] for i = 1:si
 const OneDimensionalEnsembleGrid = RectilinearGrid{<:Any, Flat, Flat, Bounded}
 const TwoDimensionalEnsembleGrid = RectilinearGrid{<:Any, Flat, Bounded, Bounded}
 
-n_ensemble(grid::Union{OneDimensionalEnsembleGrid,TwoDimensionalEnsembleGrid}) = grid.Nx
+n_ensemble(grid::Union{OneDimensionalEnsembleGrid, TwoDimensionalEnsembleGrid}) = grid.Nx
 n_observations(grid::OneDimensionalEnsembleGrid) = grid.Ny
 n_observations(grid::TwoDimensionalEnsembleGrid) = 1
-n_z(grid::Union{OneDimensionalEnsembleGrid,TwoDimensionalEnsembleGrid}) = grid.Nz
+n_z(grid::Union{OneDimensionalEnsembleGrid, TwoDimensionalEnsembleGrid}) = grid.Nz
 n_y(grid::TwoDimensionalEnsembleGrid) = grid.Ny
 n_ensemble(ip::InverseProblem) = n_ensemble(ip.simulation.model.grid)
 

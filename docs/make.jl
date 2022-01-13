@@ -6,7 +6,7 @@ using
   CairoMakie,  # so that Literate.jl does not capture precompilation output or warnings
   Distributions,
   OceanTurbulenceParameterEstimation
-  
+
 # Gotta set this environment variable when using the GR run-time on CI machines.
 # This happens when examples, e.g., use Plots.jl to make plots and movies.
 # See: https://github.com/jheinen/GR.jl/issues/278
@@ -24,6 +24,7 @@ examples = [
   "intro_to_inverse_problems.jl",
   "perfect_convective_adjustment_calibration.jl",
   "unscented_perfect_convective_adjustment_calibration.jl",
+  "perfect_catke_calibration.jl",
   "perfect_baroclinic_adjustment_calibration.jl"
 ]
 
@@ -55,6 +56,7 @@ pages = [
         "literated/intro_to_inverse_problems.md",
         "literated/perfect_convective_adjustment_calibration.md",
         "literated/unscented_perfect_convective_adjustment_calibration.md",
+        "literated/perfect_catke_calibration.md",
         "literated/perfect_baroclinic_adjustment_calibration.md"
         ],
     
