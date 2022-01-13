@@ -189,7 +189,7 @@ save("perfect_catke_calibration_summary.svg", fig); nothing #hide
 # ![](perfect_catke_calibration_summary.svg)
 
 final_mean_θ = eki.iteration_summaries[end].ensemble_mean
-forward_run!(calibration, θ★)
+forward_run!(calibration, [θ★, final_mean_θ])
 
 time_series_collector = calibration.time_series_collector
 times = time_series_collector.times
