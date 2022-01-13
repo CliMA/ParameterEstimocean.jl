@@ -290,6 +290,11 @@ Legend(fig[1, 2], scatters, labels, position = :lb)
 hidedecorations!(ax1, grid = false)
 hidedecorations!(ax3, grid = false)
 
+xlims!(ax1, 0.025, 0.125)
+xlims!(ax2, 0.025, 0.125)
+ylims!(ax1, 0.35, 0.9)
+ylims!(ax3, 0.35, 0.9)
+
 ##display(fig)
 
 save("perfect_catke_calibration_parameter_distributions.svg", fig); nothing # hide
