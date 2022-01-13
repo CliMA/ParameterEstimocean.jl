@@ -10,8 +10,6 @@
 using OceanTurbulenceParameterEstimation, LinearAlgebra, CairoMakie
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity, MixingLength, SurfaceTKEFlux
 
-# using ElectronDisplay
-
 # # Perfect observations of CATKE-driven mixing
 #
 # Our first task is to generate synthetic observations, using
@@ -300,3 +298,7 @@ ylims!(ax3, 0.35, 0.9)
 save("perfect_catke_calibration_parameter_distributions.svg", fig); nothing # hide
 
 # ![](perfect_catke_calibration_parameter_distributions.svg)
+
+# Hint: if using a REPL or notebook, try
+# `using Pkg; Pkg.add("ElectronDisplay"); using ElectronDisplay; display(fig)`
+# To see the figure in a window.
