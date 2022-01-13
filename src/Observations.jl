@@ -229,13 +229,13 @@ Returns a `FieldTimeSeriesCollector` for `fields` of `simulation`.
 """
 function FieldTimeSeriesCollector(collected_fields, times; architecture=CPU())
 
-    grid = collected_fields[1].grid
+    grid = on_architecture(architecture, first(collected_fields).grid)
     field_time_serieses = Dict{Symbol, Any}()
 
     for name in keys(collected_fields)
         field = collected_fields[name]
         LX, LY, LZ = location(field)
-        field_time_series = FieldTimeSeries{LX, LY, LZ}(architecture, field.grid, times)
+        field_time_series = FieldTimeSeries{LX, LY, LZ}(grid, times)
         field_time_serieses[name] = field_time_series
     end
 
