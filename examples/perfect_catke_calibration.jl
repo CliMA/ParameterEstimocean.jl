@@ -58,7 +58,7 @@ observations = SyntheticObservations(data_path, field_names=(:u, :v, :b, :e), no
 fig = Figure()
 
 ax_b = Axis(fig[1, 1], xlabel = "Buoyancy\n[10⁻⁴ m s⁻²]", ylabel = "z [m]")
-ax_u = Axis(fig[1, 2], xlabel = "Velocities\n[m s⁻¹]")
+ax_u = Axis(fig[1, 2], xlabel = "Velocities\n[cm s⁻¹]")
 ax_e = Axis(fig[1, 3], xlabel = "Turbulent kinetic energy\n[10⁻⁴ m² s⁻²]")
 
 z = znodes(Center, observations.grid)
@@ -77,8 +77,8 @@ for i = 1:length(observations.times)
     v_label = i == 1 ? "v, " * label : label
 
     lines!(ax_b, 1e4 * interior(b)[1, 1, :], z; label, color=colorcycle[i]) # convert units m s⁻² -> 10⁻⁴ m s⁻²
-    lines!(ax_u, interior(u)[1, 1, :], z; linestyle=:solid, color=colorcycle[i], label=u_label)
-    lines!(ax_u, interior(v)[1, 1, :], z; linestyle=:dash, color=colorcycle[i], label=v_label)
+    lines!(ax_u, 1e2 * interior(u)[1, 1, :], z; linestyle=:solid, color=colorcycle[i], label=u_label) # convert units m s⁻¹ -> cm s⁻¹
+    lines!(ax_u, 1e2 * interior(v)[1, 1, :], z; linestyle=:dash, color=colorcycle[i], label=v_label) # convert units m s⁻¹ -> cm s⁻¹
     lines!(ax_e, 1e4 * interior(e)[1, 1, :], z; label, color=colorcycle[i]) # convert units m² s⁻² -> 10⁻⁴ m² s⁻²
 end
 
@@ -189,7 +189,6 @@ save("perfect_catke_calibration_summary.svg", fig); nothing #hide
 # ![](perfect_catke_calibration_summary.svg)
 
 final_mean_θ = eki.iteration_summaries[end].ensemble_mean
-#forward_run!(calibration, [θ★, final_mean_θ])
 forward_run!(calibration, θ★)
 
 time_series_collector = calibration.time_series_collector
@@ -207,44 +206,44 @@ t = times[Nt]
 z = znodes(b)
 
 ## The ensemble varies along the first, or `x`-dimension:
-b★ = interior(b)[1, 1, :]
-b¹ = interior(b)[2, 1, :]
+b★ = 1e4 * interior(b)[1, 1, :]  # convert units m s⁻² -> 10⁻⁴ m s⁻²
+b¹ = 1e4 * interior(b)[2, 1, :]  # convert units m s⁻² -> 10⁻⁴ m s⁻²
 
-e★ = interior(e)[1, 1, :]
-e¹ = interior(e)[2, 1, :]
+e★ = 1e4 * interior(e)[1, 1, :]  # convert units m² s⁻² -> 10⁻⁴ m² s⁻²
+e¹ = 1e4 * interior(e)[2, 1, :]  # convert units m² s⁻² -> 10⁻⁴ m² s⁻²
 
-u★ = interior(u)[1, 1, :]
-u¹ = interior(u)[2, 1, :]
+u★ = 1e2 * interior(u)[1, 1, :]  # convert units m s⁻¹ -> cm s⁻¹
+u¹ = 1e2 * interior(u)[2, 1, :]  # convert units m s⁻¹ -> cm s⁻¹
 
-v★ = interior(v)[1, 1, :]
-v¹ = interior(v)[2, 1, :]
+v★ = 1e2 * interior(v)[1, 1, :]  # convert units m s⁻¹ -> cm s⁻¹
+v¹ = 1e2 * interior(v)[2, 1, :]  # convert units m s⁻¹ -> cm s⁻¹
 
 fig = Figure()
 
-ax = Axis(fig[1, 1], xlabel = "Buoyancy [m s⁻²]", ylabel = "z [m]")
-b★_label = "true b at t = " * prettytime(t)
+ax = Axis(fig[1, 1], xlabel = "Buoyancy\n[10⁻⁴ m s⁻²]", ylabel = "z [m]")
+b★_label = "true b at " * prettytime(t)
 b¹_label = "b with ⟨θ⟩"
-lines!(ax, b★, z; label=b★_label, linewidth=2)
+lines!(ax, b★, z; label=b★_label, linewidth=3)
 lines!(ax, b¹, z; label=b¹_label, linewidth=2)
-axislegend(ax, position=:lt)
+axislegend(ax, position=:lb)
 
-ax = Axis(fig[1, 2], xlabel = "Turbulent kinetic energy [m² s⁻²]", ylabel = "z [m]")
-e★_label = "true e at t = " * prettytime(t)
+ax = Axis(fig[1, 2], xlabel = "Turbulent kinetic energy\n[10⁻⁴ m² s⁻²]")
+e★_label = "true e at " * prettytime(t)
 e¹_label = "e with ⟨θ⟩"
-lines!(ax, e★, z; label=e★_label, linewidth=2)
+lines!(ax, e★, z; label=e★_label, linewidth=3)
 lines!(ax, e¹, z; label=e¹_label, linewidth=2)
-axislegend(ax, position=:lt)
+axislegend(ax, position=:lb)
 
-ax = Axis(fig[1, 3], xlabel = "Turbulent kinetic energy [m² s⁻²]", ylabel = "z [m]")
-u★_label = "true u at t = " * prettytime(t)
+ax = Axis(fig[1, 3], xlabel = "Velocities\n[cm s⁻¹]")
+u★_label = "true u at " * prettytime(t)
 u¹_label = "u with ⟨θ⟩"
 v★_label = "true v"
 v¹_label = "v with ⟨θ⟩"
-lines!(ax, u★, z; label=u★_label, linewidth=2)
+lines!(ax, u★, z; label=u★_label, linewidth=3)
 lines!(ax, u¹, z; label=u¹_label, linewidth=2)
-lines!(ax, v★, z; label=v★_label, linestyle=:dash, linewidth=2)
+lines!(ax, v★, z; label=v★_label, linestyle=:dash, linewidth=3)
 lines!(ax, v¹, z; label=v¹_label, linestyle=:dash, linewidth=2)
-axislegend(ax, position=:lt)
+axislegend(ax, position=:lb)
 
 save("perfect_catke_calibration_particle_realizations.svg", fig); nothing # hide
 
