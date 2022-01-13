@@ -36,7 +36,12 @@ function generate_synthetic_observations(name = "convective_adjustment"; Nz = 32
 
     data_path = name * ".jld2"
   
-    isfile(data_path) && (@warn("Using existing data at $data_path. Please delete this file if you wish to generate new data."); return data_path)
+    if isfile(data_path)
+        @warn("Using existing data at $data_path. " *
+              "Please delete this file if you wish to generate new data.")
+
+        return data_path
+    end
     
     grid = RectilinearGrid(size=Nz, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
     u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
@@ -64,7 +69,6 @@ function generate_synthetic_observations(name = "convective_adjustment"; Nz = 32
     return data_path
 end
 
-#=
 # and invoke it:
 
 data_path = generate_synthetic_observations()
@@ -134,4 +138,3 @@ save("intro_to_observations.svg", fig)
 # Hint: if using a REPL or notebook, try
 # `using Pkg; Pkg.add("ElectronDisplay"); using ElectronDisplay; display(fig)`
 # To see the figure in a window.
-=#

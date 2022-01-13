@@ -110,7 +110,6 @@ function build_ensemble_simulation(observations, arch=CPU(); Nensemble=1)
     return ensemble_simulation, closure
 end
 
-#=
 # The following illustrations uses a simple ensemble simulation with two ensemble members:
 
 ensemble_simulation, closure★ = build_ensemble_simulation(observations; Nensemble=3)
@@ -228,4 +227,3 @@ axislegend(ax, position=:lt)
 save("ensemble_simulation_demonstration.svg", fig); nothing # hide
 
 # ![](ensemble_simulation_demonstration.svg)
-=#
