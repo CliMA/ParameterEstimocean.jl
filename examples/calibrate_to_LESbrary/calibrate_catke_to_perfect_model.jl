@@ -2,6 +2,7 @@ pushfirst!(LOAD_PATH, joinpath(@__DIR__, "../.."))
 
 using OceanTurbulenceParameterEstimation, LinearAlgebra, CairoMakie
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
+using OceanTurbulenceParameterEstimation.EnsembleKalmanInversions: NaNResampler, FullEnsembleDistribution
 
 include("utils/lesbrary_paths.jl")
 include("utils/parameters.jl")
@@ -55,7 +56,10 @@ visualize!(calibration, true_parameters;
 # Calibrate
 
 noise_covariance = Matrix(Diagonal(observation_map_variance_across_time(calibration)[1, :, 1] .+ 1e-5))
-eki = EnsembleKalmanInversion(calibration; noise_covariance = noise_covariance)
+resampler = NaNResampler(; abort_fraction=0.5, distribution=FullEnsembleDistribution())
+
+eki = EnsembleKalmanInversion(calibration; noise_covariance = noise_covariance, 
+                                           resampler = resampler)
 params = iterate!(eki; iterations = 5)
 
 ###
