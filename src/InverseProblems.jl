@@ -54,12 +54,12 @@ output_map_str(::ConcatenatedVectorNormMap) = "ConcatenatedVectorNormMap"
 ##### InverseProblems
 #####
 
-struct InverseProblem{F,O,S,T,P}
-    observations::O
-    simulation::S
-    time_series_collector::T
-    free_parameters::P
-    output_map::F
+struct InverseProblem{F, O, S, T, P}
+    observations :: O
+    simulation :: S
+    time_series_collector :: T
+    free_parameters :: P
+    output_map :: F
 end
 
 """
@@ -332,7 +332,7 @@ function transpose_model_output(time_series_collector, observations)
             raw_data = parent(field_time_series.data)
             data = OffsetArray(view(raw_data, :, j:j, :, :), 0, 0, -Hz, 0)
 
-            time_series = FieldTimeSeries{LX, LY, LZ, InMemory}(data, CPU(), grid, nothing, times)
+            time_series = FieldTimeSeries{LX, LY, LZ, InMemory}(data, grid, nothing, times)
             time_serieses[name] = time_series
         end
 
@@ -340,11 +340,11 @@ function transpose_model_output(time_series_collector, observations)
         time_serieses = NamedTuple(name => time_series for (name, time_series) in time_serieses)
 
         batch_output = SyntheticObservations(time_serieses,
-            grid,
-            times,
-            nothing,
-            nothing,
-            observation.normalization)
+                                             grid,
+                                             times,
+                                             nothing,
+                                             nothing,
+                                             observation.normalization)
 
         push!(transposed_output, batch_output)
     end

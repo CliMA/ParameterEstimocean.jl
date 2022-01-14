@@ -4,7 +4,7 @@ using Oceananigans
 using Oceananigans: short_show, fields
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
-using Oceananigans.Grids: pop_flat_elements, topology, halo_size
+using Oceananigans.Grids: pop_flat_elements, topology, halo_size, on_architecture
 using Oceananigans.Fields
 using Oceananigans.Utils: SpecifiedTimes
 using Oceananigans.Architectures: arch_array, architecture
