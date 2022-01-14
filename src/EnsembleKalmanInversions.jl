@@ -409,16 +409,6 @@ particle_str(particle, error, parameters) =
     string(param_str.(values(parameters))...) *
     @sprintf("error = %.3e", error) * "\n"
 
-#     no_nan_columns(X)
-# For an array `X`, returns a list of column indices that do not contain `NaN`s.
-function no_nan_columns(X)
-    # vector of bits indicating whether a NaN exists in each column
-    nan_values = vec(mapslices(any, isnan.(X); dims=1))
-    success_columns = findall(Bool.(1 .- nan_values))
-    return success_columns
-end
-
-
 """
     sample(eki, θ, G, n)
 
@@ -445,7 +435,8 @@ function sample(eki, θ, G, n)
         θ_sample = rand(ens_dist, ens_size)
         G_sample = eki.inverting_forward_map(θ_sample)
 
-        success_columns = no_nan_columns(G_sample)
+        nan_values = vec(mapslices(any, isnan.(G_sample); dims=1))
+        success_columns = findall(Bool.(1 .- nan_values))
 
         found_θ = hcat(found_θ, θ_sample[:, success_columns])
         found_G = hcat(found_G, G_sample[:, success_columns])
@@ -514,8 +505,10 @@ NaNResampler(; abort_fraction=0.0, distribution=FullEnsembleDistribution()) = Na
 
 function resample!(resampler::NaNResampler, G, θ, eki)
 
-    success_columns = no_nan_columns(G) # indices of columns (particles) without `NaN`s
-    nan_count = size(G, 2) - length(nan_columns)
+    # `ensemble_size` vector of bits indicating, for each ensemble member, if the forward map contained `NaN`s
+    nan_values = vec(mapslices(any, isnan.(G); dims=1)) 
+    nan_columns = findall(Bool.(1 .- nan_values)) # indices of columns (particles) with `NaN`s
+    nan_count = length(nan_columns)
     nan_fraction = nan_count / size(θ, 2)
 
     if nan_fraction > resampler.abort_fraction
