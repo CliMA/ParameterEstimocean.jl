@@ -182,8 +182,8 @@ y = observation_map(calibration)
 
 # The `forward_map` output `G` is a two-dimensional matrix whose first dimension
 # is the size of the state space and whose second dimension is the `ensemble_size`.
-# Here we ensure that mapped output first ensemble member, which was run with the "true"
-# parameters, is identical to the mapped observations:
+# Here, we ensure that first ensemble member of the mapped output, which was run with
+# the "true" parameters, is identical to the mapped observations:
 
 G[:, 1] ≈ y
 
@@ -223,8 +223,7 @@ lines!(ax, b², z; label=b²_label, linewidth=2)
 
 axislegend(ax, position=:lt)
 
-save("ensemble_simulation_demonstration.svg", fig)
-nothing # hide
+save("ensemble_simulation_demonstration.svg", fig); nothing # hide
 
 # ![](ensemble_simulation_demonstration.svg)
 
