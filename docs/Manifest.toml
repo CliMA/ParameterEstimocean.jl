@@ -828,7 +828,9 @@ version = "0.4.0"
 
 [[Oceananigans]]
 deps = ["Adapt", "CUDA", "CUDAKernels", "Crayons", "CubedSphere", "Dates", "DocStringExtensions", "FFTW", "Glob", "IncompleteLU", "InteractiveUtils", "IterativeSolvers", "JLD2", "KernelAbstractions", "LinearAlgebra", "Logging", "MPI", "NCDatasets", "OffsetArrays", "OrderedCollections", "PencilFFTs", "Pkg", "Printf", "Random", "Rotations", "SafeTestsets", "SeawaterPolynomials", "SparseArrays", "Statistics", "StructArrays", "Tullio"]
-git-tree-sha1 = "687e4ca90ad90a02fee2a7d679385d0ddbd7b6a3"
+git-tree-sha1 = "d79be4d5b463eeee439c539d2751ad93ccc36fa9"
+repo-rev = "glw/fix-single-column-mode"
+repo-url = "https://github.com/CliMA/Oceananigans.jl.git"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
 version = "0.68.0"
 
