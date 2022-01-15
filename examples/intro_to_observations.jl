@@ -18,7 +18,7 @@ using OceanTurbulenceParameterEstimation
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
-using CairoMakie
+#using CairoMakie
 
 # # Generating synthetic observations
 #
@@ -104,6 +104,7 @@ specified_times_observations = SyntheticObservations(data_path, field_names=(:u,
 
 observations = SyntheticObservations(data_path, field_names=(:u, :v, :b), normalize=ZScore)
 
+#=
 fig = Figure()
 
 ax_b = Axis(fig[1, 1], xlabel = "Buoyancy [m s⁻²]", ylabel = "z [m]")
@@ -138,3 +139,4 @@ save("intro_to_observations.svg", fig)
 # Hint: if using a REPL or notebook, try
 # `using Pkg; Pkg.add("ElectronDisplay"); using ElectronDisplay; display(fig)`
 # To see the figure in a window.
+=#
