@@ -198,7 +198,7 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampl
                                   0,
                                   OffsetArray([], -1),
                                   resampler)
-
+                              
     return eki
 end
 
@@ -279,7 +279,7 @@ function UnscentedKalmanInversion(inverse_problem, prior_mean, prior_cov;
                                   0,
                                   OffsetArray([], -1),
                                   resampler)
-
+                          
     return eki
 end
 
@@ -445,7 +445,7 @@ function sample(eki, θ, G, n)
         θ_sample = rand(ens_dist, ens_size)
         G_sample = eki.inverting_forward_map(θ_sample)
 
-        nan_values = vec(mapslices(any, isnan.(G_sample); dims=1))
+        nan_values = nan_cols(G_sample)
         success_columns = findall(Bool.(1 .- nan_values))
 
         found_θ = hcat(found_θ, θ_sample[:, success_columns])
@@ -455,6 +455,8 @@ function sample(eki, θ, G, n)
     return found_θ[:, 1:n], found_G[:, 1:n]
 end
 
+nan_cols(G) = vec(mapslices(any, isnan.(G); dims=1))
+
 """
     iterate!(eki::EnsembleKalmanInversion; iterations=1)
 
@@ -462,22 +464,22 @@ Iterate the ensemble Kalman inversion problem `eki` forward by `iterations`.
 """
 function iterate!(eki::EnsembleKalmanInversion; iterations = 1)
 
+    eki.iteration == 0 && (eki.iteration += 1; iterate!(eki; iterations = 1))
+
     for _ in ProgressBar(1:iterations)
 
         θ = get_u_final(eki.ensemble_kalman_process) # (N_params, ensemble_size) array
         G = eki.inverting_forward_map(θ) # (len(G), ensemble_size)
 
         resample!(eki.resampler, G, θ, eki)
-       
+          
         # Save the parameter values and mean square error between forward map
         # and observations at the current iteration
         summary = IterationSummary(eki, θ, G)
-        eki.iteration += 1
         push!(eki.iteration_summaries, summary)
 
-        resample!(eki.resampler, G, θ, eki)
-       
         update_ensemble!(eki.ensemble_kalman_process, G)
+        eki.iteration += 1
     end
 
     # Return ensemble mean (best guess for optimal parameters)
@@ -504,7 +506,7 @@ struct FullEnsembleDistribution <: EnsembleDistribution end
 
 struct SuccessfulEnsembleDistribution <: EnsembleDistribution end
 
-(::SuccessfulEnsembleDistribution)(θ, G) = ensemble_dist(θ[:, no_nan_columns(G)])
+(::SuccessfulEnsembleDistribution)(θ, G) = ensemble_dist(θ[:, findall(Bool.(1 .- nan_cols(G)))])
 
 resample!(::Nothing, args...) = nothing
 
@@ -517,9 +519,9 @@ NaNResampler(; abort_fraction=0.0, distribution=FullEnsembleDistribution()) = Na
 
 function resample!(resampler::NaNResampler, G, θ, eki)
 
-    # `ensemble_size` vector of bits indicating, for each ensemble member, if the forward map contained `NaN`s
-    nan_values = vec(mapslices(any, isnan.(G); dims=1)) 
-    nan_columns = findall(Bool.(1 .- nan_values)) # indices of columns (particles) with `NaN`s
+    # `ensemble_size` vector of bits indicating, for each ensemble member, whether the forward map contained `NaN`s
+    nan_values = nan_cols(G)
+    nan_columns = findall(Bool.(nan_values)) # indices of columns (particles) with `NaN`s
     nan_count = length(nan_columns)
     nan_fraction = nan_count / size(θ, 2)
 
