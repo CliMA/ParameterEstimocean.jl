@@ -24,7 +24,7 @@ using Oceananigans.Units
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
 
-#using CairoMakie
+using CairoMakie
 using Distributions
 using JLD2
 
@@ -146,7 +146,6 @@ samples(prior) = [inverse_parameter_transform(prior, θ) for θ in rand(convert_
 convective_κz_samples = samples(priors.convective_κz)
 background_κz_samples = samples(priors.background_κz)
 
-#=
 fig = Figure()
 ax_top = Axis(fig[1, 1], xlabel = "convective κᶻ [m² s⁻¹]", ylabel = "Density")
 density!(ax_top, convective_κz_samples)
@@ -159,7 +158,6 @@ save("prior_visualization.svg", fig)
 nothing # hide
 
 # ![](prior_visualization.svg)
-=#
 
 # # The `InverseProblem`
 
@@ -213,7 +211,6 @@ b★ = interior(b)[1, 1, :]
 b¹ = interior(b)[2, 1, :]
 b² = interior(b)[3, 1, :]
 
-#=
 fig = Figure()
 ax = Axis(fig[1, 1],
           xlabel = "Buoyancy [m s⁻²]",
@@ -232,4 +229,4 @@ axislegend(ax, position=:lt)
 save("ensemble_simulation_demonstration.svg", fig); nothing # hide
 
 # ![](ensemble_simulation_demonstration.svg)
-=#
+

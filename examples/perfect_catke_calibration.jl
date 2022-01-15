@@ -7,7 +7,7 @@
 # pkg"add OceanTurbulenceParameterEstimation, Oceananigans, Distributions, CairoMakie"
 # ```
 
-using OceanTurbulenceParameterEstimation, LinearAlgebra#, CairoMakie
+using OceanTurbulenceParameterEstimation, LinearAlgebra, CairoMakie
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity, MixingLength, SurfaceTKEFlux
 
 # using ElectronDisplay
@@ -55,7 +55,6 @@ data_path = generate_synthetic_observations("catke",
 
 observations = SyntheticObservations(data_path, field_names=(:u, :v, :b, :e), normalize=ZScore)
 
-#=
 fig = Figure()
 
 ax_b = Axis(fig[1, 1], xlabel = "Buoyancy\n[10⁻⁴ m s⁻²]", ylabel = "z [m]")
@@ -92,7 +91,6 @@ axislegend(ax_e, position=:rb)
 save("synthetic_catke_observations.svg", fig); nothing # hide
 
 # ![](synthetic_catke_observations.svg)
-=#
 
 # Well, that looks like a boundary layer, in some respects.
 # 
@@ -101,7 +99,7 @@ save("synthetic_catke_observations.svg", fig); nothing # hide
 # Next, we build a simulation of an ensemble of column models to calibrate
 # CATKE using Ensemble Kalman Inversion.
 
-architecture = GPU()
+architecture = CPU()
 ensemble_simulation, closure★ = build_ensemble_simulation(observations, architecture; Nensemble=50)
 
 # We choose to calibrate a subset of the CATKE parameters,
@@ -162,7 +160,6 @@ relative_error = NamedTuple(name => abs.(absolute_error[name]) ./ θ★[name] fo
 
 output_distances = map(θ -> norm(forward_map(calibration, θ)[:, 1:1] - y), ensemble_mean_θ)
 
-#=
 fig = Figure()
 
 ax_error = Axis(fig[1, 1], title = "Parameter distance", xlabel = "Iteration", ylabel = "|⟨θₙ⟩ - θ★| / θ★")
@@ -299,4 +296,3 @@ hidedecorations!(ax3, grid = false)
 save("perfect_catke_calibration_parameter_distributions.svg", fig); nothing # hide
 
 # ![](perfect_catke_calibration_parameter_distributions.svg)
-=#
