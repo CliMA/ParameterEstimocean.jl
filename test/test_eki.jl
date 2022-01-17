@@ -61,7 +61,7 @@ Nensemble = 3
     calibration = InverseProblem(observation, ensemble_simulation, free_parameters)
 
     #####
-    ##### Run EKI
+    ##### Test EKI
     #####
 
     eki = EnsembleKalmanInversion(calibration; noise_covariance = 0.01)
@@ -89,9 +89,9 @@ Nensemble = 3
     @test length(eki.iteration_summaries) == iterations + 2
     @test eki.iteration == iterations + 1
 
-end
-
-@testset "Resampler tests" begin
+    #####
+    ##### Test Resampler
+    #####
 
     resampler = NaNResampler(; abort_fraction=1.0, distribution=FullEnsembleDistribution())
 
