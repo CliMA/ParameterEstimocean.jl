@@ -464,12 +464,16 @@ Iterate the ensemble Kalman inversion problem `eki` forward by `iterations`.
 """
 function iterate!(eki::EnsembleKalmanInversion; iterations = 1)
 
-    eki.iteration == 0 && (eki.iteration += 1; iterate!(eki; iterations = 1))
+    eki.iteration == 0 && (iterations += 1; eki.iteration -= 1)
 
     for _ in ProgressBar(1:iterations)
 
+        eki.iteration += 1
+
         θ = get_u_final(eki.ensemble_kalman_process) # (N_params, ensemble_size) array
         G = eki.inverting_forward_map(θ) # (len(G), ensemble_size)
+
+        eki.iteration != 0 && update_ensemble!(eki.ensemble_kalman_process, G)
 
         resample!(eki.resampler, G, θ, eki)
           
@@ -477,9 +481,6 @@ function iterate!(eki::EnsembleKalmanInversion; iterations = 1)
         # and observations at the current iteration
         summary = IterationSummary(eki, θ, G)
         push!(eki.iteration_summaries, summary)
-
-        update_ensemble!(eki.ensemble_kalman_process, G)
-        eki.iteration += 1
     end
 
     # Return ensemble mean (best guess for optimal parameters)
