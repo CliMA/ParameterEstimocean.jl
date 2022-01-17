@@ -198,7 +198,7 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampl
                                   0,
                                   OffsetArray([], -1),
                                   resampler)
-                              
+
     return eki
 end
 
@@ -496,7 +496,7 @@ end
 abstract type EnsembleDistribution end
 
 function ensemble_dist(θ)
-    μ = collect(mean(θ, dims=2))
+    μ = [mean(θ, dims=2)...]
     Σ = cov(θ, dims=2)
     return MvNormal(μ, Σ)
 end
