@@ -67,7 +67,7 @@ Nensemble = 3
     eki = EnsembleKalmanInversion(calibration; noise_covariance = 0.01)
 
     iterations = 5
-    iterate!(eki; iterations = iterations)
+    iterate!(eki; iterations = iterations, show_progress = false)
 
     @test length(eki.iteration_summaries) == iterations + 1
     @test eki.iteration == iterations
@@ -84,7 +84,7 @@ Nensemble = 3
     # Test that parameters change
     @test convective_κzs[1] != convective_κzs[2]
 
-    iterate!(eki; iterations = 2)
+    iterate!(eki; iterations = 1, show_progress = false)
 
     @test length(eki.iteration_summaries) == iterations + 2
     @test eki.iteration == iterations + 1

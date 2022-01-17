@@ -462,11 +462,13 @@ nan_cols(G) = vec(mapslices(any, isnan.(G); dims=1))
 
 Iterate the ensemble Kalman inversion problem `eki` forward by `iterations`.
 """
-function iterate!(eki::EnsembleKalmanInversion; iterations = 1)
+function iterate!(eki::EnsembleKalmanInversion; iterations = 1, show_progress = true)
 
     eki.iteration == 0 && (iterations += 1; eki.iteration -= 1)
 
-    for _ in ProgressBar(1:iterations)
+    iterator = show_progress ? ProgressBar(1:iterations) : 1:iterations
+
+    for _ in iterator
 
         eki.iteration += 1
 
