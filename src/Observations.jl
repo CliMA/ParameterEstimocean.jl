@@ -227,7 +227,7 @@ end
 Returns a `FieldTimeSeriesCollector` for `fields` of `simulation`.
 `fields` is a `NamedTuple` of `AbstractField`s that are to be collected.
 """
-function FieldTimeSeriesCollector(collected_fields, times; architecture=CPU())
+function FieldTimeSeriesCollector(collected_fields, times)
 
     grid = collected_fields[1].grid
     field_time_serieses = Dict{Symbol, Any}()
@@ -235,7 +235,7 @@ function FieldTimeSeriesCollector(collected_fields, times; architecture=CPU())
     for name in keys(collected_fields)
         field = collected_fields[name]
         LX, LY, LZ = location(field)
-        field_time_series = FieldTimeSeries{LX, LY, LZ}(architecture, field.grid, times)
+        field_time_series = FieldTimeSeries{LX, LY, LZ}(field.grid, times)
         field_time_serieses[name] = field_time_series
     end
 
