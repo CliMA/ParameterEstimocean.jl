@@ -53,11 +53,14 @@ background_νz = 1e-5
 
     simulation = Simulation(model; Δt, stop_time)
 
+    init_with_parameters(file, model) = file["parameters"] = (; Qᵇ, Qᵘ, Δt, N², tracers=keys(model.tracers))
+
     simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
                                                           schedule = TimeInterval(save_interval),
                                                           prefix = experiment_name,
                                                           field_slicer = nothing,
-                                                          force = true)
+                                                          force = true,
+                                                          init = init_with_parameters)
 
     run!(simulation)
 
