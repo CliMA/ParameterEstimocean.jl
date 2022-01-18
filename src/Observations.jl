@@ -102,7 +102,7 @@ function SyntheticObservations(path; field_names, normalize = IdentityNormalizat
 
     grid = first(field_time_serieses).grid
     times = first(field_time_serieses).times
-    boundary_conditions = first(field_time_serieses).boundary_conditions
+    bcs = first(field_time_serieses).boundary_conditions
 
     if !isnothing(grid_size) # regrid! field_time_serieses on a new grid
 
@@ -115,7 +115,7 @@ function SyntheticObservations(path; field_names, normalize = IdentityNormalizat
         
             LX, LY, LZ = infer_location(field_name)
         
-            new_ts = FieldTimeSeries{LX,LY,LZ}(CPU(), grid, times, boundary_conditions)
+            new_ts = FieldTimeSeries{LX, LY, LZ}(grid, times; boundary_conditions=bcs)
         
             # Loop over time steps to re-grid each constituent field in `field_time_series`
             for n = 1:length(times)
@@ -235,7 +235,7 @@ function FieldTimeSeriesCollector(collected_fields, times)
     for name in keys(collected_fields)
         field = collected_fields[name]
         LX, LY, LZ = location(field)
-        field_time_series = FieldTimeSeries{LX, LY, LZ}(field.grid, times)
+        field_time_series = FieldTimeSeries{LX, LY, LZ}(grid, times)
         field_time_serieses[name] = field_time_series
     end
 
