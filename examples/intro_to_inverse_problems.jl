@@ -19,6 +19,7 @@
 using OceanTurbulenceParameterEstimation
 
 using Oceananigans
+using Oceananigans.Architectures: arch_array
 using Oceananigans.Units
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
@@ -74,12 +75,12 @@ function extract_perfect_parameters(observations, Nensemble)
 end
 
 """
-    build_ensemble_simulation(observations; Nensemble=1)
+    build_ensemble_simulation(observations, arch=CPU(); Nensemble=1)
 
 Returns an `Oceananigans.Simulation` representing an `Nensemble × 1`
 ensemble of column models designed to reproduce `observations`.
 """
-function build_ensemble_simulation(observations; Nensemble=1)
+function build_ensemble_simulation(observations, arch=CPU(); Nensemble=1)
 
     observations isa Vector || (observations = [observations]) # Singleton batch
     Nbatch = length(observations)
@@ -87,10 +88,12 @@ function build_ensemble_simulation(observations; Nensemble=1)
     Qᵘ, Qᵇ, N², f, Δt, Lz, Nz, Hz, closure = extract_perfect_parameters(observations, Nensemble)
 
     column_ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(Nensemble, Nbatch), Hz=Hz)
-    ensemble_grid = RectilinearGrid(size = column_ensemble_size, topology = (Flat, Flat, Bounded), z = (-Lz, 0))
+    ensemble_grid = RectilinearGrid(arch, size = column_ensemble_size, topology = (Flat, Flat, Bounded), z = (-Lz, 0))
 
-    coriolis_ensemble = [FPlane(f=f[i, j]) for i = 1:Nensemble, j=1:Nbatch]
-    closure_ensemble = [deepcopy(closure) for i = 1:Nensemble, j=1:Nbatch]
+    coriolis_ensemble = arch_array(arch, [FPlane(f=f[i, j]) for i = 1:Nensemble, j=1:Nbatch])
+    closure_ensemble = arch_array(arch, [deepcopy(closure) for i = 1:Nensemble, j=1:Nbatch])
+
+    Qᵘ, Qᵇ, N² = Tuple(arch_array(arch, p) for p in (Qᵘ, Qᵇ, N²))
 
     u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
     b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ), bottom = GradientBoundaryCondition(N²))

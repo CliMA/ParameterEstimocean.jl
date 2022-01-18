@@ -97,7 +97,8 @@ save("synthetic_catke_observations.svg", fig); nothing # hide
 # Next, we build a simulation of an ensemble of column models to calibrate
 # CATKE using Ensemble Kalman Inversion.
 
-ensemble_simulation, closure★ = build_ensemble_simulation(observations; Nensemble=50)
+architecture = CPU()
+ensemble_simulation, closure★ = build_ensemble_simulation(observations, architecture; Nensemble=50)
 
 # We choose to calibrate a subset of the CATKE parameters,
 

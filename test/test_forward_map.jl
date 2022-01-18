@@ -73,6 +73,7 @@ using OceanTurbulenceParameterEstimation.InverseProblems: transpose_model_output
         # Test initialize_simulation!
         @info "  Testing initialize_simulation!..."
         random_initial_condition(x, y, z) = rand()
+
         for field in fields(test_simulation.model)
             set!(field, random_initial_condition)
         end
