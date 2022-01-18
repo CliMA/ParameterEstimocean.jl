@@ -227,7 +227,7 @@ end
 Returns a `FieldTimeSeriesCollector` for `fields` of `simulation`.
 `fields` is a `NamedTuple` of `AbstractField`s that are to be collected.
 """
-function FieldTimeSeriesCollector(collected_fields, times; architecture=CPU())
+function FieldTimeSeriesCollector(collected_fields, times)
 
     grid = on_architecture(architecture, first(collected_fields).grid)
     field_time_serieses = Dict{Symbol, Any}()

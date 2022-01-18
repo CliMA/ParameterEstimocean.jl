@@ -44,6 +44,9 @@ using .EnsembleKalmanInversions:
     UnscentedKalmanInversion,
     UnscentedKalmanInversionPostprocess,
     ConstrainedNormal,
-    lognormal_with_mean_std
+    lognormal_with_mean_std,
+    NaNResampler,
+    FullEnsembleDistribution,
+    SuccessfulEnsembleDistribution
 
 end # module
