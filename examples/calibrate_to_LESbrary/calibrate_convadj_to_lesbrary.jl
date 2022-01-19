@@ -8,7 +8,8 @@ include("utils/one_dimensional_ensemble_model.jl")
 
 # Build an observation from "free convection" LESbrary simulation
 
-LESbrary_directory = "/Users/adelinehillier/Desktop/dev/2DaySuite/"
+# LESbrary_directory = "/Users/adelinehillier/Desktop/dev/2DaySuite/"
+LESbrary_directory = "/home/ahillier/home/2DaySuite/"
 
 suite = OrderedDict("2d_free_convection" => (
     filename = joinpath(LESbrary_directory, "free_convection/instantaneous_statistics.jld2"),
@@ -23,9 +24,10 @@ closure = ConvectiveAdjustmentVerticalDiffusivity(;
 
 # Build an ensemble simulation based on observation
 
+architecture = GPU()
 ensemble_size = 30
 ensemble_model = OneDimensionalEnsembleModel(observations;
-    architecture = CPU(),
+    architecture = architecture,
     ensemble_size = ensemble_size,
     closure = closure
 )
@@ -44,11 +46,9 @@ free_parameters = FreeParameters(priors)
 # Specify an output map that tracks 3 uniformly spaced time steps, ignoring the initial condition
 track_times = Int.(floor.(range(1, stop = length(observations[1].times), length = 3)))
 popfirst!(track_times)
-# output_map = ConcatenatedOutputMap(track_times)
-output_map = ConcatenatedOutputMap(track_times)
 
 # Build `InverseProblem`
-calibration = InverseProblem(observations, ensemble_simulation, free_parameters; output_map = output_map)
+calibration = InverseProblem(observations, ensemble_simulation, free_parameters; output_map = ConcatenatedOutputMap(track_times))
 
 # Ensemble Kalman Inversion
 
@@ -177,7 +177,7 @@ yc = params[2, :]
 
 # build an `InverseProblem` that can accommodate `ni*nj` ensemble members 
 ensemble_model = OneDimensionalEnsembleModel(observations;
-    architecture = CPU(),
+    architecture = architecture,
     ensemble_size = ni * nj,
     closure = closure)
 ensemble_simulation = Simulation(ensemble_model; Δt = 10seconds, stop_time = 6days)
@@ -186,14 +186,17 @@ calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
 y = observation_map(calibration)
 
 using FileIO
-# G = forward_map(calibration, params)
-# save("calibrate_convadj_to_lesbrary/loss_landscape.jld2", "G", G)
+G = forward_map(calibration, params)
+save("calibrate_convadj_to_lesbrary/loss_landscape.jld2", "G", G)
 
 G = load("calibrate_convadj_to_lesbrary/loss_landscape.jld2")["G"]
 zc = [mapslices(norm, G .- y, dims = 1)...]
 
-# Φs = forward_map(calibration, params) .- y
-# save("calibrate_convadj_to_lesbrary/loss_landscape.jld2", "a", a)
+using OceanTurbulenceParameterEstimation.EnsembleKalmanInversions: Φ
+Φs = Φ(eki, params, G)
+
+save("calibrate_convadj_to_lesbrary/loss_landscape.jld2", "Φ1", getindex.(Φs, 1))
+save("calibrate_convadj_to_lesbrary/loss_landscape.jld2", "Φ2", getindex.(Φs, 2))
 
 a = load("calibrate_convadj_to_lesbrary/loss_landscape.jld2")["a"]
 zc = [mapslices(norm, a, dims = 1)...]

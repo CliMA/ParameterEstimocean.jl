@@ -30,14 +30,16 @@ observation2 = SyntheticObservations(observ_path2, field_names = (:b, :e, :u, :v
 observations = [observation1, observation2]
 
 # Set up ensemble model
-ensemble_simulation, closure = build_ensemble_simulation(observations; Nensemble = 100)
+ensemble_simulation, closure = build_ensemble_simulation(observations; Nensemble = 100, architecture = GPU())
 
 # Build free parameters
 build_prior(name) = ConstrainedNormal(0.0, 1.0, bounds(name) .* 0.5...)
 free_parameters = FreeParameters(named_tuple_map(names(parameter_set), build_prior))
 
 # Pack everything into Inverse Problem `calibration`
-calibration = InverseProblem(observations, ensemble_simulation, free_parameters, output_map = ConcatenatedOutputMap());
+track_times = Int.(floor.(range(1, stop = length(observations[1].times), length = 3)))
+popfirst!(track_times)
+calibration = InverseProblem(observations, ensemble_simulation, free_parameters, output_map = ConcatenatedOutputMap(track_times));
 
 # Make sure the forward map evaluated on the true parameters matches the observation map
 x = forward_map(calibration, true_parameters)[:, 1:1];
@@ -55,7 +57,7 @@ visualize!(calibration, true_parameters;
 
 # Calibrate
 
-noise_covariance = Matrix(Diagonal(observation_map_variance_across_time(calibration)[1, :, 1] .+ 1e-5))
+noise_covariance = 0.01
 resampler = NaNResampler(; abort_fraction=0.5, distribution=FullEnsembleDistribution())
 
 eki = EnsembleKalmanInversion(calibration; noise_covariance = noise_covariance, 

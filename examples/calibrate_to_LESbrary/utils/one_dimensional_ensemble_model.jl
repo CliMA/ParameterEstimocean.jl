@@ -48,7 +48,7 @@ function OneDimensionalEnsembleModel(observations;
     Nz = observations[1].grid.Nz
     column_ensemble_size = ColumnEnsembleSize(Nz = Nz, ensemble = (Nx, Ny), Hz = 1)
 
-    ensemble_grid = RectilinearGrid(size = column_ensemble_size, z = (-Lz, 0), topology = (Flat, Flat, Bounded))
+    ensemble_grid = RectilinearGrid(architecture; size = column_ensemble_size, z = (-Lz, 0), topology = (Flat, Flat, Bounded))
     closure_ensemble = arch_array(architecture, [closure for i = 1:Nx, j = 1:Ny])
 
     get_Qᵇ(observation) = get_parameter(observation, "parameters/boundary_condition_θ_top") * α * g
