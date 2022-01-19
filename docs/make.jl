@@ -25,6 +25,7 @@ examples = [
   "perfect_convective_adjustment_calibration.jl",
   "unscented_perfect_convective_adjustment_calibration.jl",
   "perfect_catke_calibration.jl",
+  "lesbrary_catke_calibration.jl",
   "perfect_baroclinic_adjustment_calibration.jl"
 ]
 
@@ -57,6 +58,7 @@ pages = [
         "literated/perfect_convective_adjustment_calibration.md",
         "literated/unscented_perfect_convective_adjustment_calibration.md",
         "literated/perfect_catke_calibration.md",
+        "literated/lesbrary_catke_calibration.md",
         "literated/perfect_baroclinic_adjustment_calibration.md"
         ],
     
