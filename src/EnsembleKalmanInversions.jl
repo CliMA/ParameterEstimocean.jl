@@ -174,6 +174,8 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampl
                                                    collect(string.(free_parameters.names)))
 
     ek_process = Inversion()
+
+    Random.seed!(42)
     initial_ensemble = sample_distribution(parameter_distribution, n_ensemble(inverse_problem))
 
     # Build EKP-friendly observations "y" and the covariance matrix of observational uncertainty "Γy"
