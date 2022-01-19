@@ -299,7 +299,7 @@ function transform_output(map::ConcatenatedVectorNormMap,
     obs_map = transform_time_series(concat_map, observations)
 
     diffn = fwd_map .- obs_map
-    return mapslices(norm, diffn; dims = 1)
+    return sqrt.(mapslices(norm, diffn; dims = 1))
 end
 
 vectorize(observation) = [observation]
