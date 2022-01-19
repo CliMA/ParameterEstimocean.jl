@@ -222,7 +222,7 @@ struct FieldTimeSeriesCollector{G, D, F, T}
 end
 
 """
-    FieldTimeSeriesCollector(collected_fields, times; architecture=CPU())
+    FieldTimeSeriesCollector(collected_fields, times)
 
 Returns a `FieldTimeSeriesCollector` for `fields` of `simulation`.
 `fields` is a `NamedTuple` of `AbstractField`s that are to be collected.
