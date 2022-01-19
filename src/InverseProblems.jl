@@ -31,7 +31,7 @@ abstract type AbstractOutputMap end
 
 output_map_type(fp) = output_map_str(fp)
 
-struct ConcatenatedOutputMap{T}
+struct ConcatenatedOutputMap{T} <: AbstractOutputMap
     time_indices::T
 end
 
@@ -46,7 +46,11 @@ Forward map transformation of simulation output to a scalar by
 taking a naive `norm` of the difference between concatenated vectors of the
 observations and simulation output.
 """
-struct ConcatenatedVectorNormMap end
+struct ConcatenatedVectorNormMap{T} <: AbstractOutputMap
+    time_indices::T
+end
+
+ConcatenatedVectorNormMap(; time_indices = Colon()) = ConcatenatedVectorNormMap(time_indices)
 
 output_map_str(::ConcatenatedVectorNormMap) = "ConcatenatedVectorNormMap"
 
@@ -235,8 +239,10 @@ end
 Return the `transform_time_series` of each `time_series` in `time_serieses` vector.
 """
 transform_time_series(map, time_serieses::Vector) =
-    vcat(Tuple(transform_time_series(map, time_series) for time_series in time_serieses)...)
+    vcat(Tuple(transform_time_series(map, time_series) for time_series in time_serieses)...)    
 
+    transform_time_series
+    
 """
     observation_map_variance_across_time(map::ConcatenatedOutputMap, observation::SyntheticObservations)
 
@@ -282,6 +288,17 @@ function transform_output(map::ConcatenatedOutputMap,
     transposed_output = transpose_model_output(time_series_collector, observations)
 
     return transform_time_series(map, transposed_output)
+end
+
+function transform_output(map::ConcatenatedVectorNormMap,
+    observations::Union{SyntheticObservations,Vector{<:SyntheticObservations}},
+    time_series_collector)
+
+    concat_map = ConcatenatedOutputMap(map.time_indices)
+    fwd_map = transform_output(concat_map, observations, time_series_collector)
+    obs_map = transform_time_series(concat_map, observations)
+
+    return norm(fwd_map .- obs_map)
 end
 
 vectorize(observation) = [observation]
@@ -332,7 +349,7 @@ function transpose_model_output(time_series_collector, observations)
             raw_data = parent(field_time_series.data)
             data = OffsetArray(view(raw_data, :, j:j, :, :), 0, 0, -Hz, 0)
 
-            time_series = FieldTimeSeries{LX,LY,LZ,InMemory}(data, grid, nothing, times)
+            time_series = FieldTimeSeries{LX, LY, LZ, InMemory}(data, grid, nothing, times)
             time_serieses[name] = time_series
         end
 

@@ -11,6 +11,7 @@ export
     observation_map,
     observation_map_variance_across_time,
     ConcatenatedOutputMap,
+    ConcatenatedVectorNormMap,
     eki,
     lognormal_with_mean_std,
     iterate!,
@@ -36,7 +37,8 @@ using .InverseProblems:
     forward_run!,
     observation_map,
     observation_map_variance_across_time,
-    ConcatenatedOutputMap
+    ConcatenatedOutputMap,
+    ConcatenatedVectorNormMap
 
 using .EnsembleKalmanInversions:
     iterate!,

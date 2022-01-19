@@ -44,7 +44,8 @@ free_parameters = FreeParameters(priors)
 # Specify an output map that tracks 3 uniformly spaced time steps, ignoring the initial condition
 track_times = floor.(range(1, stop = length(observations[1].times), length = 3))
 popfirst!(track_times)
-output_map = ConcatenatedOutputMap(track_times)
+# output_map = ConcatenatedOutputMap(track_times)
+output_map = ConcatenatedVectorNormMap(track_times)
 
 # Build `InverseProblem`
 calibration = InverseProblem(observations, ensemble_simulation, free_parameters; output_map = output_map)
