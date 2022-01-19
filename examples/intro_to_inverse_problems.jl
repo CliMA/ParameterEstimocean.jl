@@ -79,7 +79,7 @@ end
 Returns an `Oceananigans.Simulation` representing an `Nensemble × 1`
 ensemble of column models designed to reproduce `observations`.
 """
-function build_ensemble_simulation(observations; Nensemble=1)
+function build_ensemble_simulation(observations; Nensemble=1, architecture=CPU())
 
     observations isa Vector || (observations = [observations]) # Singleton batch
     Nbatch = length(observations)
@@ -87,7 +87,9 @@ function build_ensemble_simulation(observations; Nensemble=1)
     Qᵘ, Qᵇ, N², f, Δt, Lz, Nz, Hz, closure = extract_perfect_parameters(observations, Nensemble)
 
     column_ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(Nensemble, Nbatch), Hz=Hz)
-    ensemble_grid = RectilinearGrid(size = column_ensemble_size, topology = (Flat, Flat, Bounded), z = (-Lz, 0))
+    ensemble_grid = RectilinearGrid(architecture; size = column_ensemble_size, 
+                                    topology = (Flat, Flat, Bounded), 
+                                    z = (-Lz, 0))
 
     coriolis_ensemble = [FPlane(f=f[i, j]) for i = 1:Nensemble, j=1:Nbatch]
     closure_ensemble = [deepcopy(closure) for i = 1:Nensemble, j=1:Nbatch]
