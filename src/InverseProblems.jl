@@ -8,7 +8,7 @@ using ..Observations: obs_str, AbstractObservation, SyntheticObservations, initi
 
 using ..TurbulenceClosureParameters: free_parameters_str, update_closure_ensemble_member!
 
-using OffsetArrays, Statistics
+using OffsetArrays, Statistics, LinearAlgebra
 
 using Oceananigans: short_show, run!, fields, FieldTimeSeries, CPU
 using Oceananigans.OutputReaders: InMemory
@@ -155,7 +155,9 @@ n_y(grid::TwoDimensionalEnsembleGrid) = grid.Ny
 n_ensemble(ip::InverseProblem) = n_ensemble(ip.simulation.model.grid)
 
 """ Transform and return `ip.observations` appropriate for `ip.output_map`. """
-observation_map(ip::InverseProblem) = transform_time_series(ip.output_map, ip.observations)
+observation_map(ip::InverseProblem) = observation_map(ip.output_map, ip.observations)
+observation_map(map::ConcatenatedOutputMap, observations) = transform_time_series(map, observations)
+observation_map(map::ConcatenatedVectorNormMap, observations) = hcat(0.0)
 
 """
     forward_run!(ip, parameters)
@@ -241,8 +243,6 @@ Return the `transform_time_series` of each `time_series` in `time_serieses` vect
 transform_time_series(map, time_serieses::Vector) =
     vcat(Tuple(transform_time_series(map, time_series) for time_series in time_serieses)...)    
 
-    transform_time_series
-    
 """
     observation_map_variance_across_time(map::ConcatenatedOutputMap, observation::SyntheticObservations)
 
@@ -298,7 +298,8 @@ function transform_output(map::ConcatenatedVectorNormMap,
     fwd_map = transform_output(concat_map, observations, time_series_collector)
     obs_map = transform_time_series(concat_map, observations)
 
-    return norm(fwd_map .- obs_map)
+    diffn = fwd_map .- obs_map
+    return mapslices(norm, diffn; dims = 1)
 end
 
 vectorize(observation) = [observation]

@@ -42,7 +42,7 @@ priors = (
 free_parameters = FreeParameters(priors)
 
 # Specify an output map that tracks 3 uniformly spaced time steps, ignoring the initial condition
-track_times = floor.(range(1, stop = length(observations[1].times), length = 3))
+track_times = Int.(floor.(range(1, stop = length(observations[1].times), length = 3)))
 popfirst!(track_times)
 # output_map = ConcatenatedOutputMap(track_times)
 output_map = ConcatenatedVectorNormMap(track_times)
@@ -52,9 +52,9 @@ calibration = InverseProblem(observations, ensemble_simulation, free_parameters;
 
 # Ensemble Kalman Inversion
 
-eki = EnsembleKalmanInversion(calibration; noise_covariance = 0.01)
+eki = EnsembleKalmanInversion(calibration; noise_covariance = 0.001)
 
-iterations = 10
+iterations = 4
 iterate!(eki; iterations = iterations)
 
 # Visualize the outputs of EKI calibration. Plots will be stored in `directory`.
