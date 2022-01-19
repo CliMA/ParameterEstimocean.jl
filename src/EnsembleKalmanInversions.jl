@@ -315,17 +315,45 @@ function UnscentedKalmanInversionPostprocess(eki)
     return θ_mean, θθ_cov, θθ_std_arr, eki.ensemble_kalman_process.err
 end
 
+# Operator ⟨x, x⟩_Γ = ⟨x, Γ⁻¹x⟩ = xᵀΓ⁻¹x
+xᵀΓ⁻¹x(x, Γ) = transpose(x) * inv(Γ) * x
+
+"""
+    Φ(eki, θ, G)
+
+Return a tuple `(Φ1, Φ2)` of terms in the EKI regularized objective function, where
+Φ = (1/2)*(Φ1 + Φ2). Φ1 measures output misfit `|| Γy^(-¹/₂) * (y .- G(θ)) ||²` and 
+Φ2 measures prior misfit `|| Γθ^(-¹/₂) * (θ .- μθ) ||²`, where `y` is the observation 
+map, `G(θ)` is the forward map, `Γy` is the observation noise covariance, `Γθ` is 
+the prior covariance, and `μθ` represents the prior means. Note that `Γ^(-1/2) = 
+inv(sqrt(Γ))`. 
+"""
+function Φ(eki, θ::AbstractVector, G::AbstractVector)
+    y = eki.mapped_observations
+    Γy = eki.noise_covariance
+    distributions = getproperty.(eki.parameter_distribution.distributions, :distribution)
+    μθ = getproperty.(distributions, :μ)
+    Γθ = diagm( getproperty.(distributions, :σ).^2 )
+
+    # Φ1 = || Γy^(-¹/₂) * (y .- G) ||²
+    Φ1 = norm(inv(sqrt(Γy)) * (y .- G))^2
+    # Φ2 = || Γθ^(-¹/₂) * (θ .- μθ) ||² 
+    Φ2 = norm(inv(sqrt(Γθ)) * (θ .- μθ))^2
+    return (Φ1, Φ2)
+end
+
 """
     struct IterationSummary{P, M, C, V, E}
 
 Container with information about each iteration of the Ensemble Kalman Process.
 """
-struct IterationSummary{P, M, C, V, E}
+struct IterationSummary{P, M, C, V, E, O}
     parameters :: P # constrained
     ensemble_mean :: M # constrained
     ensemble_cov :: C # constrained
     ensemble_var :: V
     mean_square_errors :: E
+    objective_values :: O
 end
 
 """
@@ -354,6 +382,11 @@ function IterationSummary(eki, parameters, forward_map)
         mapreduce((x, y) -> (x - y)^2, +, eki.mapped_observations, view(forward_map, :, m)) / N_observations
         for m = 1:N_ensemble
     ]
+
+    objective_values = [Φ(eki, θ[:,j], G[:,j]) for j=1:size(G, 2)]
+
+    # Vector of (Φ1, Φ2) pairs, one for each ensemble member at the current iteration
+    objective_values = Φ.(eki, collect.(θ), [G[:, j] for j in 1:size(G, 2)])
 
     return IterationSummary(constrained_parameters,
                             constrained_ensemble_mean,
