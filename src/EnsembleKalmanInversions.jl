@@ -383,16 +383,15 @@ function IterationSummary(eki, parameters, forward_map)
         for m = 1:N_ensemble
     ]
 
-    objective_values = [Φ(eki, θ[:,j], G[:,j]) for j=1:size(G, 2)]
-
     # Vector of (Φ1, Φ2) pairs, one for each ensemble member at the current iteration
-    objective_values = Φ.(eki, collect.(θ), [G[:, j] for j in 1:size(G, 2)])
+    objective_values = [Φ(eki, parameters[:, j], forward_map[:, j]) for j in 1:size(forward_map, 2)]
 
     return IterationSummary(constrained_parameters,
                             constrained_ensemble_mean,
                             constrained_ensemble_covariance,
                             constrained_ensemble_variance,
-                            mean_square_errors)
+                            mean_square_errors,
+                            objective_values)
 end
 
 function IterationSummary(eki, parameters)
