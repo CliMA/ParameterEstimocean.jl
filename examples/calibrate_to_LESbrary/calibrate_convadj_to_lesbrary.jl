@@ -30,7 +30,7 @@ ensemble_model = OneDimensionalEnsembleModel(observations;
     closure = closure
 )
 
-ensemble_simulation = Simulation(ensemble_model; Δt = 10seconds, stop_time = 4days)
+ensemble_simulation = Simulation(ensemble_model; Δt = 10seconds, stop_time = 2days)
 
 # Specify priors
 
@@ -45,14 +45,14 @@ free_parameters = FreeParameters(priors)
 track_times = Int.(floor.(range(1, stop = length(observations[1].times), length = 3)))
 popfirst!(track_times)
 # output_map = ConcatenatedOutputMap(track_times)
-output_map = ConcatenatedVectorNormMap(track_times)
+output_map = ConcatenatedOutputMap(track_times)
 
 # Build `InverseProblem`
 calibration = InverseProblem(observations, ensemble_simulation, free_parameters; output_map = output_map)
 
 # Ensemble Kalman Inversion
 
-eki = EnsembleKalmanInversion(calibration; noise_covariance = 0.001)
+eki = EnsembleKalmanInversion(calibration; noise_covariance = 0.01)
 
 iterations = 4
 iterate!(eki; iterations = iterations)
@@ -186,7 +186,13 @@ calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
 y = observation_map(calibration)
 
 using FileIO
-# a = forward_map(calibration, params) .- y
+# G = forward_map(calibration, params)
+# save("calibrate_convadj_to_lesbrary/loss_landscape.jld2", "G", G)
+
+G = load("calibrate_convadj_to_lesbrary/loss_landscape.jld2")["G"]
+zc = [mapslices(norm, G .- y, dims = 1)...]
+
+# Φs = forward_map(calibration, params) .- y
 # save("calibrate_convadj_to_lesbrary/loss_landscape.jld2", "a", a)
 
 a = load("calibrate_convadj_to_lesbrary/loss_landscape.jld2")["a"]
