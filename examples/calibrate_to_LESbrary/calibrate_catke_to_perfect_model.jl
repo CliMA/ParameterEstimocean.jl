@@ -38,7 +38,6 @@ free_parameters = FreeParameters(named_tuple_map(names(parameter_set), build_pri
 
 # Pack everything into Inverse Problem `calibration`
 track_times = Int.(floor.(range(1, stop = length(observations[1].times), length = 3)))
-popfirst!(track_times)
 calibration = InverseProblem(observations, ensemble_simulation, free_parameters, output_map = ConcatenatedOutputMap(track_times));
 
 # Make sure the forward map evaluated on the true parameters matches the observation map
