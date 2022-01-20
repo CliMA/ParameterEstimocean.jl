@@ -1,5 +1,6 @@
 module TurbulenceClosureParameters
 
+using Oceananigans.Architectures: CPU, arch_array, architecture
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, AbstractTimeDiscretization, ExplicitTimeDiscretization
 using Printf
 
@@ -141,6 +142,17 @@ function update_closure_ensemble_member!(closures::AbstractMatrix, p_ensemble, p
     end
     
     return nothing
+end
+
+function new_closure_ensemble(closures, θ)
+    arch = architecture(closures)
+    cpu_closures = arch_array(CPU(), closures)
+
+    for (p, θp) in enumerate(θ)
+        update_closure_ensemble_member!(cpu_closures, p, θp)
+    end
+
+    return arch_array(arch, cpu_closures)
 end
 
 end # module

@@ -6,7 +6,7 @@ using Suppressor: @suppress
 using ..Observations: obs_str, AbstractObservation, SyntheticObservations, initialize_simulation!, FieldTimeSeriesCollector,
     observation_times, observation_names
 
-using ..TurbulenceClosureParameters: free_parameters_str, update_closure_ensemble_member!
+using ..TurbulenceClosureParameters: free_parameters_str, new_closure_ensemble
 
 using OffsetArrays, Statistics, LinearAlgebra
 
@@ -36,7 +36,7 @@ struct ConcatenatedOutputMap{T} <: AbstractOutputMap
 end
 
 ConcatenatedOutputMap(; time_indices = Colon()) = ConcatenatedOutputMap(time_indices)
-
+    
 output_map_str(::ConcatenatedOutputMap) = "ConcatenatedOutputMap"
 
 """
@@ -54,11 +54,13 @@ ConcatenatedVectorNormMap(; time_indices = Colon()) = ConcatenatedVectorNormMap(
 
 output_map_str(::ConcatenatedVectorNormMap) = "ConcatenatedVectorNormMap"
 
+initial_time_index(map::AbstractOutputMap) = map.time_indices == Colon() ? 1 : first(map.time_indices)
+
 #####
 ##### InverseProblems
 #####
 
-struct InverseProblem{F,O,S,T,P}
+struct InverseProblem{F, O, S, T, P}
     observations :: O
     simulation :: S
     time_series_collector :: T
@@ -172,11 +174,9 @@ function forward_run!(ip::InverseProblem, parameters)
 
     θ = expand_parameters(ip, parameters)
 
-    for p = 1:length(θ)
-        update_closure_ensemble_member!(closures, p, θ[p])
-    end
+    simulation.model.closure = new_closure_ensemble(closures, θ)
 
-    initialize_simulation!(simulation, observations, ip.time_series_collector)
+    initialize_simulation!(simulation, observations, ip.time_series_collector, initial_time_index(ip.output_map))
 
     @suppress run!(simulation)
     
@@ -358,11 +358,11 @@ function transpose_model_output(time_series_collector, observations)
         time_serieses = NamedTuple(name => time_series for (name, time_series) in time_serieses)
 
         batch_output = SyntheticObservations(time_serieses,
-            grid,
-            times,
-            nothing,
-            nothing,
-            observation.normalization)
+                                             grid,
+                                             times,
+                                             nothing,
+                                             nothing,
+                                             observation.normalization)
 
         push!(transposed_output, batch_output)
     end
