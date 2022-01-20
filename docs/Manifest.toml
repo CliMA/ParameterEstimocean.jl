@@ -61,6 +61,12 @@ version = "0.1.0"
 [[Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
+[[BinaryProvider]]
+deps = ["Libdl", "Logging", "SHA"]
+git-tree-sha1 = "ecdec412a9abc8db54c0efc5548c64dfce072058"
+uuid = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
+version = "0.5.10"
+
 [[Bzip2_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "19a35467a82e236ff51bc17a3a44b69ef35185a2"
@@ -192,6 +198,12 @@ version = "0.2.0"
 git-tree-sha1 = "cc70b17275652eb47bc9e5f81635981f13cea5c8"
 uuid = "9a962f9c-6df0-11e9-0e5d-c546b8b5ee8a"
 version = "1.9.0"
+
+[[DataDeps]]
+deps = ["BinaryProvider", "HTTP", "Libdl", "Reexport", "SHA", "p7zip_jll"]
+git-tree-sha1 = "4f0e41ff461d42cfc62ff0de4f1cd44c6e6b3771"
+uuid = "124859b0-ceae-595e-8997-d05f6a7a8dfe"
+version = "0.7.7"
 
 [[DataStructures]]
 deps = ["Compat", "InteractiveUtils", "OrderedCollections"]
@@ -462,6 +474,12 @@ git-tree-sha1 = "fd83fa0bde42e01952757f01149dd968c06c4dba"
 uuid = "0234f1f7-429e-5d53-9886-15a909be8d59"
 version = "1.12.0+1"
 
+[[HTTP]]
+deps = ["Base64", "Dates", "IniFile", "Logging", "MbedTLS", "NetworkOptions", "Sockets", "URIs"]
+git-tree-sha1 = "0fa77022fe4b511826b39c894c90daf5fce3334a"
+uuid = "cd3eb016-35fb-5094-929b-558a96fad6f3"
+version = "0.9.17"
+
 [[HarfBuzz_jll]]
 deps = ["Artifacts", "Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "Graphite2_jll", "JLLWrappers", "Libdl", "Libffi_jll", "Pkg"]
 git-tree-sha1 = "129acf094d168394e80ee1dc4bc06ec835e510a3"
@@ -512,6 +530,12 @@ version = "1.0.0"
 git-tree-sha1 = "f5fc07d4e706b84f72d54eedcc1c13d92fb0871c"
 uuid = "d25df0c9-e2be-5dd7-82c8-3ad0b3e990b9"
 version = "0.1.2"
+
+[[IniFile]]
+deps = ["Test"]
+git-tree-sha1 = "098e4d2c533924c921f9f9847274f2ad89e018b8"
+uuid = "83e8ac13-25f8-5344-8a64-a9f2b223428f"
+version = "0.5.0"
 
 [[IntelOpenMP_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -766,6 +790,12 @@ deps = ["AbstractTrees", "Automa", "DataStructures", "FreeTypeAbstraction", "Geo
 git-tree-sha1 = "70e733037bbf02d691e78f95171a1fa08cdc6332"
 uuid = "0a4f8689-d25c-4efe-a92b-7142dfc1aa53"
 version = "0.2.1"
+
+[[MbedTLS]]
+deps = ["Dates", "MbedTLS_jll", "Random", "Sockets"]
+git-tree-sha1 = "1c38e51c3d08ef2278062ebceade0e46cefc96fe"
+uuid = "739be429-bea8-5141-9913-cc70e7f3736d"
+version = "1.0.3"
 
 [[MbedTLS_jll]]
 deps = ["Artifacts", "Libdl"]
@@ -1289,6 +1319,11 @@ deps = ["Unicode"]
 git-tree-sha1 = "53a9f49546b8d2dd2e688d216421d050c9a31d0d"
 uuid = "30578b45-9adc-5946-b283-645ec420af67"
 version = "0.4.1"
+
+[[URIs]]
+git-tree-sha1 = "97bbe755a53fe859669cd907f2d96aee8d2c1355"
+uuid = "5c2747f8-b7ea-4ff2-ba2e-563bfd36b1d4"
+version = "1.3.0"
 
 [[UUIDs]]
 deps = ["Random", "SHA"]
