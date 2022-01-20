@@ -176,7 +176,7 @@ function forward_run!(ip::InverseProblem, parameters)
         update_closure_ensemble_member!(closures, p, θ[p])
     end
 
-    initialize_simulation!(simulation, observations, ip.time_series_collector)
+    initialize_simulation!(simulation, observations, ip.time_series_collector, time_index = ip.output_map.time_indices[1])
 
     @suppress run!(simulation)
     
