@@ -36,7 +36,7 @@ struct ConcatenatedOutputMap{T} <: AbstractOutputMap
 end
 
 ConcatenatedOutputMap(; time_indices = Colon()) = ConcatenatedOutputMap(time_indices)
-
+    
 output_map_str(::ConcatenatedOutputMap) = "ConcatenatedOutputMap"
 
 """
@@ -53,6 +53,8 @@ end
 ConcatenatedVectorNormMap(; time_indices = Colon()) = ConcatenatedVectorNormMap(time_indices)
 
 output_map_str(::ConcatenatedVectorNormMap) = "ConcatenatedVectorNormMap"
+
+initial_time_index(map::AbstractOutputMap) = map.time_indices == Colon() ? 1 : first(map.time_indices)
 
 #####
 ##### InverseProblems
@@ -174,7 +176,7 @@ function forward_run!(ip::InverseProblem, parameters)
 
     simulation.model.closure = new_closure_ensemble(closures, θ)
 
-    initialize_simulation!(simulation, observations, ip.time_series_collector, time_index = ip.output_map.time_indices[1])
+    initialize_simulation!(simulation, observations, ip.time_series_collector, initial_time_index(ip.output_map))
 
     @suppress run!(simulation)
     
