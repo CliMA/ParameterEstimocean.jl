@@ -209,16 +209,10 @@ function transform_time_series(output_map::ConcatenatedOutputMap, time_series::S
 
     for field_name in keys(time_series.field_time_serieses)
         field_time_series = time_series.field_time_serieses[field_name]
-
-        @show size(field_time_series)
-        @show size(field_time_series.data)
-        @show size(interior(field_time_series))
-
         field_time_series_data = Array(interior(field_time_series))[:, :, :, output_map.time_indices]
 
-        @show Nx, Ny, Nz, Nt = size(field_time_series_data)
+        Nx, Ny, Nz, Nt = size(field_time_series_data)
         field_time_series_data = reshape(field_time_series_data, Nx, Ny * Nz * Nt)
-        @show size(field_time_series_data)
 
         normalize!(field_time_series_data, time_series.normalization[field_name])
         push!(flattened_normalized_data, field_time_series_data)
@@ -242,8 +236,6 @@ function transform_output(map::ConcatenatedOutputMap,
                           time_series_collector)
 
     # transposed_output isa Vector{SyntheticObservations} where SyntheticObservations is Nx by Nz by Nt
-    @info "Transposing model output..."
-    @show time_series_collector.grid
     transposed_output = transpose_model_output(time_series_collector, observations)
 
     return transform_time_series(map, transposed_output)
@@ -282,7 +274,7 @@ function transpose_model_output(time_series_collector, observations)
     Hz = time_series_collector.grid.Hz
     Nt = length(times)
 
-    @show grid = drop_y_dimension(time_series_collector.grid)
+    grid = drop_y_dimension(time_series_collector.grid)
 
     for j = 1:Nbatch
         observation = observations[j]
