@@ -13,7 +13,7 @@ using EnsembleKalmanProcesses.ParameterDistributionStorage
 
 using EnsembleKalmanProcesses.EnsembleKalmanProcessModule: sample_distribution
 
-using ..InverseProblems: n_ensemble, observation_map, forward_map, tupify_parameters
+using ..InverseProblems: Nensemble, observation_map, forward_map, tupify_parameters
 
 #####
 ##### Priors
@@ -174,7 +174,7 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampl
                                                    collect(string.(free_parameters.names)))
 
     ek_process = Inversion()
-    initial_ensemble = sample_distribution(parameter_distribution, n_ensemble(inverse_problem))
+    initial_ensemble = sample_distribution(parameter_distribution, Nensemble(inverse_problem))
 
     # Build EKP-friendly observations "y" and the covariance matrix of observational uncertainty "Γy"
     y = dropdims(observation_map(inverse_problem), dims=2) # length(forward_map_output) column vector

@@ -7,23 +7,31 @@
 # pkg"add OceanTurbulenceParameterEstimation, Oceananigans, Distributions, CairoMakie"
 # ```
 
-using OceanTurbulenceParameterEstimation, LinearAlgebra, CairoMakie, DataDeps
-using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity, MixingLength, SurfaceTKEFlux
+using Oceananigans
+using Oceananigans.Units
+using OceanTurbulenceParameterEstimation
+using LinearAlgebra
+using CairoMakie
+using DataDeps
+using ElectronDisplay
 
-# First register a DataDep:
+using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity, MixingLength
 
-url = "https://github.com/CliMA/OceananigansArtifacts.jl/blob/" *
-      "glw/lesbrary/LESbrary/2DaySuite/weak_wind_strong_cooling/instantaneous_statistics.jld2"
+# # Using LESbrary data
+#
+# `OceanTurbulenceParameterEstimation.jl` provides paths to synthetic observations
+# derived from high-fidelity large eddy simulations. In this example, we illustrate
+# calibration of a turbulence parameterization to one of these:
 
-dep = DataDep("weak_wind_strong_cooling", "Ocean surface boundary layer LES data", url)
+data_path = datadep"two_day_suite_4m/strong_wind_instantaneous_statistics.jld2"
 
-DataDeps.register(dep)
+times = [2hours, 12hours, 24hours, 36hours]
 
-# Now we load it:
+observations = SyntheticObservations(data_path;
+                                     field_names = (:u, :v, :b, :e),
+                                     normalize = ZScore,
+                                     times)
 
-observations = SyntheticObservations(datadep"weak_wind_strong_cooling", field_names=(:u, :v, :b, :e), normalize=ZScore)
-
-#=
 fig = Figure()
 
 ax_b = Axis(fig[1, 1], xlabel = "Buoyancy\n[10⁻⁴ m s⁻²]", ylabel = "z [m]")
@@ -55,11 +63,11 @@ axislegend(ax_b, position=:rb)
 axislegend(ax_u, position=:lb, merge=true)
 axislegend(ax_e, position=:rb)
 
-##display(fig)
+display(fig)
 
-save("synthetic_catke_observations.svg", fig); nothing # hide
+save("lesbrary_synthetic_observations.svg", fig); nothing # hide
 
-# ![](synthetic_catke_observations.svg)
+# ![](lesbrary_synthetic_observations.svg)
 
 # Well, that looks like a boundary layer, in some respects.
 # 
@@ -68,53 +76,56 @@ save("synthetic_catke_observations.svg", fig); nothing # hide
 # Next, we build a simulation of an ensemble of column models to calibrate
 # CATKE using Ensemble Kalman Inversion.
 
-architecture = CPU()
-ensemble_simulation, closure★ = build_ensemble_simulation(observations, architecture; Nensemble=50)
+catke_mixing_length = MixingLength(Cᴷcʳ=0.0, Cᴷuʳ=0.0, Cᴷeʳ=0.0)
+catke = CATKEVerticalDiffusivity(mixing_length=catke_mixing_length)
+
+simulation = ensemble_column_model_simulation(observations;
+                                              Nensemble = 10,
+                                              architecture = CPU(),
+                                              tracers = (:b, :e),
+                                              closure = catke)
+
+Qᵘ = simulation.model.velocities.u.boundary_conditions.top.condition
+Qᵇ = simulation.model.tracers.b.boundary_conditions.top.condition
+N² = simulation.model.tracers.b.boundary_conditions.bottom.condition
+
+simulation.Δt = 10.0
+
+Qᵘ .= observations.metadata.parameters.momentum_flux
+Qᵇ .= observations.metadata.parameters.buoyancy_flux
+N² .= observations.metadata.parameters.N²_deep
 
 # We choose to calibrate a subset of the CATKE parameters,
 
-priors = (Cᴬu = lognormal_with_mean_std(0.05, 0.01),
-          Cᴬc = lognormal_with_mean_std(0.6, 0.1),
-          Cᴬe = lognormal_with_mean_std(0.2, 0.04))
+priors = (Cᴰ = lognormal_with_mean_std(0.05, 0.1),
+          Cᵂu★ = lognormal_with_mean_std(0.05, 0.1),
+          CᵂwΔ = lognormal_with_mean_std(0.05, 0.1),
+          Cᴸᵇ = lognormal_with_mean_std(0.05, 0.1),
+          Cᴷu⁻ = lognormal_with_mean_std(0.05, 0.1),
+          Cᴷc⁻ = lognormal_with_mean_std(0.05, 0.1),
+          Cᴷe⁻ = lognormal_with_mean_std(0.05, 0.1))
 
 free_parameters = FreeParameters(priors)
 
-# The handy utility function `build_ensemble_simulation` also tells us the optimal
-# parameters that were used when generating the synthetic observations:
+# and construct an  `InverseProblem`,
 
-@show θ★ = (Cᴬu = closure★.mixing_length.Cᴬu,
-            Cᴬc = closure★.mixing_length.Cᴬc,
-            Cᴬe = closure★.mixing_length.Cᴬe)
+calibration = InverseProblem(observations, simulation, free_parameters)
 
-# We construct the `InverseProblem` from `observations`, `ensemble_simulation`, and
-# `free_parameters`,
+unity_parameters = NamedTuple(name => 1.0 for name in keys(priors))
+G = forward_map(calibration, unity_parameters)
 
-calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
+@show size(G)
 
-# We can check that the first ensemble member of the mapped output, which was run with the "true"
-# parameters, is identical to the mapped observations:
-
-G = forward_map(calibration, θ★)
-y = observation_map(calibration)
-
-@show G[:, 1] ≈ y
-
+#=
 # # Ensemble Kalman Inversion
 #
 # Next, we construct an `EnsembleKalmanInversion` (EKI) object,
-#
-# The calibration is done here using Ensemble Kalman Inversion. For more information about the 
-# algorithm refer to
-# [EnsembleKalmanProcesses.jl documentation](
-# https://clima.github.io/EnsembleKalmanProcesses.jl/stable/ensemble_kalman_inversion/).
 
-noise_variance = (observation_map_variance_across_time(calibration)[1, :, 1] .+ 1) .* 1e-3
-
-eki = EnsembleKalmanInversion(calibration; noise_covariance = Matrix(Diagonal(noise_variance)))
+eki = EnsembleKalmanInversion(calibration; noise_covariance = 1e-1)
 
 # and perform few iterations to see if we can converge to the true parameter values.
 
-iterate!(eki; iterations = 20)
+iterate!(eki; iterations = 1)
 
 # Last, we visualize the outputs of EKI calibration.
 

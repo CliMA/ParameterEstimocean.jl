@@ -10,7 +10,7 @@ using ..TurbulenceClosureParameters: free_parameters_str, new_closure_ensemble
 
 using OffsetArrays, Statistics
 
-using Oceananigans: short_show, run!, fields, FieldTimeSeries, CPU
+using Oceananigans: run!, fields, FieldTimeSeries, CPU
 using Oceananigans.OutputReaders: InMemory
 using Oceananigans.Fields: interior, location
 using Oceananigans.Grids: Flat, Bounded,
@@ -83,7 +83,7 @@ function InverseProblem(observations,
 end
 
 function Base.show(io::IO, ip::InverseProblem)
-    sim_str = "Simulation on $(short_show(ip.simulation.model.grid)) with Δt=$(ip.simulation.Δt)"
+    sim_str = "Simulation on $(summary(ip.simulation.model.grid)) with Δt=$(ip.simulation.Δt)"
 
     out_map_type = output_map_type(ip.output_map)
     out_map_str = output_map_str(ip.output_map)
@@ -118,7 +118,7 @@ If `length(θ)` is less the the number of ensemble members in `ip.simulation`, t
 last parameter set is copied to fill the parameter set ensemble.
 """
 function expand_parameters(ip, θ::Vector)
-    Nfewer = n_ensemble(ip) - length(θ)
+    Nfewer = Nensemble(ip) - length(θ)
     Nfewer < 0 && throw(ArgumentError("There are $(-Nfewer) more parameter sets than ensemble members!"))
 
     θ = [tupify_parameters(ip, θi) for θi in θ]
@@ -143,12 +143,11 @@ expand_parameters(ip, θ::Matrix) = expand_parameters(ip, [θ[:, i] for i = 1:si
 const OneDimensionalEnsembleGrid = RectilinearGrid{<:Any, Flat, Flat, Bounded}
 const TwoDimensionalEnsembleGrid = RectilinearGrid{<:Any, Flat, Bounded, Bounded}
 
-n_ensemble(grid::Union{OneDimensionalEnsembleGrid, TwoDimensionalEnsembleGrid}) = grid.Nx
-n_observations(grid::OneDimensionalEnsembleGrid) = grid.Ny
-n_observations(grid::TwoDimensionalEnsembleGrid) = 1
-n_z(grid::Union{OneDimensionalEnsembleGrid, TwoDimensionalEnsembleGrid}) = grid.Nz
-n_y(grid::TwoDimensionalEnsembleGrid) = grid.Ny
-n_ensemble(ip::InverseProblem) = n_ensemble(ip.simulation.model.grid)
+Nobservations(grid::OneDimensionalEnsembleGrid) = grid.Ny
+Nobservations(grid::TwoDimensionalEnsembleGrid) = 1
+
+Nensemble(grid::Union{OneDimensionalEnsembleGrid, TwoDimensionalEnsembleGrid}) = grid.Nx
+Nensemble(ip::InverseProblem) = Nensemble(ip.simulation.model.grid)
 
 """ Transform and return `ip.observations` appropriate for `ip.output_map`. """
 observation_map(ip::InverseProblem) = transform_time_series(ip.output_map, ip.observations)
@@ -200,7 +199,6 @@ end
 
 (ip::InverseProblem)(θ) = forward_map(ip, θ)
 
-
 """
     transform_time_series(::ConcatenatedOutputMap, time_series::SyntheticObservations)
 
@@ -211,14 +209,18 @@ function transform_time_series(output_map::ConcatenatedOutputMap, time_series::S
 
     for field_name in keys(time_series.field_time_serieses)
         field_time_series = time_series.field_time_serieses[field_name]
+
+        @show size(field_time_series)
+        @show size(field_time_series.data)
+        @show size(interior(field_time_series))
+
         field_time_series_data = Array(interior(field_time_series))[:, :, :, output_map.time_indices]
 
-        Nx, Ny, Nz, Nt = size(field_time_series_data)
-
+        @show Nx, Ny, Nz, Nt = size(field_time_series_data)
         field_time_series_data = reshape(field_time_series_data, Nx, Ny * Nz * Nt)
+        @show size(field_time_series_data)
 
         normalize!(field_time_series_data, time_series.normalization[field_name])
-
         push!(flattened_normalized_data, field_time_series_data)
     end
 
@@ -234,6 +236,93 @@ Return the `transform_time_series` of each `time_series` in `time_serieses` vect
 """
 transform_time_series(map, time_serieses::Vector) =
     vcat(Tuple(transform_time_series(map, time_series) for time_series in time_serieses)...)
+
+function transform_output(map::ConcatenatedOutputMap,
+                          observations::Union{SyntheticObservations, Vector{<:SyntheticObservations}},
+                          time_series_collector)
+
+    # transposed_output isa Vector{SyntheticObservations} where SyntheticObservations is Nx by Nz by Nt
+    @info "Transposing model output..."
+    @show time_series_collector.grid
+    transposed_output = transpose_model_output(time_series_collector, observations)
+
+    return transform_time_series(map, transposed_output)
+end
+
+vectorize(observation) = [observation]
+vectorize(observations::Vector) = observations
+
+const YZSliceObservations = SyntheticObservations{<:Any, <:YZSliceGrid}
+
+transpose_model_output(time_series_collector, observations::YZSliceObservations) =
+    SyntheticObservations(time_series_collector.field_time_serieses,
+                          time_series_collector.grid,
+                          time_series_collector.times,
+                          nothing,
+                          nothing,
+                          observations.normalization)
+
+"""
+    transpose_model_output(time_series_collector, observations)
+
+Transpose a `NamedTuple` of 4D `FieldTimeSeries` model output collected by `time_series_collector`
+into a Vector of `SyntheticObservations` for each member of the observation batch.
+
+Return a 1-vector in the case of singleton observations.
+"""
+function transpose_model_output(time_series_collector, observations)
+    observations = vectorize(observations)
+    times = time_series_collector.times
+
+    transposed_output = []
+
+    Nensemble = time_series_collector.grid.Nx
+    Nbatch = time_series_collector.grid.Ny
+    Nz = time_series_collector.grid.Nz
+    Hz = time_series_collector.grid.Hz
+    Nt = length(times)
+
+    @show grid = drop_y_dimension(time_series_collector.grid)
+
+    for j = 1:Nbatch
+        observation = observations[j]
+        time_serieses = OrderedDict{Any, Any}()
+
+        for name in keys(observation.field_time_serieses)
+            loc = LX, LY, LZ = location(observation.field_time_serieses[name])
+            topo = topology(grid)
+
+            field_time_series = time_series_collector.field_time_serieses[name]
+
+            raw_data = parent(field_time_series.data)
+            data = OffsetArray(view(raw_data, :, j:j, :, :), 0, 0, -Hz, 0)
+
+            time_series = FieldTimeSeries{LX, LY, LZ, InMemory}(data, grid, nothing, times)
+            time_serieses[name] = time_series
+        end
+
+        # Convert to NamedTuple
+        time_serieses = NamedTuple(name => time_series for (name, time_series) in time_serieses)
+
+        batch_output = SyntheticObservations(time_serieses,
+                                             grid,
+                                             times,
+                                             nothing,
+                                             nothing,
+                                             observation.normalization)
+
+        push!(transposed_output, batch_output)
+    end
+
+    return transposed_output
+end
+
+function drop_y_dimension(grid::RectilinearGrid{<:Any, <:Flat, <:Flat, <:Bounded})
+    new_size = ColumnEnsembleSize(Nz=grid.Nz, ensemble=(grid.Nx, 1), Hz=grid.Hz)
+    z_domain = (grid.zᵃᵃᶠ[1], grid.zᵃᵃᶠ[grid.Nz])
+    new_grid = RectilinearGrid(size=new_size, z=z_domain, topology=(Flat, Flat, Bounded))
+    return new_grid
+end
 
 """
     observation_map_variance_across_time(map::ConcatenatedOutputMap, observation::SyntheticObservations)
@@ -272,89 +361,5 @@ observation_map_variance_across_time(map::ConcatenatedOutputMap, observations::V
 
 observation_map_variance_across_time(ip::InverseProblem) = observation_map_variance_across_time(ip.output_map, ip.observations)
 
-function transform_output(map::ConcatenatedOutputMap,
-    observations::Union{SyntheticObservations,Vector{<:SyntheticObservations}},
-    time_series_collector)
-
-    # transposed_output isa Vector{SyntheticObservations} where SyntheticObservations is Nx by Nz by Nt
-    transposed_output = transpose_model_output(time_series_collector, observations)
-
-    return transform_time_series(map, transposed_output)
-end
-
-vectorize(observation) = [observation]
-vectorize(observations::Vector) = observations
-
-const YZSliceObservations = SyntheticObservations{<:Any,<:YZSliceGrid}
-
-transpose_model_output(time_series_collector, observations::YZSliceObservations) =
-    SyntheticObservations(time_series_collector.field_time_serieses,
-                          time_series_collector.grid,
-                          time_series_collector.times,
-                          nothing,
-                          nothing,
-                          observations.normalization)
-
-"""
-    transpose_model_output(time_series_collector, observations)
-
-Transpose a `NamedTuple` of 4D `FieldTimeSeries` model output collected by `time_series_collector`
-into a Vector of `SyntheticObservations` for each member of the observation batch.
-
-Return a 1-vector in the case of singleton observations.
-"""
-function transpose_model_output(time_series_collector, observations)
-    observations = vectorize(observations)
-    times = time_series_collector.times
-
-    transposed_output = []
-
-    n_ensemble = time_series_collector.grid.Nx
-    n_batch = time_series_collector.grid.Ny
-    Nz = time_series_collector.grid.Nz
-    Hz = time_series_collector.grid.Hz
-    Nt = length(times)
-
-    grid = drop_y_dimension(time_series_collector.grid)
-
-    for j = 1:n_batch
-        observation = observations[j]
-        time_serieses = OrderedDict{Any,Any}()
-
-        for name in keys(observation.field_time_serieses)
-            loc = LX, LY, LZ = location(observation.field_time_serieses[name])
-            topo = topology(grid)
-
-            field_time_series = time_series_collector.field_time_serieses[name]
-
-            raw_data = parent(field_time_series.data)
-            data = OffsetArray(view(raw_data, :, j:j, :, :), 0, 0, -Hz, 0)
-
-            time_series = FieldTimeSeries{LX, LY, LZ, InMemory}(data, grid, nothing, times)
-            time_serieses[name] = time_series
-        end
-
-        # Convert to NamedTuple
-        time_serieses = NamedTuple(name => time_series for (name, time_series) in time_serieses)
-
-        batch_output = SyntheticObservations(time_serieses,
-                                             grid,
-                                             times,
-                                             nothing,
-                                             nothing,
-                                             observation.normalization)
-
-        push!(transposed_output, batch_output)
-    end
-
-    return transposed_output
-end
-
-function drop_y_dimension(grid::RectilinearGrid{<:Any, <:Flat, <:Flat, <:Bounded})
-    new_size = ColumnEnsembleSize(Nz=grid.Nz, ensemble=(grid.Nx, 1), Hz=grid.Hz)
-    z_domain = (grid.zᵃᵃᶠ[1], grid.zᵃᵃᶠ[grid.Nz])
-    new_grid = RectilinearGrid(size=new_size, z=z_domain, topology=(Flat, Flat, Bounded))
-    return new_grid
-end
 
 end # module
