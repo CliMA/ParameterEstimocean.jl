@@ -38,13 +38,13 @@ function make_figure_axes()
     ax_b = Axis(fig[1, 1], xlabel = "Buoyancy \n[10⁻⁴ m s⁻²]", ylabel = "z [m]")
     ax_u = Axis(fig[1, 2], xlabel = "x-velocity, u \n[cm s⁻¹]")
     ax_v = Axis(fig[1, 3], xlabel = "y-velocity, v \n[cm s⁻¹]")
-    ax_e = Axis(fig[1, 4], xlabel = "Turbulent kinetic energy\n[10⁻⁴ m² s⁻²]")
+    ax_e = Axis(fig[1, 4], xlabel = "Turbulent kinetic energy \n[10⁻⁴ m² s⁻²]")
     return fig, (ax_b, ax_u, ax_v, ax_e)
 end
 
 function plot_fields!(axs, b, u, v, e, label, color)
     z = znodes(Center, b.grid)
-    # Note unit conversions below, eg m s⁻² -> 10⁻⁴ m s⁻²:
+    ## Note unit conversions below, e.g., m s⁻² -> 10⁻⁴ m s⁻²:
     lines!(axs[1], 1e4 * interior(b)[1, 1, :], z; color, label)
     lines!(axs[2], 1e2 * interior(u)[1, 1, :], z; color, label)
     lines!(axs[3], 1e2 * interior(v)[1, 1, :], z; color, label)
@@ -175,4 +175,3 @@ axislegend(ax, position=:rb)
 save("lesbrary_catke_parameter_evolution.svg", fig); nothing # hide
 
 # ![](lesbrary_catke_parameter_evolution.svg)
-
