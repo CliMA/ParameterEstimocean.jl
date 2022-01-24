@@ -1,3 +1,9 @@
+# In this example, we use EKI to tune the closure parameters of a HydrostaticFreeSurfaceModel 
+# with a CATKEBasedVerticalDiffusivity closure in order to align the predictions of the model 
+# to those of a high-resolution LES data generated in LESbrary.jl. Here `predictions` refers to the
+# 1-D profiles of temperature, velocity, and turbulent kinetic energy horizontally averaged over a
+# 3-D physical domain.
+
 pushfirst!(LOAD_PATH, joinpath(@__DIR__, "../.."))
 
 using Oceananigans
@@ -27,10 +33,6 @@ include("utils/visualize_profile_predictions.jl")
 #####
 ##### Set up ensemble model
 #####
-
-## NEED TO IMPLEMENT COARSE-GRAINING
-##
-##
 
 lesbrary_directory = "/Users/adelinehillier/Desktop/dev/"
 
