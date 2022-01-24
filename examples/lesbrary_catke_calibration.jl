@@ -108,13 +108,13 @@ N² .= observations.metadata.parameters.N²_deep
 # We identify a subset of the CATKE parameters to calibrate by specifying
 # parameter names and prior distributions:
 
-priors = (Cᴰ   = lognormal_with_mean_std(2.5,  1.0),
+priors = (Cᴰ   = lognormal_with_mean_std(2.5,  0.1),
           Cᵂu★ = lognormal_with_mean_std(0.2,  0.1),
-          CᵂwΔ = lognormal_with_mean_std(0.05, 0.1),
-          Cᴸᵇ  = lognormal_with_mean_std(0.05, 0.1),
-          Cᴷu⁻ = lognormal_with_mean_std(0.05, 0.1),
-          Cᴷc⁻ = lognormal_with_mean_std(0.05, 0.1),
-          Cᴷe⁻ = lognormal_with_mean_std(0.05, 0.1))
+          CᵂwΔ = lognormal_with_mean_std(0.05, 0.05),
+          Cᴸᵇ  = lognormal_with_mean_std(0.05, 0.05),
+          Cᴷu⁻ = lognormal_with_mean_std(0.05, 0.05),
+          Cᴷc⁻ = lognormal_with_mean_std(0.05, 0.05),
+          Cᴷe⁻ = lognormal_with_mean_std(0.05, 0.05))
 
 free_parameters = FreeParameters(priors)
 
