@@ -63,7 +63,6 @@ end
 
 [axislegend(ax, position=:rb, merge=true, fontsize=12) for ax in axs]
 
-display(fig)
 save("lesbrary_synthetic_observations.svg", fig); nothing # hide
 
 # ![](lesbrary_synthetic_observations.svg)
@@ -150,12 +149,10 @@ best_parameters = eki.iteration_summaries[end].ensemble_mean
 
 forward_run!(calibration, initial_parameters)
 fig = compare_model_observations()
-display(fig)
 save("model_observation_comparison_iteration_0.svg", fig); nothing # hide
 
 forward_run!(calibration, best_parameters)
 fig = compare_model_observations()
-display(fig)
 save("model_observation_comparison_iteration_10.svg", fig); nothing # hide
 
 # Let's see how the parameters evolved:
@@ -175,7 +172,6 @@ for (i, name) in enumerate(calibration.free_parameters.names)
 end
 
 axislegend(ax, position=:rb)
-display(fig)
 save("lesbrary_catke_parameter_evolution.svg", fig); nothing # hide
 
 # ![](lesbrary_catke_parameter_evolution.svg)
