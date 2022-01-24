@@ -13,7 +13,6 @@ using OceanTurbulenceParameterEstimation
 using LinearAlgebra
 using CairoMakie
 using DataDeps
-using ElectronDisplay
 
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity, MixingLength
 
@@ -72,8 +71,6 @@ end
 axislegend(axs[1], position=:rb)
 axislegend(axs[2], position=:lb, merge=true)
 axislegend(axs[3], position=:rb)
-
-display(fig)
 
 save("lesbrary_synthetic_observations.svg", fig); nothing # hide
 
@@ -171,7 +168,10 @@ function compare_model_observations()
 end
 
 fig = compare_model_observations()
-display(fig)
+
+save("model_observation_comparison_iteration_1.svg", fig); nothing # hide
+
+# ![](model_observation_comparison_iteration_1.svg)
 
 # Now let's see if further iterations improve that result...
 
@@ -200,4 +200,6 @@ end
 
 axislegend(ax, position=:rb)
 
-display(fig)
+save("model_observation_comparison_iteration_12.svg", fig); nothing # hide
+
+# ![](model_observation_comparison_iteration_12.svg)
