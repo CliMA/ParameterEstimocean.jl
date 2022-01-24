@@ -18,6 +18,8 @@ export
     iterate!,
     EnsembleKalmanInversion,
     NaNResampler,
+    FullEnsembleDistribution,
+    SuccessfulEnsembleDistribution,
     UnscentedKalmanInversion,
     UnscentedKalmanInversionPostprocess,
     ConstrainedNormal
