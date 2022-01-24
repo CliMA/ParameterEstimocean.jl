@@ -4,7 +4,7 @@
 
 # ```julia
 # using Pkg
-# pkg"add OceanTurbulenceParameterEstimation, Oceananigans, Distributions, CairoMakie"
+# pkg"add OceanTurbulenceParameterEstimation, Oceananigans, CairoMakie"
 # ```
 
 using Oceananigans
@@ -12,7 +12,8 @@ using Oceananigans.Units
 using OceanTurbulenceParameterEstimation
 using LinearAlgebra, CairoMakie, DataDeps
 
-using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity, MixingLength
+using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities:
+    CATKEVerticalDiffusivity, MixingLength
 
 # # Using LESbrary data
 #
@@ -42,12 +43,13 @@ function make_figure_axes()
 end
 
 function plot_fields!(axs, b, u, v, e, label, color)
-    z = znodes(Center, observations.grid)
+    z = znodes(Center, b.grid)
     # Note unit conversions below, eg m s⁻² -> 10⁻⁴ m s⁻²:
     lines!(axs[1], 1e4 * interior(b)[1, 1, :], z; color, label)
     lines!(axs[2], 1e2 * interior(u)[1, 1, :], z; color, label)
     lines!(axs[3], 1e2 * interior(v)[1, 1, :], z; color, label)
     lines!(axs[4], 1e4 * interior(e)[1, 1, :], z; color, label)
+    return nothing
 end
 
 # And then plot the evolution of the observed fields,
