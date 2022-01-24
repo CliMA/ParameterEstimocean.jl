@@ -60,6 +60,7 @@ inverse_parameter_transform(priors::NamedTuple, parameters::Vector) =
     NamedTuple(name => inverse_parameter_transform(priors[name], parameters[i])
                for (i, name) in enumerate(keys(priors)))
 
+#=
 # Convert covariance from unconstrained (EKI) to constrained
 inverse_covariance_transform(::Tuple{Vararg{LogNormal}}, parameters, covariance) =
     Diagonal(exp.(parameters)) * covariance * Diagonal(exp.(parameters))
@@ -72,6 +73,17 @@ function inverse_covariance_transform(cn::Tuple{Vararg{ConstrainedNormal}}, para
     dT = Diagonal(@. -(upper_bound - lower_bound) * exp(parameters) / (1 + exp(parameters))^2)
     return dT * covariance * dT'
 end
+=#
+
+function inverse_covariance_transform(Π, parameters, covariance)
+    diag = [covariance_transform_diagonal(Π[i], parameters[i]) for i=1:length(Π)]
+    dT = Diagonal(diag)
+    return dT * covariance * dT'
+end
+
+covariance_transform_diagonal(::LogNormal, p) = exp(p)
+covariance_transform_diagonal(::Normal, p) = p
+covariance_transform_diagonal(Π::ConstrainedNormal, p) = - (Π.upper_bound - Π.lower_bound) * exp(p) / (1 + exp(p)^2)
 
 mutable struct EnsembleKalmanInversion{I, P, E, M, O, F, S, R}
     inverse_problem :: I
