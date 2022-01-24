@@ -20,8 +20,6 @@ export
     NaNResampler,
     FullEnsembleDistribution,
     SuccessfulEnsembleDistribution,
-    UnscentedKalmanInversion,
-    UnscentedKalmanInversionPostprocess,
     ConstrainedNormal
 
 include("Observations.jl")
@@ -50,8 +48,6 @@ using .InverseProblems:
 using .EnsembleKalmanInversions:
     iterate!,
     EnsembleKalmanInversion,
-    UnscentedKalmanInversion,
-    UnscentedKalmanInversionPostprocess,
     ConstrainedNormal,
     lognormal_with_mean_std,
     NaNResampler,

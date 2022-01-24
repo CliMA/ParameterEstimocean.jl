@@ -289,6 +289,7 @@ function initialize_simulation!(simulation, observations, time_series_collector,
     end
 
     simulation.callbacks[:data_collector] = Callback(time_series_collector, SpecifiedTimes(times...))
+    :nan_checker ∈ keys(simulation.callbacks) && pop!(simulation.callbacks, :nan_checker)
 
     simulation.stop_time = times[end]
 

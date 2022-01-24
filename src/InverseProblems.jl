@@ -164,7 +164,6 @@ function forward_run!(ip::InverseProblem, parameters)
     closures = simulation.model.closure
 
     θ = expand_parameters(ip, parameters)
-
     simulation.model.closure = new_closure_ensemble(closures, θ)
 
     initialize_simulation!(simulation, observations, ip.time_series_collector)

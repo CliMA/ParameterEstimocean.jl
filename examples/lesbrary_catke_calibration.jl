@@ -12,6 +12,8 @@ using Oceananigans.Units
 using OceanTurbulenceParameterEstimation
 using LinearAlgebra, CairoMakie, DataDeps
 
+using ElectronDisplay
+
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities:
     CATKEVerticalDiffusivity, MixingLength
 
@@ -23,7 +25,7 @@ using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities:
 
 data_path = datadep"two_day_suite_4m/strong_wind_instantaneous_statistics.jld2"
 times = [2hours, 6hours, 12hours]
-field_names = (:u, :v, :b, :e)
+field_names = (:b, :u, :v, :e)
 
 observations = SyntheticObservations(data_path; field_names, times, normalize=ZScore)
 
@@ -35,17 +37,17 @@ markercycle = [:rect, :utriangle, :star5, :circle, :cross, :+, :pentagon]
 
 function make_figure_axes()
     fig = Figure(resolution=(1200, 400))
-    ax_b = Axis(fig[1, 1], xlabel = "Buoyancy \n[10⁻⁴ m s⁻²]", ylabel = "z [m]")
+    ax_b = Axis(fig[1, 1], xlabel = "Buoyancy \n[cm s⁻²]", ylabel = "z [m]")
     ax_u = Axis(fig[1, 2], xlabel = "x-velocity, u \n[cm s⁻¹]")
     ax_v = Axis(fig[1, 3], xlabel = "y-velocity, v \n[cm s⁻¹]")
-    ax_e = Axis(fig[1, 4], xlabel = "Turbulent kinetic energy\n[10⁻⁴ m² s⁻²]")
+    ax_e = Axis(fig[1, 4], xlabel = "Turbulent kinetic energy \n[cm² s⁻²]")
     return fig, (ax_b, ax_u, ax_v, ax_e)
 end
 
 function plot_fields!(axs, b, u, v, e, label, color)
     z = znodes(Center, b.grid)
     # Note unit conversions below, eg m s⁻² -> 10⁻⁴ m s⁻²:
-    lines!(axs[1], 1e4 * interior(b)[1, 1, :], z; color, label)
+    lines!(axs[1], 1e2 * interior(b)[1, 1, :], z; color, label)
     lines!(axs[2], 1e2 * interior(u)[1, 1, :], z; color, label)
     lines!(axs[3], 1e2 * interior(v)[1, 1, :], z; color, label)
     lines!(axs[4], 1e4 * interior(e)[1, 1, :], z; color, label)
@@ -61,8 +63,9 @@ for (i, t) in enumerate(times)
     plot_fields!(axs, fields..., "t = " * prettytime(t), colorcycle[i])
 end
 
-[axislegend(ax, position=:rb, merge=true, fontsize=12) for ax in axs]
+[axislegend(ax, position=:rb, merge=true, fontsize=10) for ax in axs]
 
+display(fig)
 save("lesbrary_synthetic_observations.svg", fig); nothing # hide
 
 # ![](lesbrary_synthetic_observations.svg)
@@ -116,62 +119,70 @@ free_parameters = FreeParameters(priors)
 
 calibration = InverseProblem(observations, simulation, free_parameters)
 
-# Next we perform a preliminary calibration by executing one iteration 
-# of EnsembleKalmanInversion with a relatively large noise,
+# Next, we calibrate, using a relatively large noise to reflect our
+# uncertainty about how close the observations and model can really get,
 
 eki = EnsembleKalmanInversion(calibration;
-                              noise_covariance = 1e-1,
+                              noise_covariance = 1e-2,
                               resampler = NaNResampler(abort_fraction=0.5))
 
-# We also build some utilities for comparing observed and model output later on:
+iterate!(eki; iterations = 5)
+
+# # Results
+#
+# To analyze the reuslts, we build a new simulation with just one ensemble member
+# to evaluate pasome utilities for analyzing the results:
 
 Nt = length(observations.times)
+Niter = length(eki.iteration_summaries) - 1
 modeled_time_serieses = calibration.time_series_collector.field_time_serieses 
 observed = map(name -> observations.field_time_serieses[name][Nt], field_names)
 modeled = map(name -> modeled_time_serieses[name][Nt], field_names)
 
-function compare_model_observations()
+function compare_model_observations(model_label="modeled")
     fig, axs = make_figure_axes()
     plot_fields!(axs, observed..., "observed at t = " * prettytime(times[end]), :black)
-    plot_fields!(axs, modeled..., "modeled", :blue)
-    [axislegend(ax, position=:rb, merge=true, fontsize=12) for ax in axs]
+    plot_fields!(axs, modeled..., model_label, :blue)
+    [axislegend(ax, position=:rb, merge=true, fontsize=10) for ax in axs]
     return fig
 end
 
-# Now let's iterate to see if we can find better parameters than our initial guess...
-
-iterate!(eki; iterations = 5)
-
-# To evaluate how 
+# Now we execute forward runs for the initial ensemble mean,
 
 initial_parameters = eki.iteration_summaries[0].ensemble_mean
-best_parameters = eki.iteration_summaries[end].ensemble_mean
-
 forward_run!(calibration, initial_parameters)
-fig = compare_model_observations()
+fig = compare_model_observations("modeled after 0 iterations")
+display(fig)
 save("model_observation_comparison_iteration_0.svg", fig); nothing # hide
 
-forward_run!(calibration, best_parameters)
-fig = compare_model_observations()
-save("model_observation_comparison_iteration_10.svg", fig); nothing # hide
+# and the final ensemble mean, representing our "best" parameter set,
 
-# Let's see how the parameters evolved:
+best_parameters = eki.iteration_summaries[end].ensemble_mean
+forward_run!(calibration, best_parameters)
+fig = compare_model_observations("modeled after $Niter iterations")
+display(fig)
+save("model_observation_comparison_iteration_$Niter.svg", fig); nothing # hide
+
+# ## Parameter evolution
+#
+# To understand how results improved between iteration 0 and iteration 5,
+# we look at the evoluation of the ensemble means,
 
 ensemble_means = NamedTuple(n => map(summary -> summary.ensemble_mean[n], eki.iteration_summaries)
                             for n in calibration.free_parameters.names)
 
 fig = Figure()
-ax = Axis(fig[1, 1], xlabel = "Iteration", ylabel = "Parameter value")
-iterations = 0:length(eki.iteration_summaries)-1
+ax = Axis(fig[1, 1], xlabel = "Ensemble Kalman iteration", ylabel = "Parameter value")
 
 for (i, name) in enumerate(calibration.free_parameters.names)
     label = string(name)
     marker = markercycle[i]
     color = colorcycle[i]
-    scatterlines!(ax, iterations, parent(ensemble_means[name]); marker, color, label)
+    scatterlines!(ax, 0:Niter, parent(ensemble_means[name]); marker, color, label)
 end
 
 axislegend(ax, position=:rb)
+display(fig)
 save("lesbrary_catke_parameter_evolution.svg", fig); nothing # hide
 
 # ![](lesbrary_catke_parameter_evolution.svg)
