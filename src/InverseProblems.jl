@@ -54,7 +54,8 @@ ConcatenatedVectorNormMap(; time_indices = Colon()) = ConcatenatedVectorNormMap(
 
 output_map_str(::ConcatenatedVectorNormMap) = "ConcatenatedVectorNormMap"
 
-initial_time_index(map::AbstractOutputMap) = map.time_indices == Colon() ? 1 : first(map.time_indices)
+initial_time_index(output_map::AbstractOutputMap) = output_map.time_indices == Colon() ? 
+                                                    1 : first(output_map.time_indices)
 
 #####
 ##### InverseProblems
@@ -219,7 +220,12 @@ function transform_time_series(output_map::ConcatenatedOutputMap, time_series::S
 
     for field_name in keys(time_series.field_time_serieses)
         field_time_series = time_series.field_time_serieses[field_name]
-        field_time_series_data = Array(interior(field_time_series))[:, :, :, output_map.time_indices]
+        A = Array(interior(field_time_series))
+
+        # Ignore initial condition given by first element in map.time_indices
+        field_time_series_data = output_map.time_indices == Colon() ? 
+            selectdim(A, 4, 2:size(A,4)) :
+            selectdim(A, 4, output_map.time_indices[2:end])
 
         Nx, Ny, Nz, Nt = size(field_time_series_data)
 
@@ -290,11 +296,11 @@ function transform_output(map::ConcatenatedOutputMap,
     return transform_time_series(map, transposed_output)
 end
 
-function transform_output(map::ConcatenatedVectorNormMap,
+function transform_output(output_map::ConcatenatedVectorNormMap,
     observations::Union{SyntheticObservations,Vector{<:SyntheticObservations}},
     time_series_collector)
 
-    concat_map = ConcatenatedOutputMap(map.time_indices)
+    concat_map = ConcatenatedOutputMap(output_map.time_indices)
     fwd_map = transform_output(concat_map, observations, time_series_collector)
     obs_map = transform_time_series(concat_map, observations)
 
