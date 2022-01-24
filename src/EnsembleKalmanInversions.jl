@@ -82,8 +82,8 @@ function inverse_covariance_transform(Π, parameters, covariance)
 end
 
 covariance_transform_diagonal(::LogNormal, p) = exp(p)
-covariance_transform_diagonal(::Normal, p) = p
-covariance_transform_diagonal(Π::ConstrainedNormal, p) = - (Π.upper_bound - Π.lower_bound) * exp(p) / (1 + exp(p)^2)
+covariance_transform_diagonal(::Normal, p) = I
+covariance_transform_diagonal(Π::ConstrainedNormal, p) = - (Π.upper_bound - Π.lower_bound) * exp(p) / (1 + exp(p))^2
 
 mutable struct EnsembleKalmanInversion{I, P, E, M, O, F, S, R}
     inverse_problem :: I
