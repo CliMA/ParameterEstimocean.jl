@@ -46,7 +46,7 @@ end
 
 function plot_fields!(axs, b, u, v, e, label, color)
     z = znodes(Center, b.grid)
-    # Note unit conversions below, eg m s⁻² -> 10⁻⁴ m s⁻²:
+    ## Note unit conversions below, eg m s⁻² -> cm s⁻²:
     lines!(axs[1], 1e2 * interior(b)[1, 1, :], z; color, label)
     lines!(axs[2], 1e2 * interior(u)[1, 1, :], z; color, label)
     lines!(axs[3], 1e2 * interior(v)[1, 1, :], z; color, label)
