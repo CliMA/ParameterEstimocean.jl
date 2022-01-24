@@ -25,7 +25,7 @@ using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalD
 
 data_path = datadep"two_day_suite_4m/strong_wind_instantaneous_statistics.jld2"
 
-times = [2hours, 6hours, 24hours]
+times = [2hours, 6hours, 18hours]
 
 observations = SyntheticObservations(data_path;
                                      field_names = (:u, :v, :b, :e),
@@ -46,7 +46,7 @@ function make_figure_axes()
     return fig, (ax_b, ax_u, ax_e)
 end
 
-function plot_fields(axs, b, u, v, e, label, u_label, v_label, color)
+function plot_fields!(axs, b, u, v, e, label, u_label, v_label, color)
     z = znodes(Center, observations.grid)
     lines!(axs[1], 1e4 * interior(b)[1, 1, :], z; label, color) # convert units m s⁻² -> 10⁻⁴ m s⁻²
     lines!(axs[2], 1e2 * interior(u)[1, 1, :], z; linestyle=:solid, color, label=u_label) # convert units m s⁻¹ -> cm s⁻¹
@@ -69,9 +69,9 @@ for i = 1:length(observations.times)
     plot_fields!(axs, b, u, v, e, label, u_label, v_label, colorcycle[i])
 end
 
-axislegend(ax_b, position=:rb)
-axislegend(ax_u, position=:lb, merge=true)
-axislegend(ax_e, position=:rb)
+axislegend(axs[1], position=:rb)
+axislegend(axs[2], position=:lb, merge=true)
+axislegend(axs[3], position=:rb)
 
 display(fig)
 
@@ -90,7 +90,7 @@ catke_mixing_length = MixingLength(Cᴷcʳ=0.0, Cᴷuʳ=0.0, Cᴷeʳ=0.0)
 catke = CATKEVerticalDiffusivity(mixing_length=catke_mixing_length)
 
 simulation = ensemble_column_model_simulation(observations;
-                                              Nensemble = 50,
+                                              Nensemble = 100,
                                               architecture = CPU(),
                                               tracers = (:b, :e),
                                               closure = catke)
@@ -111,10 +111,10 @@ N² .= observations.metadata.parameters.N²_deep
 # We identify a subset of the CATKE parameters to calibrate by specifying
 # parameter names and prior distributions:
 
-priors = (Cᴰ = lognormal_with_mean_std(0.05, 0.1),
-          Cᵂu★ = lognormal_with_mean_std(0.05, 0.1),
+priors = (Cᴰ   = lognormal_with_mean_std(2.5,  1.0),
+          Cᵂu★ = lognormal_with_mean_std(0.2,  0.1),
           CᵂwΔ = lognormal_with_mean_std(0.05, 0.1),
-          Cᴸᵇ = lognormal_with_mean_std(0.05, 0.1),
+          Cᴸᵇ  = lognormal_with_mean_std(0.05, 0.1),
           Cᴷu⁻ = lognormal_with_mean_std(0.05, 0.1),
           Cᴷc⁻ = lognormal_with_mean_std(0.05, 0.1),
           Cᴷe⁻ = lognormal_with_mean_std(0.05, 0.1))
@@ -126,7 +126,10 @@ calibration = InverseProblem(observations, simulation, free_parameters)
 # Next we perform a preliminary calibration by executing one iteration 
 # of EnsembleKalmanInversion with a relatively large noise,
 
-eki = EnsembleKalmanInversion(calibration; noise_covariance=1e-1)
+eki = EnsembleKalmanInversion(calibration;
+                              noise_covariance = 1e-1,
+                              resampler = NaNResampler(abort_fraction=0.1))
+
 iterate!(eki; iterations = 1)
 
 # One iteration won't do much. But let's look at the results anyways
@@ -160,9 +163,9 @@ function compare_model_observations()
     label = "modeled"
     plot_fields!(axs, b_model, u_model, v_model, e_model, label, "u " * label, "v " * label, color)
         
-    axislegend(ax_b, position=:rb)
-    axislegend(ax_u, position=:lb, merge=true)
-    axislegend(ax_e, position=:rb)
+    axislegend(axs[1], position=:rb)
+    axislegend(axs[2], position=:lb, merge=true)
+    axislegend(axs[3], position=:rb)
 
     return fig
 end
@@ -172,7 +175,7 @@ display(fig)
 
 # Now let's see if further iterations improve that result...
 
-iterate!(eki; iterations = 40)
+iterate!(eki; iterations = 10)
 best_parameters = eki.iteration_summaries[end].ensemble_mean
 forward_run!(calibration, best_parameters)
 fig = compare_model_observations()

@@ -353,5 +353,5 @@ observation_map_variance_across_time(map::ConcatenatedOutputMap, observations::V
 
 observation_map_variance_across_time(ip::InverseProblem) = observation_map_variance_across_time(ip.output_map, ip.observations)
 
-
 end # module
+
