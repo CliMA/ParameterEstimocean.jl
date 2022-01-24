@@ -13,7 +13,7 @@ using EnsembleKalmanProcesses.ParameterDistributionStorage
 
 using EnsembleKalmanProcesses.EnsembleKalmanProcessModule: sample_distribution
 
-using ..InverseProblems: n_ensemble, observation_map, forward_map, tupify_parameters
+using ..InverseProblems: Nensemble, observation_map, forward_map, tupify_parameters
 
 #####
 ##### Priors
@@ -60,6 +60,7 @@ inverse_parameter_transform(priors::NamedTuple, parameters::Vector) =
     NamedTuple(name => inverse_parameter_transform(priors[name], parameters[i])
                for (i, name) in enumerate(keys(priors)))
 
+#=
 # Convert covariance from unconstrained (EKI) to constrained
 inverse_covariance_transform(::Tuple{Vararg{LogNormal}}, parameters, covariance) =
     Diagonal(exp.(parameters)) * covariance * Diagonal(exp.(parameters))
@@ -72,6 +73,17 @@ function inverse_covariance_transform(cn::Tuple{Vararg{ConstrainedNormal}}, para
     dT = Diagonal(@. -(upper_bound - lower_bound) * exp(parameters) / (1 + exp(parameters))^2)
     return dT * covariance * dT'
 end
+=#
+
+function inverse_covariance_transform(Π, parameters, covariance)
+    diag = [covariance_transform_diagonal(Π[i], parameters[i]) for i=1:length(Π)]
+    dT = Diagonal(diag)
+    return dT * covariance * dT'
+end
+
+covariance_transform_diagonal(::LogNormal, p) = exp(p)
+covariance_transform_diagonal(::Normal, p) = I
+covariance_transform_diagonal(Π::ConstrainedNormal, p) = - (Π.upper_bound - Π.lower_bound) * exp(p) / (1 + exp(p))^2
 
 mutable struct EnsembleKalmanInversion{I, P, E, M, O, F, S, R}
     inverse_problem :: I
@@ -176,7 +188,7 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampl
     ek_process = Inversion()
 
     Random.seed!(42)
-    initial_ensemble = sample_distribution(parameter_distribution, n_ensemble(inverse_problem))
+    initial_ensemble = sample_distribution(parameter_distribution, Nensemble(inverse_problem))
 
     # Build EKP-friendly observations "y" and the covariance matrix of observational uncertainty "Γy"
     y = dropdims(observation_map(inverse_problem), dims=2) # length(forward_map_output) column vector

@@ -5,35 +5,29 @@ using Oceananigans.Units
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
 
-#####
-##### Parameters
-#####
-
-Nz = 16
-Lz = 128
-Qᵇ = 1e-8
-Qᵘ = -1e-5
-Δt = 20.0
-f₀ = 1e-4
-N² = 1e-5
-
-stop_time = 6Δt
-save_interval = 2Δt
-N_ensemble = 3
-
-experiment_name = "convective_adjustment_test"
-data_path = experiment_name * ".jld2"
-
-# "True" parameters to be estimated by calibration
-convective_κz = 1.0
-convective_νz = 0.9
-background_κz = 1e-4
-background_νz = 1e-5
-
 @testset "SyntheticObservations tests" begin
-    #####
-    ##### Generate synthetic observations
-    #####
+    @info "  Generating synthetic observations with an Oceananigans.Simulation..."
+    # Generate synthetic observations
+    Nz = 16
+    Lz = 128
+    Qᵇ = 1e-8
+    Qᵘ = -1e-5
+    Δt = 20.0
+    f₀ = 1e-4
+    N² = 1e-5
+    
+    stop_time = 6Δt
+    save_interval = 2Δt
+    N_ensemble = 3
+    
+    experiment_name = "convective_adjustment_test"
+    data_path = experiment_name * ".jld2"
+    
+    # "True" parameters to be estimated by calibration
+    convective_κz = 1.0
+    convective_νz = 0.9
+    background_κz = 1e-4
+    background_νz = 1e-5
 
     grid = RectilinearGrid(size=Nz, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
     closure = ConvectiveAdjustmentVerticalDiffusivity(; convective_κz, background_κz, convective_νz, background_νz)
@@ -64,10 +58,8 @@ background_νz = 1e-5
 
     run!(simulation)
 
-    #####
-    ##### Load truth data as observations
-    #####
-
+    # Test synthetic observations construction
+    @info "  Testing construction of SyntheticObservations from Oceananigans data..."
     data_path = experiment_name * ".jld2"
 
     b_observations = SyntheticObservations(data_path, field_names=:b)
@@ -77,4 +69,12 @@ background_νz = 1e-5
     @test keys(b_observations.field_time_serieses) == tuple(:b)
     @test keys(ub_observations.field_time_serieses) == tuple(:u, :b)
     @test keys(uvb_observations.field_time_serieses) == tuple(:u, :v, :b)
+
+    # Test regridding observations
+    coarsened_observations = SyntheticObservations(data_path, field_names=(:u, :v, :b), regrid_size=(1, 1, Int(Nz/2)))
+    refined_observations = SyntheticObservations(data_path, field_names=(:u, :v, :b), regrid_size=(1, 1, 2Nz))
+
+    @test_skip size(coarsened_observations.grid) === (1, 1, Int(Nz/2))
+    @test_skip size(refined_observations.grid) === (1, 1, 2Nz)
 end
+
