@@ -95,14 +95,29 @@ function infer_location(field_name)
     end
 end
 
+function with_grid_size(field_name, ts::FieldTimeSeries, grid_size)
+
+    grid = with_size(grid_size, ts.grid)
+
+    LX, LY, LZ = infer_location(field_name)
+
+    new_ts = FieldTimeSeries{LX, LY, LZ}(grid, ts.times; boundary_conditions=ts.boundary_conditions)
+
+    # Loop over time steps to re-grid each constituent field in `ts`
+    for n = 1:length(ts.times)
+        regrid!(new_ts[n], ts[n])
+    end
+
+    return new_ts
+end
+
 function SyntheticObservations(path; field_names, normalize = IdentityNormalization, times = nothing, field_time_serieses = nothing, grid_size = nothing)
     field_names = tupleit(field_names)
 
-    field_time_serieses === nothing && (field_time_serieses = NamedTuple(name => FieldTimeSeries(path, string(name); times) for name in field_names))
-
     grid = first(field_time_serieses).grid
     times = first(field_time_serieses).times
-    bcs = first(field_time_serieses).boundary_conditions
+
+    field_time_serieses === nothing && (field_time_serieses = NamedTuple(name => FieldTimeSeries(path, string(name); times) for name in field_names))
 
     if !isnothing(grid_size) # regrid! field_time_serieses on a new grid
 
@@ -110,19 +125,7 @@ function SyntheticObservations(path; field_names, normalize = IdentityNormalizat
 
         # Re-grid the data in `field_time_serieses`
         for (field_name, ts) in zip(keys(field_time_serieses), field_time_serieses)
-        
-            grid = with_size(grid_size, grid)
-        
-            LX, LY, LZ = infer_location(field_name)
-        
-            new_ts = FieldTimeSeries{LX, LY, LZ}(grid, times; boundary_conditions=bcs)
-        
-            # Loop over time steps to re-grid each constituent field in `field_time_series`
-            for n = 1:length(times)
-                regrid!(new_ts[n], ts[n])
-            end
-        
-            new_field_time_serieses[field_name] = new_ts
+            new_field_time_serieses[field_name] = with_grid_size(field_name, ts, grid_size)
         end
 
         field_time_serieses = NamedTuple(new_field_time_serieses)
