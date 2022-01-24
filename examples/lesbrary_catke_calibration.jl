@@ -87,7 +87,7 @@ catke_mixing_length = MixingLength(Cᴷcʳ=0.0, Cᴷuʳ=0.0, Cᴷeʳ=0.0)
 catke = CATKEVerticalDiffusivity(mixing_length=catke_mixing_length)
 
 simulation = ensemble_column_model_simulation(observations;
-                                              Nensemble = 100,
+                                              Nensemble = 30,
                                               architecture = CPU(),
                                               tracers = (:b, :e),
                                               closure = catke)
@@ -109,12 +109,12 @@ N² .= observations.metadata.parameters.N²_deep
 # parameter names and prior distributions:
 
 priors = (Cᴰ   = lognormal_with_mean_std(2.5,  0.1),
-          Cᵂu★ = lognormal_with_mean_std(0.2,  0.1),
-          CᵂwΔ = lognormal_with_mean_std(0.05, 0.05),
-          Cᴸᵇ  = lognormal_with_mean_std(0.05, 0.05),
-          Cᴷu⁻ = lognormal_with_mean_std(0.05, 0.05),
-          Cᴷc⁻ = lognormal_with_mean_std(0.05, 0.05),
-          Cᴷe⁻ = lognormal_with_mean_std(0.05, 0.05))
+          Cᵂu★ = lognormal_with_mean_std(1.0,  0.1),
+          CᵂwΔ = lognormal_with_mean_std(0.05, 0.1),
+          Cᴸᵇ  = lognormal_with_mean_std(0.05, 0.1),
+          Cᴷu⁻ = ConstrainedNormal(0.1,  0.05, 0.0, 2.0),
+          Cᴷc⁻ = ConstrainedNormal(0.1,  0.05, 0.0, 2.0),
+          Cᴷe⁻ = ConstrainedNormal(1.0,  0.1,  0.0, 2.0))
 
 free_parameters = FreeParameters(priors)
 
@@ -179,7 +179,6 @@ iterate!(eki; iterations = 10)
 best_parameters = eki.iteration_summaries[end].ensemble_mean
 forward_run!(calibration, best_parameters)
 fig = compare_model_observations()
-display(fig)
 
 # Let's see how the parameters evolved:
 
