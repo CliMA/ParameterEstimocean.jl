@@ -1,4 +1,4 @@
-# # Perfect CAKTE calibration with Ensemble Kalman Inversion
+# # CAKTE calibration with Ensemble Kalman Inversion using LESbrary data 
 
 # ## Install dependencies
 
@@ -20,7 +20,7 @@ using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalD
 #
 # `OceanTurbulenceParameterEstimation.jl` provides paths to synthetic observations
 # derived from high-fidelity large eddy simulations. In this example, we illustrate
-# calibration of a turbulence parameterization to one of these:
+# calibration of a turbulence parameterization to one of these simulations:
 
 data_path = datadep"two_day_suite_4m/strong_wind_instantaneous_statistics.jld2"
 
