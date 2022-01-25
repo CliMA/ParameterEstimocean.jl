@@ -47,8 +47,11 @@ function observation_names(ts_vector::Vector{<:SyntheticObservations})
     return names
 end
 
-obs_str(ts::SyntheticObservations) = "SyntheticObservations of $(keys(ts.field_time_serieses)) on $(summary(ts.grid))"
-obs_str(ts::Vector{<:SyntheticObservations}) = "Vector of SyntheticObservations of $(keys(ts[1].field_time_serieses)) on $(summary(ts[1].grid))"
+Base.summary(ts::SyntheticObservations) =
+    "SyntheticObservations of $(keys(ts.field_time_serieses)) on $(summary(ts.grid))"
+
+Base.summary(ts::Vector{<:SyntheticObservations}) =
+    "Vector{<:SyntheticObservations} of $(keys(ts[1].field_time_serieses)) on $(summary(ts[1].grid))"
 
 tupleit(t) = try
     Tuple(t)

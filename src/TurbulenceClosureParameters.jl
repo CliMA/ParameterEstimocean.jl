@@ -41,7 +41,7 @@ function FreeParameters(priors; names = Symbol.(keys(priors)))
     return FreeParameters(Tuple(names), priors)
 end
 
-free_parameters_str(fp::FreeParameters) = "$(fp.names)"
+Base.summary(fp::FreeParameters) = "$(fp.names)"
 
 function prior_show(io, priors, name, prefix, width)
     print(io, @sprintf("%s %s => ", prefix, lpad(name, width, " ")))
