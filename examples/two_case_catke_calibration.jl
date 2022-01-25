@@ -44,7 +44,7 @@ function make_axes(fig, row=1)
     ax_b = Axis(fig[row, 1], xlabel = "Buoyancy \n[10⁻⁴ m s⁻²]", ylabel = "z [m]")
     ax_u = Axis(fig[row, 2], xlabel = "x-velocity \n[cm s⁻¹]")
     ax_v = Axis(fig[row, 3], xlabel = "y-velocitiy \n[cm s⁻¹]")
-    ax_e = Axis(fig[row, 4], xlabel = "Turbulent kinetic energy \n[10⁻⁴ m² s⁻²]")
+    ax_e = Axis(fig[row, 4], xlabel = "Turbulent kinetic energy \n[cm² s⁻²]")
     return (ax_b, ax_u, ax_v, ax_e)
 end
 
