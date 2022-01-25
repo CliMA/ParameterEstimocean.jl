@@ -47,11 +47,11 @@ function observation_names(ts_vector::Vector{<:SyntheticObservations})
     return names
 end
 
-Base.summary(ts::SyntheticObservations) =
-    "SyntheticObservations of $(keys(ts.field_time_serieses)) on $(summary(ts.grid))"
+Base.summary(obs::SyntheticObservations) =
+    "SyntheticObservations of $(keys(obs.field_time_serieses)) on $(summary(obs.grid))"
 
-Base.summary(ts::Vector{<:SyntheticObservations}) =
-    "Vector{<:SyntheticObservations} of $(keys(ts[1].field_time_serieses)) on $(summary(ts[1].grid))"
+Base.summary(obs::Vector{<:SyntheticObservations}) =
+    "Vector{<:SyntheticObservations} of $(keys(first(obs).field_time_serieses)) on $(summary(first(obs).grid))"
 
 tupleit(t) = try
     Tuple(t)
@@ -122,33 +122,44 @@ function SyntheticObservations(path; field_names,
     field_names = tupleit(field_names)
 
     if isnothing(field_time_serieses)
-        field_time_serieses = NamedTuple(name => FieldTimeSeries(path, string(name); times)
-                                         for name in field_names)
+        raw_time_serieses = NamedTuple(name => FieldTimeSeries(path, string(name); times)
+                                       for name in field_names)
     end
 
-    grid = first(field_time_serieses).grid
-    times = first(field_time_serieses).times
-    boundary_conditions = first(field_time_serieses).boundary_conditions
+    raw_grid = first(raw_time_serieses).grid
+    times = first(raw_time_serieses).times
+    boundary_conditions = first(raw_time_serieses).boundary_conditions
 
-    if !isnothing(regrid_size) # Well, we're gonna regrid stuff
+    if isnothing(regrid_size)
+        field_time_serieses = raw_time_serieses
+        grid = raw_grid
 
-        new_field_time_serieses = Dict()
+    else # Well, we're gonna regrid stuff
+        grid = with_size(regrid_size, raw_grid)
+
+        @info string("Regridding synthetic observations...", '\n',
+                     "    original grid: ", summary(raw_grid), '\n',
+                     "         new grid: ", summary(grid))
+
+        field_time_serieses = Dict()
 
         # Re-grid the data in `field_time_serieses`
         for (field_name, ts) in zip(keys(field_time_serieses), field_time_serieses)
+
             #LX, LY, LZ = location(ts[1])
             LX, LY, LZ = infer_location(field_name)
-            new_ts = FieldTimeSeries{LX, LY, LZ}(grid, times; boundary_conditions)
+
+            new_ts = FieldTimeSeries{LX, LY, LZ}(new_grid, times; boundary_conditions)
         
             # Loop over time steps to re-grid each constituent field in `field_time_series`
             for n = 1:length(times)
                 regrid!(new_ts[n], ts[n])
             end
         
-            new_field_time_serieses[field_name] = new_ts
+            field_time_serieses[field_name] = new_ts
         end
 
-        field_time_serieses = NamedTuple(new_field_time_serieses)
+        field_time_serieses = NamedTuple(field_time_serieses)
     end
 
     # validate_data(fields, grid, times) # might be a good idea to validate the data...
