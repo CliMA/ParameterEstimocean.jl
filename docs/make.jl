@@ -11,6 +11,7 @@ using
 # This happens when examples, e.g., use Plots.jl to make plots and movies.
 # See: https://github.com/jheinen/GR.jl/issues/278
 ENV["GKSwstype"] = "100"
+ENV["DATADEPS_ALWAYS_ACCEPT"] = "true"
 
 #####
 ##### Generate examples
@@ -23,8 +24,8 @@ examples = [
   "intro_to_observations.jl",
   "intro_to_inverse_problems.jl",
   "perfect_convective_adjustment_calibration.jl",
-  "unscented_perfect_convective_adjustment_calibration.jl",
   "perfect_catke_calibration.jl",
+  "lesbrary_catke_calibration.jl",
   "perfect_baroclinic_adjustment_calibration.jl"
 ]
 
@@ -55,8 +56,8 @@ pages = [
         "literated/intro_to_observations.md",
         "literated/intro_to_inverse_problems.md",
         "literated/perfect_convective_adjustment_calibration.md",
-        "literated/unscented_perfect_convective_adjustment_calibration.md",
         "literated/perfect_catke_calibration.md",
+        "literated/lesbrary_catke_calibration.md",
         "literated/perfect_baroclinic_adjustment_calibration.md"
         ],
     

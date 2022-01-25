@@ -1,7 +1,7 @@
 module Observations
 
 using Oceananigans
-using Oceananigans: short_show, fields
+using Oceananigans: fields
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
 using Oceananigans.Grids: pop_flat_elements, topology, halo_size, on_architecture
@@ -47,8 +47,8 @@ function observation_names(ts_vector::Vector{<:SyntheticObservations})
     return names
 end
 
-obs_str(ts::SyntheticObservations) = "SyntheticObservations of $(keys(ts.field_time_serieses)) on $(short_show(ts.grid))"
-obs_str(ts::Vector{<:SyntheticObservations}) = "Vector of SyntheticObservations of $(keys(ts[1].field_time_serieses)) on $(short_show(ts[1].grid))"
+obs_str(ts::SyntheticObservations) = "SyntheticObservations of $(keys(ts.field_time_serieses)) on $(summary(ts.grid))"
+obs_str(ts::Vector{<:SyntheticObservations}) = "Vector of SyntheticObservations of $(keys(ts[1].field_time_serieses)) on $(summary(ts[1].grid))"
 
 tupleit(t) = try
     Tuple(t)
@@ -95,27 +95,47 @@ function infer_location(field_name)
     end
 end
 
-function SyntheticObservations(path; field_names, normalize = IdentityNormalization, times = nothing, field_time_serieses = nothing, grid_size = nothing)
+function observation_times(data_path::String)
+    file = jldopen(data_path)
+    iterations = parse.(Int, keys(file["timeseries/t"]))
+    times = [file["timeseries/t/$i"] for i in iterations]
+    close(file)
+    return times
+end
+
+observation_times(observation::SyntheticObservations) = observation.times
+
+function observation_times(obs::Vector)
+    @assert all([o.times ≈ obs[1].times for o in obs]) "Observations must have the same times."
+    return observation_times(first(obs))
+end
+
+function SyntheticObservations(path; field_names,
+                               normalize = IdentityNormalization,
+                               times = nothing,
+                               field_time_serieses = nothing,
+                               regrid_size = nothing)
+
     field_names = tupleit(field_names)
 
-    field_time_serieses === nothing && (field_time_serieses = NamedTuple(name => FieldTimeSeries(path, string(name); times) for name in field_names))
+    if isnothing(field_time_serieses)
+        field_time_serieses = NamedTuple(name => FieldTimeSeries(path, string(name); times)
+                                         for name in field_names)
+    end
 
     grid = first(field_time_serieses).grid
     times = first(field_time_serieses).times
     boundary_conditions = first(field_time_serieses).boundary_conditions
 
-    if !isnothing(grid_size) # regrid! field_time_serieses on a new grid
+    if !isnothing(regrid_size) # Well, we're gonna regrid stuff
 
         new_field_time_serieses = Dict()
 
         # Re-grid the data in `field_time_serieses`
         for (field_name, ts) in zip(keys(field_time_serieses), field_time_serieses)
-        
-            grid = with_size(grid_size, grid)
-        
+            #LX, LY, LZ = location(ts[1])
             LX, LY, LZ = infer_location(field_name)
-        
-            new_ts = FieldTimeSeries{LX,LY,LZ}(CPU(), grid, times, boundary_conditions)
+            new_ts = FieldTimeSeries{LX, LY, LZ}(grid, times; boundary_conditions)
         
             # Loop over time steps to re-grid each constituent field in `field_time_series`
             for n = 1:length(times)
@@ -136,14 +156,6 @@ function SyntheticObservations(path; field_names, normalize = IdentityNormalizat
     normalization = Dict(name => normalize(field_time_serieses[name]) for name in keys(field_time_serieses))
 
     return SyntheticObservations(field_time_serieses, grid, times, path, metadata, normalization)
-end
-
-observation_times(observation) = observation.times
-
-function observation_times(obs::Vector)
-    @assert all([o.times ≈ obs[1].times for o in obs]) "Observations must have the same times."
-
-    return observation_times(first(obs))
 end
 
 #####
@@ -188,8 +200,8 @@ function column_ensemble_interior(observations::Vector{<:SyntheticObservations},
         end
     end
 
-    batch = cat(batch..., dims = 2) # (n_batch, n_z)
-    ensemble_interior = cat([batch for i = 1:ensemble_size]..., dims = 1) # (ensemble_size, n_batch, n_z)
+    batch = cat(batch..., dims = 2) # (Nbatch, n_z)
+    ensemble_interior = cat([batch for i = 1:ensemble_size]..., dims = 1) # (ensemble_size, Nbatch, n_z)
 
     return ensemble_interior
 end
@@ -277,6 +289,7 @@ function initialize_simulation!(simulation, observations, time_series_collector,
     end
 
     simulation.callbacks[:data_collector] = Callback(time_series_collector, SpecifiedTimes(times...))
+    :nan_checker ∈ keys(simulation.callbacks) && pop!(simulation.callbacks, :nan_checker)
 
     simulation.stop_time = times[end]
 
@@ -289,9 +302,9 @@ summarize_metadata(metadata) = keys(metadata)
 Base.show(io::IO, ts::SyntheticObservations) =
     print(io, "SyntheticObservations with fields $(propertynames(ts.field_time_serieses))", '\n',
               "├── times: $(ts.times)", '\n',
-              "├── grid: $(short_show(ts.grid))", '\n',
+              "├── grid: $(summary(ts.grid))", '\n',
               "├── path: \"$(ts.path)\"", '\n',
               "├── metadata: ", summarize_metadata(ts.metadata), '\n',
-              "└── normalization: $(short_show(ts.normalization))")
+              "└── normalization: $(summary(ts.normalization))")
 
 end # module

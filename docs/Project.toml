@@ -1,5 +1,6 @@
 [deps]
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+DataDeps = "124859b0-ceae-595e-8997-d05f6a7a8dfe"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 ElectronDisplay = "d872a56f-244b-5cc9-b574-2017b5b909a8"
