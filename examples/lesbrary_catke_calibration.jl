@@ -126,7 +126,7 @@ eki = EnsembleKalmanInversion(calibration;
                               noise_covariance = 1e-2,
                               resampler = NaNResampler(abort_fraction=0.5))
 
-iterate!(eki; iterations = 5)
+iterate!(eki; iterations = 10)
 
 # # Results
 #
@@ -152,20 +152,26 @@ end
 initial_parameters = eki.iteration_summaries[0].ensemble_mean
 forward_run!(calibration, initial_parameters)
 fig = compare_model_observations("modeled after 0 iterations")
+
 ## display(fig)
 save("model_observation_comparison_iteration_0.svg", fig); nothing # hide
+
+# ![](model_observation_comparison_iteration_0.svg)
 
 # and the final ensemble mean, representing our "best" parameter set,
 
 best_parameters = eki.iteration_summaries[end].ensemble_mean
 forward_run!(calibration, best_parameters)
 fig = compare_model_observations("modeled after $Niter iterations")
+
 ## display(fig)
-save("model_observation_comparison_iteration_$Niter.svg", fig); nothing # hide
+save("model_observation_comparison_final_iteration.svg", fig); nothing # hide
+
+# ![](model_observation_comparison_final_iteration.svg)
 
 # ## Parameter evolution
 #
-# To understand how results improved between iteration 0 and iteration 5,
+# To understand how results changed over the EKI iterations,
 # we look at the evoluation of the ensemble means,
 
 ensemble_means = NamedTuple(n => map(summary -> summary.ensemble_mean[n], eki.iteration_summaries)
@@ -182,6 +188,7 @@ for (i, name) in enumerate(calibration.free_parameters.names)
 end
 
 axislegend(ax, position=:rb)
+
 ## display(fig)
 save("lesbrary_catke_parameter_evolution.svg", fig); nothing # hide
 
