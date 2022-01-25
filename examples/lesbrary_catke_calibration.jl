@@ -65,7 +65,7 @@ end
 
 [axislegend(ax, position=:rb, merge=true, fontsize=10) for ax in axs]
 
-display(fig)
+## display(fig)
 save("lesbrary_synthetic_observations.svg", fig); nothing # hide
 
 # ![](lesbrary_synthetic_observations.svg)
@@ -152,7 +152,7 @@ end
 initial_parameters = eki.iteration_summaries[0].ensemble_mean
 forward_run!(calibration, initial_parameters)
 fig = compare_model_observations("modeled after 0 iterations")
-display(fig)
+## display(fig)
 save("model_observation_comparison_iteration_0.svg", fig); nothing # hide
 
 # and the final ensemble mean, representing our "best" parameter set,
@@ -160,7 +160,7 @@ save("model_observation_comparison_iteration_0.svg", fig); nothing # hide
 best_parameters = eki.iteration_summaries[end].ensemble_mean
 forward_run!(calibration, best_parameters)
 fig = compare_model_observations("modeled after $Niter iterations")
-display(fig)
+## display(fig)
 save("model_observation_comparison_iteration_$Niter.svg", fig); nothing # hide
 
 # ## Parameter evolution
@@ -182,7 +182,7 @@ for (i, name) in enumerate(calibration.free_parameters.names)
 end
 
 axislegend(ax, position=:rb)
-display(fig)
+## display(fig)
 save("lesbrary_catke_parameter_evolution.svg", fig); nothing # hide
 
 # ![](lesbrary_catke_parameter_evolution.svg)
