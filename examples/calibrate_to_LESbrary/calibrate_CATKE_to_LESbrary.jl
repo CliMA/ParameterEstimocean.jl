@@ -7,7 +7,7 @@
 pushfirst!(LOAD_PATH, joinpath(@__DIR__, "../.."))
 
 using Oceananigans
-using LinearAlgebra, Distributions, JLD2
+using LinearAlgebra, Distributions, JLD2, DataDeps
 using Oceananigans.Units
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using OceanTurbulenceParameterEstimation
