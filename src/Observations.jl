@@ -47,8 +47,11 @@ function observation_names(ts_vector::Vector{<:SyntheticObservations})
     return names
 end
 
-obs_str(ts::SyntheticObservations) = "SyntheticObservations of $(keys(ts.field_time_serieses)) on $(summary(ts.grid))"
-obs_str(ts::Vector{<:SyntheticObservations}) = "Vector of SyntheticObservations of $(keys(ts[1].field_time_serieses)) on $(summary(ts[1].grid))"
+Base.summary(obs::SyntheticObservations) =
+    "SyntheticObservations of $(keys(obs.field_time_serieses)) on $(summary(obs.grid))"
+
+Base.summary(obs::Vector{<:SyntheticObservations}) =
+    "Vector{<:SyntheticObservations} of $(keys(first(obs).field_time_serieses)) on $(summary(first(obs).grid))"
 
 tupleit(t) = try
     Tuple(t)
@@ -135,25 +138,32 @@ function SyntheticObservations(path; field_names,
     field_names = tupleit(field_names)
 
     if isnothing(field_time_serieses)
-        field_time_serieses = NamedTuple(name => FieldTimeSeries(path, string(name); times)
-                                         for name in field_names)
+        raw_time_serieses = NamedTuple(name => FieldTimeSeries(path, string(name); times)
+                                       for name in field_names)
     end
 
-    grid = first(field_time_serieses).grid
-    times = first(field_time_serieses).times
+    raw_grid = first(raw_time_serieses).grid
+    times = first(raw_time_serieses).times
+    boundary_conditions = first(raw_time_serieses).boundary_conditions
 
-    field_time_serieses === nothing && (field_time_serieses = NamedTuple(name => FieldTimeSeries(path, string(name); times) for name in field_names))
+    if isnothing(regrid_size)
+        field_time_serieses = raw_time_serieses
+        grid = raw_grid
 
-    if !isnothing(regrid_size) # Well, we're gonna regrid stuff
+    else # Well, we're gonna regrid stuff
 
-        new_field_time_serieses = Dict()
+        @info string("Regridding synthetic observations...", '\n',
+                     "    original grid: ", summary(raw_grid), '\n',
+                     "         new grid: ", summary(grid))
+
+        field_time_serieses = Dict()
 
         # Re-grid the data in `field_time_serieses`
-        for (field_name, ts) in zip(keys(field_time_serieses), field_time_serieses)
-            new_field_time_serieses[field_name] = with_grid_size(field_name, ts, regrid_size)
+        for (field_name, ts) in zip(keys(field_time_serieses), field_time_serieses)        
+            field_time_serieses[field_name] = with_grid_size(field_name, ts, grid_size)
         end
 
-        field_time_serieses = NamedTuple(new_field_time_serieses)
+        field_time_serieses = NamedTuple(field_time_serieses)
     end
 
     # validate_data(fields, grid, times) # might be a good idea to validate the data...
@@ -297,6 +307,7 @@ function initialize_simulation!(simulation, observations, time_series_collector,
     end
 
     simulation.callbacks[:data_collector] = Callback(time_series_collector, SpecifiedTimes(times...))
+    :nan_checker ∈ keys(simulation.callbacks) && pop!(simulation.callbacks, :nan_checker)
 
     simulation.stop_time = times[end]
 

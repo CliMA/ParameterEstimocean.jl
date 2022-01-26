@@ -3,10 +3,10 @@ module InverseProblems
 using OrderedCollections
 using Suppressor: @suppress
 
-using ..Observations: obs_str, AbstractObservation, SyntheticObservations, initialize_simulation!, FieldTimeSeriesCollector,
+using ..Observations: AbstractObservation, SyntheticObservations, initialize_simulation!, FieldTimeSeriesCollector,
     observation_times, observation_names
 
-using ..TurbulenceClosureParameters: free_parameters_str, new_closure_ensemble
+using ..TurbulenceClosureParameters: new_closure_ensemble
 
 using OffsetArrays, Statistics, LinearAlgebra
 
@@ -96,9 +96,9 @@ function Base.show(io::IO, ip::InverseProblem)
     out_map_str = output_map_str(ip.output_map)
 
     print(io, "InverseProblem{$out_map_type}", '\n',
-        "├── observations: $(obs_str(ip.observations))", '\n',
+        "├── observations: $(summary(ip.observations))", '\n',
         "├── simulation: $sim_str", '\n',
-        "├── free_parameters: $(free_parameters_str(ip.free_parameters))", '\n',
+        "├── free_parameters: $(summary(ip.free_parameters))", '\n',
         "└── output map: $out_map_str")
 
     return nothing
@@ -173,7 +173,6 @@ function forward_run!(ip::InverseProblem, parameters)
     closures = simulation.model.closure
 
     θ = expand_parameters(ip, parameters)
-
     simulation.model.closure = new_closure_ensemble(closures, θ)
 
     initialize_simulation!(simulation, observations, ip.time_series_collector, initial_time_index(ip.output_map))
