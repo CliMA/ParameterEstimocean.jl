@@ -133,9 +133,9 @@ function construct_noise_covariance(noise_covariance::Number, y)
 end
     
 """
-    EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2)
+    EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampler=NaNResampler())
 
- Return an object that interfaces with [EnsembleKalmanProcesses.jl](https://github.com/CliMA/EnsembleKalmanProcesses.jl)
+Return an object that interfaces with [EnsembleKalmanProcesses.jl](https://github.com/CliMA/EnsembleKalmanProcesses.jl)
 and uses Ensemble Kalman Inversion to iteratively "solve" the inverse problem:
 
 ```math
@@ -246,9 +246,10 @@ struct IterationSummary{P, M, C, V, E}
 end
 
 """
-    IterationSummary(eki, parameters, forward_map)
+    IterationSummary(eki, parameters, forward_map_output=nothing)
 
-Return the summary for Ensemble Kalman Process `eki` with free `parameters` and `forward_map`.
+Return the summary for ensemble Kalman inversion `eki` with free `parameters` and
+`forward_map_output`.
 """
 function IterationSummary(eki, parameters, forward_map_output=nothing)
     original_priors = eki.inverse_problem.free_parameters.priors
@@ -355,6 +356,10 @@ end
     iterate!(eki::EnsembleKalmanInversion; iterations=1)
 
 Iterate the ensemble Kalman inversion problem `eki` forward by `iterations`.
+
+Return
+======
+`best_parameters`: the ensemble mean of all parameter values after the last iteration.
 """
 function iterate!(eki::EnsembleKalmanInversion; iterations = 1, show_progress = true)
 
@@ -403,8 +408,14 @@ end
 
 NaNResampler(; abort_fraction=0.0, distribution=FullEnsembleDistribution()) = NaNResampler(abort_fraction, distribution)
 
-function resample!(resampler::NaNResampler, G, θ, eki)
 
+"""
+    resample!(resampler::NaNResampler, G, θ, eki)
+    
+Resamples the parameters `θ` of the `eki` process based on the number of `NaN` values
+inside the forward map output `G`.
+"""
+function resample!(resampler::NaNResampler, G, θ, eki)
     # `ensemble_size` vector of bits indicating, for each ensemble member, whether the forward map contained `NaN`s
     nan_values = nan_cols(G)
     nan_columns = findall(Bool.(nan_values)) # indices of columns (particles) with `NaN`s
