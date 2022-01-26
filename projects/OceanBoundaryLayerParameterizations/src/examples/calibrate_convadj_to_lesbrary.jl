@@ -3,8 +3,6 @@
 using OceanTurbulenceParameterEstimation, LinearAlgebra, CairoMakie, DataDeps
 using Oceananigans.Units
 
-include("utils/eki_visuals.jl")
-
 ###
 ### Build an observation from "free convection" LESbrary simulation
 ###
@@ -16,7 +14,6 @@ data_path_highres = datadep"two_day_suite_2m/free_convection_instantaneous_stati
 
 field_names = (:b,)
 observations = SyntheticObservations(data_path; field_names, normalize=ZScore, regrid_size=(1, 1, 64))
-
 
 times = [2hours, 24hours, 36hours, 48hours]
 field_names = (:b,)

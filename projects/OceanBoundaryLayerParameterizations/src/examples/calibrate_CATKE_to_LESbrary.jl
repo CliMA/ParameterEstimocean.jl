@@ -12,11 +12,6 @@ using Oceananigans.Units
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using OceanTurbulenceParameterEstimation
 
-include("utils/lesbrary_paths.jl")
-include("utils/one_dimensional_ensemble_model.jl")
-include("utils/parameters.jl")
-include("utils/visualize_profile_predictions.jl")
-
 # two_day_suite_dir = "/Users/gregorywagner/Projects/OceanTurbulenceParameterEstimation/data/2DaySuite"
 # four_day_suite_dir = "/Users/gregorywagner/Projects/OceanTurbulenceParameterEstimation/data/4DaySuite"
 # six_day_suite_dir = "/Users/gregorywagner/Projects/OceanTurbulenceParameterEstimation/data/6DaySuite"

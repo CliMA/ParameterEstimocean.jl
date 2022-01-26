@@ -135,6 +135,7 @@ function SyntheticObservations(path; field_names,
         grid = raw_grid
 
     else # Well, we're gonna regrid stuff
+        grid = with_size(regrid_size, raw_grid)
 
         @info string("Regridding synthetic observations...", '\n',
                      "    original grid: ", summary(raw_grid), '\n',
@@ -160,7 +161,7 @@ function SyntheticObservations(path; field_names,
 
         field_time_serieses = NamedTuple(field_time_serieses)
     end
-
+    
     # validate_data(fields, grid, times) # might be a good idea to validate the data...
     file = jldopen(path)
     metadata = NamedTuple(Symbol(group) => read_group(file[group]) for group in filter(n -> n ∉ not_metadata_names, keys(file)))

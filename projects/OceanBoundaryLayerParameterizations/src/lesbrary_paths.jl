@@ -5,8 +5,6 @@ using Oceananigans.OutputReaders: FieldTimeSeries
 ##### The LESbrary (so to speak)
 #####
 
-include("./legacy_data_time_serieses.jl")
-
 function get_times(path)
    file = jldopen(path)
    file_iterations = parse.(Int, keys(file["timeseries/t"]))
@@ -14,26 +12,37 @@ function get_times(path)
    return file_times
 end
 
-# https://engaging-web.mit.edu/~alir/lesbrary/6DaySuite/
-function SyntheticObservationsBatch(suite; first_iteration = 1, stride = 1, last_iteration = nothing, normalize = ZScore, Nz)
+fields_by_case = Dict(
+   "free_convection" => (:b, :e),
+   "weak_wind_strong_cooling" => (:b, :u, :v, :e),
+   "strong_wind_weak_cooling" => (:b, :u, :v, :e),
+   "strong_wind" => (:b, :u, :v, :e),
+   "strong_wind_no_rotation" => (:b, :u, :e)
+)
+
+function SyntheticObservationsBatch(path_fn; normalize = ZScore, times=nothing, Nz=64)
 
    observations = Vector{SyntheticObservations}()
 
-   for case in values(suite)
-      path = case.filename
-      times = get_times(path)
-      last_iteration = isnothing(last_iteration) ? length(times) : last_iteration
-      times = times[first_iteration:stride:last_iteration]
-      field_names = case.fields
+   for (case, field_names) in zip(keys(fields_by_case), values(fields_by_case))
 
-      field_time_serieses = legacy_data_field_time_serieses(path, field_names, times)
+      data_path = @datadep_str path_fn(case)
+      SyntheticObservations(data_path; field_names, normalize, times, regrid_size=(1, 1, Nz))
 
-      observation = SyntheticObservations(path; field_names, normalize, times, field_time_serieses, grid_size = (1, 1, Nz))
       push!(observations, observation)
    end
 
    return observations
 end
+
+2s_suite_path(case) = "two_day_suite_2m/$(case)_instantaneous_statistics.jld2"
+4d_suite_path(case) = "two_day_suite_2m/$(case)_instantaneous_statistics.jld2"
+6d_suite_path(case) = "two_day_suite_2m/$(case)_instantaneous_statistics.jld2"
+
+2dSuite = SyntheticObservationsBatch(2s_suite_path; normalize = ZScore, times=[2hours, 12hours, 1days, 36hours, 2days], Nz=64)
+4dSuite = SyntheticObservationsBatch(4d_suite_path; normalize = ZScore, times=[2hours, 1days, 2days, 3days, 4days], Nz=64)
+6dSuite = SyntheticObservationsBatch(6d_suite_path; normalize = ZScore, times=[2hours, 1.5days, 3days, 4.5days, 6days], Nz=64)
+
 
 # https://engaging-web.mit.edu/~alir/lesbrary/2DaySuite/
 function TwoDaySuite(directory; first_iteration = 13, stride = 1, last_iteration = nothing, normalize = ZScore, Nz = 128)

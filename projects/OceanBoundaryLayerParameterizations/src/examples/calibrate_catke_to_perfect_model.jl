@@ -4,10 +4,6 @@ using OceanTurbulenceParameterEstimation, LinearAlgebra, CairoMakie
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
 using OceanTurbulenceParameterEstimation.EnsembleKalmanInversions: NaNResampler, FullEnsembleDistribution
 
-include("utils/lesbrary_paths.jl")
-include("utils/parameters.jl")
-include("utils/visualize_profile_predictions.jl")
-
 examples_path = joinpath(pathof(OceanTurbulenceParameterEstimation), "../../examples")
 include(joinpath(examples_path, "intro_to_inverse_problems.jl"))
 
