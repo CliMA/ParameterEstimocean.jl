@@ -98,22 +98,6 @@ function infer_location(field_name)
     end
 end
 
-function with_grid_size(field_name, ts::FieldTimeSeries, grid_size)
-
-    grid = with_size(grid_size, ts.grid)
-
-    LX, LY, LZ = infer_location(field_name)
-
-    new_ts = FieldTimeSeries{LX, LY, LZ}(grid, ts.times; boundary_conditions=ts.boundary_conditions)
-
-    # Loop over time steps to re-grid each constituent field in `ts`
-    for n = 1:length(ts.times)
-        regrid!(new_ts[n], ts[n])
-    end
-
-    return new_ts
-end
-
 function observation_times(data_path::String)
     file = jldopen(data_path)
     iterations = parse.(Int, keys(file["timeseries/t"]))
@@ -159,8 +143,19 @@ function SyntheticObservations(path; field_names,
         field_time_serieses = Dict()
 
         # Re-grid the data in `field_time_serieses`
-        for (field_name, ts) in zip(keys(field_time_serieses), field_time_serieses)        
-            field_time_serieses[field_name] = with_grid_size(field_name, ts, grid_size)
+        for (field_name, ts) in zip(keys(raw_time_serieses), raw_time_serieses)
+
+            #LX, LY, LZ = location(ts[1])
+            LX, LY, LZ = infer_location(field_name)
+
+            new_ts = FieldTimeSeries{LX, LY, LZ}(grid, times; boundary_conditions)
+        
+            # Loop over time steps to re-grid each constituent field in `field_time_series`
+            for n = 1:length(times)
+                regrid!(new_ts[n], ts[n])
+            end
+        
+            field_time_serieses[field_name] = new_ts
         end
 
         field_time_serieses = NamedTuple(field_time_serieses)
