@@ -1,4 +1,5 @@
 using Test
+using DataDeps
 using OceanTurbulenceParameterEstimation
 using Oceananigans
 using Oceananigans.Units
@@ -76,5 +77,10 @@ using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
 
     @test size(coarsened_observations.grid) === (1, 1, Int(Nz/2))
     @test size(refined_observations.grid) === (1, 1, 2Nz)
-end
 
+    # Test regridding LESbrary observations
+    data_path = datadep"two_day_suite_4m/free_convection_instantaneous_statistics.jld2";
+    observations = SyntheticObservations(data_path; field_names=(:b,), regrid_size=(1, 1, 32))
+    
+    @test size(observations.grid) === (1, 1, 32)
+end
