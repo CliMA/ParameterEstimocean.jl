@@ -3,36 +3,41 @@
 using OceanTurbulenceParameterEstimation, LinearAlgebra, CairoMakie, DataDeps
 using Oceananigans.Units
 
-include("utils/lesbrary_paths.jl")
-include("utils/one_dimensional_ensemble_model.jl")
 include("utils/eki_visuals.jl")
 
 ###
 ### Build an observation from "free convection" LESbrary simulation
 ###
 
-observations = SyntheticObservationsBatch(suite; first_iteration = 13, last_iteration = nothing, normalize = ZScore, Nz = 64)
+# observations = SyntheticObservationsBatch(suite; first_iteration = 13, last_iteration = nothing, normalize = ZScore, Nz = 64)
 
-data_path = datadep"two_day_suite_4m/strong_wind_instantaneous_statistics.jld2" # Nz = 64
-data_path_highres = datadep"two_day_suite_2m/strong_wind_instantaneous_statistics.jld2" # Nz = 128
+data_path = datadep"two_day_suite_4m/free_convection_instantaneous_statistics.jld2" # Nz = 64
+data_path_highres = datadep"two_day_suite_2m/free_convection_instantaneous_statistics.jld2" # Nz = 128
+
+field_names = (:b,)
+observations = SyntheticObservations(data_path; field_names, normalize=ZScore, regrid_size=(1, 1, 64))
+
 
 times = [2hours, 24hours, 36hours, 48hours]
 field_names = (:b,)
-observations = SyntheticObservations(data_path; field_names, times, normalize=ZScore)
+observations = SyntheticObservations(data_path; field_names, times, normalize=ZScore, regrid_size=(1, 1, 64))
+observation_highres = SyntheticObservations(data_path_highres; field_names, times, normalize=ZScore, regrid_size=(1, 1, 64))
 
-
-observation_highres = SyntheticObservations.(data_path_highres; field_names, times, normalize=ZScore, regrid_size=(1, 1, 64))
+## Specify an output map that tracks 2 uniformly spaced time steps (Ignores the initial condition.)
+# track_times = Int.(floor.(range(1, stop = lastindex(observations[1].times), length = 3)))
+output_map = ConcatenatedOutputMap()
 
 function estimate_obs_covariance(data_paths)
     obs_maps = []
     for data_path in data_paths
-        temp_observation = SyntheticObservations.(data_path; field_names, times, normalize=ZScore, regrid_size=(1, 1, 64))
-        push!(obs_maps, observation_map(temp_observation)')
+        temp_observation = SyntheticObservations(data_path_highres; field_names, times, normalize=ZScore, regrid_size=(1, 1, 64))
+        push!(obs_maps, observation_map(output_map, temp_observation))
     end
-    obs_maps = vcat(obs_maps...)
+    # obs_maps = hcat(obs_maps...)
+    return obs_maps
 end
 
-estimate_obs_covariance([data_path, data_path_higres])
+estimate_obs_covariance([data_path, data_path_highres])
 
 ###
 ### Make synthetic observations to approximate noise covariance matrix
@@ -67,9 +72,6 @@ free_parameters = FreeParameters(priors)
 
 description = "Nz_64_3times"
 
-# Specify an output map that tracks 2 uniformly spaced time steps (Ignores the initial condition.)
-track_times = Int.(floor.(range(1, stop = lastindex(observations[1].times), length = 3)))
-
 function build_inverse_problem(observations, ensemble_size)
 
     simulation = ensemble_column_model_simulation(observations;
@@ -99,7 +101,7 @@ function build_inverse_problem(observations, ensemble_size)
         ensemble_size = ensemble_size,
         closure = closure)
     ensemble_simulation = Simulation(ensemble_model; Δt = 10seconds)
-    return InverseProblem(observations, ensemble_simulation, free_parameters; output_map = ConcatenatedOutputMap(track_times))
+    return InverseProblem(observations, ensemble_simulation, free_parameters; output_map = output_map)
 end
 
 calibration = build_inverse_problem(observations, ensemble_size)
