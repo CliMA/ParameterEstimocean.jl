@@ -72,16 +72,35 @@ function __init__()
              "strong_wind",
              "strong_wind_no_rotation"]
 
-    two_day_suite_4m_paths = [lesbrary_url * "two_day_suite/8m_8m_4m_resolution/$case" * "_instantaneous_statistics.jld2"
-                              for case in cases]
+    two_day_suite_url = lesbrary_url * "two_day_suite/"
 
-    two_day_suite_2m_paths = [lesbrary_url * "two_day_suite/4m_4m_2m_resolution/$case" * "_instantaneous_statistics.jld2"
-                              for case in cases]
-        
-    dep = DataDep("two_day_suite_4m", "Ocean surface boundary layer LES data", two_day_suite_4m_paths)
+    glom_url(suite, resolution, case) = string(lesbrary_url,
+                                               suite, "/", resolution, "_resolution/",
+                                               case, "_instantaneous_statistics.jld2")
+
+    two_day_suite_2m_paths  = [glom_url( "two_day_suite", "4m_4m_2m", case) for case in cases]
+    two_day_suite_4m_paths  = [glom_url( "two_day_suite", "8m_8m_4m", case) for case in cases]
+    four_day_suite_2m_paths = [glom_url("four_day_suite", "4m_4m_2m", case) for case in cases]
+    four_day_suite_4m_paths = [glom_url("four_day_suite", "8m_8m_4m", case) for case in cases]
+    six_day_suite_2m_paths  = [glom_url( "six_day_suite", "4m_4m_2m", case) for case in cases]
+    six_day_suite_4m_paths  = [glom_url( "six_day_suite", "8m_8m_4m", case) for case in cases]
+
+    dep = DataDep("two_day_suite_2m", "Idealized 2 day simulation data with 2m vertical resolution", two_day_suite_2m_paths)
     DataDeps.register(dep)
 
-    dep = DataDep("two_day_suite_2m", "Ocean surface boundary layer LES data", two_day_suite_2m_paths)
+    dep = DataDep("two_day_suite_4m", "Idealized 2 day simulation data with 4m vertical resolution", two_day_suite_4m_paths)
+    DataDeps.register(dep)
+
+    dep = DataDep("four_day_suite_2m", "Idealized 4 day simulation data with 2m vertical resolution", four_day_suite_2m_paths)
+    DataDeps.register(dep)
+
+    dep = DataDep("four_day_suite_4m", "Idealized 4 day simulation data with 4m vertical resolution", four_day_suite_4m_paths)
+    DataDeps.register(dep)
+
+    dep = DataDep("six_day_suite_2m", "Idealized 6 day simulation data with 2m vertical resolution", six_day_suite_2m_paths)
+    DataDeps.register(dep)
+
+    dep = DataDep("six_day_suite_4m", "Idealized 6 day simulation data with 4m vertical resolution", six_day_suite_4m_paths)
     DataDeps.register(dep)
 end
 
