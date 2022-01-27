@@ -208,12 +208,17 @@ function transform_time_series(output_map::ConcatenatedOutputMap, time_series::S
 
     for field_name in keys(time_series.field_time_serieses)
         field_time_series = time_series.field_time_serieses[field_name]
+
+        # Copy time series data to `Array`, keeping only `time_indices` and discarding halos
         field_time_series_data = Array(interior(field_time_series))[:, :, :, output_map.time_indices]
 
+        # Reshape data to 2D array with size (Nx, :)
         Nx, Ny, Nz, Nt = size(field_time_series_data)
         field_time_series_data = reshape(field_time_series_data, Nx, Ny * Nz * Nt)
 
+        # Normalize data according to observation-specified normalization
         normalize!(field_time_series_data, time_series.normalization[field_name])
+
         push!(flattened_normalized_data, field_time_series_data)
     end
 
