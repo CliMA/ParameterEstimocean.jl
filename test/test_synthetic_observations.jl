@@ -86,10 +86,10 @@ using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
 
     normalization = (u = IdentityNormalization(), v = ZScore(), b = RescaledZScore(0.1))
     uvb_observations = SyntheticObservations(data_path; field_names, normalization)
-    @test uvb.normalization[:u] isa IdentityNormalization
-    @test uvb.normalization[:v] isa ZScore
-    @test uvb.normalization[:b] isa RescaledZScore
-    @test uvb.normalization[:b].scale === 0.1
+    @test uvb_observations.normalization[:u] isa IdentityNormalization
+    @test uvb_observations.normalization[:v] isa ZScore
+    @test uvb_observations.normalization[:b] isa RescaledZScore
+    @test uvb_observations.normalization[:b].scale === 0.1
 
     # Regridding
     coarsened_observations = SyntheticObservations(data_path, field_names=(:u, :v, :b), regrid_size=(1, 1, Int(Nz/2)))
