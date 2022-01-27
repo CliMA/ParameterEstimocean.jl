@@ -5,6 +5,7 @@ export
     InverseProblem,
     FreeParameters,
     IdentityNormalization,
+    RescaledZScore,
     ZScore,
     forward_map,
     forward_run!,
@@ -31,7 +32,9 @@ include("EnsembleKalmanInversions.jl")
 
 using .Observations:
     SyntheticObservations,
+    IdentityNormalization,
     ZScore,
+    RescaledZScore,
     observation_times
 
 using .EnsembleSimulations: ensemble_column_model_simulation
