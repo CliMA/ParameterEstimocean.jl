@@ -488,9 +488,9 @@ uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
 
 [[Oceananigans]]
 deps = ["Adapt", "CUDA", "CUDAKernels", "Crayons", "CubedSphere", "Dates", "DocStringExtensions", "FFTW", "Glob", "IncompleteLU", "InteractiveUtils", "IterativeSolvers", "JLD2", "KernelAbstractions", "LinearAlgebra", "Logging", "MPI", "NCDatasets", "OffsetArrays", "OrderedCollections", "PencilFFTs", "Pkg", "Printf", "Random", "Rotations", "SafeTestsets", "SeawaterPolynomials", "SparseArrays", "Statistics", "StructArrays", "Tullio"]
-git-tree-sha1 = "26e74d70b23169e531bf241b9a0eb81c1451d4d0"
+git-tree-sha1 = "586ef2b936b7f20b6f7766d10602c18efaa7f27a"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
-version = "0.68.7"
+version = "0.69.1"
 
 [[OffsetArrays]]
 deps = ["Adapt"]
