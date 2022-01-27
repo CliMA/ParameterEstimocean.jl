@@ -3,25 +3,29 @@ module OceanBoundaryLayerParameterizations
 pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..", ".."))
 
 using OceanTurbulenceParameterEstimation
-using OceanTurbulenceParameterEstimation.Models: set!
-using CairoMakie, LaTeXStrings, OrderedCollections
-using Oceananigans, FileIO
 
 export
-    # lesbrary_paths.jl
-    TwoDaySuite, FourDaySuite, SixDaySuite, GeneralStrat,
+    # lesbrary.jl
+    TwoDaySuite, FourDaySuite, SixDaySuite,
+    lesbrary_ensemble_simulation,
 
-    # one_dimensional_ensemble_model.jl
-    OneDimensionalEnsembleModel,
+    # catke_parameters.jl
+    CATKEParametersRiDependent,
+    CATKEParametersRiIndependent,
+    CATKEParametersRiDependentConvectiveAdjustment,
+    CATKEParametersRiIndependentConvectiveAdjustment,
 
-    # EKI_hyperparameter_search.jl
-    plot_stds_within_bounds, plot_prior_variance, plot_num_ensemble_members, 
-    plot_observation_noise_level, plot_prior_variance_and_obs_noise_level,
+    # eki_visuals.jl
+    plot_parameter_convergence!,
+    plot_pairwise_ensembles!,
+    plot_error_convergence!,
 
     # visualize_profile_predictions.jl
-    visualize!,
-    visualize_and_save!
+    visualize!
 
-include("lesbrary_paths.jl")
+include("lesbrary.jl")
+include("catke_parameters.jl")
+include("eki_visuals.jl")
+include("visualize_profile_predictions.jl")
 
 end # module
