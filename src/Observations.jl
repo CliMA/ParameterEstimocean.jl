@@ -144,12 +144,12 @@ function SyntheticObservations(path; field_names,
         field_time_serieses = Dict()
 
         # Re-grid the data in `field_time_serieses`
-        for (field_name, ts) in zip(keys(field_time_serieses), field_time_serieses)
+        for (field_name, ts) in zip(keys(raw_time_serieses), raw_time_serieses)
 
             #LX, LY, LZ = location(ts[1])
             LX, LY, LZ = infer_location(field_name)
 
-            new_ts = FieldTimeSeries{LX, LY, LZ}(new_grid, times; boundary_conditions)
+            new_ts = FieldTimeSeries{LX, LY, LZ}(grid, times; boundary_conditions)
         
             # Loop over time steps to re-grid each constituent field in `field_time_series`
             for n = 1:length(times)
