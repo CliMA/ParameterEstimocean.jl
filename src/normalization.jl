@@ -10,7 +10,8 @@ function variance(field)
     return variance
 end
 
-mean_variance(field_time_series) = mean((variance(field_time_series[i]) for i = 1:length(field_time_series.times)))
+mean_variance(field_time_series) = mean((variance(field_time_series[i])
+                                         for i = 1:length(field_time_series.times)))
 
 #####
 ##### Identity normalization
@@ -23,7 +24,8 @@ struct IdentityNormalization end
 
 Compute `normalization` properties for `field_time_series`.
 """
-compute_normalization_properties!(::IdentityNormalization, fts) = IdentityNormalization()
+compute_normalization_properties!(::IdentityNormalization, fts) =
+    IdentityNormalization()
 
 """
     normalize!(field, normalization)
@@ -68,6 +70,26 @@ compute_normalization_properties!(::ZScore, fts) = ZScore(fts)
 function normalize!(field, normalization::ZScore)
     μ, σ = normalization.μ, normalization.σ
     field .= (field .- μ) ./ σ
+    return nothing
+end
+
+#####
+##### ZScore normalization
+#####
+
+struct RescaledZScore{T, Z}
+    scale :: T
+    zscore :: Z
+end
+
+RescaledZScore(scale) = RescaledZScore(scale, nothing)
+
+compute_normalization_properties!(r::RescaledZScore, fts) =
+    RescaledZScore(r.scale, ZScore(fts))
+
+function normalize!(field, normalization::RescaledZScore)
+    normalize!(field, normalization.zscore)
+    field .*= normalization.scale
     return nothing
 end
 
