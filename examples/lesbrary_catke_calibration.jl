@@ -27,7 +27,7 @@ data_path = datadep"two_day_suite_4m/strong_wind_instantaneous_statistics.jld2"
 times = [2hours, 6hours, 12hours]
 field_names = (:b, :u, :v, :e)
 
-observations = SyntheticObservations(data_path; field_names, times, normalize=ZScore)
+observations = SyntheticObservations(data_path; field_names, times, normalization=ZScore())
 
 # Let's take a look at the observations. We define a few
 # plotting utilities along the way to use later in the example:

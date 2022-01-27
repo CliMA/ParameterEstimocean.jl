@@ -57,7 +57,7 @@ using OceanTurbulenceParameterEstimation.InverseProblems: transpose_model_output
     run!(truth_simulation)
 
     data_path = experiment_name * ".jld2"
-    observations = SyntheticObservations(data_path, field_names=(:u, :b), normalize=ZScore)
+    observations = SyntheticObservations(data_path, field_names=(:u, :b), normalization=ZScore())
     
     #####
     ##### Make model data

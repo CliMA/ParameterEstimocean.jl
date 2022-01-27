@@ -85,16 +85,16 @@ data_path = generate_synthetic_observations()
 #
 # For example, to build observations with a single field we write,
 
-single_field_observations = SyntheticObservations(data_path, field_names=:b, normalize=ZScore)
+single_field_observations = SyntheticObservations(data_path, field_names=:b, normalization=ZScore())
 
 # To build observations with two fields we write
 
-two_field_observations = SyntheticObservations(data_path, field_names=(:u, :b), normalize=ZScore)
+two_field_observations = SyntheticObservations(data_path, field_names=(:u, :b), normalization()=ZScore())
 
 # And to build observations with specified times we write
 
 times = single_field_observations.times[2:end]
-specified_times_observations = SyntheticObservations(data_path, field_names=(:u, :b), normalize=ZScore, times=times)
+specified_times_observations = SyntheticObservations(data_path, field_names=(:u, :b), normalization=ZScore(), times=times)
 
 # Notice that in the last case, `specified_times_observations.times` is missing `0.0`.
 
@@ -102,7 +102,7 @@ specified_times_observations = SyntheticObservations(data_path, field_names=(:u,
 
 # For this we include the initial condition and ``v`` velocity component,
 
-observations = SyntheticObservations(data_path, field_names=(:u, :v, :b), normalize=ZScore)
+observations = SyntheticObservations(data_path, field_names=(:u, :v, :b), normalization=ZScore())
 
 fig = Figure()
 
