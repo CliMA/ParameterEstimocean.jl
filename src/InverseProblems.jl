@@ -353,7 +353,7 @@ function observation_map_variance_across_time(map::ConcatenatedOutputMap, observ
     N_fields = length(keys(observation.field_time_serieses))
 
     a = transform_time_series(map, observation)
-    a = transpose(a) # (Nx, Ny*Nz*Nt)
+    a = transpose(a) # (Nx, Ny*Nz*Nt*Nfields)
 
     example_field_time_series = values(observation.field_time_serieses)[1]
 
