@@ -69,7 +69,7 @@ compute_normalization_properties!(::ZScore, fts) = ZScore(fts)
 
 function normalize!(field, normalization::ZScore)
     μ, σ = normalization.μ, normalization.σ
-    field .= (field .- μ) ./ σ
+    @. field = (field - μ) / σ
     return nothing
 end
 
@@ -89,7 +89,7 @@ compute_normalization_properties!(r::RescaledZScore, fts) =
 
 function normalize!(field, normalization::RescaledZScore)
     normalize!(field, normalization.zscore)
-    field .*= normalization.scale
+    @. field *= normalization.scale
     return nothing
 end
 
