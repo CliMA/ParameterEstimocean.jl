@@ -11,28 +11,17 @@ using LinearAlgebra, Distributions, JLD2, DataDeps
 using Oceananigans.Units
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using OceanTurbulenceParameterEstimation
+using OceanBoundaryLayerParameterizations
 
-# two_day_suite_dir = "/Users/gregorywagner/Projects/OceanTurbulenceParameterEstimation/data/2DaySuite"
-# four_day_suite_dir = "/Users/gregorywagner/Projects/OceanTurbulenceParameterEstimation/data/4DaySuite"
-# six_day_suite_dir = "/Users/gregorywagner/Projects/OceanTurbulenceParameterEstimation/data/6DaySuite"
-
-# two_day_suite = TwoDaySuite(two_day_suite_dir)
-# four_day_suite = FourDaySuite(four_day_suite_dir)
-# six_day_suite = SixDaySuite(six_day_suite_dir)
-
-# calibration = InverseProblem(two_day_suite, parameters; relative_weights = relative_weight_options["all_but_e"],
-#                              architecture = GPU(), ensemble_size = 10, Δt = 30.0)
-
-# validation = InverseProblem(four_day_suite, calibration; Nz = 32);
+two_day_suite = TwoDaySuite()
+four_day_suite = FourDaySuite()
+six_day_suite = SixDaySuite()
 
 #####
 ##### Set up ensemble model
 #####
 
-lesbrary_directory = "/Users/adelinehillier/Desktop/dev/"
-lesbrary_directory = "/home/ahillier/home/"
-
-observations = TwoDaySuite(lesbrary_directory; first_iteration = 13, last_iteration = nothing, normalize = ZScore, Nz = 128)
+observations = TwoDaySuite(lesbrary_directory;)
 
 parameter_set = CATKEParametersRiDependent
 closure = closure_with_parameters(CATKEVerticalDiffusivity(Float64;), parameter_set.settings)

@@ -1,107 +1,64 @@
 # Calibrate convective adjustment closure parameters to LESbrary 2-day "free_convection" simulation
 
 using OceanTurbulenceParameterEstimation, LinearAlgebra, CairoMakie, DataDeps
+using OceanBoundaryLayerParameterizations: lesbrary_ensemble_simulation
+using Oceananigans
 using Oceananigans.Units
+
+architecture = CPU()
+ensemble_size = 50
+description = ""
+Δt = 10.0
 
 ###
 ### Build an observation from "free convection" LESbrary simulation
 ###
 
-# observations = SyntheticObservationsBatch(suite; first_iteration = 13, last_iteration = nothing, normalize = ZScore, Nz = 64)
-
 data_path = datadep"two_day_suite_4m/free_convection_instantaneous_statistics.jld2" # Nz = 64
 data_path_highres = datadep"two_day_suite_2m/free_convection_instantaneous_statistics.jld2" # Nz = 128
 
-field_names = (:b,)
-observations = SyntheticObservations(data_path; field_names, normalize=ZScore, regrid_size=(1, 1, 64))
+observation, observation_highres = SyntheticObservations.([data_path, data_path_highres]; 
+                                    field_names=(:b,), 
+                                    times=[2hours, 24hours, 48hours], 
+                                    normalize=ZScore, 
+                                    regrid_size=(1, 1, 64)
+                                    )
 
-times = [2hours, 24hours, 36hours, 48hours]
-field_names = (:b,)
-observations = SyntheticObservations(data_path; field_names, times, normalize=ZScore, regrid_size=(1, 1, 64))
-observation_highres = SyntheticObservations(data_path_highres; field_names, times, normalize=ZScore, regrid_size=(1, 1, 64))
+observation = SyntheticObservations(data_path; 
+                                    field_names=(:b,), 
+                                    times=[2hours, 24hours, 48hours], 
+                                    normalize=ZScore)
 
-## Specify an output map that tracks 2 uniformly spaced time steps (Ignores the initial condition.)
-# track_times = Int.(floor.(range(1, stop = lastindex(observations[1].times), length = 3)))
+observations = [observation]
 output_map = ConcatenatedOutputMap()
 
-function estimate_obs_covariance(data_paths)
-    obs_maps = []
-    for data_path in data_paths
-        temp_observation = SyntheticObservations(data_path_highres; field_names, times, normalize=ZScore, regrid_size=(1, 1, 64))
-        push!(obs_maps, observation_map(output_map, temp_observation))
-    end
-    # obs_maps = hcat(obs_maps...)
-    return obs_maps
-end
+Γy = estimate_η_covariance(output_map, [observation, observation_highres])
 
-estimate_obs_covariance([data_path, data_path_highres])
+f = Figure()
+noise_var = diag(Γy)
+lines(f[1,1], noise_var, 1:length(noise_var))
+save("noise_var.pdf", f)
 
-###
-### Make synthetic observations to approximate noise covariance matrix
-###
+f = heatmap(Γy)
+save("noise_cov.pdf", f)
 
-closure = ConvectiveAdjustmentVerticalDiffusivity()
-
-kwargs = (tracers = (:b,), Δt = 10.0, stop_time = 2days)
-
-approx_closure = closure_with_parameters(closure, true_parameters)
-
-# Note: if an output file of the same name already exist, `generate_synthetic_observations` will return the existing path and skip re-generating the data.
-observ_path_high_res = generate_synthetic_observations("perfect_model_observation_high_res"; Qᵘ = 3e-5, Qᵇ = 7e-9, f₀ = 1e-4, closure = approx_closure, kwargs...)
-observation1 = SyntheticObservations(observ_path1, field_names = (:b, :e, :u, :v), normalize = ZScore)
-observations = [observation1, observation2]
-
-Nz = 32, Lz = 64
+f = Figure()
+y = [observation_map(output_map, observation)...]
+lines(f[1,1], y, 1:length(y))
+save("obs_map.pdf", f)
 
 ###
 ### Build Inverse Problem
 ###
 
-architecture = CPU()
-ensemble_size = 50
-
-priors = (
-    convective_κz = ConstrainedNormal(0.0, 1.0, 0.1, 1.0),
-    background_κz = ConstrainedNormal(0.0, 1.0, 0.0, 10e-4)
-)
-
+priors = (convective_κz = ConstrainedNormal(0.0, 1.0, 0.1, 1.0),
+          background_κz = ConstrainedNormal(0.0, 1.0, 0.0, 10e-4))
 free_parameters = FreeParameters(priors)
 
-description = "Nz_64_3times"
+closure = ConvectiveAdjustmentVerticalDiffusivity()
 
-function build_inverse_problem(observations, ensemble_size)
-
-    simulation = ensemble_column_model_simulation(observations;
-                                                  Nensemble = 30,
-                                                  architecture = CPU(),
-                                                  tracers = (:b, :e),
-                                                  closure = catke)
-
-    # `ensemble_column_model_simulation` sets up `simulation`
-    # with a `FluxBoundaryCondition` array initialized to 0 and a default
-    # time-step. We modify these for our particular problem,
-
-    simulation.Δt = 20.0
-
-    Qᵘ = simulation.model.velocities.u.boundary_conditions.top.condition
-    Qᵇ = simulation.model.tracers.b.boundary_conditions.top.condition
-    N² = simulation.model.tracers.b.boundary_conditions.bottom.condition
-
-    for (case, obs) in enumerate(observations)
-        view(Qᵘ, case, :) .= obs.metadata.parameters.momentum_flux
-        view(Qᵇ, case, :) .= obs.metadata.parameters.buoyancy_flux
-        view(N², case, :) .= obs.metadata.parameters.N²_deep
-    end
-
-    ensemble_model = OneDimensionalEnsembleModel(observations;
-        architecture = architecture,
-        ensemble_size = ensemble_size,
-        closure = closure)
-    ensemble_simulation = Simulation(ensemble_model; Δt = 10seconds)
-    return InverseProblem(observations, ensemble_simulation, free_parameters; output_map = output_map)
-end
-
-calibration = build_inverse_problem(observations, ensemble_size)
+simulation = lesbrary_ensemble_simulation(observations; ensemble_size, architecture, closure, Δt)
+calibration = InverseProblem(observations, simulation, free_parameters; output_map = output_map)
 
 ###
 ### Run EKI
@@ -123,7 +80,6 @@ plot_parameter_convergence!(eki, directory)
 plot_pairwise_ensembles!(eki, directory)
 plot_error_convergence!(eki, directory)
 
-include("./utils/visualize_profile_predictions.jl")
 visualize!(calibration, ensemble_means(eki)[end];
     field_names = (:b,),
     directory = directory,
@@ -156,7 +112,8 @@ xc = params[1, :]
 yc = params[2, :]
 
 # build an `InverseProblem` that can accommodate `ni*nj` ensemble members 
-big_calibration = build_inverse_problem(observations, ni * nj)
+big_simulation = lesbrary_ensemble_simulation(observations; ni * nj, architecture, closure, Δt)
+big_calibration = InverseProblem(observations, big_simulation, free_parameters; output_map = output_map)
 
 y = observation_map(big_calibration)
 
