@@ -89,7 +89,7 @@ single_field_observations = SyntheticObservations(data_path, field_names=:b, nor
 
 # To build observations with two fields we write
 
-two_field_observations = SyntheticObservations(data_path, field_names=(:u, :b), normalization()=ZScore())
+two_field_observations = SyntheticObservations(data_path, field_names=(:u, :b), normalization=ZScore())
 
 # And to build observations with specified times we write
 
