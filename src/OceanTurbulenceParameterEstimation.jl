@@ -22,6 +22,7 @@ export
     SuccessfulEnsembleDistribution,
     ConstrainedNormal
 
+include("Utils.jl")
 include("Observations.jl")
 include("EnsembleSimulations.jl")
 include("TurbulenceClosureParameters.jl")
