@@ -2,3 +2,9 @@ name = "OceanBoundaryLayerParameterizations"
 uuid = "f2a495e6-5045-4354-8fbd-e5ecaaea5da5"
 authors = ["Adeline Hillier <adelineh2000@gmail.com>"]
 version = "0.1.0"
+
+[deps]
+DataDeps = "124859b0-ceae-595e-8997-d05f6a7a8dfe"
+LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
+OceanTurbulenceParameterEstimation = "eca81dc5-87a6-4430-aec8-c76695404a43"
+Oceananigans = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
