@@ -12,7 +12,7 @@ using JLD2
 
 import Oceananigans.Fields: set!
 
-using OceanTurbulenceParameterEstimation.Utils: field_named_tuple
+using OceanTurbulenceParameterEstimation.Utils: field_name_pairs
 
 abstract type AbstractObservation end
 
@@ -169,7 +169,7 @@ function SyntheticObservations(path; field_names,
     metadata = NamedTuple(Symbol(group) => read_group(file[group]) for group in filter(n -> n ∉ not_metadata_names, keys(file)))
     close(file)
 
-    normalization = field_named_tuple(normalization, field_names, "normalization")
+    normalization = field_name_pairs(normalization, field_names, "normalization")
     normalization = Dict(name => compute_normalization_properties!(normalization[name], field_time_serieses[name])
                          for name in keys(field_time_serieses))
 
