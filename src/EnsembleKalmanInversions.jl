@@ -339,7 +339,7 @@ function IterationSummary(eki, parameters, forward_map_output=nothing)
     end
 
     # Vector of (Φ1, Φ2) pairs, one for each ensemble member at the current iteration
-    objective_values = [Φ(eki, parameters[:, j], forward_map[:, j]) for j in 1:size(forward_map, 2)]
+    objective_values = [Φ(eki, parameters[:, j], forward_map_output[:, j]) for j in 1:size(forward_map_output, 2)]
 
     return IterationSummary(constrained_parameters,
                             constrained_ensemble_mean,
