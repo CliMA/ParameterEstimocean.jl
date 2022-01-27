@@ -116,7 +116,7 @@ function observation_times(obs::Vector)
 end
 
 function SyntheticObservations(path; field_names,
-                               normalization = IdentityNormalization,
+                               normalization = IdentityNormalization(),
                                times = nothing,
                                field_time_serieses = nothing,
                                regrid_size = nothing)
@@ -170,7 +170,7 @@ function SyntheticObservations(path; field_names,
     close(file)
 
     normalization = field_named_tuple(normalization, field_names, "normalization")
-    normalization = Dict(name => compute_normalization!(normalization[name], field_time_serieses[name])
+    normalization = Dict(name => compute_normalization_properties!(normalization[name], field_time_serieses[name])
                          for name in keys(field_time_serieses))
 
     return SyntheticObservations(field_time_serieses, grid, times, path, metadata, normalization)
