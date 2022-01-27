@@ -29,9 +29,9 @@ field_names = (:b, :u, :v, :e)
 
 ## Use a special normalization that emphasizes buoyancy and de-emphasizes TKE
 normalization = (b = ZScore(),
-                 u = RescaledZScore(0.1), 
-                 v = RescaledZScore(0.1), 
-                 e = RescaledZScore(0.01)) 
+                 u = ZScore(), 
+                 v = ZScore(), 
+                 e = RescaledZScore(0.1)) 
 
 observations = SyntheticObservations(data_path; field_names, times, normalization)
 
