@@ -10,32 +10,22 @@ function variance(field)
     return variance
 end
 
-#=
-function Base.iterate(field_time_series::FieldTimeSeries, state)
-    if state >= length(field_time_series.times)
-        return nothing
-    else
-        return field_time_series[state+1], state+1
-    end
-end
-=#
-
-mean_variance(field_time_series) = mean((variance(field_time_series[i]) for i = 1:length(field_time_series.times)))
+mean_variance(field_time_series) = mean((variance(field_time_series[i])
+                                         for i = 1:length(field_time_series.times)))
 
 #####
-##### Normalization functionality for forward map output
+##### Identity normalization
 #####
 
-abstract type AbstractNormalization end
+struct IdentityNormalization end
 
-struct IdentityNormalization <: AbstractNormalization end
+"""
+    compute_normalization_properties!(normalization, field_time_series)
 
-IdentityNormalization(field_time_series) = IdentityNormalization()
-
-struct ZScore{T} <: AbstractNormalization
-    μ :: T
-    σ :: T
-end
+Compute `normalization` properties for `field_time_series`.
+"""
+compute_normalization_properties!(::IdentityNormalization, fts) =
+    IdentityNormalization()
 
 """
     normalize!(field, normalization)
@@ -44,27 +34,16 @@ Normalize `field` using `normalization`.
 """
 normalize!(field, ::IdentityNormalization) = nothing
 
-function normalize!(field, normalization::ZScore)
-    field .-= normalization.μ
+#####
+##### ZScore normalization
+#####
 
-    if normalization.σ != 0
-        field ./= normalization.σ
-    else
-        @warn "Field data seems to be all zeros -- just saying."
-    end
-
-    return nothing
+struct ZScore{T}
+    μ :: T
+    σ :: T
 end
 
-#=
-"Returns a view of `f` that excludes halo points."
-@inline interior(f::FieldTimeSeries{X, Y, Z}) where {X, Y, Z} =
-    view(parent(f.data),
-         interior_parent_indices(X, topology(f, 1), f.grid.Nx, f.grid.Hx),
-         interior_parent_indices(Y, topology(f, 2), f.grid.Ny, f.grid.Hy),
-         interior_parent_indices(Z, topology(f, 3), f.grid.Nz, f.grid.Hz),
-         :)
-=#
+ZScore() = ZScore(nothing, nothing) # stub for user-interface
 
 """
     ZScore(field_time_series::FieldTimeSeries)
@@ -75,6 +54,42 @@ its mean and its variance.
 function ZScore(field_time_series::FieldTimeSeries)
     μ = mean(interior(field_time_series))
     σ = sqrt(mean_variance(field_time_series))
-    
+
+    if σ == 0
+        @warn("Field data seems to be all zeros --- just sayin'. Setting " *
+              "ZScore standard deviation to 1.")
+
+        σ = one(μ)
+    end
+
     return ZScore(μ, σ)
 end
+
+compute_normalization_properties!(::ZScore, fts) = ZScore(fts)
+
+function normalize!(field, normalization::ZScore)
+    μ, σ = normalization.μ, normalization.σ
+    @. field = (field - μ) / σ
+    return nothing
+end
+
+#####
+##### ZScore normalization
+#####
+
+struct RescaledZScore{T, Z}
+    scale :: T
+    zscore :: Z
+end
+
+RescaledZScore(scale) = RescaledZScore(scale, nothing)
+
+compute_normalization_properties!(r::RescaledZScore, fts) =
+    RescaledZScore(r.scale, ZScore(fts))
+
+function normalize!(field, normalization::RescaledZScore)
+    normalize!(field, normalization.zscore)
+    @. field *= normalization.scale
+    return nothing
+end
+
