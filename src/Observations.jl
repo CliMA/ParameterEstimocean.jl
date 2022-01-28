@@ -230,6 +230,10 @@ function set!(model, observations::Vector{<:SyntheticObservations}, index = 1)
     
         arch = architecture(model_field)
 
+        @show name
+        @show model_field
+        @show size(field_ts_data)
+
         # Reshape `field_ts_data` to the size of `model_field`'s interior
         reshaped_data = arch_array(arch, reshape(field_ts_data, size(model_field)))
     

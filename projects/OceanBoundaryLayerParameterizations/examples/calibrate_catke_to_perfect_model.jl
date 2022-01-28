@@ -28,11 +28,16 @@ true_closure = closure_with_parameters(closure, true_parameters)
 
 kwargs = (tracers = (:b, :e), Δt = 10.0, stop_time = 1day)
 
+normalization = (b = ZScore(),
+                 u = ZScore(), 
+                 v = ZScore(), 
+                 e = RescaledZScore(0.1))
+
 # Note: if an output file of the same name already exist, `generate_synthetic_observations` will return the existing path and skip re-generating the data.
 observ_path1 = generate_synthetic_observations("perfect_model_observation1"; Qᵘ = 3e-5, Qᵇ = 7e-9, f₀ = 1e-4, closure = true_closure, kwargs...)
 observ_path2 = generate_synthetic_observations("perfect_model_observation2"; Qᵘ = -2e-5, Qᵇ = 3e-9, f₀ = 0, closure = true_closure, kwargs...)
-observation1 = SyntheticObservations(observ_path1, field_names = (:b, :e, :u, :v), normalize = ZScore)
-observation2 = SyntheticObservations(observ_path2, field_names = (:b, :e, :u, :v), normalize = ZScore)
+observation1 = SyntheticObservations(observ_path1, field_names = (:b, :e, :u, :v), normalization)
+observation2 = SyntheticObservations(observ_path2, field_names = (:b, :e, :u, :v), normalization)
 observations = [observation1, observation2]
 
 ###

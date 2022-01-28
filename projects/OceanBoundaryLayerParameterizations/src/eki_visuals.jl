@@ -1,4 +1,5 @@
 using CairoMakie
+using LinearAlgebra
 
 # Vector of NamedTuples, ensemble mean at each iteration
 ensemble_means(eki) = getproperty.(eki.iteration_summaries, :ensemble_mean)

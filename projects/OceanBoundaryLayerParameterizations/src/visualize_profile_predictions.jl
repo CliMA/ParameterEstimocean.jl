@@ -40,8 +40,6 @@ function visualize!(ip::InverseProblem, parameters;
         hidespines!(ax, :t, :b, :l, :r)
     end
 
-    calibration.observations[1].field_time_serieses.b[1].grid
-
     for (oi, observation) in enumerate(observations)
 
         i = oi + 1
