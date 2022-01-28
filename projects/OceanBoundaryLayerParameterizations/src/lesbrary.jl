@@ -1,4 +1,5 @@
 using DataDeps
+using Statistics
 
 fields_by_case = Dict(
    "free_convection" => (:b, :e),
@@ -8,14 +9,14 @@ fields_by_case = Dict(
    "strong_wind_no_rotation" => (:b, :u, :e)
 )
 
-function SyntheticObservationsBatch(path_fn, normalize, times, Nz)
+function SyntheticObservationsBatch(path_fn, normalization, times, Nz)
 
    observations = Vector{SyntheticObservations}()
 
    for (case, field_names) in zip(keys(fields_by_case), values(fields_by_case))
 
       data_path = @datadep_str path_fn(case)
-      SyntheticObservations(data_path; field_names, normalize, times, regrid_size=(1, 1, Nz))
+      SyntheticObservations(data_path; field_names, normalization, times, regrid_size=(1, 1, Nz))
 
       push!(observations, observation)
    end
@@ -27,9 +28,14 @@ two_day_suite_path(case) = "two_day_suite_2m/$(case)_instantaneous_statistics.jl
 four_day_suite_path(case) = "two_day_suite_2m/$(case)_instantaneous_statistics.jld2"
 six_day_suite_path(case) = "two_day_suite_2m/$(case)_instantaneous_statistics.jld2"
 
-TwoDaySuite(; normalize = ZScore, times=[2hours, 12hours, 1days, 36hours, 2days], Nz=64) = SyntheticObservationsBatch(two_day_suite_path, normalize, times, Nz)
-FourDaySuite(; normalize = ZScore, times=[2hours, 1days, 2days, 3days, 4days], Nz=64) = SyntheticObservationsBatch(four_day_suite_path, normalize, times, Nz)
-SixDaySuite(; normalize = ZScore, times=[2hours, 1.5days, 3days, 4.5days, 6days], Nz=64) = SyntheticObservationsBatch(six_day_suite_path, normalize, times, Nz)
+normalization = (b = ZScore(),
+                 u = ZScore(),
+                 v = ZScore(),
+                 e = RescaledZScore(0.01)) 
+
+TwoDaySuite(; normalization = normalization, times=[2hours, 12hours, 1days, 36hours, 2days], Nz=64) = SyntheticObservationsBatch(two_day_suite_path, normalization, times, Nz)
+FourDaySuite(; normalization = normalization, times=[2hours, 1days, 2days, 3days, 4days], Nz=64) = SyntheticObservationsBatch(four_day_suite_path, normalization, times, Nz)
+SixDaySuite(; normalization = normalization, times=[2hours, 1.5days, 3days, 4.5days, 6days], Nz=64) = SyntheticObservationsBatch(six_day_suite_path, normalization, times, Nz)
 
 function lesbrary_ensemble_simulation(observations; ensemble_size = 30,
                                              architecture = CPU(),
@@ -57,3 +63,8 @@ function lesbrary_ensemble_simulation(observations; ensemble_size = 30,
 
     return simulation
 end
+
+function estimate_η_covariance(output_map, observations)
+    obs_maps = hcat([observation_map(output_map, obs) for obs in observations]...)
+    return cov(transpose(obs_maps))
+end 

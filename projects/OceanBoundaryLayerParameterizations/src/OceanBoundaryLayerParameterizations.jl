@@ -1,6 +1,6 @@
 module OceanBoundaryLayerParameterizations
 
-pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..", ".."))
+pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..", "..", ".."))
 
 using OceanTurbulenceParameterEstimation
 
@@ -8,6 +8,7 @@ export
     # lesbrary.jl
     TwoDaySuite, FourDaySuite, SixDaySuite,
     lesbrary_ensemble_simulation,
+    estimate_η_covariance,
 
     # catke_parameters.jl
     CATKEParametersRiDependent,
