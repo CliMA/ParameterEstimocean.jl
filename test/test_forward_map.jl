@@ -57,7 +57,7 @@ using OceanTurbulenceParameterEstimation.InverseProblems: transpose_model_output
     run!(truth_simulation)
 
     data_path = experiment_name * ".jld2"
-    observations = SyntheticObservations(data_path, field_names=(:u, :b), normalize=ZScore)
+    observations = SyntheticObservations(data_path, field_names=(:u, :b), normalization=(u=RescaledZScore(0.1), b=ZScore()))
     
     #####
     ##### Make model data
@@ -67,7 +67,6 @@ using OceanTurbulenceParameterEstimation.InverseProblems: transpose_model_output
         # First test transpose_model_output
         test_simulation = build_simulation()
         collected_fields = (u = test_simulation.model.velocities.u, b = test_simulation.model.tracers.b)
-
         time_series_collector = FieldTimeSeriesCollector(collected_fields, observation_times(observations))
 
         # Test initialize_simulation!

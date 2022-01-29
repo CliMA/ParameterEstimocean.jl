@@ -5,6 +5,7 @@ export
     InverseProblem,
     FreeParameters,
     IdentityNormalization,
+    RescaledZScore,
     ZScore,
     forward_map,
     forward_run!,
@@ -22,6 +23,7 @@ export
     SuccessfulEnsembleDistribution,
     ConstrainedNormal
 
+include("Utils.jl")
 include("Observations.jl")
 include("EnsembleSimulations.jl")
 include("TurbulenceClosureParameters.jl")
@@ -30,7 +32,9 @@ include("EnsembleKalmanInversions.jl")
 
 using .Observations:
     SyntheticObservations,
+    IdentityNormalization,
     ZScore,
+    RescaledZScore,
     observation_times
 
 using .EnsembleSimulations: ensemble_column_model_simulation

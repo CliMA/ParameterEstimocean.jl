@@ -59,10 +59,14 @@ using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
 
     run!(simulation)
 
-    # Test synthetic observations construction
+    #####
+    ##### Test synthetic observations construction
+    #####
+    
     @info "  Testing construction of SyntheticObservations from Oceananigans data..."
     data_path = experiment_name * ".jld2"
 
+    # field_names
     b_observations = SyntheticObservations(data_path, field_names=:b)
     ub_observations = SyntheticObservations(data_path, field_names=(:u, :b))
     uvb_observations = SyntheticObservations(data_path, field_names=(:u, :v, :b))
@@ -71,7 +75,24 @@ using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
     @test keys(ub_observations.field_time_serieses) == tuple(:u, :b)
     @test keys(uvb_observations.field_time_serieses) == tuple(:u, :v, :b)
 
-    # Test regridding observations
+    # normalization
+    field_names = (:u, :v, :b)
+    normalization = ZScore()
+    uvb_observations = SyntheticObservations(data_path; field_names, normalization)
+    @test all(n isa ZScore for n in values(uvb_observations.normalization))
+
+    normalization = (u = ZScore(), v = ZScore(), b = ZScore())
+    uvb_observations = SyntheticObservations(data_path; field_names, normalization)
+    @test all(n isa ZScore for n in values(uvb_observations.normalization))
+
+    normalization = (u = IdentityNormalization(), v = ZScore(), b = RescaledZScore(0.1))
+    uvb_observations = SyntheticObservations(data_path; field_names, normalization)
+    @test uvb_observations.normalization[:u] isa IdentityNormalization
+    @test uvb_observations.normalization[:v] isa ZScore
+    @test uvb_observations.normalization[:b] isa RescaledZScore
+    @test uvb_observations.normalization[:b].scale === 0.1
+
+    # Regridding
     coarsened_observations = SyntheticObservations(data_path, field_names=(:u, :v, :b), regrid_size=(1, 1, Int(Nz/2)))
     refined_observations = SyntheticObservations(data_path, field_names=(:u, :v, :b), regrid_size=(1, 1, 2Nz))
 

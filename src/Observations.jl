@@ -12,6 +12,8 @@ using JLD2
 
 import Oceananigans.Fields: set!
 
+using OceanTurbulenceParameterEstimation.Utils: field_named_tuple
+
 abstract type AbstractObservation end
 
 include("normalization.jl")
@@ -114,7 +116,7 @@ function observation_times(obs::Vector)
 end
 
 function SyntheticObservations(path; field_names,
-                               normalize = IdentityNormalization,
+                               normalization = IdentityNormalization(),
                                times = nothing,
                                field_time_serieses = nothing,
                                regrid_size = nothing)
@@ -167,7 +169,9 @@ function SyntheticObservations(path; field_names,
     metadata = NamedTuple(Symbol(group) => read_group(file[group]) for group in filter(n -> n ∉ not_metadata_names, keys(file)))
     close(file)
 
-    normalization = Dict(name => normalize(field_time_serieses[name]) for name in keys(field_time_serieses))
+    normalization = field_named_tuple(normalization, field_names, "normalization")
+    normalization = Dict(name => compute_normalization_properties!(normalization[name], field_time_serieses[name])
+                         for name in keys(field_time_serieses))
 
     return SyntheticObservations(field_time_serieses, grid, times, path, metadata, normalization)
 end

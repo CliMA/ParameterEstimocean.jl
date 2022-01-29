@@ -12,8 +12,6 @@ using Oceananigans.Units
 using OceanTurbulenceParameterEstimation
 using LinearAlgebra, CairoMakie, DataDeps
 
-using ElectronDisplay
-
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities:
     CATKEVerticalDiffusivity, MixingLength
 
@@ -27,7 +25,13 @@ data_path = datadep"two_day_suite_4m/strong_wind_instantaneous_statistics.jld2"
 times = [2hours, 6hours, 12hours]
 field_names = (:b, :u, :v, :e)
 
-observations = SyntheticObservations(data_path; field_names, times, normalize=ZScore)
+## Use a special normalization that emphasizes buoyancy and de-emphasizes TKE
+normalization = (b = ZScore(),
+                 u = ZScore(), 
+                 v = ZScore(), 
+                 e = RescaledZScore(0.1)) 
+
+observations = SyntheticObservations(data_path; field_names, times, normalization)
 
 # Let's take a look at the observations. We define a few
 # plotting utilities along the way to use later in the example:
@@ -65,7 +69,6 @@ end
 
 [axislegend(ax, position=:rb, merge=true, fontsize=10) for ax in axs]
 
-## display(fig)
 save("lesbrary_synthetic_observations.svg", fig); nothing # hide
 
 # ![](lesbrary_synthetic_observations.svg)
@@ -126,7 +129,7 @@ eki = EnsembleKalmanInversion(calibration;
                               noise_covariance = 1e-2,
                               resampler = NaNResampler(abort_fraction=0.5))
 
-iterate!(eki; iterations = 20)
+iterate!(eki; iterations = 5)
 
 # # Results
 #
@@ -153,7 +156,6 @@ initial_parameters = eki.iteration_summaries[0].ensemble_mean
 forward_run!(calibration, initial_parameters)
 fig = compare_model_observations("modeled after 0 iterations")
 
-## display(fig)
 save("model_observation_comparison_iteration_0.svg", fig); nothing # hide
 
 # ![](model_observation_comparison_iteration_0.svg)
@@ -164,7 +166,6 @@ best_parameters = eki.iteration_summaries[end].ensemble_mean
 forward_run!(calibration, best_parameters)
 fig = compare_model_observations("modeled after $Niter iterations")
 
-## display(fig)
 save("model_observation_comparison_final_iteration.svg", fig); nothing # hide
 
 # ![](model_observation_comparison_final_iteration.svg)
@@ -189,7 +190,6 @@ end
 
 axislegend(ax, position=:rb)
 
-## display(fig)
 save("lesbrary_catke_parameter_evolution.svg", fig); nothing # hide
 
 # ![](lesbrary_catke_parameter_evolution.svg)

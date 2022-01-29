@@ -30,8 +30,8 @@ non_rotating_data_path = datadep"two_day_suite_4m/strong_wind_no_rotation_instan
 times = [2hours, 6hours, 18hours]
 
 field_names = field_names = (:u, :v, :b, :e)
-normalize = ZScore
-observations = [SyntheticObservations(data_path; field_names, normalize, times)
+normalization = ZScore()
+observations = [SyntheticObservations(data_path; field_names, normalization, times)
                 for data_path in (rotating_data_path, non_rotating_data_path)]
 
 # Let's take a look at the observations. We define a few
