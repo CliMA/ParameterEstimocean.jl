@@ -257,7 +257,8 @@ end
 Returns a `FieldTimeSeriesCollector` for `fields` of `simulation`.
 `fields` is a `NamedTuple` of `AbstractField`s that are to be collected.
 """
-function FieldTimeSeriesCollector(collected_fields, times; architecture=CPU())
+function FieldTimeSeriesCollector(collected_fields, times;
+                                  architecture = Oceananigans.Architectures.architecture(first(collected_fields)))
 
     grid = on_architecture(architecture, first(collected_fields).grid)
     field_time_serieses = Dict{Symbol, Any}()
@@ -285,7 +286,12 @@ function (collector::FieldTimeSeriesCollector)(simulation)
 
     for name in keys(collector.collected_fields)
         field_time_series = collector.field_time_serieses[name]
-        set!(field_time_series[time_index], collector.collected_fields[name])
+        if architecture(collector.grid) isa CPU && architecture(simulation.model.grid) isa GPU
+            cpu_data = Array(parent(collector.collected_fields[name]))
+            parent(field_time_series[time_index]) .= cpu_data
+        else
+            set!(field_time_series[time_index], collector.collected_fields[name])
+        end
     end
 
     return nothing
