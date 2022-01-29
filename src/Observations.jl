@@ -286,9 +286,9 @@ function (collector::FieldTimeSeriesCollector)(simulation)
 
     for name in keys(collector.collected_fields)
         field_time_series = collector.field_time_serieses[name]
-        if architecture(collector.grid) isa CPU && architecture(simulation.model.grid) isa GPU
-            cpu_data = Array(parent(collector.collected_fields[name]))
-            parent(field_time_series[time_index]) .= cpu_data
+        if architecture(collector.grid) != architecture(simulation.model.grid) isa GPU
+            device_collected_field_data = arch_array(architecture, parent(collector.collected_fields[name]))
+            parent(field_time_series[time_index]) .= device_collected_field_data
         else
             set!(field_time_series[time_index], collector.collected_fields[name])
         end
