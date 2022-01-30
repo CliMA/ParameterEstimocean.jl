@@ -12,8 +12,6 @@ using Oceananigans.Units
 using OceanTurbulenceParameterEstimation
 using LinearAlgebra, CairoMakie, DataDeps
 
-using ElectronDisplay
-
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities:
     CATKEVerticalDiffusivity, MixingLength
 
@@ -71,7 +69,6 @@ end
 
 [axislegend(ax, position=:rb, merge=true, fontsize=10) for ax in axs]
 
-display(fig)
 save("lesbrary_synthetic_observations.svg", fig); nothing # hide
 
 # ![](lesbrary_synthetic_observations.svg)
@@ -159,7 +156,6 @@ initial_parameters = eki.iteration_summaries[0].ensemble_mean
 forward_run!(calibration, initial_parameters)
 fig = compare_model_observations("modeled after 0 iterations")
 
-display(fig)
 save("model_observation_comparison_iteration_0.svg", fig); nothing # hide
 
 # ![](model_observation_comparison_iteration_0.svg)
@@ -170,7 +166,6 @@ best_parameters = eki.iteration_summaries[end].ensemble_mean
 forward_run!(calibration, best_parameters)
 fig = compare_model_observations("modeled after $Niter iterations")
 
-display(fig)
 save("model_observation_comparison_final_iteration.svg", fig); nothing # hide
 
 # ![](model_observation_comparison_final_iteration.svg)
@@ -195,7 +190,6 @@ end
 
 axislegend(ax, position=:rb)
 
-display(fig)
 save("lesbrary_catke_parameter_evolution.svg", fig); nothing # hide
 
 # ![](lesbrary_catke_parameter_evolution.svg)
