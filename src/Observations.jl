@@ -205,13 +205,28 @@ Returns an `N_cases × N_ens × Nz` array of the interior of a field `field_name
 containing the `N_cases` single-column fields at time index in `time_index`.
 """
 function column_ensemble_interior(observations::Vector{<:SyntheticObservations}, field_name, time_index, ensemble_size)
-    zeros_column = zeros(size(observations[1].field_time_serieses[1].grid))
-    Nt = length(observation_times(observations))
+    # Search for the first observations that has field_name to find field_size
+    field_size = nothing
+    iobs = 1
+    while isnothing(field_size) && iobs <= length(observations)
+        obs = observations[iobs]
+        if field_name ∈ keys(obs.field_time_serieses)
+            field_time_series = getproperty(obs.field_time_serieses, field_name)
+            field_size = size(field_time_series)[1:3]
+        end
+        iobs += 1
+    end
+
+    isnothing(field_size) && error("Could not determine the size of $field_name")
+
+    zeros_column = zeros(field_size...)
+    Nt = length(first(observations).times)
 
     batch = []
     for observation in observations
         fts = observation.field_time_serieses
         if field_name in keys(fts) && time_index <= Nt
+            field_column = interior(fts[field_name][time_index])
             push!(batch, interior(fts[field_name][time_index]))
         else
             push!(batch, zeros_column)
@@ -219,19 +234,17 @@ function column_ensemble_interior(observations::Vector{<:SyntheticObservations},
     end
 
     batch = cat(batch..., dims = 2) # (Nbatch, n_z)
-    ensemble_interior = cat([batch for i = 1:ensemble_size]..., dims = 1) # (ensemble_size, Nbatch, n_z)
+    Ny, Nz = size(batch)
+    #ensemble_interior = repeat(reshape(batch, 1, Ny, Nz), inner=(ensemble_size, 1, 1)) # (ensemble_size, Ny, Nz)
+    ensemble_interior = cat([batch for i = 1:ensemble_size]..., dims = 1) # (ensemble_size, Ny, Nz)
 
     return ensemble_interior
 end
 
 function set!(model, observations::Vector{<:SyntheticObservations}, index = 1)
-
     for name in keys(fields(model))
-    
         model_field = fields(model)[name]
-    
         field_ts_data = column_ensemble_interior(observations, name, index, model.grid.Nx)
-    
         arch = architecture(model_field)
     
         # Reshape `field_ts_data` to the size of `model_field`'s interior
