@@ -1,9 +1,10 @@
 pushfirst!(LOAD_PATH, joinpath(@__DIR__, "../.."))
 
-using OceanTurbulenceParameterEstimation, LinearAlgebra, CairoMakie
-using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
-using OceanTurbulenceParameterEstimation.EnsembleKalmanInversions: NaNResampler, FullEnsembleDistribution
 using OceanBoundaryLayerParameterizations
+using OceanTurbulenceParameterEstimation
+using OceanTurbulenceParameterEstimation.EnsembleKalmanInversions: NaNResampler, FullEnsembleDistribution
+using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
+using LinearAlgebra, CairoMakie
 
 examples_path = joinpath(pathof(OceanTurbulenceParameterEstimation), "../../examples")
 include(joinpath(examples_path, "intro_to_inverse_problems.jl"))
