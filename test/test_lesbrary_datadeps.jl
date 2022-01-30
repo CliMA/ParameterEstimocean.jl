@@ -13,8 +13,10 @@ function run_datadep_test(dep_str)
     return nothing
 end
 
-for dep in ["two_day_suite_2m", 
+for dep in ["two_day_suite_1m", 
+            "two_day_suite_2m",
             "two_day_suite_4m",
+            "four_day_suite_1m",
             "four_day_suite_2m",
             "four_day_suite_4m",
             "six_day_suite_2m",
