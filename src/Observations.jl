@@ -205,7 +205,6 @@ Returns an `N_cases × N_ens × Nz` array of the interior of a field `field_name
 containing the `N_cases` single-column fields at time index in `time_index`.
 """
 function column_ensemble_interior(observations::Vector{<:SyntheticObservations}, field_name, time_index, ensemble_size)
-    zeros_column = zeros(size(observations[1].field_time_serieses[1].grid))
     Nt = length(observation_times(observations))
 
     batch = []
@@ -214,6 +213,7 @@ function column_ensemble_interior(observations::Vector{<:SyntheticObservations},
         if field_name in keys(fts) && time_index <= Nt
             push!(batch, interior(fts[field_name][time_index]))
         else
+            zeros_column = zeros(size(first(fts)[time_index]))
             push!(batch, zeros_column)
         end
     end
@@ -229,14 +229,10 @@ function set!(model, observations::Vector{<:SyntheticObservations}, index = 1)
     for name in keys(fields(model))      
           
         model_field = fields(model)[name]
-    
+
         field_ts_data = column_ensemble_interior(observations, name, index, model.grid.Nx)
     
         arch = architecture(model_field)
-
-        @show name
-        @show model_field
-        @show size(field_ts_data)
 
         # Reshape `field_ts_data` to the size of `model_field`'s interior
         reshaped_data = arch_array(arch, reshape(field_ts_data, size(model_field)))
