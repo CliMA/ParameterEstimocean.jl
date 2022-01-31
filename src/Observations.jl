@@ -190,6 +190,7 @@ function set!(model, ts::SyntheticObservations, index=1)
             ts_field = ts.field_time_serieses[name][index]
             set!(model_field, ts_field)
         else
+            @warn "No data for model field $name was found in the observation. Setting field interior to zeros."
             set!(model_field, 0)
         end
     end
@@ -213,6 +214,7 @@ function column_ensemble_interior(observations::Vector{<:SyntheticObservations},
         if field_name in keys(fts) && time_index <= Nt
             push!(batch, interior(fts[field_name][time_index]))
         else
+            @warn "No data for model field $field_name was found in the observation. Setting field interior to zeros."
             zeros_column = zeros(size(first(fts)[time_index]))
             push!(batch, zeros_column)
         end
