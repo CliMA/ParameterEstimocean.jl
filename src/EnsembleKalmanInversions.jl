@@ -315,45 +315,54 @@ particle_str(particle, error, parameters) =
     @sprintf("error = %.6e", error)
 
 """
-    sample(eki, θ, G, n)
+    sample(eki, θ, G, Nsample)
 
-Generate `n` new particles sampled from a multivariate Normal distribution parameterized 
-by the ensemble mean and covariance computed based on the `N_θ` × `N_ensemble` ensemble 
-array `θ`, under the condition that all `n` particles lead to forward map outputs that
-are "stable" (don't include `NaNs`). `G` is the inverting forward map computed on
-ensemble `θ`.
+Generate `Nsample` new particles sampled from a multivariate Normal distribution parameterized 
+by the ensemble mean and covariance computed based on the `Nθ` × `Nensemble` ensemble 
+array `θ`, under the condition that all `Nsample` particles produce successful forward map
+outputs (don't include `NaNs`).
 
-Return an `N_θ` × `n` array of new particles, along with the inverting forward 
-map output corresponding to the new particles.
+`G` (size(G) =  Noutput × Nensemble`) is the forward map output produced by `θ`.
+
+Returns `Nθ × Nsample` parameter `Array` and `Noutput × Nsample` forward map output `Array`.
 """
-function sample(eki, θ, G, n)
-    n_params, ens_size = size(θ)
-    G_length = size(G, 1)
+function sample(eki, θ, G, Nsample)
+    Nθ, Nensemble = size(θ)
+    Noutput = size(G, 1)
 
-    ens_dist = eki.resampler.distribution(θ, G)
+    Nfound = 0
+    found_θ = zeros(Nθ, 0)
+    found_G = zeros(Noutput, 0)
+    existing_sample_distribution = eki.resampler.distribution(θ, G)
 
-    found_θ = zeros((n_params, 0))
-    found_G = zeros((G_length, 0))
+    while Nfound < Nsample
+        @info "Re-sampling ensemble members (found $Nfound of $Nsample)..."
 
-    while size(found_θ, 2) < n
-        θ_sample = rand(ens_dist, ens_size)
+        # Generate `Nensemble` new particles, since our eki.inverse_problem.simulation
+        # must run `Nensemble` particles no matter what
+        θ_sample = rand(existing_sample_distribution, Nensemble)
         G_sample = eki.inverting_forward_map(θ_sample)
 
         nan_values = nan_cols(G_sample)
-        success_columns = findall(Bool.(1 .- nan_values))
+        success_columns = findall(.!nan_cols(G_sample))
+        @show length(success_columns)
 
-        found_θ = hcat(found_θ, θ_sample[:, success_columns])
-        found_G = hcat(found_G, G_sample[:, success_columns])
+        found_θ = cat(found_θ, θ_sample[:, success_columns], dims=2)
+        found_G = cat(found_G, G_sample[:, success_columns], dims=2)
+
+        Nfound = size(found_θ, 2)
+        @info "    ... found $Nfound successful particles."
     end
 
-    return found_θ[:, 1:n], found_G[:, 1:n]
+    # Restrict found particles to requested size
+    return found_θ[:, 1:Nsample], found_G[:, 1:Nsample]
 end
 
 nan_cols(G) = vec(mapslices(any, isnan.(G); dims=1))
 
 function forward_map_and_summary(eki)
-    θ = get_u_final(eki.ensemble_kalman_process) # (N_params, ensemble_size) array
-    G = eki.inverting_forward_map(θ)             # (len(G), ensemble_size)
+    θ = get_u_final(eki.ensemble_kalman_process) # (Nθ, Nensemble) array
+    G = eki.inverting_forward_map(θ)             # (len(G), Nensemble)
     resample!(eki.resampler, G, θ, eki)
     return G, IterationSummary(eki, θ, G)
 end
@@ -402,7 +411,7 @@ struct FullEnsembleDistribution <: EnsembleDistribution end
 (::FullEnsembleDistribution)(θ, G) = ensemble_normal_distribution(θ)
 
 struct SuccessfulEnsembleDistribution <: EnsembleDistribution end
-(::SuccessfulEnsembleDistribution)(θ, G) = ensemble_normal_distribution(θ[:, findall(Bool.(1 .- nan_cols(G)))])
+(::SuccessfulEnsembleDistribution)(θ, G) = ensemble_normal_distribution(θ[:, findall(.!nan_cols(G))])
 
 resample!(::Nothing, args...) = nothing
 
@@ -426,11 +435,20 @@ Resamples the parameters `θ` of the `eki` process based on the number of `NaN` 
 inside the forward map output `G`.
 """
 function resample!(resampler::Resampler, G, θ, eki)
-    # `ensemble_size` vector of bits indicating, for each ensemble member, whether the forward map contained `NaN`s
+    # `Nensemble` vector of bits indicating, for each ensemble member, whether the forward map contained `NaN`s
     nan_values = nan_cols(G)
-    nan_columns = findall(Bool.(nan_values)) # indices of columns (particles) with `NaN`s
+    nan_columns = findall(nan_values) # indices of columns (particles) with `NaN`s
     nan_count = length(nan_columns)
     nan_fraction = nan_count / size(θ, 2)
+
+    if nan_fraction > 0
+        @warn("""
+              The forward map for $nan_count particles ($(100nan_fraction)%) included NaNs.
+              The failed particles are $nan_columns.
+              """)
+    end
+
+    too_much_failure = false
 
     if nan_fraction > resampler.acceptable_failure_fraction
         error("The forward map for $nan_count particles ($(100nan_fraction)%) included NaNs. Consider \n" *
@@ -439,11 +457,10 @@ function resample!(resampler::Resampler, G, θ, eki)
               "    2. Reducing the time-step for `InverseProblem.simulation`, \n" *
               "    3. Evolving `InverseProblem.simulation` for less time \n" *
               "    4. Narrowing `FreeParameters` priors.")
-    elseif nan_fraction > 0
-        @warn("The forward map for $nan_count particles ($(100nan_fraction)%) included NaNs.")
-    end
 
-    if nan_count > 0 || !(resampler.only_failed_particles)
+        too_much_failure = true
+    
+    elseif nan_count > 0 || !(resampler.only_failed_particles)
         # We are resampling!
 
         if resampler.only_failed_particles
@@ -453,8 +470,13 @@ function resample!(resampler::Resampler, G, θ, eki)
         end
 
         found_θ, found_G = sample(eki, θ, G, Nsample)
+
         view(θ, :, nan_columns) .= found_θ
         view(G, :, nan_columns) .= found_G
+
+        nan_values = nan_cols(G)
+        nan_columns = findall(nan_values)
+        @assert length(nan_columns) == 0
 
         new_process = EnsembleKalmanProcess(θ,
                                             eki.mapped_observations,
@@ -462,10 +484,9 @@ function resample!(resampler::Resampler, G, θ, eki)
                                             eki.ensemble_kalman_process.process)
 
         eki.ensemble_kalman_process = new_process
-
     end
 
-    return G
+    return too_much_failure
 end
 
 end # module
