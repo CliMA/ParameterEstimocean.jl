@@ -133,7 +133,7 @@ function construct_noise_covariance(noise_covariance::Number, y)
 end
     
 """
-    EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampler=NaNResampler())
+    EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampler=Resampler())
 
 Return an object that interfaces with [EnsembleKalmanProcesses.jl](https://github.com/CliMA/EnsembleKalmanProcesses.jl)
 and uses Ensemble Kalman Inversion to iteratively "solve" the inverse problem:
@@ -171,9 +171,9 @@ Arguments
                                                      it's converted to an identity matrix scaled by
                                                      `noise_covariance`.
 
-- `resampler`: controls resampling procedure when the forward map contains NaNs. See `NaNResampler`.
+- `resampler`: controls particle resampling procedure. See `Resampler`.
 """
-function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampler=NaNResampler())
+function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampler=Resampler())
 
     free_parameters = inverse_problem.free_parameters
     original_priors = free_parameters.priors
@@ -285,11 +285,17 @@ function IterationSummary(eki, parameters, forward_map_output=nothing)
 end
 
 function Base.show(io::IO, is::IterationSummary)
+
+    max_error, imax = findmax(is.mean_square_errors)
+    min_error, imin = findmin(is.mean_square_errors)
+
     print(io, "IterationSummary(ensemble = ", length(is.mean_square_errors), ")", '\n',
               "                      ", param_str.(keys(is.ensemble_mean))..., '\n',
               "       ensemble_mean: ", param_str.(values(is.ensemble_mean))..., '\n',
               "   ensemble_variance: ", param_str.(values(is.ensemble_var))..., '\n',
-              particle_str.(1:length(is.parameters), is.mean_square_errors, is.parameters)...) 
+              particle_str("best", is.mean_square_errors[imin], is.parameters[imin]), '\n',
+              particle_str("worst", is.mean_square_errors[imax], is.parameters[imax]))
+
     return nothing
 end
 
@@ -298,15 +304,15 @@ quick_summary(iter, is) = println("Iter $iter ", is.ensemble_mean)
 function param_str(p::Symbol)
     p_str = string(p)
     length(p_str) > 9 && (p_str = p_str[1:9])
-    return @sprintf("% 9s | ", p_str)
+    return @sprintf("% 10s | ", p_str)
 end
 
-param_str(p::Number) = @sprintf("%1.3e | ", p)
+param_str(p::Number) = @sprintf("% -1.3e | ", p)
 
 particle_str(particle, error, parameters) =
-    @sprintf("% 7s particle % 3d: ", " ", particle) *
+    @sprintf("% 11s particle: ", particle) *
     string(param_str.(values(parameters))...) *
-    @sprintf("error = %.3e", error) * "\n"
+    @sprintf("error = %.6e", error)
 
 """
     sample(eki, θ, G, n)
@@ -359,7 +365,8 @@ Iterate the ensemble Kalman inversion problem `eki` forward by `iterations`.
 
 Return
 ======
-`best_parameters`: the ensemble mean of all parameter values after the last iteration.
+
+- `best_parameters`: the ensemble mean of all parameter values after the last iteration.
 """
 function iterate!(eki::EnsembleKalmanInversion; iterations = 1, show_progress = true)
 
@@ -385,58 +392,67 @@ end
 
 abstract type EnsembleDistribution end
 
-function ensemble_dist(θ)
+function ensemble_normal_distribution(θ)
     μ = [mean(θ, dims=2)...]
     Σ = cov(θ, dims=2)
     return MvNormal(μ, Σ)
 end
 
 struct FullEnsembleDistribution <: EnsembleDistribution end
-
-(::FullEnsembleDistribution)(θ, G) = ensemble_dist(θ)
+(::FullEnsembleDistribution)(θ, G) = ensemble_normal_distribution(θ)
 
 struct SuccessfulEnsembleDistribution <: EnsembleDistribution end
-
-(::SuccessfulEnsembleDistribution)(θ, G) = ensemble_dist(θ[:, findall(Bool.(1 .- nan_cols(G)))])
+(::SuccessfulEnsembleDistribution)(θ, G) = ensemble_normal_distribution(θ[:, findall(Bool.(1 .- nan_cols(G)))])
 
 resample!(::Nothing, args...) = nothing
 
-struct NaNResampler{D}
-    abort_fraction :: Float64
+struct Resampler{D}
+    only_failed_particles :: Bool
+    acceptable_failure_fraction :: Float64
     distribution :: D
 end
 
-NaNResampler(; abort_fraction=0.0, distribution=FullEnsembleDistribution()) = NaNResampler(abort_fraction, distribution)
+function Resampler(; only_failed_particles = true,
+                     acceptable_failure_fraction = 0.0,
+                     distribution = FullEnsembleDistribution())
 
+    return Resampler(only_failed_particles, acceptable_failure_fraction, distribution)
+end
 
 """
-    resample!(resampler::NaNResampler, G, θ, eki)
+    resample!(resampler::Resampler, G, θ, eki)
     
 Resamples the parameters `θ` of the `eki` process based on the number of `NaN` values
 inside the forward map output `G`.
 """
-function resample!(resampler::NaNResampler, G, θ, eki)
+function resample!(resampler::Resampler, G, θ, eki)
     # `ensemble_size` vector of bits indicating, for each ensemble member, whether the forward map contained `NaN`s
     nan_values = nan_cols(G)
     nan_columns = findall(Bool.(nan_values)) # indices of columns (particles) with `NaN`s
     nan_count = length(nan_columns)
     nan_fraction = nan_count / size(θ, 2)
 
-    if nan_fraction > resampler.abort_fraction
-        error("The forward map for $(100nan_fraction)% of particles included NaNs. Consider \n" *
-              "    1. Increasing the `abort_fraction` for `resampler = NaNResampler(abort_fraction=0.0)` \n" *
-              "        when constructing `EnsembleKalmanInversion`; \n" *
+    if nan_fraction > resampler.acceptable_failure_fraction
+        error("The forward map for $nan_count particles ($(100nan_fraction)%) included NaNs. Consider \n" *
+              "    1. Increasing `Resampler.acceptable_failure_fraction` for \n" *
+              "         EnsembleKalmanInversion.resampler::Resampler \n" * 
               "    2. Reducing the time-step for `InverseProblem.simulation`, \n" *
               "    3. Evolving `InverseProblem.simulation` for less time \n" *
               "    4. Narrowing `FreeParameters` priors.")
+    elseif nan_fraction > 0
+        @warn("The forward map for $nan_count particles ($(100nan_fraction)%) included NaNs.")
     end
 
-    if nan_fraction > 0
-        @warn "The forward map for $nan_count particles ($(100nan_fraction)%) included NaNs. Resampling
-                $nan_count particles from a multivariate Normal distribution parameterized by the
-                ensemble mean and covariance."
+    if nan_count > 0 || !(resampler.only_failed_particles)
+        # We are resampling!
 
-        found_θ, found_G = sample(eki, θ, G, nan_count)
+        if resampler.only_failed_particles
+            Nsample = nan_count
+        else
+            Nsample = size(G, 2)
+        end
+
+        found_θ, found_G = sample(eki, θ, G, Nsample)
         view(θ, :, nan_columns) .= found_θ
         view(G, :, nan_columns) .= found_G
 
@@ -446,6 +462,7 @@ function resample!(resampler::NaNResampler, G, θ, eki)
                                             eki.ensemble_kalman_process.process)
 
         eki.ensemble_kalman_process = new_process
+
     end
 
     return G

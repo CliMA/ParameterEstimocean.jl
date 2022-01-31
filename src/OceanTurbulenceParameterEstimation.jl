@@ -18,7 +18,7 @@ export
     lognormal_with_mean_std,
     iterate!,
     EnsembleKalmanInversion,
-    NaNResampler,
+    Resampler,
     FullEnsembleDistribution,
     SuccessfulEnsembleDistribution,
     ConstrainedNormal
@@ -54,7 +54,7 @@ using .EnsembleKalmanInversions:
     EnsembleKalmanInversion,
     ConstrainedNormal,
     lognormal_with_mean_std,
-    NaNResampler,
+    Resampler,
     FullEnsembleDistribution,
     SuccessfulEnsembleDistribution
 

@@ -3,7 +3,7 @@ using JLD2
 using Statistics
 using LinearAlgebra
 using OceanTurbulenceParameterEstimation
-using OceanTurbulenceParameterEstimation.EnsembleKalmanInversions: iterate!, FullEnsembleDistribution, NaNResampler, resample!
+using OceanTurbulenceParameterEstimation.EnsembleKalmanInversions: iterate!, FullEnsembleDistribution, Resampler, resample!
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
@@ -93,7 +93,8 @@ Nensemble = 3
     ##### Test Resampler
     #####
 
-    resampler = NaNResampler(; abort_fraction=1.0, distribution=FullEnsembleDistribution())
+    resampler = Resampler(acceptable_failure_fraction = 1.0,
+                          distribution = FullEnsembleDistribution())
 
     θ = rand(Nparams, Nensemble)
     p1 = deepcopy(θ[:, 1])
@@ -108,5 +109,4 @@ Nensemble = 3
     @test any(isnan.(G)) == false
     @test θ[:, 1] == p1
     @test θ[:, 2] != p2
-
 end
