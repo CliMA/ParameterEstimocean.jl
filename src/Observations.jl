@@ -7,6 +7,7 @@ using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_fa
 using Oceananigans.Grids: pop_flat_elements, topology, halo_size, on_architecture
 using Oceananigans.Fields
 using Oceananigans.Utils: SpecifiedTimes
+using Oceananigans.Architectures
 using Oceananigans.Architectures: arch_array, architecture
 using JLD2
 
@@ -36,14 +37,14 @@ end
 observation_names(ts::SyntheticObservations) = keys(ts.field_time_serieses)
 
 """
-    observation_names(ts_vector::Vector{<:SyntheticObservations})
+    observation_names(obs::Vector{<:SyntheticObservations})
 
-Return a Set representing the union of all names in `ts_vector`.
+Return a Set representing the union of all names in `obs`.
 """
-function observation_names(ts_vector::Vector{<:SyntheticObservations})
+function observation_names(obs_vector::Vector{<:SyntheticObservations})
     names = Set()
-    for ts in ts_vector
-        push!(names, observation_names(ts)...)
+    for obs in obs_vector
+        push!(names, observation_names(obs)...)
     end
 
     return names
@@ -180,15 +181,44 @@ end
 ##### set! for simulation models and observations
 #####
 
-function set!(model, ts::SyntheticObservations, index=1)
-    # Set initial condition
-    for name in keys(fields(model))
+"""
+    column_ensemble_interior(observations::Vector{<:SyntheticObservations}, field_name, time_indices::Vector, N_ens)
 
-        model_field = fields(model)[name]
+Returns an `Nensemble × Nbatch × Nz` Array of `(1, 1, Nz)` `field_name` data,
+given `Nbatch` `SyntheticObservations` objects.
+The `Nbatch × Nz` data for `field_name` is copied `Nensemble` times to form a 3D Array.
+"""
+function column_ensemble_interior(observations::Vector{<:SyntheticObservations},
+                                  field_name, time_index, (Nensemble, Nbatch, Nz))
 
-        if name ∈ keys(ts.field_time_serieses)
-            ts_field = ts.field_time_serieses[name][index]
-            set!(model_field, ts_field)
+    zeros_column = zeros(1, 1, Nz)
+    Nt = length(first(observations).times)
+
+    batched_data = []
+    for observation in observations
+        fts = observation.field_time_serieses
+        if field_name in keys(fts) && time_index <= Nt
+            field_column = interior(fts[field_name][time_index])
+            push!(batched_data, interior(fts[field_name][time_index]))
+        else
+            push!(batched_data, zeros_column)
+        end
+    end
+
+    # Make a Vector of 1D Array into a 3D Array
+    flattened_data = cat(batched_data..., dims = 2) # (Nbatch, Nz)
+    ensemble_interior = cat((flattened_data for i = 1:Nensemble)..., dims = 1) # (Nensemble, Nbatch, Nz)
+
+    return ensemble_interior
+end
+
+function set!(model, obs::SyntheticObservations, time_index=1)
+    for field_name in keys(fields(model))
+        model_field = fields(model)[field_name]
+
+        if field_name ∈ keys(obs.field_time_serieses)
+            obs_field = obs.field_time_serieses[field_name][time_index]
+            set!(model_field, obs_field)
         else
             set!(model_field, 0)
         end
@@ -197,58 +227,16 @@ function set!(model, ts::SyntheticObservations, index=1)
     return nothing
 end
 
-"""
-    column_ensemble_interior(observations::Vector{<:SyntheticObservations}, field_name, time_indices::Vector, N_ens)
+function set!(model, observations::Vector{<:SyntheticObservations}, time_index=1)
+    for field_name in keys(fields(model))
+        model_field = fields(model)[field_name]
+        model_field_size = size(model_field)
+        Nensemble = model.grid.Nx
 
-Returns an `N_cases × N_ens × Nz` array of the interior of a field `field_name` defined on a 
-`OneDimensionalEnsembleGrid` of size `N_cases × N_ens × Nz`, given a list of `SyntheticObservations` objects
-containing the `N_cases` single-column fields at time index in `time_index`.
-"""
-function column_ensemble_interior(observations::Vector{<:SyntheticObservations}, field_name, time_index, ensemble_size)
-    # Search for the first observations that has field_name to find field_size
-    field_size = nothing
-    iobs = 1
-    while isnothing(field_size) && iobs <= length(observations)
-        obs = observations[iobs]
-        if field_name ∈ keys(obs.field_time_serieses)
-            field_time_series = getproperty(obs.field_time_serieses, field_name)
-            field_size = size(field_time_series)[1:3]
-        end
-        iobs += 1
-    end
-
-    isnothing(field_size) && error("Could not determine the size of $field_name")
-
-    zeros_column = zeros(field_size...)
-    Nt = length(first(observations).times)
-
-    batch = []
-    for observation in observations
-        fts = observation.field_time_serieses
-        if field_name in keys(fts) && time_index <= Nt
-            field_column = interior(fts[field_name][time_index])
-            push!(batch, interior(fts[field_name][time_index]))
-        else
-            push!(batch, zeros_column)
-        end
-    end
-
-    batch = cat(batch..., dims = 2) # (Nbatch, n_z)
-    Ny, Nz = size(batch)
-    #ensemble_interior = repeat(reshape(batch, 1, Ny, Nz), inner=(ensemble_size, 1, 1)) # (ensemble_size, Ny, Nz)
-    ensemble_interior = cat([batch for i = 1:ensemble_size]..., dims = 1) # (ensemble_size, Ny, Nz)
-
-    return ensemble_interior
-end
-
-function set!(model, observations::Vector{<:SyntheticObservations}, index = 1)
-    for name in keys(fields(model))
-        model_field = fields(model)[name]
-        field_ts_data = column_ensemble_interior(observations, name, index, model.grid.Nx)
-        arch = architecture(model_field)
+        observations_data = column_ensemble_interior(observations, field_name, time_index, model_field_size)
     
-        # Reshape `field_ts_data` to the size of `model_field`'s interior
-        reshaped_data = arch_array(arch, reshape(field_ts_data, size(model_field)))
+        # Reshape `observations_data` to the size of `model_field`'s interior
+        reshaped_data = arch_array(architecture(model_field), reshape(observations_data, size(model_field)))
     
         # Sets the interior of field `model_field` to values of `reshaped_data`
         model_field .= reshaped_data
@@ -256,6 +244,10 @@ function set!(model, observations::Vector{<:SyntheticObservations}, index = 1)
 
     return nothing
 end
+
+#####
+##### FieldTimeSeriesCollector for collecting data while a simulation runs
+#####
 
 struct FieldTimeSeriesCollector{G, D, F, T}
     grid :: G
@@ -271,16 +263,16 @@ Returns a `FieldTimeSeriesCollector` for `fields` of `simulation`.
 `fields` is a `NamedTuple` of `AbstractField`s that are to be collected.
 """
 function FieldTimeSeriesCollector(collected_fields, times;
-                                  architecture = Oceananigans.Architectures.architecture(first(collected_fields)))
+                                  architecture = Architectures.architecture(first(collected_fields)))
 
     grid = on_architecture(architecture, first(collected_fields).grid)
     field_time_serieses = Dict{Symbol, Any}()
 
-    for name in keys(collected_fields)
-        field = collected_fields[name]
+    for field_name in keys(collected_fields)
+        field = collected_fields[field_name]
         LX, LY, LZ = location(field)
         field_time_series = FieldTimeSeries{LX, LY, LZ}(grid, times)
-        field_time_serieses[name] = field_time_series
+        field_time_serieses[field_name] = field_time_series
     end
 
     # Convert to NamedTuple
@@ -297,18 +289,22 @@ function (collector::FieldTimeSeriesCollector)(simulation)
     current_time = simulation.model.clock.time
     time_index = findfirst(t -> t >= current_time, collector.times)
 
-    for name in keys(collector.collected_fields)
-        field_time_series = collector.field_time_serieses[name]
+    for field_name in keys(collector.collected_fields)
+        field_time_series = collector.field_time_serieses[field_name]
         if architecture(collector.grid) != architecture(simulation.model.grid) isa GPU
-            device_collected_field_data = arch_array(architecture, parent(collector.collected_fields[name]))
+            device_collected_field_data = arch_array(architecture, parent(collector.collected_fields[field_name]))
             parent(field_time_series[time_index]) .= device_collected_field_data
         else
-            set!(field_time_series[time_index], collector.collected_fields[name])
+            set!(field_time_series[time_index], collector.collected_fields[field_name])
         end
     end
 
     return nothing
 end
+
+#####
+##### Initializing simulations
+#####
 
 function initialize_simulation!(simulation, observations, time_series_collector, time_index = 1)
     set!(simulation.model, observations, time_index)
