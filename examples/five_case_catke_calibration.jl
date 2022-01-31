@@ -24,12 +24,14 @@ using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities:
 
 case_path(case) = @datadep_str("two_day_suite_2m/$(case)_instantaneous_statistics.jld2")
 
-times = [2hours, 12hours]
+times = [2hours, 24hours, 48hours]
 field_names = (:b, :e, :u, :v)
 
 normalization = (b = ZScore(),
-                 u = RescaledZScore(0.1),
-                 v = RescaledZScore(0.1),
+                 #u = RescaledZScore(0.1),
+                 #v = RescaledZScore(0.1),
+                 u = ZScore(),
+                 v = ZScore(),
                  e = RescaledZScore(1e-3))
 
 observation_library = Dict()
@@ -70,7 +72,7 @@ catke_mixing_length = MixingLength(Cᴬu=0.0, Cᴬc=0.0, Cᴬe=0.0,
 catke = CATKEVerticalDiffusivity(mixing_length=catke_mixing_length)
 
 simulation = ensemble_column_model_simulation(observations;
-                                              Nensemble = 100,
+                                              Nensemble = 400,
                                               architecture = GPU(),
                                               tracers = (:b, :e),
                                               closure = catke)
@@ -129,7 +131,7 @@ free_parameters = FreeParameters(prior_library, names=constant_Ri_parameters)
 calibration = InverseProblem(observations, simulation, free_parameters)
 
 eki = EnsembleKalmanInversion(calibration;
-                              noise_covariance = 1e-2,
+                              noise_covariance = 5e-3,
                               resampler = NaNResampler(abort_fraction=0.8))
 
 #####
