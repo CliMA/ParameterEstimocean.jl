@@ -127,9 +127,9 @@ version = "0.3.9"
 
 [[ChainRulesCore]]
 deps = ["Compat", "LinearAlgebra", "SparseArrays"]
-git-tree-sha1 = "54fc4400de6e5c3e27be6047da2ef6ba355511f8"
+git-tree-sha1 = "f9982ef575e19b0e5c7a98c6e75ee496c0f73a93"
 uuid = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
-version = "1.11.6"
+version = "1.12.0"
 
 [[ChangesOfVariables]]
 deps = ["ChainRulesCore", "LinearAlgebra", "Test"]
@@ -237,10 +237,10 @@ uuid = "b429d917-457f-4dbc-8f4c-0cc954292b1d"
 version = "0.4.0"
 
 [[DiffRules]]
-deps = ["LogExpFunctions", "NaNMath", "Random", "SpecialFunctions"]
-git-tree-sha1 = "9bc5dac3c8b6706b58ad5ce24cffd9861f07c94f"
+deps = ["IrrationalConstants", "LogExpFunctions", "NaNMath", "Random", "SpecialFunctions"]
+git-tree-sha1 = "84083a5136b6abf426174a58325ffd159dd6d94f"
 uuid = "b552c78f-8df3-52c6-915a-8e097449b14b"
-version = "1.9.0"
+version = "1.9.1"
 
 [[Distributed]]
 deps = ["Random", "Serialization", "Sockets"]
@@ -470,9 +470,9 @@ version = "1.0.2"
 
 [[HDF5_jll]]
 deps = ["Artifacts", "JLLWrappers", "LibCURL_jll", "Libdl", "OpenSSL_jll", "Pkg", "Zlib_jll"]
-git-tree-sha1 = "fd83fa0bde42e01952757f01149dd968c06c4dba"
+git-tree-sha1 = "bab67c0d1c4662d2c4be8c6007751b0b6111de5c"
 uuid = "0234f1f7-429e-5d53-9886-15a909be8d59"
-version = "1.12.0+1"
+version = "1.12.1+0"
 
 [[HTTP]]
 deps = ["Base64", "Dates", "IniFile", "Logging", "MbedTLS", "NetworkOptions", "Sockets", "URIs"]
@@ -594,9 +594,9 @@ version = "1.0.0"
 
 [[JLD2]]
 deps = ["DataStructures", "FileIO", "MacroTools", "Mmap", "Pkg", "Printf", "Reexport", "TranscodingStreams", "UUIDs"]
-git-tree-sha1 = "09ef0c32a26f80b465d808a1ba1e85775a282c97"
+git-tree-sha1 = "bcb31db46795eeb64480c89d854615bc78a13289"
 uuid = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
-version = "0.4.17"
+version = "0.4.19"
 
 [[JLLWrappers]]
 deps = ["Preferences"]
@@ -832,15 +832,15 @@ uuid = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
 version = "0.11.9"
 
 [[NaNMath]]
-git-tree-sha1 = "f755f36b19a5116bb580de457cda0c140153f283"
+git-tree-sha1 = "b086b7ea07f8e38cf122f5016af580881ac914fe"
 uuid = "77ba4419-2d1f-58cd-9bb1-8ffee604a2e3"
-version = "0.3.6"
+version = "0.3.7"
 
 [[NetCDF_jll]]
 deps = ["Artifacts", "HDF5_jll", "JLLWrappers", "LibCURL_jll", "LibSSH2_jll", "Libdl", "MbedTLS_jll", "Pkg", "Zlib_jll", "nghttp2_jll"]
-git-tree-sha1 = "0cf4d1bf2ef45156aed85c9ac5f8c7e697d9288c"
+git-tree-sha1 = "03af9979e5f60b7ac42a428a5beb5282ffec45ca"
 uuid = "7243133f-43d8-5620-bbf4-c2c921802cf3"
-version = "400.702.400+0"
+version = "400.802.101+0"
 
 [[Netpbm]]
 deps = ["FileIO", "ImageCore"]
@@ -858,9 +858,9 @@ version = "0.4.0"
 
 [[Oceananigans]]
 deps = ["Adapt", "CUDA", "CUDAKernels", "Crayons", "CubedSphere", "Dates", "DocStringExtensions", "FFTW", "Glob", "IncompleteLU", "InteractiveUtils", "IterativeSolvers", "JLD2", "KernelAbstractions", "LinearAlgebra", "Logging", "MPI", "NCDatasets", "OffsetArrays", "OrderedCollections", "PencilFFTs", "Pkg", "Printf", "Random", "Rotations", "SafeTestsets", "SeawaterPolynomials", "SparseArrays", "Statistics", "StructArrays", "Tullio"]
-git-tree-sha1 = "26e74d70b23169e531bf241b9a0eb81c1451d4d0"
+git-tree-sha1 = "3f0b34f3907f1b8a7d564f71ddc6f7d248c7c346"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
-version = "0.68.7"
+version = "0.69.2"
 
 [[OffsetArrays]]
 deps = ["Adapt"]
@@ -957,9 +957,9 @@ version = "1.47.0+0"
 
 [[Parsers]]
 deps = ["Dates"]
-git-tree-sha1 = "92f91ba9e5941fc781fecf5494ac1da87bdac775"
+git-tree-sha1 = "0b5cfbb704034b5b4c1869e36634438a047df065"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-version = "2.2.0"
+version = "2.2.1"
 
 [[PencilArrays]]
 deps = ["ArrayInterface", "JSON3", "Libdl", "LinearAlgebra", "MPI", "OffsetArrays", "Reexport", "Requires", "StaticArrays", "StaticPermutations", "Strided", "TimerOutputs"]
@@ -1303,9 +1303,9 @@ version = "0.9.6"
 
 [[Tullio]]
 deps = ["ChainRulesCore", "DiffRules", "LinearAlgebra", "Requires"]
-git-tree-sha1 = "0288b7a395fc412952baf756fac94e4f28bfec65"
+git-tree-sha1 = "7830c974acc69437a3fee35dd7b510a74cbc862d"
 uuid = "bc48ee85-29a4-5162-ae0b-a64e1601d4bc"
-version = "0.3.2"
+version = "0.3.3"
 
 [[TupleTools]]
 git-tree-sha1 = "3c712976c47707ff893cf6ba4354aa14db1d8938"
