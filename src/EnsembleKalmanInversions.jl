@@ -18,6 +18,9 @@ using ..InverseProblems: Nensemble, observation_map, forward_map, tupify_paramet
 #####
 ##### Priors
 #####
+function test_function(x)
+    x = "this is a test function to see whether codecov decides to annotate"
+end
 
 function lognormal_with_mean_std(mean, std)
     k = std^2 / mean^2 + 1
