@@ -48,11 +48,9 @@ Nensemble = 3
 
     ensemble_simulation = Simulation(ensemble_model; Δt=Δt, stop_time=observation.times[end])
 
-    lb, ub = [0.9, 1.1]
-    priors = (
-        convective_κz = ConstrainedNormal(0.0, 1.0, lb, ub),
-        background_κz = ConstrainedNormal(0.0, 1.0, 5e-5, 2e-4)
-    )
+    lower_bound, upper_bound = [0.9, 1.1]
+    priors = (convective_κz = ConstrainedNormal(0.0, 1.0, lower_bound, upper_bound),
+              background_κz = ConstrainedNormal(0.0, 1.0, 5e-5, 2e-4))
     
     Nparams = length(priors)
     
@@ -78,8 +76,8 @@ Nensemble = 3
     # Test that parameters stay within bounds
     parameters = eki.iteration_summaries[0].parameters
     convective_κzs = getproperty.(parameters, :convective_κz)
-    @test all(convective_κzs .> lb)
-    @test all(convective_κzs .< ub)
+    @test all(convective_κzs .> lower_bound)
+    @test all(convective_κzs .< upper_bound)
 
     # Test that parameters change
     @test convective_κzs[1] != convective_κzs[2]
@@ -97,16 +95,61 @@ Nensemble = 3
                           distribution = FullEnsembleDistribution())
 
     θ = rand(Nparams, Nensemble)
-    p1 = deepcopy(θ[:, 1])
-    p2 = deepcopy(θ[:, 2])
+    θ1 = deepcopy(θ[:, 1])
+    θ2 = deepcopy(θ[:, 2])
 
     # Fake a forward map output with NaNs
     G = eki.inverting_forward_map(θ)
-    G[:, 2] .= NaN
+    view(G, :, 2) .= NaN
+    @test any(isnan.(G)) == true
 
-    resample!(resampler, G, θ, eki)
+    resample!(resampler, θ, G, eki)
 
     @test any(isnan.(G)) == false
-    @test θ[:, 1] == p1
-    @test θ[:, 2] != p2
+    @test θ[:, 1] == θ1
+    @test θ[:, 2] != θ2
+
+    # Resample all particles, not just failed ones
+
+    resampler = Resampler(acceptable_failure_fraction = 1.0,
+                          only_failed_particles = false,
+                          distribution = FullEnsembleDistribution())
+
+    θ = rand(Nparams, Nensemble)
+    θ1 = deepcopy(θ[:, 1])
+    θ2 = deepcopy(θ[:, 2])
+
+    # Fake a forward map output with NaNs
+    G = eki.inverting_forward_map(θ)
+    Gcopy = deepcopy(G)
+
+    resample!(resampler, θ, G, eki)
+@test G != Gcopy
+    @test θ[:, 1] != θ1
+    @test θ[:, 2] != θ2
+
+    # Resample particles with SuccessfulEnsembleDistribution.
+    # NaN out 2 or 3 columns so that all particles end up identical
+    # after resampling.
+
+    resampler = Resampler(acceptable_failure_fraction = 1.0,
+                          only_failed_particles = false,
+                          distribution = SuccessfulEnsembleDistribution())
+
+    θ = rand(Nparams, Nensemble)
+    θ1 = deepcopy(θ[:, 1])
+    θ2 = deepcopy(θ[:, 2])
+    θ3 = deepcopy(θ[:, 3])
+
+    # Fake a forward map output with NaNs
+    G = eki.inverting_forward_map(θ)
+    view(G, :, 1) .= NaN
+    view(G, :, 2) .= NaN
+
+    resample!(resampler, θ, G, eki)
+
+    @test any(isnan.(G)) == false
+    @test θ[:, 1] != θ3
+    @test θ[:, 2] != θ3
+    @test θ[:, 3] != θ3
 end

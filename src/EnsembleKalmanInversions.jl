@@ -472,14 +472,16 @@ function resample!(resampler::Resampler, θ, G, eki)
 
         if resampler.only_failed_particles
             Nsample = nan_count
+            replace_columns = nan_columns
+
         else # resample everything
             Nsample = size(G, 2)
+            replace_columns = Colon()
         end
 
         found_θ, found_G = sample(eki, θ, G, Nsample)
-
-        view(θ, :, nan_columns) .= found_θ
-        view(G, :, nan_columns) .= found_G
+        view(θ, :, replace_columns) .= found_θ
+        view(G, :, replace_columns) .= found_G
 
         new_process = EnsembleKalmanProcess(θ,
                                             eki.mapped_observations,
