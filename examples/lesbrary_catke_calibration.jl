@@ -127,7 +127,7 @@ calibration = InverseProblem(observations, simulation, free_parameters)
 
 eki = EnsembleKalmanInversion(calibration;
                               noise_covariance = 1e-2,
-                              resampler = NaNResampler(abort_fraction=0.5))
+                              resampler = Resampler(acceptable_failure_fraction=0.5))
 
 iterate!(eki; iterations = 5)
 
