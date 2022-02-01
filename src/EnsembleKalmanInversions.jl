@@ -110,8 +110,8 @@ end
 
 function parameter_ensemble(ensemble_kalman_process, priors)
     unconstrained_parameters = get_u_final(ensemble_kalman_process) # (N_params, ensemble_size) array
-    ensemble_size = size(unconstrained_parameters, 2)
-    return [inverse_parameter_transform(priors, unconstrained_parameters[:, n]) for n = 1:ensemble_size]
+    Nensemble = size(unconstrained_parameters, 2)
+    return [inverse_parameter_transform(priors, unconstrained_parameters[:, n]) for n = 1:Nensemble]
 end
 
 Base.show(io::IO, eki::EnsembleKalmanInversion) =
@@ -192,9 +192,10 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampl
     y = dropdims(observation_map(inverse_problem), dims=2) # length(forward_map_output) column vector
     Γy = construct_noise_covariance(noise_covariance, y)
 
-    # The closure G(θ) maps (N_params, ensemble_size) array to (length(forward_map_output), ensemble_size)
-    function inverting_forward_map(θ)
-        θ = parameter_ensemble(ensemble_kalman_process, original_priors)
+    # The closure G(θ) maps (Nθ, Nensemble) array to (Noutput, Nensemble)
+    function inverting_forward_map(θ_unconstrained)
+        Ne = Nensemble(inverse_problem)
+        θ = [inverse_parameter_transform(original_priors, θ_unconstrained[:, e]) for e = 1:Ne]
         return forward_map(inverse_problem, θ)
     end
 
@@ -343,8 +344,8 @@ function sample(eki, θ, G, Nsample)
         θ_sample = rand(existing_sample_distribution, Nensemble)
         G_sample = eki.inverting_forward_map(θ_sample)
 
-        nan_values = nan_cols(G_sample)
-        success_columns = findall(.!nan_cols(G_sample))
+        nan_values = column_has_nan(G_sample)
+        success_columns = findall(.!column_has_nan(G_sample))
         @show length(success_columns)
 
         found_θ = cat(found_θ, θ_sample[:, success_columns], dims=2)
@@ -358,12 +359,10 @@ function sample(eki, θ, G, Nsample)
     return found_θ[:, 1:Nsample], found_G[:, 1:Nsample]
 end
 
-nan_cols(G) = vec(mapslices(any, isnan.(G); dims=1))
-
 function forward_map_and_summary(eki)
     θ = get_u_final(eki.ensemble_kalman_process) # (Nθ, Nensemble) array
     G = eki.inverting_forward_map(θ)             # (len(G), Nensemble)
-    resample!(eki.resampler, G, θ, eki)
+    resample!(eki.resampler, θ, G, eki)
     return G, IterationSummary(eki, θ, G)
 end
 
@@ -411,7 +410,7 @@ struct FullEnsembleDistribution <: EnsembleDistribution end
 (::FullEnsembleDistribution)(θ, G) = ensemble_normal_distribution(θ)
 
 struct SuccessfulEnsembleDistribution <: EnsembleDistribution end
-(::SuccessfulEnsembleDistribution)(θ, G) = ensemble_normal_distribution(θ[:, findall(.!nan_cols(G))])
+(::SuccessfulEnsembleDistribution)(θ, G) = ensemble_normal_distribution(θ[:, findall(.!column_has_nan(G))])
 
 resample!(::Nothing, args...) = nothing
 
@@ -428,23 +427,28 @@ function Resampler(; only_failed_particles = true,
     return Resampler(only_failed_particles, acceptable_failure_fraction, distribution)
 end
 
+""" Return a BitVector indicating which particles are NaN."""
+column_has_nan(G) = vec(mapslices(any, isnan.(G); dims=1))
+
 """
     resample!(resampler::Resampler, G, θ, eki)
     
 Resamples the parameters `θ` of the `eki` process based on the number of `NaN` values
 inside the forward map output `G`.
 """
-function resample!(resampler::Resampler, G, θ, eki)
+function resample!(resampler::Resampler, θ, G, eki)
     # `Nensemble` vector of bits indicating, for each ensemble member, whether the forward map contained `NaN`s
-    nan_values = nan_cols(G)
+    nan_values = column_has_nan(G)
     nan_columns = findall(nan_values) # indices of columns (particles) with `NaN`s
     nan_count = length(nan_columns)
     nan_fraction = nan_count / size(θ, 2)
 
     if nan_fraction > 0
+        particles = nan_count == 1 ? "particle" : "particles"
+        failed_columns = nan_count == 1 ? "particle is $nan_columns" : "particles are $nan_columns"
         @warn("""
-              The forward map for $nan_count particles ($(100nan_fraction)%) included NaNs.
-              The failed particles are $nan_columns.
+              The forward map for $nan_count $particles ($(100nan_fraction)%) included NaNs.
+              The failed $failed_columns.
               """)
     end
 
@@ -471,12 +475,19 @@ function resample!(resampler::Resampler, G, θ, eki)
 
         found_θ, found_G = sample(eki, θ, G, Nsample)
 
+        first_column = nan_columns[1]
+        θi = θ[:, first_column]
+        θ̃ = inverse_parameter_transform(eki.inverse_problem.free_parameters.priors, θi)
+        @show "Before"
+        @show θ̃
+
         view(θ, :, nan_columns) .= found_θ
         view(G, :, nan_columns) .= found_G
 
-        nan_values = nan_cols(G)
-        nan_columns = findall(nan_values)
-        @assert length(nan_columns) == 0
+        θi = θ[:, first_column]
+        θ̃ = inverse_parameter_transform(eki.inverse_problem.free_parameters.priors, θi)
+        @show "After"
+        @show θ̃
 
         new_process = EnsembleKalmanProcess(θ,
                                             eki.mapped_observations,
