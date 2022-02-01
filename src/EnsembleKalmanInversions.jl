@@ -346,7 +346,6 @@ function sample(eki, θ, G, Nsample)
 
         nan_values = column_has_nan(G_sample)
         success_columns = findall(.!column_has_nan(G_sample))
-        @show length(success_columns)
 
         found_θ = cat(found_θ, θ_sample[:, success_columns], dims=2)
         found_G = cat(found_G, G_sample[:, success_columns], dims=2)
@@ -475,19 +474,8 @@ function resample!(resampler::Resampler, θ, G, eki)
 
         found_θ, found_G = sample(eki, θ, G, Nsample)
 
-        first_column = nan_columns[1]
-        θi = θ[:, first_column]
-        θ̃ = inverse_parameter_transform(eki.inverse_problem.free_parameters.priors, θi)
-        @show "Before"
-        @show θ̃
-
         view(θ, :, nan_columns) .= found_θ
         view(G, :, nan_columns) .= found_G
-
-        θi = θ[:, first_column]
-        θ̃ = inverse_parameter_transform(eki.inverse_problem.free_parameters.priors, θi)
-        @show "After"
-        @show θ̃
 
         new_process = EnsembleKalmanProcess(θ,
                                             eki.mapped_observations,
