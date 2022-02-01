@@ -193,10 +193,15 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampl
     Γy = construct_noise_covariance(noise_covariance, y)
 
     # The closure G(θ) maps (Nθ, Nensemble) array to (Noutput, Nensemble)
-    function inverting_forward_map(θ_unconstrained)
-        Ne = Nensemble(inverse_problem)
-        θ = [inverse_parameter_transform(original_priors, θ_unconstrained[:, e]) for e = 1:Ne]
-        return forward_map(inverse_problem, θ)
+    function inverting_forward_map(θ_unconstrained::AbstractMatrix)
+        Nensemble = size(θ_unconstrained, 2)
+
+        # Compute inverse transform from unconstrained (transformed) space to
+        # constrained (physical) space
+        θ_constrained = [inverse_parameter_transform(original_priors, θ_unconstrained[:, e])
+                         for e = 1:Nensemble]
+
+        return forward_map(inverse_problem, θ_constrained)
     end
 
     ensemble_kalman_process = EnsembleKalmanProcess(initial_ensemble, y, Γy, ek_process)
@@ -346,12 +351,11 @@ function sample(eki, θ, G, Nsample)
 
         nan_values = column_has_nan(G_sample)
         success_columns = findall(.!column_has_nan(G_sample))
+        @info "    ... found $(length(success_columns)) successful particles."
 
         found_θ = cat(found_θ, θ_sample[:, success_columns], dims=2)
         found_G = cat(found_G, G_sample[:, success_columns], dims=2)
-
         Nfound = size(found_θ, 2)
-        @info "    ... found $Nfound successful particles."
     end
 
     # Restrict found particles to requested size
@@ -468,7 +472,7 @@ function resample!(resampler::Resampler, θ, G, eki)
 
         if resampler.only_failed_particles
             Nsample = nan_count
-        else
+        else # resample everything
             Nsample = size(G, 2)
         end
 
