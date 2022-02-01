@@ -105,20 +105,20 @@ end
 #####
 
 prior_library = Dict()
-prior_library[:Cᴰ]    = ConstrainedNormal(2.9,  0.1, 0.0, 5.0)
-prior_library[:CᵂwΔ]  = ConstrainedNormal(3.5,  0.1, 0.0, 5.0)
-prior_library[:Cᵂu★]  = ConstrainedNormal(1.0,  0.1, 0.0, 5.0)
-prior_library[:Cᴸᵇ]   = ConstrainedNormal(1.0, 0.2, 0.0, 3.0)
-prior_library[:Cᴬu]   = ConstrainedNormal(1e-3, 0.01, 0.0, 1.0)
-prior_library[:Cᴬc]   = ConstrainedNormal(1e-3, 0.01, 0.0, 1.0)
-prior_library[:Cᴬe]   = ConstrainedNormal(1e-3, 0.01, 0.0, 1.0)
-prior_library[:Cᴷu⁻]  = ConstrainedNormal(0.1, 0.1, 0.0, 2.0)
-prior_library[:Cᴷc⁻]  = ConstrainedNormal(0.4, 0.1, 0.0, 2.0)
-prior_library[:Cᴷe⁻]  = ConstrainedNormal(0.2, 0.1, 0.0, 2.0)
+prior_library[:Cᴰ]    = ConstrainedNormal(2.9, 1.0, 0.0, 5.0)
+prior_library[:CᵂwΔ]  = ConstrainedNormal(3.5, 1.0, 0.0, 5.0)
+prior_library[:Cᵂu★]  = ConstrainedNormal(1.0, 1.0, 0.0, 5.0)
+prior_library[:Cᴸᵇ]   = ConstrainedNormal(1.0, 1.0, 0.0, 5.0)
+prior_library[:Cᴬu]   = ConstrainedNormal(1.0, 0.1, 0.0, 1.0)
+prior_library[:Cᴬc]   = ConstrainedNormal(1.0, 0.1, 0.0, 1.0)
+prior_library[:Cᴬe]   = ConstrainedNormal(1.0, 0.1, 0.0, 1.0)
+prior_library[:Cᴷu⁻]  = ConstrainedNormal(0.1, 0.2, 0.0, 2.0)
+prior_library[:Cᴷc⁻]  = ConstrainedNormal(0.4, 0.2, 0.0, 2.0)
+prior_library[:Cᴷe⁻]  = ConstrainedNormal(0.2, 0.2, 0.0, 2.0)
 prior_library[:Cᴷuʳ]  = Normal(0.1, 0.1)
 prior_library[:Cᴷcʳ]  = Normal(0.1, 0.1)
 prior_library[:Cᴷeʳ]  = Normal(0.1, 0.1)
-prior_library[:CᴷRiʷ] = ConstrainedNormal(0.1, 0.05, 0.0, 1.0)
+prior_library[:CᴷRiʷ] = ConstrainedNormal(0.1, 0.1, 0.0, 1.0)
 prior_library[:CᴷRiᶜ] = Normal(0.2, 0.1)
 
 
@@ -128,12 +128,12 @@ variable_Ri_parameters = tuple(constant_Ri_parameters..., :Cᴷuʳ, :Cᴷcʳ, :C
 constant_Ri_convective_adjustment_parameters = tuple(constant_Ri_parameters..., :Cᴬu, :Cᴬc, :Cᴬe)
 variable_Ri_convective_adjustment_parameters = keys(prior_library)
 
-free_parameters = FreeParameters(prior_library, names=variable_Ri_parameters)
+free_parameters = FreeParameters(prior_library, names=constant_Ri_parameters)
 calibration = InverseProblem(observations, simulation, free_parameters)
 
 eki = EnsembleKalmanInversion(calibration;
-                              noise_covariance = 5e-3,
-                              resampler = Resampler(acceptable_failure_fraction=0.8))
+                              noise_covariance = 1e1,
+                              resampler = Resampler(acceptable_failure_fraction=0.9))
 
 #####
 ##### Plot utils
