@@ -40,7 +40,7 @@ using .Observations:
 
 using .EnsembleSimulations: ensemble_column_model_simulation
 
-using .Parameters: FreeParameters
+using .Parameters: FreeParameters, lognormal, ScaledLogitNormal
 
 using .InverseProblems:
     InverseProblem,
@@ -53,8 +53,6 @@ using .InverseProblems:
 using .EnsembleKalmanInversions:
     iterate!,
     EnsembleKalmanInversion,
-    ConstrainedNormal,
-    lognormal_with_mean_std,
     Resampler,
     FullEnsembleDistribution,
     SuccessfulEnsembleDistribution

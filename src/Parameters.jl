@@ -144,8 +144,8 @@ unconstrained_prior(Π::ScaledLogitNormal) = Normal(Π.μ, Π.σ)
 transform_to_unconstrained(Π::Normal,    θ) = θ / abs(Π.μ)
 transform_to_unconstrained(Π::LogNormal, θ) = log(θ) / abs(Π.μ)
 
-transform_to_unconstrained(cn::ScaledLogitNormal, θ) =
-    scaled_logit_normal_forward_transformation(cn.lower_bound, cn.upper_bound, θ)
+transform_to_unconstrained(Π::ScaledLogitNormal, θ) =
+    scaled_logit_normal_forward_transformation(Π.lower_bound, Π.upper_bound, θ)
 
 """
     transform_to_constrained(Π, θ) = θ / Π.μ
@@ -156,28 +156,13 @@ given the _constrained_ prior distribution `Π`.
 transform_to_constrained(Π::Normal, θ)    = θ / Π.μ
 transform_to_constrained(Π::LogNormal, θ) = exp(θ / Π.μ)
 
-transform_to_unconstrained(cn::ScaledLogitNormal, θ) =
-    scaled_logit_normal_inverse_transformation(cn.lower_bound, cn.upper_bound, θ)
+transform_to_constrained(Π::ScaledLogitNormal, θ) =
+    scaled_logit_normal_inverse_transformation(Π.lower_bound, Π.upper_bound, θ)
 
 # Convenience vectorized version
 transform_to_constrained(priors::NamedTuple, parameters::Vector) =
     NamedTuple(name => transform_to_constrained(priors[name], parameters[i])
                for (i, name) in enumerate(keys(priors)))
-
-#=
-# Convert covariance from unconstrained (EKI) to constrained
-inverse_covariance_transform(::Tuple{Vararg{LogNormal}}, parameters, covariance) =
-    Diagonal(exp.(parameters)) * covariance * Diagonal(exp.(parameters))
-
-inverse_covariance_transform(::Tuple{Vararg{Normal}}, parameters, covariance) = covariance
-
-function inverse_covariance_transform(cn::Tuple{Vararg{ScaledLogitNormal}}, parameters, covariance)
-    upper_bound = [cn[i].upper_bound for i = 1:length(cn)]
-    lower_bound = [cn[i].lower_bound for i = 1:length(cn)]
-    dT = Diagonal(@. -(upper_bound - lower_bound) * exp(parameters) / (1 + exp(parameters))^2)
-    return dT * covariance * dT'
-end
-=#
 
 function inverse_covariance_transform(Π, parameters, covariance)
     diag = [covariance_transform_diagonal(Π[i], parameters[i]) for i=1:length(Π)]

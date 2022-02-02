@@ -160,10 +160,8 @@ ensemble_simulation
 # constrain the prior distributions so that neither very high nor very low values for diffusivities
 # can be drawn out of the distribution.
 
-priors = (
-    κ_skew = ConstrainedNormal(0.0, 1.0, 400.0, 1300.0),
-    κ_symmetric = ConstrainedNormal(0.0, 1.0, 700.0, 1700.0)
-)
+priors = (κ_skew = ScaledLogitNormal(bounds=(400.0, 1300.0)),
+          κ_symmetric = ScaledLogitNormal(bounds=(700.0, 1700.0)))
 
 free_parameters = FreeParameters(priors)
 
