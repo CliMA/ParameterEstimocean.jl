@@ -14,46 +14,150 @@ using Printf
 
 Return `Lognormal` distribution parameterized by
 the distribution `mean` and standard deviation `std`.
+
+Notes
+=====
+
+A variate `X` is `LogNormal` distributed if
+
+```math
+ln(X) ∼ N(μ, σ²),
+```
+
+where ``N(μ, σ²)`` is the `Normal` distribution with mean ``μ``
+and variance ``σ²``.
+
+The `mean` and variance ``s²`` (where ``s`` is the standard
+deviation or `std`) are related to the parameters ``μ``
+and ``σ²`` via
+
+```math
+m = exp{μ + σ² / 2}
+s² = (exp{σ²} - 1) ⋅ m²
+```
+
+These formula allow us to calculate ``μ`` and ``σ`` given
+``m`` and ``s²``, since rearranging the formula for ``s²``
+gives
+
+```math
+exp{σ²} = m² / s² + 1
+```
+
+which then yields
+
+```math
+σ = sqrt(log(k)), 
+```
+
+where ``k = m² / s² + 1``. We then find that
+
+```math
+μ = log(m) - σ² / 2 .
+```
+
+See also
+[wikipedia](https://en.wikipedia.org/wiki/Log-normal_distribution#Generation_and_parameters).
 """
 function lognormal(; mean, std)
-    k = std^2 / mean^2 + 1
-    μ = log(mean / sqrt(k))
+    k = std^2 / mean^2 + 1 # intermediate variable
     σ = sqrt(log(k))
+    μ = log(mean) - σ^2 / 2
     return LogNormal(μ, σ)
 end
 
-struct ConstrainedNormal{FT}
-    # θ is the original constrained paramter, θ̃ is the unconstrained parameter ~ N(μ, σ)
-    # θ = lower_bound + (upper_bound - lower_bound)/（1 + exp(θ̃)）
+"""
+Y is the original constrained paramter, X is the normally-distributed, unconstrained parameter
+with X ~ N(μ, σ)
+
+
+Then
+
+θ = L + (U - L) / 1 + exp(θ)
+"""
+struct ScaledLogitNormal{FT}
     μ :: FT
     σ :: FT
     lower_bound :: FT
     upper_bound :: FT
 end
 
-# Scaling factor to give the parameter a magnitude of one
-scaling_factor(prior) = 1 / abs(prior.μ)
+# From unconstrained to constrained
+scaled_logit_inverse_transformation(L, U, θ) = L + (U - L) / (1 + exp(θ))
 
-# Model priors are sometimes constrained; EKI deals with unconstrained, Normal priors.
-convert_prior(prior::LogNormal) = Normal(1.0, σ / μ)
-convert_prior(prior::Normal) = Normal(1.0, prior.σ / prior.μ)
-convert_prior(prior::ConstrainedNormal) = Normal(prior.μ, prior.σ)
+# From constrained to unconstrained
+scaled_logit_forward_transformation(L, U, θ) = log((U - θ) / (θ - L))
 
-# Convert parameters to unconstrained for EKI
-forward_parameter_transform(prior::LogNormal, parameter) = log(parameter^(1 / prior.μ))
-forward_parameter_transform(prior::Normal, parameter) = parameter / abs(prior.μ)
-forward_parameter_transform(cn::ConstrainedNormal, parameter) =
-    log((cn.upper_bound - parameter) / (cn.upper_bound - cn.lower_bound))
+        Ũ₉₅ = scaled_logit_forward_transformation(lower_bound, upper_bound, U₉₅)
+        L̃₉₅ = scaled_logit_forward_transformation(lower_bound, upper_bound, L₉₅)
+        μ = (Ũ₉₅ + L̃₉₅) / 2
+        σ = (Ũ₉₅ - L̃₉₅) / 2
 
-# Convert parameters from unconstrained (EKI) to constrained
-inverse_parameter_transform(prior::LogNormal, parameter) = exp(parameter / prior.μ)
-inverse_parameter_transform(prior::Normal, parameter) = parameter / prior.μ
-inverse_parameter_transform(cn::ConstrainedNormal, parameter) =
-    cn.lower_bound + (cn.upper_bound - cn.lower_bound) / (1 + exp(parameter))
+function ScaledLogitNormal(FT=Float64; bounds,
+                           midspread = nothing,
+                           center = nothing,
+                           width = nothing)
+
+    # Default
+    μ = 0
+    σ = 1
+    L, U = bounds
+
+    if !isnothing(center) || !isnothing(width)
+        isnothing(center) && isnothing(width) ||
+            throw(ArgumentError("Both center and width must be specified!"))
+
+        isnothing(midspread) ||
+            throw(ArgumentError("Cannot specify both midspread and (center, width)!"))
+
+        midspread = [center - width/2, center + width/2]
+    end
+
+    if !isnothing(midspread)
+        Li, Ui = midspread
+
+        Li > L && Ui < U ||
+            throw(ArgumentError("Midspread must lie within lower_bound and upper_bound."))
+
+        # Compute lower and upper limits of midspread in unconstrained space
+        L̃i = scaled_logit_forward_transformation(L, U, Li)
+        Ũi = scaled_logit_forward_transformation(L, U, Ui)
+
+        # Determine mean and std from unconstrained limits
+        μ = (Ũi + L̃i) / 2
+        σ = (Ũi - L̃i) / 1.349 # midspread interval spans 50% of total mass
+    end
+
+    return ScaledLogitNormal{FT}(μ, σ, L, U)
+end
+
+# Calculate the prior in unconstrained space given a prior in constrained space
+unconstrained_prior(Π::LogNormal)         = Normal(1.0, Π.σ / Π.μ)
+unconstrained_prior(Π::Normal)            = Normal(1.0, Π.σ / Π.μ)
+unconstrained_prior(Π::ScaledLogitNormal) = Normal(Π.μ, Π.σ)
+
+# Transform parameters from constrained (physical) space to unconstrained (EKI) space
+transform_to_unconstrained(Π::Normal,    θ) = θ / abs(Π.μ)
+transform_to_unconstrained(Π::LogNormal, θ) = log(θ) / abs(Π.μ)
+
+transform_to_unconstrained(cn::ScaledLogitNormal, θ) =
+    scaled_logit_normal_forward_transformation(cn.lower_bound, cn.upper_bound, θ)
+
+"""
+    transform_to_constrained(Π, θ) = θ / Π.μ
+
+Transform a parameter `θ` from unconstrained (EKI) space to constrained (physical) space,
+given the _constrained_ prior distribution `Π`.
+"""
+transform_to_constrained(Π::Normal, θ)    = θ / Π.μ
+transform_to_constrained(Π::LogNormal, θ) = exp(θ / Π.μ)
+
+transform_to_unconstrained(cn::ScaledLogitNormal, θ) =
+    scaled_logit_normal_inverse_transformation(cn.lower_bound, cn.upper_bound, θ)
 
 # Convenience vectorized version
-inverse_parameter_transform(priors::NamedTuple, parameters::Vector) =
-    NamedTuple(name => inverse_parameter_transform(priors[name], parameters[i])
+transform_to_constrained(priors::NamedTuple, parameters::Vector) =
+    NamedTuple(name => transform_to_constrained(priors[name], parameters[i])
                for (i, name) in enumerate(keys(priors)))
 
 #=
@@ -63,7 +167,7 @@ inverse_covariance_transform(::Tuple{Vararg{LogNormal}}, parameters, covariance)
 
 inverse_covariance_transform(::Tuple{Vararg{Normal}}, parameters, covariance) = covariance
 
-function inverse_covariance_transform(cn::Tuple{Vararg{ConstrainedNormal}}, parameters, covariance)
+function inverse_covariance_transform(cn::Tuple{Vararg{ScaledLogitNormal}}, parameters, covariance)
     upper_bound = [cn[i].upper_bound for i = 1:length(cn)]
     lower_bound = [cn[i].lower_bound for i = 1:length(cn)]
     dT = Diagonal(@. -(upper_bound - lower_bound) * exp(parameters) / (1 + exp(parameters))^2)
@@ -79,10 +183,7 @@ end
 
 covariance_transform_diagonal(::LogNormal, p) = exp(p)
 covariance_transform_diagonal(::Normal, p) = 1
-covariance_transform_diagonal(Π::ConstrainedNormal, p) = - (Π.upper_bound - Π.lower_bound) * exp(p) / (1 + exp(p))^2
-
-
-
+covariance_transform_diagonal(Π::ScaledLogitNormal, p) = - (Π.upper_bound - Π.lower_bound) * exp(p) / (1 + exp(p))^2
 
 #####
 ##### Free parameters

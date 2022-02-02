@@ -13,7 +13,7 @@ using EnsembleKalmanProcesses.ParameterDistributionStorage
 
 using EnsembleKalmanProcesses.EnsembleKalmanProcessModule: sample_distribution
 
-using ..Parameters: convert_prior, forward_parameter_transform, inverse_parameter_transform
+using ..Parameters: unconstrained_prior, transform_to_constrained
 using ..InverseProblems: Nensemble, observation_map, forward_map, tupify_parameters
 
 mutable struct EnsembleKalmanInversion{I, P, E, M, O, F, S, R, G}
@@ -42,7 +42,7 @@ end
 function parameter_ensemble(ensemble_kalman_process, priors)
     unconstrained_parameters = get_u_final(ensemble_kalman_process) # (N_params, ensemble_size) array
     Nensemble = size(unconstrained_parameters, 2)
-    return [inverse_parameter_transform(priors, unconstrained_parameters[:, n]) for n = 1:Nensemble]
+    return [transform_to_constrained(priors, unconstrained_parameters[:, n]) for n = 1:Nensemble]
 end
 
 Base.show(io::IO, eki::EnsembleKalmanInversion) =
@@ -110,7 +110,7 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampl
     free_parameters = inverse_problem.free_parameters
     original_priors = free_parameters.priors
 
-    transformed_priors = [Parameterized(convert_prior(prior)) for prior in original_priors]
+    transformed_priors = [Parameterized(unconstrained_prior(prior)) for prior in original_priors]
     no_constraints = [[no_constraint()] for _ in transformed_priors]
 
     parameter_distribution = ParameterDistribution(transformed_priors,
@@ -129,7 +129,7 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampl
 
         # Compute inverse transform from unconstrained (transformed) space to
         # constrained (physical) space
-        θ_constrained = [inverse_parameter_transform(original_priors, θ_unconstrained[:, e])
+        θ_constrained = [transform_to_constrained(original_priors, θ_unconstrained[:, e])
                          for e = 1:Nensemble]
 
         return forward_map(inverse_problem, θ_constrained)
@@ -192,14 +192,14 @@ function IterationSummary(eki, parameters, forward_map_output=nothing)
     original_priors = eki.inverse_problem.free_parameters.priors
 
     ensemble_mean = mean(parameters, dims=2)
-    constrained_ensemble_mean = inverse_parameter_transform.(values(original_priors), ensemble_mean)
+    constrained_ensemble_mean = transform_to_constrained.(values(original_priors), ensemble_mean)
     constrained_ensemble_mean = tupify_parameters(eki.inverse_problem, constrained_ensemble_mean)
 
     ensemble_covariance = cov(parameters, dims=2)
     constrained_ensemble_covariance = inverse_covariance_transform(values(original_priors), parameters, ensemble_covariance)
     constrained_ensemble_variance = tupify_parameters(eki.inverse_problem, diag(constrained_ensemble_covariance))
 
-    constrained_parameters = inverse_parameter_transform.(values(original_priors), parameters)
+    constrained_parameters = transform_to_constrained.(values(original_priors), parameters)
 
     constrained_parameters = [tupify_parameters(eki.inverse_problem, constrained_parameters[:, i])
                               for i = 1:size(constrained_parameters, 2)]
