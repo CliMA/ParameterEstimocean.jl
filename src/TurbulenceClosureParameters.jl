@@ -133,6 +133,8 @@ closure_with_parameters(closures::Tuple, parameters) =
 
 Use `parameters` to update closure from `closures` that corresponds to ensemble member `p_ensemble`.
 """
+update_closure_ensemble_member!(closure, p_ensemble, parameters) = nothing
+
 update_closure_ensemble_member!(closures::AbstractVector, p_ensemble, parameters) =
     closures[p_ensemble] = closure_with_parameters(closures[p_ensemble], parameters)
 
@@ -141,6 +143,13 @@ function update_closure_ensemble_member!(closures::AbstractMatrix, p_ensemble, p
         closures[p_ensemble, j] = closure_with_parameters(closures[p_ensemble, j], parameters)
     end
     
+    return nothing
+end
+
+function update_closure_ensemble_member!(closure_tuple::Tuple, p_ensemble, parameters)
+    for closure in closure_tuple
+        update_closure_ensemble_member!(closure, p_ensemble, parameters)
+    end
     return nothing
 end
 
