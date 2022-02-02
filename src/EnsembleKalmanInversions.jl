@@ -296,11 +296,12 @@ function forward_map_and_summary(eki)
     θ = get_u_final(eki.ensemble_kalman_process) # (Nθ, Nensemble) array
     G = eki.inverting_forward_map(θ)             # (len(G), Nensemble)
     resample!(eki.resampler, θ, G, eki)
+    
     return G, IterationSummary(eki, θ, G)
 end
 
 """
-    iterate!(eki::EnsembleKalmanInversion; iterations=1)
+    iterate!(eki::EnsembleKalmanInversion; iterations = 1, show_progress = true)
 
 Iterate the ensemble Kalman inversion problem `eki` forward by `iterations`.
 
@@ -364,7 +365,7 @@ end
 column_has_nan(G) = vec(mapslices(any, isnan.(G); dims=1))
 
 """
-    resample!(resampler::Resampler, G, θ, eki)
+    resample!(resampler::Resampler, θ, G, eki)
     
 Resamples the parameters `θ` of the `eki` process based on the number of `NaN` values
 inside the forward map output `G`.
@@ -402,14 +403,17 @@ function resample!(resampler::Resampler, θ, G, eki)
 
         if resampler.only_failed_particles
             Nsample = nan_count
+            replace_columns = nan_columns
+
         else # resample everything
             Nsample = size(G, 2)
+            replace_columns = Colon()
         end
 
         found_θ, found_G = sample(eki, θ, G, Nsample)
-
-        view(θ, :, nan_columns) .= found_θ
-        view(G, :, nan_columns) .= found_G
+        
+        view(θ, :, replace_columns) .= found_θ
+        view(G, :, replace_columns) .= found_G
 
         new_process = EnsembleKalmanProcess(θ,
                                             eki.mapped_observations,
