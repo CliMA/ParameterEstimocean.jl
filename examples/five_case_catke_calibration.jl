@@ -22,9 +22,9 @@ using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities:
 ##### Compile LESbrary
 #####
 
-case_path(case) = @datadep_str("two_day_suite_2m/$(case)_instantaneous_statistics.jld2")
+case_path(case) = @datadep_str("four_day_suite_4m/$(case)_instantaneous_statistics.jld2")
 
-times = [4hours, 24hours, 48hours]
+times = [4hours, 24hours, 96hours]
 field_names = (:b, :e, :u, :v)
 
 normalization = (b = ZScore(),
@@ -56,9 +56,11 @@ cases = ["free_convection",
 =#
 
 cases = [
-         "free_convection",
-         "strong_wind_weak_cooling",
-         "weak_wind_strong_cooling",
+         #"free_convection",
+         #"strong_wind_weak_cooling",
+         #"weak_wind_strong_cooling",
+         "strong_wind",
+         "strong_wind_no_rotation",
         ]
 
 observations = [observation_library[case] for case in cases]
@@ -73,7 +75,7 @@ catke_mixing_length = MixingLength(Cᴬu=0.0, Cᴬc=0.0, Cᴬe=0.0,
 catke = CATKEVerticalDiffusivity(mixing_length=catke_mixing_length)
 
 simulation = ensemble_column_model_simulation(observations;
-                                              Nensemble = 100,
+                                              Nensemble = 1000,
                                               architecture = GPU(),
                                               tracers = (:b, :e),
                                               closure = catke)
@@ -105,22 +107,22 @@ end
 #####
 
 prior_library = Dict()
-prior_library[:Cᴰ]    = ConstrainedNormal(2.9, 1.0, 0.0, 5.0)
-prior_library[:CᵂwΔ]  = ConstrainedNormal(3.5, 1.0, 0.0, 5.0)
-prior_library[:Cᵂu★]  = ConstrainedNormal(1.0, 1.0, 0.0, 5.0)
-prior_library[:Cᴸᵇ]   = ConstrainedNormal(1.0, 1.0, 0.0, 5.0)
-prior_library[:Cᴬu]   = ConstrainedNormal(1.0, 0.1, 0.0, 1.0)
-prior_library[:Cᴬc]   = ConstrainedNormal(1.0, 0.1, 0.0, 1.0)
-prior_library[:Cᴬe]   = ConstrainedNormal(1.0, 0.1, 0.0, 1.0)
-prior_library[:Cᴷu⁻]  = ConstrainedNormal(0.1, 0.2, 0.0, 2.0)
-prior_library[:Cᴷc⁻]  = ConstrainedNormal(0.4, 0.2, 0.0, 2.0)
-prior_library[:Cᴷe⁻]  = ConstrainedNormal(0.2, 0.2, 0.0, 2.0)
+prior_library[:Cᴰ]    = lognormal_with_mean_std(2.0, 0.05)
+prior_library[:CᵂwΔ]  = ConstrainedNormal(0.0, 1.0, 0.0, 4.0)
+prior_library[:Cᵂu★]  = ConstrainedNormal(0.0, 1.0, 0.0, 5.0)
+prior_library[:Cᴸᵇ]   = ConstrainedNormal(0.0, 1.0, 0.0, 3.0)
+prior_library[:Cᴬu]   = ConstrainedNormal(0.0, 1.0, 0.0, 2.0)
+prior_library[:Cᴬc]   = ConstrainedNormal(0.0, 1.0, 0.0, 2.0)
+prior_library[:Cᴬe]   = ConstrainedNormal(0.0, 1.0, 0.0, 2.0)
+prior_library[:Cᴷu⁻]  = ConstrainedNormal(0.0, 1.0, 0.0, 0.2)
+#prior_library[:Cᴷu⁻]  = lognormal_with_mean_std(0.02, 0.01)
+prior_library[:Cᴷc⁻]  = ConstrainedNormal(0.0, 1.0, 0.0, 2.0)
+prior_library[:Cᴷe⁻]  = ConstrainedNormal(0.0, 1.0, 0.0, 2.0)
 prior_library[:Cᴷuʳ]  = Normal(0.1, 0.1)
 prior_library[:Cᴷcʳ]  = Normal(0.1, 0.1)
 prior_library[:Cᴷeʳ]  = Normal(0.1, 0.1)
-prior_library[:CᴷRiʷ] = ConstrainedNormal(0.1, 0.1, 0.0, 1.0)
+prior_library[:CᴷRiʷ] = ConstrainedNormal(0.0, 1.0, 0.0, 1.0)
 prior_library[:CᴷRiᶜ] = Normal(0.2, 0.1)
-
 
 # No convective adjustment:
 constant_Ri_parameters = (:Cᴰ, :CᵂwΔ, :Cᵂu★, :Cᴸᵇ, :Cᴷu⁻, :Cᴷc⁻, :Cᴷe⁻)
@@ -128,12 +130,12 @@ variable_Ri_parameters = tuple(constant_Ri_parameters..., :Cᴷuʳ, :Cᴷcʳ, :C
 constant_Ri_convective_adjustment_parameters = tuple(constant_Ri_parameters..., :Cᴬu, :Cᴬc, :Cᴬe)
 variable_Ri_convective_adjustment_parameters = keys(prior_library)
 
-free_parameters = FreeParameters(prior_library, names=constant_Ri_parameters)
+free_parameters = FreeParameters(prior_library, names=variable_Ri_parameters)
 calibration = InverseProblem(observations, simulation, free_parameters)
 
 eki = EnsembleKalmanInversion(calibration;
-                              noise_covariance = 1e1,
-                              resampler = Resampler(acceptable_failure_fraction=0.9))
+                              noise_covariance = 1e-1,
+                              resampler = Resampler(acceptable_failure_fraction=1.0))
 
 #####
 ##### Plot utils
