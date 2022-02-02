@@ -13,15 +13,15 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SliceEnsembleSize
 using Oceananigans.TurbulenceClosures: FluxTapering
-using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities:
-    CATKEVerticalDiffusivity
 
-using LinearAlgebra, CairoMakie, DataDeps, Distributions
+using LinearAlgebra, CairoMakie, DataDeps, Distributions, JLD2
 
 using ElectronDisplay
 
 architecture = CPU()
 
+# download from https://www.dropbox.com/s/91altratyy1g0fc/eddying_channel_catke_zonal_average.jld2?dl=0
+# and change path below accordingly
 filepath = "/Users/navid/Research/mesoscale-parametrization-OSM2022/eddying_channel/Ny200Nx100_Lx1000_Ly2000/eddying_channel_catke_zonal_average.jld2"
 
 b_timeseries = FieldTimeSeries(filepath, "b")
@@ -54,7 +54,7 @@ const Ly, Lz= file["grid/Ly"], file["grid/Lz"]
 # number of grid points
 Ny, Nz= file["grid/Ny"], file["grid/Nz"]
 
-Nensemble = 20
+Nensemble = 6
 
 slice_ensemble_size = SliceEnsembleSize(size=(Ny, Nz), ensemble=Nensemble)
 
@@ -84,6 +84,7 @@ ensemble_model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
                                              closure = closure_ensemble,
                                              free_surface = ImplicitFreeSurface(),
                                              )
+
 #=
 
 Δt = 5minute              # time-step
