@@ -6,12 +6,12 @@ using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity, MixingLength, SurfaceTKEFlux
 using Suppressor: @suppress
 
-using OceanTurbulenceParameterEstimation.TurbulenceClosureParameters: closure_with_parameters, update_closure_ensemble_member!
+using OceanTurbulenceParameterEstimation.Parameters: closure_with_parameters, update_closure_ensemble_member!
 
 const CAVD = ConvectiveAdjustmentVerticalDiffusivity
 const CATKE = CATKEVerticalDiffusivity
 
-@testset "TurbulenceClosureParameters tests" begin
+@testset "Parameters tests" begin
     @info "Testing closure_with_parameters on ConvectiveAdjustmentVerticalDiffusivity"
     closures = [CAVD(background_κz=1.0) CAVD(background_κz=1.1)
                 CAVD(background_κz=1.2) CAVD(background_κz=1.3)

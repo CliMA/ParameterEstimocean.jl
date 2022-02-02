@@ -1,6 +1,5 @@
 module EnsembleKalmanInversions
 
-using Distributions
 using OffsetArrays
 using ProgressBars
 using Random

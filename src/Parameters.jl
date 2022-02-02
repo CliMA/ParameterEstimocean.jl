@@ -3,7 +3,9 @@ module Parameters
 using Oceananigans.Architectures: CPU, arch_array, architecture
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
 using Oceananigans.TurbulenceClosures: AbstractTimeDiscretization, ExplicitTimeDiscretization
+
 using Printf
+using Distributions
 
 #####
 ##### Priors
@@ -88,12 +90,14 @@ scaled_logit_inverse_transformation(L, U, θ) = L + (U - L) / (1 + exp(θ))
 # From constrained to unconstrained
 scaled_logit_forward_transformation(L, U, θ) = log((U - θ) / (θ - L))
 
-        Ũ₉₅ = scaled_logit_forward_transformation(lower_bound, upper_bound, U₉₅)
-        L̃₉₅ = scaled_logit_forward_transformation(lower_bound, upper_bound, L₉₅)
-        μ = (Ũ₉₅ + L̃₉₅) / 2
-        σ = (Ũ₉₅ - L̃₉₅) / 2
+"""
+    ScaledLogitNormal(FT=Float64; bounds, midspread, center, width)
 
-function ScaledLogitNormal(FT=Float64; bounds,
+Return a `ScaledLogitNormal` distribution with parameters `μ`, `σ`, `lower_bound`
+and `upper_bound`.
+"""
+function ScaledLogitNormal(FT=Float64;
+                           bounds,
                            midspread = nothing,
                            center = nothing,
                            width = nothing)
