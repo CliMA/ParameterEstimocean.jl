@@ -1,8 +1,88 @@
-module TurbulenceClosureParameters
+module Parameters
 
 using Oceananigans.Architectures: CPU, arch_array, architecture
-using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, AbstractTimeDiscretization, ExplicitTimeDiscretization
+using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
+using Oceananigans.TurbulenceClosures: AbstractTimeDiscretization, ExplicitTimeDiscretization
 using Printf
+
+#####
+##### Priors
+#####
+
+"""
+    lognormal(; mean, std)
+
+Return `Lognormal` distribution parameterized by
+the distribution `mean` and standard deviation `std`.
+"""
+function lognormal(; mean, std)
+    k = std^2 / mean^2 + 1
+    μ = log(mean / sqrt(k))
+    σ = sqrt(log(k))
+    return LogNormal(μ, σ)
+end
+
+struct ConstrainedNormal{FT}
+    # θ is the original constrained paramter, θ̃ is the unconstrained parameter ~ N(μ, σ)
+    # θ = lower_bound + (upper_bound - lower_bound)/（1 + exp(θ̃)）
+    μ :: FT
+    σ :: FT
+    lower_bound :: FT
+    upper_bound :: FT
+end
+
+# Scaling factor to give the parameter a magnitude of one
+scaling_factor(prior) = 1 / abs(prior.μ)
+
+# Model priors are sometimes constrained; EKI deals with unconstrained, Normal priors.
+convert_prior(prior::LogNormal) = Normal(1.0, σ / μ)
+convert_prior(prior::Normal) = Normal(1.0, prior.σ / prior.μ)
+convert_prior(prior::ConstrainedNormal) = Normal(prior.μ, prior.σ)
+
+# Convert parameters to unconstrained for EKI
+forward_parameter_transform(prior::LogNormal, parameter) = log(parameter^(1 / prior.μ))
+forward_parameter_transform(prior::Normal, parameter) = parameter / abs(prior.μ)
+forward_parameter_transform(cn::ConstrainedNormal, parameter) =
+    log((cn.upper_bound - parameter) / (cn.upper_bound - cn.lower_bound))
+
+# Convert parameters from unconstrained (EKI) to constrained
+inverse_parameter_transform(prior::LogNormal, parameter) = exp(parameter / prior.μ)
+inverse_parameter_transform(prior::Normal, parameter) = parameter / prior.μ
+inverse_parameter_transform(cn::ConstrainedNormal, parameter) =
+    cn.lower_bound + (cn.upper_bound - cn.lower_bound) / (1 + exp(parameter))
+
+# Convenience vectorized version
+inverse_parameter_transform(priors::NamedTuple, parameters::Vector) =
+    NamedTuple(name => inverse_parameter_transform(priors[name], parameters[i])
+               for (i, name) in enumerate(keys(priors)))
+
+#=
+# Convert covariance from unconstrained (EKI) to constrained
+inverse_covariance_transform(::Tuple{Vararg{LogNormal}}, parameters, covariance) =
+    Diagonal(exp.(parameters)) * covariance * Diagonal(exp.(parameters))
+
+inverse_covariance_transform(::Tuple{Vararg{Normal}}, parameters, covariance) = covariance
+
+function inverse_covariance_transform(cn::Tuple{Vararg{ConstrainedNormal}}, parameters, covariance)
+    upper_bound = [cn[i].upper_bound for i = 1:length(cn)]
+    lower_bound = [cn[i].lower_bound for i = 1:length(cn)]
+    dT = Diagonal(@. -(upper_bound - lower_bound) * exp(parameters) / (1 + exp(parameters))^2)
+    return dT * covariance * dT'
+end
+=#
+
+function inverse_covariance_transform(Π, parameters, covariance)
+    diag = [covariance_transform_diagonal(Π[i], parameters[i]) for i=1:length(Π)]
+    dT = Diagonal(diag)
+    return dT * covariance * dT'
+end
+
+covariance_transform_diagonal(::LogNormal, p) = exp(p)
+covariance_transform_diagonal(::Normal, p) = 1
+covariance_transform_diagonal(Π::ConstrainedNormal, p) = - (Π.upper_bound - Π.lower_bound) * exp(p) / (1 + exp(p))^2
+
+
+
 
 #####
 ##### Free parameters
@@ -101,7 +181,7 @@ Example
 =======
 
 ```jldoctest
-julia> using OceanTurbulenceParameterEstimation.TurbulenceClosureParameters: closure_with_parameters
+julia> using OceanTurbulenceParameterEstimation.Parameters: closure_with_parameters
 
 julia> struct ClosureSubModel; a; b end
 

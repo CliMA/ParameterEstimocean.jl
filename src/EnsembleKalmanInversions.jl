@@ -13,77 +13,8 @@ using EnsembleKalmanProcesses.ParameterDistributionStorage
 
 using EnsembleKalmanProcesses.EnsembleKalmanProcessModule: sample_distribution
 
+using ..Parameters: convert_prior, forward_parameter_transform, inverse_parameter_transform
 using ..InverseProblems: Nensemble, observation_map, forward_map, tupify_parameters
-
-#####
-##### Priors
-#####
-
-function lognormal_with_mean_std(mean, std)
-    k = std^2 / mean^2 + 1
-    μ = log(mean / sqrt(k))
-    σ = sqrt(log(k))
-    return LogNormal(μ, σ)
-end
-
-struct ConstrainedNormal{FT}
-    # θ is the original constrained paramter, θ̃ is the unconstrained parameter ~ N(μ, σ)
-    # θ = lower_bound + (upper_bound - lower_bound)/（1 + exp(θ̃)）
-    μ :: FT
-    σ :: FT
-    lower_bound :: FT
-    upper_bound :: FT
-end
-
-# Scaling factor to give the parameter a magnitude of one
-sf(prior) = 1 / abs(prior.μ)
-
-# Model priors are sometimes constrained; EKI deals with unconstrained, Normal priors.
-convert_prior(prior::LogNormal) = Normal(sf(prior) * prior.μ, sf(prior) * prior.σ)
-convert_prior(prior::Normal) = Normal(sf(prior) * prior.μ, sf(prior) * prior.σ)
-convert_prior(prior::ConstrainedNormal) = Normal(prior.μ, prior.σ)
-
-# Convert parameters to unconstrained for EKI
-forward_parameter_transform(prior::LogNormal, parameter) = log(parameter^sf(prior))
-forward_parameter_transform(prior::Normal, parameter) = parameter * sf(prior)
-forward_parameter_transform(cn::ConstrainedNormal, parameter) =
-    log((cn.upper_bound - parameter) / (cn.upper_bound - cn.lower_bound))
-
-# Convert parameters from unconstrained (EKI) to constrained
-inverse_parameter_transform(prior::LogNormal, parameter) = exp(parameter / sf(prior))
-inverse_parameter_transform(prior::Normal, parameter) = parameter / sf(prior)
-inverse_parameter_transform(cn::ConstrainedNormal, parameter) =
-    cn.lower_bound + (cn.upper_bound - cn.lower_bound) / (1 + exp(parameter))
-
-# Convenience vectorized version
-inverse_parameter_transform(priors::NamedTuple, parameters::Vector) =
-    NamedTuple(name => inverse_parameter_transform(priors[name], parameters[i])
-               for (i, name) in enumerate(keys(priors)))
-
-#=
-# Convert covariance from unconstrained (EKI) to constrained
-inverse_covariance_transform(::Tuple{Vararg{LogNormal}}, parameters, covariance) =
-    Diagonal(exp.(parameters)) * covariance * Diagonal(exp.(parameters))
-
-inverse_covariance_transform(::Tuple{Vararg{Normal}}, parameters, covariance) = covariance
-
-function inverse_covariance_transform(cn::Tuple{Vararg{ConstrainedNormal}}, parameters, covariance)
-    upper_bound = [cn[i].upper_bound for i = 1:length(cn)]
-    lower_bound = [cn[i].lower_bound for i = 1:length(cn)]
-    dT = Diagonal(@. -(upper_bound - lower_bound) * exp(parameters) / (1 + exp(parameters))^2)
-    return dT * covariance * dT'
-end
-=#
-
-function inverse_covariance_transform(Π, parameters, covariance)
-    diag = [covariance_transform_diagonal(Π[i], parameters[i]) for i=1:length(Π)]
-    dT = Diagonal(diag)
-    return dT * covariance * dT'
-end
-
-covariance_transform_diagonal(::LogNormal, p) = exp(p)
-covariance_transform_diagonal(::Normal, p) = 1
-covariance_transform_diagonal(Π::ConstrainedNormal, p) = - (Π.upper_bound - Π.lower_bound) * exp(p) / (1 + exp(p))^2
 
 mutable struct EnsembleKalmanInversion{I, P, E, M, O, F, S, R, G}
     inverse_problem :: I
@@ -135,7 +66,8 @@ end
 """
     EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampler=Resampler())
 
-Return an object that interfaces with [EnsembleKalmanProcesses.jl](https://github.com/CliMA/EnsembleKalmanProcesses.jl)
+Return an object that interfaces with
+[EnsembleKalmanProcesses.jl](https://github.com/CliMA/EnsembleKalmanProcesses.jl)
 and uses Ensemble Kalman Inversion to iteratively "solve" the inverse problem:
 
 ```math
@@ -185,7 +117,6 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampl
                                                    no_constraints,
                                                    collect(string.(free_parameters.names)))
 
-    ek_process = Inversion()
     initial_ensemble = sample_distribution(parameter_distribution, Nensemble(inverse_problem))
 
     # Build EKP-friendly observations "y" and the covariance matrix of observational uncertainty "Γy"
@@ -204,7 +135,7 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampl
         return forward_map(inverse_problem, θ_constrained)
     end
 
-    ensemble_kalman_process = EnsembleKalmanProcess(initial_ensemble, y, Γy, ek_process)
+    ensemble_kalman_process = EnsembleKalmanProcess(initial_ensemble, y, Γy, Inversion())
 
     eki′ = EnsembleKalmanInversion(inverse_problem,
                                    parameter_distribution,

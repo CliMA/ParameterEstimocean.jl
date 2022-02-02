@@ -26,7 +26,7 @@ export
 include("Utils.jl")
 include("Observations.jl")
 include("EnsembleSimulations.jl")
-include("TurbulenceClosureParameters.jl")
+include("Parameters.jl")
 include("InverseProblems.jl")
 include("EnsembleKalmanInversions.jl")
 
@@ -39,7 +39,7 @@ using .Observations:
 
 using .EnsembleSimulations: ensemble_column_model_simulation
 
-using .TurbulenceClosureParameters: FreeParameters
+using .Parameters: FreeParameters
 
 using .InverseProblems:
     InverseProblem,
