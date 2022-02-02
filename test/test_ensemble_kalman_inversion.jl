@@ -3,7 +3,7 @@ using JLD2
 using Statistics
 using LinearAlgebra
 using OceanTurbulenceParameterEstimation
-using OceanTurbulenceParameterEstimation.EnsembleKalmanInversions: iterate!, FullEnsembleDistribution, Resampler, resample!
+using OceanTurbulenceParameterEstimation.EnsembleKalmanInversions: iterate!, FullEnsembleDistribution, Resampler, resample!, column_has_nan
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
@@ -97,17 +97,26 @@ Nensemble = 3
     θ = rand(Nparams, Nensemble)
     θ1 = deepcopy(θ[:, 1])
     θ2 = deepcopy(θ[:, 2])
+    θ3 = deepcopy(θ[:, 3])
 
     # Fake a forward map output with NaNs
     G = eki.inverting_forward_map(θ)
     view(G, :, 2) .= NaN
     @test any(isnan.(G)) == true
 
+    @test sum(column_has_nan(G)) == 1
+    @test column_has_nan(G)[1] == false
+    @test column_has_nan(G)[2] == true
+    @test column_has_nan(G)[3] == false
+
     resample!(resampler, θ, G, eki)
+
+    @test sum(column_has_nan(G)) == 0
 
     @test any(isnan.(G)) == false
     @test θ[:, 1] == θ1
     @test θ[:, 2] != θ2
+    @test θ[:, 3] == θ3
 
     # Resample all particles, not just failed ones
 
@@ -118,15 +127,17 @@ Nensemble = 3
     θ = rand(Nparams, Nensemble)
     θ1 = deepcopy(θ[:, 1])
     θ2 = deepcopy(θ[:, 2])
+    θ3 = deepcopy(θ[:, 3])
 
     # Fake a forward map output with NaNs
     G = eki.inverting_forward_map(θ)
     Gcopy = deepcopy(G)
 
     resample!(resampler, θ, G, eki)
-@test G != Gcopy
+    @test G != Gcopy
     @test θ[:, 1] != θ1
     @test θ[:, 2] != θ2
+    @test θ[:, 3] != θ3
 
     # Resample particles with SuccessfulEnsembleDistribution.
     # NaN out 2 or 3 columns so that all particles end up identical
@@ -145,6 +156,11 @@ Nensemble = 3
     G = eki.inverting_forward_map(θ)
     view(G, :, 1) .= NaN
     view(G, :, 2) .= NaN
+
+    @test sum(column_has_nan(G)) == 2
+    @test column_has_nan(G)[1] == true
+    @test column_has_nan(G)[2] == true
+    @test column_has_nan(G)[3] == false
 
     resample!(resampler, θ, G, eki)
 
