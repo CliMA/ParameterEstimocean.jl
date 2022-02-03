@@ -12,7 +12,7 @@ using EnsembleKalmanProcesses.ParameterDistributionStorage
 
 using EnsembleKalmanProcesses.EnsembleKalmanProcessModule: sample_distribution
 
-using ..Parameters: unconstrained_prior, transform_to_constrained
+using ..Parameters: unconstrained_prior, transform_to_constrained, inverse_covariance_transform
 using ..InverseProblems: Nensemble, observation_map, forward_map, tupify_parameters
 
 mutable struct EnsembleKalmanInversion{I, P, E, M, O, F, S, R, G}
