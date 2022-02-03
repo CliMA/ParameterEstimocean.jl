@@ -49,7 +49,7 @@ Nensemble = 3
     ensemble_simulation = Simulation(ensemble_model; Δt=Δt, stop_time=observation.times[end])
 
     lower_bound, upper_bound = bounds = [0.9, 1.1]
-    priors = (convective_κz = ScaledLogitNormal(; bounds)
+    priors = (convective_κz = ScaledLogitNormal(; bounds),
               background_κz = ScaledLogitNormal(bounds=(5e-5, 2e-4)))
     
     Nparams = length(priors)
