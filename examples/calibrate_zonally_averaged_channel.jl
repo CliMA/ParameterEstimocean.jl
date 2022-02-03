@@ -23,7 +23,10 @@ architecture = CPU()
 
 # download from https://www.dropbox.com/s/91altratyy1g0fc/eddying_channel_catke_zonal_average.jld2?dl=0
 # and change path below accordingly
-filepath = "/Users/navid/Research/mesoscale-parametrization-OSM2022/eddying_channel/Ny200Nx100_Lx1000_Ly2000/eddying_channel_catke_zonal_average.jld2"
+filedir = @__DIR__
+filename = "eddying_channel_catke_zonal_average.jld2"
+filepath = joinpath(filedir, filename)
+Base.download("https://www.dropbox.com/s/91altratyy1g0fc/$filename", filepath)
 
 b_timeseries = FieldTimeSeries(filepath, "b")
 
