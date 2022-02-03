@@ -85,10 +85,10 @@ struct ScaledLogitNormal{FT}
 end
 
 # From unconstrained to constrained
-scaled_logit_inverse_transformation(L, U, θ) = L + (U - L) / (1 + exp(θ))
+scaled_logit_normal_inverse_transform(L, U, θ) = L + (U - L) / (1 + exp(θ))
 
 # From constrained to unconstrained
-scaled_logit_forward_transformation(L, U, θ) = log((U - θ) / (θ - L))
+scaled_logit_normal_forward_transform(L, U, θ) = log((U - θ) / (θ - L))
 
 """
     ScaledLogitNormal(FT=Float64; bounds, midspread, center, width)
@@ -124,8 +124,8 @@ function ScaledLogitNormal(FT=Float64;
             throw(ArgumentError("Midspread must lie within lower_bound and upper_bound."))
 
         # Compute lower and upper limits of midspread in unconstrained space
-        L̃i = scaled_logit_forward_transformation(L, U, Li)
-        Ũi = scaled_logit_forward_transformation(L, U, Ui)
+        L̃i = scaled_logit_normal_forward_transform(L, U, Li)
+        Ũi = scaled_logit_normal_forward_transform(L, U, Ui)
 
         # Determine mean and std from unconstrained limits
         μ = (Ũi + L̃i) / 2
@@ -145,7 +145,7 @@ transform_to_unconstrained(Π::Normal,    θ) = θ / abs(Π.μ)
 transform_to_unconstrained(Π::LogNormal, θ) = log(θ) / abs(Π.μ)
 
 transform_to_unconstrained(Π::ScaledLogitNormal, θ) =
-    scaled_logit_normal_forward_transformation(Π.lower_bound, Π.upper_bound, θ)
+    scaled_logit_normal_forward_transform(Π.lower_bound, Π.upper_bound, θ)
 
 """
     transform_to_constrained(Π, θ) = θ / Π.μ
@@ -157,7 +157,7 @@ transform_to_constrained(Π::Normal, θ)    = θ / Π.μ
 transform_to_constrained(Π::LogNormal, θ) = exp(θ / Π.μ)
 
 transform_to_constrained(Π::ScaledLogitNormal, θ) =
-    scaled_logit_normal_inverse_transformation(Π.lower_bound, Π.upper_bound, θ)
+    scaled_logit_normal_inverse_transform(Π.lower_bound, Π.upper_bound, θ)
 
 # Convenience vectorized version
 transform_to_constrained(priors::NamedTuple, parameters::Vector) =
