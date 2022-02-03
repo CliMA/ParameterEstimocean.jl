@@ -168,9 +168,9 @@ free_parameters = FreeParameters(priors)
 # To visualize the prior distributions we randomly sample out values from then and plot the p.d.f.
 
 using CairoMakie
-using OceanTurbulenceParameterEstimation.EnsembleKalmanInversions: convert_prior, inverse_parameter_transform
+using OceanTurbulenceParameterEstimation.EnsembleKalmanInversions: unconstrained_prior, inverse_parameter_transform
 
-samples(prior) = [inverse_parameter_transform(prior, x) for x in rand(convert_prior(prior), 10000000)]
+samples(prior) = [inverse_parameter_transform(prior, x) for x in rand(unconstrained_prior(prior), 10000000)]
 
 samples_κ_skew = samples(priors.κ_skew)
 samples_κ_symmetric = samples(priors.κ_symmetric)
