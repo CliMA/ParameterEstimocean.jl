@@ -23,3 +23,6 @@ coverage:
         threshold: 20%
 
 comment: false
+
+github_checks:
+    annotations: false

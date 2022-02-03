@@ -5,7 +5,7 @@ include("test_synthetic_observations.jl")
 include("test_forward_map.jl")
 include("test_ensemble_column_models.jl")
 include("test_turbulence_closure_parameters.jl")
-include("test_eki.jl")
+include("test_ensemble_kalman_inversion.jl")
 
 @testset "Doctests" begin
     doctest(OceanTurbulenceParameterEstimation)

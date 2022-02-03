@@ -5,6 +5,7 @@ using Oceananigans: fields
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
 using Oceananigans.Grids: pop_flat_elements, topology, halo_size, on_architecture
+using Oceananigans.TimeSteppers: update_state!
 using Oceananigans.Fields
 using Oceananigans.Utils: SpecifiedTimes
 using Oceananigans.Architectures
@@ -224,6 +225,8 @@ function set!(model, obs::SyntheticObservations, time_index=1)
         end
     end
 
+    update_state!(model)
+
     return nothing
 end
 
@@ -241,6 +244,8 @@ function set!(model, observations::Vector{<:SyntheticObservations}, time_index=1
         # Sets the interior of field `model_field` to values of `reshaped_data`
         model_field .= reshaped_data
     end
+
+    update_state!(model)
 
     return nothing
 end
