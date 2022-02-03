@@ -255,9 +255,12 @@ vectorize(observations::Vector) = observations
 
 const YZSliceObservations = SyntheticObservations{<:Any, <:YZSliceGrid}
 
-transpose_model_output(time_series_collector, observations::YZSliceObservations) =
+transpose_model_output(time_series_collector, observations) =
+    transpose_model_output(time_series_collector.grid, time_series_collector, observations)
+
+transpose_model_output(grid::YZSliceGrid, time_series_collector, observations) =
     SyntheticObservations(time_series_collector.field_time_serieses,
-                          time_series_collector.grid,
+                          grid,
                           time_series_collector.times,
                           nothing,
                           nothing,
@@ -271,19 +274,19 @@ into a Vector of `SyntheticObservations` for each member of the observation batc
 
 Return a 1-vector in the case of singleton observations.
 """
-function transpose_model_output(time_series_collector, observations)
+function transpose_model_output(grid::SingleColumnGrid, time_series_collector, observations)
     observations = vectorize(observations)
     times = time_series_collector.times
 
     transposed_output = []
 
-    Nensemble = time_series_collector.grid.Nx
-    Nbatch = time_series_collector.grid.Ny
-    Nz = time_series_collector.grid.Nz
-    Hz = time_series_collector.grid.Hz
+    Nensemble = grid.Nx
+    Nbatch = grid.Ny
+    Nz = grid.Nz
+    Hz = grid.Hz
     Nt = length(times)
 
-    grid = drop_y_dimension(time_series_collector.grid)
+    grid = drop_y_dimension(grid)
 
     for j = 1:Nbatch
         observation = observations[j]
@@ -318,7 +321,7 @@ function transpose_model_output(time_series_collector, observations)
     return transposed_output
 end
 
-function drop_y_dimension(grid::RectilinearGrid{<:Any, <:Flat, <:Flat, <:Bounded})
+function drop_y_dimension(grid::SingleColumnGrid)
     new_size = ColumnEnsembleSize(Nz=grid.Nz, ensemble=(grid.Nx, 1), Hz=grid.Hz)
     z_domain = (grid.zᵃᵃᶠ[1], grid.zᵃᵃᶠ[grid.Nz])
     new_grid = RectilinearGrid(size=new_size, z=z_domain, topology=(Flat, Flat, Bounded))
