@@ -10,6 +10,8 @@
 using OceanTurbulenceParameterEstimation, LinearAlgebra, CairoMakie
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity, MixingLength, SurfaceTKEFlux
 
+using ElectronDisplay
+
 # # Perfect observations of CATKE-driven mixing
 #
 # Our first task is to generate synthetic observations, using
@@ -73,18 +75,18 @@ for i = 1:length(observations.times)
     label = "t = " * prettytime(t)
     u_label = i == 1 ? "u, " * label : label
     v_label = i == 1 ? "v, " * label : label
-
-    lines!(ax_b, 1e4 * interior(b)[1, 1, :], z; label, color=colorcycle[i]) # convert units m s⁻² -> 10⁻⁴ m s⁻²
-    lines!(ax_u, 1e2 * interior(u)[1, 1, :], z; linestyle=:solid, color=colorcycle[i], label=u_label) # convert units m s⁻¹ -> cm s⁻¹
-    lines!(ax_u, 1e2 * interior(v)[1, 1, :], z; linestyle=:dash, color=colorcycle[i], label=v_label) # convert units m s⁻¹ -> cm s⁻¹
-    lines!(ax_e, 1e4 * interior(e)[1, 1, :], z; label, color=colorcycle[i]) # convert units m² s⁻² -> 10⁻⁴ m² s⁻²
+    ## Note unit conversions below, eg m s⁻² -> 10⁻⁴ m s⁻²
+    lines!(ax_b, 1e4 * interior(b)[1, 1, :], z; label, color=colorcycle[i])
+    lines!(ax_u, 1e2 * interior(u)[1, 1, :], z; linestyle=:solid, color=colorcycle[i], label=u_label)
+    lines!(ax_u, 1e2 * interior(v)[1, 1, :], z; linestyle=:dash, color=colorcycle[i], label=v_label)
+    lines!(ax_e, 1e4 * interior(e)[1, 1, :], z; label, color=colorcycle[i])
 end
 
 axislegend(ax_b, position=:rb)
 axislegend(ax_u, position=:lb, merge=true)
 axislegend(ax_e, position=:rb)
 
-##display(fig)
+display(fig)
 
 save("synthetic_catke_observations.svg", fig); nothing # hide
 
@@ -181,7 +183,7 @@ end
 
 axislegend(ax3, position = :rt)
 
-##display(fig)
+display(fig)
 
 save("perfect_catke_calibration_summary.svg", fig); nothing #hide
 
@@ -248,7 +250,7 @@ save("perfect_catke_calibration_particle_realizations.svg", fig); nothing # hide
 
 # ![](perfect_catke_calibration_particle_realizations.svg)
 
-##display(fig)
+display(fig)
 
 # And also we plot the the distributions of the various model ensembles for few EKI iterations to see
 # if and how well they converge to the true diffusivity values.
@@ -294,7 +296,7 @@ xlims!(ax2, 0.025, 0.125)
 ylims!(ax2, 0.35, 0.9)
 ylims!(ax3, 0.35, 0.9)
 
-##display(fig)
+display(fig)
 
 save("perfect_catke_calibration_parameter_distributions.svg", fig); nothing # hide
 

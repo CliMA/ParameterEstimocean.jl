@@ -141,10 +141,10 @@ using OceanTurbulenceParameterEstimation.Parameters: unconstrained_prior, transf
 
 Nsamples = 50000000
 
-samples(prior) = [transform_to_constrained(prior, θ) for θ in rand(unconstrained_prior(prior), Nsamples)]
+sample(prior) = [transform_to_constrained(prior, X) for X in rand(unconstrained_prior(prior), Nsamples)]
 
-convective_κz_samples = samples(priors.convective_κz)
-background_κz_samples = samples(priors.background_κz)
+convective_κz_samples = sample(priors.convective_κz)
+background_κz_samples = sample(priors.background_κz)
 
 fig = Figure()
 ax_top = Axis(fig[1, 1], xlabel = "convective κᶻ [m² s⁻¹]", ylabel = "Density")
