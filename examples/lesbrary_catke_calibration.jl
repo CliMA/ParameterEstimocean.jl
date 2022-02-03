@@ -110,9 +110,9 @@ N² .= observations.metadata.parameters.N²_deep
 priors = (Cᴰ   = lognormal(mean=0.02, std=0.005),
           Cᵂu★ = lognormal(mean=1.5,  std=0.25),
           Cᴸᵇ  = lognormal(mean=0.01, std=0.005),
-          Cᴷu⁻ = ScaledLogitNormal(bounds=(0, 4))
-          Cᴷc⁻ = ScaledLogitNormal(bounds=(0, 1))
-          Cᴷe⁻ = ScaledLogitNormal(bounds=(0, 3))
+          Cᴷu⁻ = ScaledLogitNormal(bounds=(0, 4)),
+          Cᴷc⁻ = ScaledLogitNormal(bounds=(0, 1)),
+          Cᴷe⁻ = ScaledLogitNormal(bounds=(0, 3)))
 
 free_parameters = FreeParameters(priors)
 
