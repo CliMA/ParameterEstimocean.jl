@@ -86,7 +86,7 @@ catke_mixing_length = MixingLength(Cᴷcʳ=0.0, Cᴷuʳ=0.0, Cᴷeʳ=0.0)
 catke = CATKEVerticalDiffusivity(mixing_length=catke_mixing_length)
 
 simulation = ensemble_column_model_simulation(observations;
-                                              Nensemble = 40,
+                                              Nensemble = 20,
                                               architecture = CPU(),
                                               tracers = (:b, :e),
                                               closure = catke)

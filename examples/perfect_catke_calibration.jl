@@ -26,9 +26,9 @@ using ElectronDisplay
 examples_path = joinpath(pathof(OceanTurbulenceParameterEstimation), "..", "..", "examples")
 include(joinpath(examples_path, "intro_to_inverse_problems.jl"))
 
-mixing_length = MixingLength(Cᴬu  = 0.1,
-                             Cᴬc  = 0.5,
-                             Cᴬe  = 0.1,
+mixing_length = MixingLength(Cᴬu  = 0.0,
+                             Cᴬc  = 1.0,
+                             Cᴬe  = 0.0,
                              Cᴷu⁻ = 0.1,
                              Cᴷc⁻ = 0.1,
                              Cᴷe⁻ = 0.1,
@@ -100,7 +100,7 @@ save("synthetic_catke_observations.svg", fig); nothing # hide
 # CATKE using Ensemble Kalman Inversion.
 
 architecture = CPU()
-ensemble_simulation, closure★ = build_ensemble_simulation(observations, architecture; Nensemble=50)
+ensemble_simulation, closure★ = build_ensemble_simulation(observations, architecture; Nensemble=20)
 
 # We choose to calibrate a subset of the CATKE parameters,
 
