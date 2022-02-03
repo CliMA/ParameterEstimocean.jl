@@ -6,6 +6,7 @@ using Oceananigans.TurbulenceClosures: AbstractTimeDiscretization, ExplicitTimeD
 
 using Printf
 using Distributions
+using LinearAlgebra
 
 #####
 ##### Priors

@@ -421,6 +421,7 @@ function resample!(resampler::Resampler, θ, G, eki)
                                             eki.ensemble_kalman_process.process)
 
         eki.ensemble_kalman_process = new_process
+        eki.forward_map_output = G
     end
 
     return too_much_failure
