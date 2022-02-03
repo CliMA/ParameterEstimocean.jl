@@ -112,29 +112,25 @@ end
 #####
 
 prior_library = Dict()
-prior_library[:Cᴰ]    = lognormal_with_mean_std(2.1, 0.5)
-prior_library[:CᵂwΔ]  = ConstrainedNormal(0.0, 1.0, 2.0, 5.0)
-prior_library[:Cᵂu★]  = ConstrainedNormal(0.0, 1.0, 2.5, 4.0)
-prior_library[:Cᴸᵇ]   = ConstrainedNormal(0.0, 1.0, 3.5, 5.0)
+prior_library[:Cᴰ]    = lognormal(mean=2.1, std=0.5)
+prior_library[:CᵂwΔ]  = ScaledLogitNormal(bounds=(2.0, 5.0))
+prior_library[:Cᵂu★]  = ScaledLogitNormal(bounds=(2.5, 4.0))
+prior_library[:Cᴸᵇ]   = ScaledLogitNormal(bounds=(3.5, 5.0))
 
-#prior_library[:Cᴬu]   = ConstrainedNormal(0.0, 1.0, 0.0, 2.0)
-#prior_library[:Cᴬc]   = ConstrainedNormal(0.0, 1.0, 0.0, 2.0)
-#prior_library[:Cᴬe]   = ConstrainedNormal(0.0, 1.0, 0.0, 2.0)
+prior_library[:Cᴬu]   = ScaledLogitNormal(bounds=(0.0, 0.01))
+prior_library[:Cᴬc]   = ScaledLogitNormal(bounds=(5.0, 10.0))
+prior_library[:Cᴬe]   = ScaledLogitNormal(bounds=(0.0, 0.01))
 
-prior_library[:Cᴬu]   = ConstrainedNormal(0.0, 1.0, 0.0, 0.01)
-prior_library[:Cᴬc]   = ConstrainedNormal(0.0, 1.0, 5.0, 10.0)
-prior_library[:Cᴬe]   = ConstrainedNormal(0.0, 1.0, 0.0, 0.01)
+prior_library[:Cᴷu⁻]  = ScaledLogitNormal(bounds=(0.0, 0.1))
+prior_library[:Cᴷc⁻]  = ScaledLogitNormal(bounds=(0.0, 0.2))
+prior_library[:Cᴷe⁻]  = ScaledLogitNormal(bounds=(0.5, 1.0))
 
-prior_library[:Cᴷu⁻]  = ConstrainedNormal(0.0, 1.0, 0.0, 0.1)
-prior_library[:Cᴷc⁻]  = ConstrainedNormal(0.0, 1.0, 0.0, 0.2)
-prior_library[:Cᴷe⁻]  = ConstrainedNormal(0.0, 1.0, 0.5, 1.0)
+prior_library[:Cᴷuʳ]  = ScaledLogitNormal(bounds=(0.0, 1.0))
+prior_library[:Cᴷcʳ]  = ScaledLogitNormal(bounds=(0.0, 0.5))
+prior_library[:Cᴷeʳ]  = ScaledLogitNormal(bounds=(0.0, 0.5))
 
-prior_library[:Cᴷuʳ]  = ConstrainedNormal(0.0, 1.0, 0.0, 1.0)
-prior_library[:Cᴷcʳ]  = ConstrainedNormal(0.0, 1.0, 0.0, 0.5)
-prior_library[:Cᴷeʳ]  = ConstrainedNormal(0.0, 1.0, 0.0, 0.5)
-
-prior_library[:CᴷRiʷ] = ConstrainedNormal(0.0, 1.0, 0.05, 0.2)
-prior_library[:CᴷRiᶜ] = ConstrainedNormal(0.0, 1.0, 0.1, 0.3)
+prior_library[:CᴷRiʷ] = ScaledLogitNormal(bounds=(0.05, 0.2))
+prior_library[:CᴷRiᶜ] = ScaledLogitNormal(bounds=(0.1, 0.3))
 
 # No convective adjustment:
 constant_Ri_parameters = (:Cᴰ, :CᵂwΔ, :Cᵂu★, :Cᴸᵇ, :Cᴷu⁻, :Cᴷc⁻, :Cᴷe⁻)
