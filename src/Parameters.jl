@@ -98,31 +98,19 @@ Return a `ScaledLogitNormal` distribution with parameters `μ`, `σ`, `lower_bou
 and `upper_bound`.
 """
 function ScaledLogitNormal(FT=Float64;
-                           bounds,
-                           midspread = nothing,
-                           center = nothing,
-                           width = nothing)
+                           bounds = (0, 1),
+                           midspread = nothing)
 
     # Default
     μ = 0
     σ = 1
     L, U = bounds
 
-    if !isnothing(center) || !isnothing(width)
-        isnothing(center) && isnothing(width) ||
-            throw(ArgumentError("Both center and width must be specified!"))
-
-        isnothing(midspread) ||
-            throw(ArgumentError("Cannot specify both midspread and (center, width)!"))
-
-        midspread = [center - width/2, center + width/2]
-    end
-
     if !isnothing(midspread)
         Li, Ui = midspread
 
         Li > L && Ui < U ||
-            throw(ArgumentError("Midspread must lie within lower_bound and upper_bound."))
+            throw(ArgumentError("Midspread limits must lie between `bounds`."))
 
         # Compute lower and upper limits of midspread in unconstrained space
         L̃i = scaled_logit_normal_forward_transform(L, U, Li)
@@ -137,8 +125,8 @@ function ScaledLogitNormal(FT=Float64;
 end
 
 # Calculate the prior in unconstrained space given a prior in constrained space
-unconstrained_prior(Π::LogNormal)         = Normal(1.0, Π.σ / Π.μ)
-unconstrained_prior(Π::Normal)            = Normal(1.0, Π.σ / Π.μ)
+unconstrained_prior(Π::LogNormal)         = Normal(1.0, Π.σ / abs(Π.μ))
+unconstrained_prior(Π::Normal)            = Normal(1.0, Π.σ / abs(Π.μ))
 unconstrained_prior(Π::ScaledLogitNormal) = Normal(Π.μ, Π.σ)
 
 # Transform parameters from constrained (physical) space to unconstrained (EKI) space
@@ -154,8 +142,8 @@ transform_to_unconstrained(Π::ScaledLogitNormal, θ) =
 Transform a parameter `θ` from unconstrained (EKI) space to constrained (physical) space,
 given the _constrained_ prior distribution `Π`.
 """
-transform_to_constrained(Π::Normal, θ)    = θ / Π.μ
-transform_to_constrained(Π::LogNormal, θ) = exp(θ / Π.μ)
+transform_to_constrained(Π::Normal, θ)    = θ / abs(Π.μ)
+transform_to_constrained(Π::LogNormal, θ) = exp(θ / abs(Π.μ))
 
 transform_to_constrained(Π::ScaledLogitNormal, θ) =
     scaled_logit_normal_inverse_transform(Π.lower_bound, Π.upper_bound, θ)
