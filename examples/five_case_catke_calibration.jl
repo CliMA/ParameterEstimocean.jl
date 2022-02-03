@@ -22,10 +22,12 @@ using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities:
 ##### Compile LESbrary
 #####
 
-case_path(case) = @datadep_str("four_day_suite_4m/$(case)_instantaneous_statistics.jld2")
+#case_path(case) = @datadep_str("four_day_suite_4m/$(case)_instantaneous_statistics.jld2")
+case_path(case) = @datadep_str("two_day_suite_4m/$(case)_instantaneous_statistics.jld2")
 
-times = [4hours, 24hours, 96hours]
+times = [4hours, 12hours]
 field_names = (:b, :e, :u, :v)
+regrid_size = nothing #(1, 1, 64)
 
 normalization = (b = ZScore(),
                  u = ZScore(),
@@ -36,15 +38,18 @@ observation_library = Dict()
 
 # Don't optimize u, v for free_convection
 observation_library["free_convection"] =
-    SyntheticObservations(case_path("free_convection"); normalization, times, field_names = (:b, :e))
+    SyntheticObservations(case_path("free_convection"); field_names = (:b, :e),
+                          normalization, times, regrid_size)
                                                                 
 # Don't optimize v for non-rotating cases
 observation_library["strong_wind_no_rotation"] =
-    SyntheticObservations(case_path("strong_wind_no_rotation"); normalization, times, field_names = (:b, :e, :u))
+    SyntheticObservations(case_path("strong_wind_no_rotation"); field_names = (:b, :e, :u),
+                          normalization, times, regrid_size)
 
 # The rest are standard
 for case in ["strong_wind", "strong_wind_weak_cooling", "weak_wind_strong_cooling"]
-    observation_library[case] = SyntheticObservations(case_path(case); field_names, normalization, times)
+    observation_library[case] =
+        SyntheticObservations(case_path(case); field_names, normalization, times, regrid_size)
 end
 
 #=
@@ -56,11 +61,11 @@ cases = ["free_convection",
 =#
 
 cases = [
-         #"free_convection",
-         #"strong_wind_weak_cooling",
+         "free_convection",
+         "strong_wind_weak_cooling",
          #"weak_wind_strong_cooling",
-         "strong_wind",
-         "strong_wind_no_rotation",
+         #"strong_wind",
+         #"strong_wind_no_rotation",
         ]
 
 observations = [observation_library[case] for case in cases]
@@ -75,7 +80,7 @@ catke_mixing_length = MixingLength(Cᴬu=0.0, Cᴬc=0.0, Cᴬe=0.0,
 catke = CATKEVerticalDiffusivity(mixing_length=catke_mixing_length)
 
 simulation = ensemble_column_model_simulation(observations;
-                                              Nensemble = 1000,
+                                              Nensemble = 200,
                                               architecture = GPU(),
                                               tracers = (:b, :e),
                                               closure = catke)
@@ -107,35 +112,44 @@ end
 #####
 
 prior_library = Dict()
-prior_library[:Cᴰ]    = lognormal_with_mean_std(2.0, 0.05)
-prior_library[:CᵂwΔ]  = ConstrainedNormal(0.0, 1.0, 0.0, 4.0)
-prior_library[:Cᵂu★]  = ConstrainedNormal(0.0, 1.0, 0.0, 5.0)
-prior_library[:Cᴸᵇ]   = ConstrainedNormal(0.0, 1.0, 0.0, 3.0)
-prior_library[:Cᴬu]   = ConstrainedNormal(0.0, 1.0, 0.0, 2.0)
-prior_library[:Cᴬc]   = ConstrainedNormal(0.0, 1.0, 0.0, 2.0)
-prior_library[:Cᴬe]   = ConstrainedNormal(0.0, 1.0, 0.0, 2.0)
-prior_library[:Cᴷu⁻]  = ConstrainedNormal(0.0, 1.0, 0.0, 0.2)
-#prior_library[:Cᴷu⁻]  = lognormal_with_mean_std(0.02, 0.01)
-prior_library[:Cᴷc⁻]  = ConstrainedNormal(0.0, 1.0, 0.0, 2.0)
-prior_library[:Cᴷe⁻]  = ConstrainedNormal(0.0, 1.0, 0.0, 2.0)
-prior_library[:Cᴷuʳ]  = Normal(0.1, 0.1)
-prior_library[:Cᴷcʳ]  = Normal(0.1, 0.1)
-prior_library[:Cᴷeʳ]  = Normal(0.1, 0.1)
-prior_library[:CᴷRiʷ] = ConstrainedNormal(0.0, 1.0, 0.0, 1.0)
-prior_library[:CᴷRiᶜ] = Normal(0.2, 0.1)
+prior_library[:Cᴰ]    = lognormal_with_mean_std(2.1, 0.5)
+prior_library[:CᵂwΔ]  = ConstrainedNormal(0.0, 1.0, 2.0, 5.0)
+prior_library[:Cᵂu★]  = ConstrainedNormal(0.0, 1.0, 2.5, 4.0)
+prior_library[:Cᴸᵇ]   = ConstrainedNormal(0.0, 1.0, 3.5, 5.0)
+
+#prior_library[:Cᴬu]   = ConstrainedNormal(0.0, 1.0, 0.0, 2.0)
+#prior_library[:Cᴬc]   = ConstrainedNormal(0.0, 1.0, 0.0, 2.0)
+#prior_library[:Cᴬe]   = ConstrainedNormal(0.0, 1.0, 0.0, 2.0)
+
+prior_library[:Cᴬu]   = ConstrainedNormal(0.0, 1.0, 0.0, 0.01)
+prior_library[:Cᴬc]   = ConstrainedNormal(0.0, 1.0, 5.0, 10.0)
+prior_library[:Cᴬe]   = ConstrainedNormal(0.0, 1.0, 0.0, 0.01)
+
+prior_library[:Cᴷu⁻]  = ConstrainedNormal(0.0, 1.0, 0.0, 0.1)
+prior_library[:Cᴷc⁻]  = ConstrainedNormal(0.0, 1.0, 0.0, 0.2)
+prior_library[:Cᴷe⁻]  = ConstrainedNormal(0.0, 1.0, 0.5, 1.0)
+
+prior_library[:Cᴷuʳ]  = ConstrainedNormal(0.0, 1.0, 0.0, 1.0)
+prior_library[:Cᴷcʳ]  = ConstrainedNormal(0.0, 1.0, 0.0, 0.5)
+prior_library[:Cᴷeʳ]  = ConstrainedNormal(0.0, 1.0, 0.0, 0.5)
+
+prior_library[:CᴷRiʷ] = ConstrainedNormal(0.0, 1.0, 0.05, 0.2)
+prior_library[:CᴷRiᶜ] = ConstrainedNormal(0.0, 1.0, 0.1, 0.3)
 
 # No convective adjustment:
 constant_Ri_parameters = (:Cᴰ, :CᵂwΔ, :Cᵂu★, :Cᴸᵇ, :Cᴷu⁻, :Cᴷc⁻, :Cᴷe⁻)
 variable_Ri_parameters = tuple(constant_Ri_parameters..., :Cᴷuʳ, :Cᴷcʳ, :Cᴷeʳ, :CᴷRiʷ, :CᴷRiᶜ)
 constant_Ri_convective_adjustment_parameters = tuple(constant_Ri_parameters..., :Cᴬu, :Cᴬc, :Cᴬe)
-variable_Ri_convective_adjustment_parameters = keys(prior_library)
+#variable_Ri_convective_adjustment_parameters = tuple(variable_Ri_parameters..., :Cᴬu, :Cᴬc, :Cᴬe)
+variable_Ri_convective_adjustment_parameters = tuple(variable_Ri_parameters..., :Cᴬc)
+tracer_convection_parameters = (:Cᴰ, :CᵂwΔ, :Cᴸᵇ, :Cᴷc⁻, :Cᴷe⁻, :Cᴷcʳ, :Cᴷeʳ)
 
-free_parameters = FreeParameters(prior_library, names=variable_Ri_parameters)
+free_parameters = FreeParameters(prior_library, names=variable_Ri_convective_adjustment_parameters)
 calibration = InverseProblem(observations, simulation, free_parameters)
 
 eki = EnsembleKalmanInversion(calibration;
-                              noise_covariance = 1e-1,
-                              resampler = Resampler(acceptable_failure_fraction=1.0))
+                              noise_covariance = 1e-3,
+                              resampler = Resampler(acceptable_failure_fraction=1.0, only_failed_particles=false))
 
 #####
 ##### Plot utils
@@ -211,21 +225,36 @@ end
 function visualize_parameter_evolution(eki)
     summaries = eki.iteration_summaries
     parameter_names = keys(first(summaries).ensemble_mean)
+
     ensemble_means = NamedTuple(name => map(summary -> summary.ensemble_mean[name], summaries)
                                 for name in parameter_names)
 
+    ensemble_vars = NamedTuple(name => map(summary -> summary.ensemble_var[name], summaries)
+                                for name in parameter_names)
+
     fig = Figure()
-    ax = Axis(fig[1, 1], xlabel = "Iteration", ylabel = "Parameter value")
+
+    ax1 = Axis(fig[1, 1], xlabel = "Iteration", ylabel = "Parameter value")
+    ax2 = Axis(fig[2, 1], xlabel = "Iteration", ylabel = "Parameter ensemble variance", yscale=log10)
 
     for (i, name) in enumerate(parameter_names)
+        μ = ensemble_means[name]
+        μᵢ = first(μ)
+        μʳ = @. (μ - μᵢ) / μᵢ
+
+        σ² = ensemble_vars[name]
+
         label = string(name)
         marker = markercycle[i]
         color = colorcycle[i]
-        scatterlines!(ax, 0:length(summaries)-1, parent(ensemble_means[name]); marker, color, label)
-        #scatterlines!(ax, 0:length(summaries)-1, parent(ensemble_means[name]); label)
+
+        scatterlines!(ax1, 0:length(summaries)-1, parent(μʳ); marker, color, label)
+        scatterlines!(ax2, 0:length(summaries)-1, parent(σ²); marker, color, label)
     end
 
-    axislegend(ax, position=:rb)
+    #fig[1, 2] = Legend(fig, ax1)
+    fig[2, 2] = Legend(fig, ax2)
+
     display(fig)
 
     return nothing
@@ -233,13 +262,7 @@ end
 
 function latest_best_run!(eki)
     latest_summary = eki.iteration_summaries[end]
-
     @show latest_summary
-
-    # @show best_parameters = latest_summary.ensemble_mean
-    # @show extrema(latest_summary.mean_square_errors)
-    # @show mean(latest_summary.mean_square_errors)
-    
     latest_best_parameters = latest_summary.ensemble_mean
     forward_run!(eki.inverse_problem, latest_best_parameters)
     i = eki.iteration
