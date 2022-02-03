@@ -137,11 +137,11 @@ free_parameters = FreeParameters(priors)
 # We visualize our prior distributions by plotting a huge number
 # of samples:
 
-using OceanTurbulenceParameterEstimation.EnsembleKalmanInversions: unconstrained_prior, inverse_parameter_transform
+using OceanTurbulenceParameterEstimation.Parameters: unconstrained_prior, transform_to_constrained
 
 Nsamples = 50000000
 
-samples(prior) = [inverse_parameter_transform(prior, θ) for θ in rand(unconstrained_prior(prior), Nsamples)]
+samples(prior) = [transform_to_constrained(prior, θ) for θ in rand(unconstrained_prior(prior), Nsamples)]
 
 convective_κz_samples = samples(priors.convective_κz)
 background_κz_samples = samples(priors.background_κz)
