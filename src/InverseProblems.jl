@@ -6,7 +6,7 @@ using Suppressor: @suppress
 using ..Observations: AbstractObservation, SyntheticObservations, initialize_simulation!, FieldTimeSeriesCollector,
     observation_times, observation_names
 
-using ..TurbulenceClosureParameters: new_closure_ensemble
+using ..Parameters: new_closure_ensemble
 
 using OffsetArrays, Statistics
 
