@@ -8,6 +8,7 @@
 # ```
 
 using OceanTurbulenceParameterEstimation
+using OceanTurbulenceParameterEstimation.Observations: FieldTimeSeriesCollector
 
 using Oceananigans
 using Oceananigans.Units
@@ -26,19 +27,18 @@ filepath = "/Users/navid/Research/mesoscale-parametrization-OSM2022/eddying_chan
 
 b_timeseries = FieldTimeSeries(filepath, "b")
 
-field_names = (:b, :u, :v, :w)
-# field_names = (:b, :c, :u, :v, :w)
+field_names = (:b, :w)
+# field_names = (:b, :c, :u, :w)
 
 normalization = (b = ZScore(),
                 #  c = ZScore(),
-                 u = ZScore(),
-                 v = ZScore(),
+                #  u = ZScore(),
                  w = RescaledZScore(1e-2))
 
-times = b_timeseries.times[500:10:800]
+times = b_timeseries.times[500:2:502]
 
 observations = SyntheticObservations(filepath; normalization, times, field_names)
-     
+
 #####
 ##### Simulation
 #####
@@ -75,35 +75,31 @@ gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = κ_ske
 
 closures = file["serialized/closure"]
 
-closure_ensemble = [(deepcopy(gent_mcwilliams_diffusivity), closures[1], closures[2]) for _ = 1:Nensemble]
+closure_ensemble = ([deepcopy(gent_mcwilliams_diffusivity) for _ = 1:Nensemble], closures[1], closures[2])
 
 ensemble_model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
                                              tracers = (:b, :e, :c),
                                              buoyancy = BuoyancyTracer(),
                                              coriolis = coriolis,
                                              closure = closure_ensemble,
-                                             free_surface = ImplicitFreeSurface(),
-                                             )
+                                             free_surface = ImplicitFreeSurface())
 
-#=
+Δt = 5minutes
+simulation = Simulation(ensemble_model; Δt, stop_time=observations.times[end])
 
-Δt = 5minute              # time-step
-stop_time = 1year         # length of run
-save_interval = 7days     # save observation every so often
+priors = (
+    κ_skew = ConstrainedNormal(0.0, 1.0, 400.0, 1300.0),
+    κ_symmetric = ConstrainedNormal(0.0, 1.0, 700.0, 1700.0)
+)
 
-simulation = Simulation(ensemble_model; Δt, stop_time)
+free_parameters = FreeParameters(priors)
 
-# Ideally, we want to create a function ensemble_slice_model_simulation() and build
-# the simulation via, e.g., 
+collected_fields = (b = simulation.model.tracers.b,
+                    w = simulation.model.velocities.w)
 
-closures = file["serialized/closure"]
+time_series_collector = FieldTimeSeriesCollector(collected_fields, observations.times)
 
-simulation = ensemble_slice_model_simulation(observations;
-                                             Nensemble = Nensemble,
-                                             architecture = architecture,
-                                             tracers = (:b, :e, :c),
-                                             free_closures = gent_mcwilliams_diffusivity,
-                                             additional_closures = closures::Tuple
-                                             )
+calibration = InverseProblem(observations, simulation, free_parameters; time_series_collector)
 
-=#
+eki = EnsembleKalmanInversion(calibration; noise_covariance = 1e-2)
+
