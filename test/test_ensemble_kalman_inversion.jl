@@ -2,11 +2,15 @@ using Test
 using JLD2
 using Statistics
 using LinearAlgebra
-using OceanTurbulenceParameterEstimation
-using OceanTurbulenceParameterEstimation.EnsembleKalmanInversions: iterate!, FullEnsembleDistribution, Resampler, resample!, column_has_nan
+
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
+
+using OceanTurbulenceParameterEstimation
+using OceanTurbulenceParameterEstimation.EnsembleKalmanInversions: iterate!
+using OceanTurbulenceParameterEstimation.EnsembleKalmanInversions: FullEnsembleDistribution, Resampler
+using OceanTurbulenceParameterEstimation.EnsembleKalmanInversions: resample!, column_has_nan
 
 data_path = "convective_adjustment_test.jld2"
 Nensemble = 3
@@ -40,11 +44,11 @@ Nensemble = 3
     b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ), bottom = GradientBoundaryCondition(N²))
 
     ensemble_model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
-                                                 tracers = (:b,),
+                                                 tracers = :b,
                                                  buoyancy = BuoyancyTracer(),
                                                  boundary_conditions = (; u=u_bcs, b=b_bcs),
                                                  coriolis = FPlane.(f),
-                                                 closure = [deepcopy(closure) for i = 1:Nensemble, j=1:1])
+                                                 closure = [deepcopy(closure) for i=1:Nensemble, j=1:1])
 
     ensemble_simulation = Simulation(ensemble_model; Δt=Δt, stop_time=observation.times[end])
 
@@ -62,7 +66,7 @@ Nensemble = 3
     ##### Test EKI
     #####
 
-    eki = EnsembleKalmanInversion(calibration; noise_covariance = 0.01)
+    eki = EnsembleKalmanInversion(calibration; noise_covariance=0.01)
 
     iterations = 5
     iterate!(eki; iterations = iterations, show_progress = false)
