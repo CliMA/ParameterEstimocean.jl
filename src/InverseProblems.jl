@@ -97,7 +97,7 @@ function Base.show(io::IO, ip::InverseProblem)
     return nothing
 end
 
-tupify_parameters(ip, θ::Vector) = NamedTuple{ip.free_parameters.names}(Tuple(θ))
+tupify_parameters(ip, θ) = NamedTuple{ip.free_parameters.names}(Tuple(θ))
 tupify_parameters(ip, θ::Union{Dict, NamedTuple}) = NamedTuple(name => θ[name] for name in ip.free_parameters.names)
 
 """
