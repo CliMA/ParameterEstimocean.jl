@@ -163,6 +163,7 @@ struct IterationSummary{P, M, C, V, E}
     ensemble_cov :: C   # constrained
     ensemble_var :: V
     mean_square_errors :: E
+    iteration :: Int
 end
 
 """
@@ -172,17 +173,17 @@ Return the summary for ensemble Kalman inversion `eki` with free `parameters` an
 `forward_map_output`.
 """
 function IterationSummary(eki, parameters, forward_map_output=nothing)
-    original_priors = eki.inverse_problem.free_parameters.priors
+    priors = eki.inverse_problem.free_parameters.priors
 
     ensemble_mean = mean(parameters, dims=2)
-    constrained_ensemble_mean = transform_to_constrained.(values(original_priors), ensemble_mean)
+    constrained_ensemble_mean = transform_to_constrained.(values(priors), ensemble_mean)
     constrained_ensemble_mean = tupify_parameters(eki.inverse_problem, constrained_ensemble_mean)
 
     ensemble_covariance = cov(parameters, dims=2)
-    constrained_ensemble_covariance = inverse_covariance_transform(values(original_priors), parameters, ensemble_covariance)
+    constrained_ensemble_covariance = inverse_covariance_transform(values(priors), parameters, ensemble_covariance)
     constrained_ensemble_variance = tupify_parameters(eki.inverse_problem, diag(constrained_ensemble_covariance))
 
-    constrained_parameters = transform_to_constrained.(values(original_priors), parameters)
+    constrained_parameters = transform_to_constrained.(values(priors), parameters)
 
     constrained_parameters = [tupify_parameters(eki.inverse_problem, constrained_parameters[:, i])
                               for i = 1:size(constrained_parameters, 2)]
@@ -201,7 +202,8 @@ function IterationSummary(eki, parameters, forward_map_output=nothing)
                             constrained_ensemble_mean,
                             constrained_ensemble_covariance,
                             constrained_ensemble_variance,
-                            mean_square_errors)
+                            mean_square_errors,
+                            eki.iteration)
 end
 
 function Base.show(io::IO, is::IterationSummary)
@@ -209,8 +211,17 @@ function Base.show(io::IO, is::IterationSummary)
     max_error, imax = findmax(is.mean_square_errors)
     min_error, imin = findmin(is.mean_square_errors)
 
-    print(io, "IterationSummary(ensemble = ", length(is.mean_square_errors), ")", '\n',
-              "                      ", param_str.(keys(is.ensemble_mean))..., '\n',
+    names = keys(is.ensemble_mean)
+    parameter_matrix = [is.parameters[k][name] for name in names, k = 1:length(is.parameters)]
+    min_parameters = minimum(parameter_matrix, dims=2)
+    max_parameters = maximum(parameter_matrix, dims=2)
+
+    print(io, summary(is))
+
+    print(io, "                      ", param_str.(keys(is.ensemble_mean))..., '\n',
+              "             minimum: ", param_str.(min_parameters)..., '\n',
+              "             maximum: ", param_str.(max_parameters)..., '\n',
+              "       ensemble_mean: ", param_str.(values(is.ensemble_mean))..., '\n',
               "       ensemble_mean: ", param_str.(values(is.ensemble_mean))..., '\n',
               "   ensemble_variance: ", param_str.(values(is.ensemble_var))..., '\n',
               particle_str("best", is.mean_square_errors[imin], is.parameters[imin]), '\n',
@@ -219,7 +230,9 @@ function Base.show(io::IO, is::IterationSummary)
     return nothing
 end
 
-quick_summary(iter, is) = println("Iter $iter ", is.ensemble_mean)
+Base.summary(is::IterationSummary) = string("IterationSummary for ", length(is.ensemble_mean),
+                                            " particles and ", length(keys(is.ensemble_mean)),
+                                            " parameters at iteration ", is.iteration)
 
 function param_str(p::Symbol)
     p_str = string(p)
@@ -254,7 +267,6 @@ function sample(eki, θ, G, Nsample)
     found_X = zeros(Nθ, 0)
     found_G = zeros(Noutput, 0)
     existing_sample_distribution = eki.resampler.distribution(θ, G)
-    @show existing_sample_distribution
 
     while Nfound < Nsample
         @info "Re-sampling ensemble members (found $Nfound of $Nsample)..."
@@ -263,7 +275,6 @@ function sample(eki, θ, G, Nsample)
         # Note that eki.inverse_problem.simulation
         # must run `Nensemble` particles no matter what.
         X_sample = rand(existing_sample_distribution, Nensemble)
-        @show typeof(X_sample) size(X_sample)
         G_sample = eki.inverting_forward_map(X_sample)
 
         nan_values = column_has_nan(G_sample)
@@ -357,19 +368,27 @@ column_has_nan(G) = vec(mapslices(any, isnan.(G); dims=1))
 Resamples the parameters `θ` of the `eki` process based on the number of `NaN` values
 inside the forward map output `G`.
 """
-function resample!(resampler::Resampler, θ, G, eki)
+function resample!(resampler::Resampler, X, G, eki)
     # `Nensemble` vector of bits indicating, for each ensemble member, whether the forward map contained `NaN`s
     nan_values = column_has_nan(G)
     nan_columns = findall(nan_values) # indices of columns (particles) with `NaN`s
     nan_count = length(nan_columns)
-    nan_fraction = nan_count / size(θ, 2)
+    nan_fraction = nan_count / size(X, 2)
 
     if nan_fraction > 0
+
+        priors = eki.inverse_problem.free_parameters.priors
+        θ = transform_to_constrained.(values(priors), X)
+        θ = [tupify_parameters(eki.inverse_problem, θ[:, i]) for i = 1:size(θ, 2)]
+
         particles = nan_count == 1 ? "particle" : "particles"
         failed_columns = nan_count == 1 ? "particle is $nan_columns" : "particles are $nan_columns"
+        failed_parameters = [θ[k] for k in nan_columns]
+
         @warn("""
               The forward map for $nan_count $particles ($(100nan_fraction)%) included NaNs.
               The failed $failed_columns.
+              The parameters are $failed_parameters.
               """)
     end
 
@@ -397,12 +416,12 @@ function resample!(resampler::Resampler, θ, G, eki)
             replace_columns = Colon()
         end
 
-        found_θ, found_G = sample(eki, θ, G, Nsample)
+        found_X, found_G = sample(eki, X, G, Nsample)
         
-        view(θ, :, replace_columns) .= found_θ
+        view(X, :, replace_columns) .= found_X
         view(G, :, replace_columns) .= found_G
 
-        new_process = EnsembleKalmanProcess(θ,
+        new_process = EnsembleKalmanProcess(X,
                                             eki.mapped_observations,
                                             eki.noise_covariance,
                                             eki.ensemble_kalman_process.process)
