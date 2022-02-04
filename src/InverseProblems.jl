@@ -257,7 +257,7 @@ function transform_output(map::ConcatenatedOutputMap,
 end
 
 function transform_output(output_map::ConcatenatedVectorNormMap,
-    observations::Union{SyntheticObservations,Vector{<:SyntheticObservations}},
+    observations::Union{SyntheticObservations, Vector{<:SyntheticObservations}},
     time_series_collector)
 
     concat_map = ConcatenatedOutputMap(output_map.time_indices)
