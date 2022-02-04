@@ -14,7 +14,7 @@ using OceanTurbulenceParameterEstimation.InverseProblems: transpose_model_output
 @testset "Unit tests for forward_map" begin
     # Test drop_y_dimension
     column_ensemble_size = ColumnEnsembleSize(Nz=8, ensemble=(2, 3))
-    column_ensemble_halo_size = ColumnEnsembleSize(Hz=5)
+    column_ensemble_halo_size = ColumnEnsembleSize(Nz=1, Hz=5)
     ensemble_grid = RectilinearGrid(size = column_ensemble_size,
                                     halo = column_ensemble_halo_size,
                                     z = (-128, 0),
