@@ -216,12 +216,12 @@ function transform_time_series(output_map::ConcatenatedOutputMap, time_series::S
 
     for field_name in keys(time_series.field_time_serieses)
         field_time_series = time_series.field_time_serieses[field_name]
-        A = Array(interior(field_time_series))
+        field_time_series_interior = Array(interior(field_time_series))
 
         # Ignore initial condition given by first element in map.time_indices
         field_time_series_data = output_map.time_indices == Colon() ? 
-            selectdim(A, 4, 2:size(A,4)) :
-            selectdim(A, 4, output_map.time_indices[2:end])
+            selectdim(field_time_series_interior, 4, 2:size(field_time_series_interior, 4)) :
+            selectdim(field_time_series_interior, 4, output_map.time_indices[2:end])
 
         # Normalize data according to observation-specified normalization
         normalize!(field_time_series_data, time_series.normalization[field_name])
@@ -257,7 +257,7 @@ function transform_output(map::ConcatenatedOutputMap,
 end
 
 function transform_output(output_map::ConcatenatedVectorNormMap,
-    observations::Union{SyntheticObservations,Vector{<:SyntheticObservations}},
+    observations::Union{SyntheticObservations, Vector{<:SyntheticObservations}},
     time_series_collector)
 
     concat_map = ConcatenatedOutputMap(output_map.time_indices)
