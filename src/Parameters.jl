@@ -7,6 +7,7 @@ using Oceananigans.TurbulenceClosures: AbstractTimeDiscretization, ExplicitTimeD
 using Printf
 using Distributions
 using LinearAlgebra
+using SpecialFunctions: erfinv
 
 #####
 ##### Priors
@@ -77,10 +78,10 @@ struct ScaledLogitNormal{FT}
 end
 
 # From unconstrained to constrained
-scaled_logit_normal_inverse_transform(L, U, θ) = L + (U - L) / (1 + exp(θ))
+scaled_logit_normal_inverse_transform(L, U, X) = L + (U - L) / (1 + exp(X))
 
 # From constrained to unconstrained
-scaled_logit_normal_forward_transform(L, U, θ) = log((U - θ) / (θ - L))
+scaled_logit_normal_forward_transform(L, U, Y) = log((Y - L) / (U - Y))
 
 unit_normal_std(mass) = 1 / (2 * √2 * erfinv(mass))
 
@@ -166,17 +167,19 @@ unconstrained_prior(Π::ScaledLogitNormal) = Normal(Π.μ, Π.σ)
 """
     transform_to_unconstrained(Π, Y)
 
-Transform the "constrained" (physical) variate ``Y`` into it's
-unconstrained (normally-distributed) counterpart ``X``.
+Transform the "constrained" (physical) variate `Y` into it's
+unconstrained (normally-distributed) counterpart `X` through the
+forward map associated with `Π`.
 
 If some mapping between ``Y`` and the normally-distributed ``X`` is defined
 by
 
 ```math
-Y = f(X)
+Y = g(X)
 ```
 
-Then `transform_to_unconstrained` is the inverse ``X = f⁻¹(Y)``.
+Then `transform_to_unconstrained` is the inverse ``X = g⁻¹(Y)``.
+The change of variables `g(X)` determines the distribution `Π` of `Y`.
 
 Example
 =======
@@ -203,8 +206,9 @@ transform_to_unconstrained(Π::ScaledLogitNormal, Y) =
 """
     transform_to_constrained(Π, X)
 
-Transform a normally-distributed "unconstrained" variate `X`
-to "constrained" (physical) space.
+Transform an "unconstrained", normally-distributed variate `X`
+to "constrained" (physical) space via the map associated with
+the distribution `Π` of `Y`.
 """
 transform_to_constrained(Π::Normal, X)    = X * abs(Π.μ)
 transform_to_constrained(Π::LogNormal, X) = exp(X * abs(Π.μ))
