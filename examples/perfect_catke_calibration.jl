@@ -141,7 +141,9 @@ y = observation_map(calibration)
 
 noise_variance = (observation_map_variance_across_time(calibration)[1, :, 1] .+ 1) .* 1e-3
 
-eki = EnsembleKalmanInversion(calibration; noise_covariance = Matrix(Diagonal(noise_variance)))
+eki = EnsembleKalmanInversion(calibration;
+                              noise_covariance = Matrix(Diagonal(noise_variance)),
+                              resampler = Resampler(acceptable_failure_fraction=0.1))
 
 # and perform few iterations to see if we can converge to the true parameter values.
 
