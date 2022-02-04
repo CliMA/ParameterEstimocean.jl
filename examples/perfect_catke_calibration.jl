@@ -10,8 +10,6 @@
 using OceanTurbulenceParameterEstimation, LinearAlgebra, CairoMakie
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity, MixingLength, SurfaceTKEFlux
 
-using ElectronDisplay
-
 # # Perfect observations of CATKE-driven mixing
 #
 # Our first task is to generate synthetic observations, using
@@ -86,7 +84,7 @@ axislegend(ax_b, position=:rb)
 axislegend(ax_u, position=:lb, merge=true)
 axislegend(ax_e, position=:rb)
 
-display(fig)
+##display(fig)
 
 save("synthetic_catke_observations.svg", fig); nothing # hide
 
@@ -185,7 +183,7 @@ end
 
 axislegend(ax3, position = :rt)
 
-display(fig)
+##display(fig)
 
 save("perfect_catke_calibration_summary.svg", fig); nothing #hide
 
@@ -252,7 +250,7 @@ save("perfect_catke_calibration_particle_realizations.svg", fig); nothing # hide
 
 # ![](perfect_catke_calibration_particle_realizations.svg)
 
-display(fig)
+##display(fig)
 
 # And also we plot the the distributions of the various model ensembles for few EKI iterations to see
 # if and how well they converge to the true diffusivity values.
@@ -298,7 +296,7 @@ xlims!(ax2, 0.025, 0.125)
 ylims!(ax2, 0.35, 0.9)
 ylims!(ax3, 0.35, 0.9)
 
-display(fig)
+##display(fig)
 
 save("perfect_catke_calibration_parameter_distributions.svg", fig); nothing # hide
 
