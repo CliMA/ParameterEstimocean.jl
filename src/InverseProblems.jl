@@ -6,7 +6,7 @@ using Suppressor: @suppress
 using ..Observations: AbstractObservation, SyntheticObservations, initialize_simulation!, FieldTimeSeriesCollector,
     observation_times, observation_names
 
-using ..TurbulenceClosureParameters: new_closure_ensemble
+using ..Parameters: new_closure_ensemble
 
 using OffsetArrays, Statistics
 
@@ -98,7 +98,7 @@ function Base.show(io::IO, ip::InverseProblem)
 end
 
 tupify_parameters(ip, θ) = NamedTuple{ip.free_parameters.names}(Tuple(θ))
-tupify_parameters(ip, θ::NamedTuple) = NamedTuple(name => θ[name] for name in ip.free_parameters.names)
+tupify_parameters(ip, θ::Union{Dict, NamedTuple}) = NamedTuple(name => θ[name] for name in ip.free_parameters.names)
 
 """
     expand_parameters(ip, θ)
@@ -130,11 +130,10 @@ function expand_parameters(ip, θ::Vector)
 end
 
 # Expand single parameter set
-expand_parameters(ip, θ::Union{NamedTuple,Vector{<:Number}}) = expand_parameters(ip, [θ])
-expand_parameters(ip, θ::NamedTuple) = expand_parameters(ip, [θ])
+expand_parameters(ip, θ::Union{NamedTuple, Vector{<:Number}}) = expand_parameters(ip, [θ])
 
 # Convert matrix to vector of vectors
-expand_parameters(ip, θ::Matrix) = expand_parameters(ip, [θ[:, i] for i = 1:size(θ, 2)])
+expand_parameters(ip, θ::Matrix) = expand_parameters(ip, [θ[:, k] for k = 1:size(θ, 2)])
 
 #####
 ##### Forward map evaluation given vector-of-vector (one parameter vector for each ensemble member)

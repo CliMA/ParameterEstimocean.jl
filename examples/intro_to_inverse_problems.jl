@@ -122,8 +122,8 @@ ensemble_simulation, closure★ = build_ensemble_simulation(observations; Nensem
 # constrain the prior distributions so that neither very high nor very low values for diffusivities
 # can be drawn out of the distribution.
 
-priors = (convective_κz = lognormal_with_mean_std(0.3, 0.05),
-          background_κz = lognormal_with_mean_std(2.5e-4, 0.25e-4))
+priors = (convective_κz = lognormal(mean=0.3, std=0.05),
+          background_κz = lognormal(mean=2.5e-4, std=0.25e-4))
 
 free_parameters = FreeParameters(priors)
 
@@ -137,14 +137,14 @@ free_parameters = FreeParameters(priors)
 # We visualize our prior distributions by plotting a huge number
 # of samples:
 
-using OceanTurbulenceParameterEstimation.EnsembleKalmanInversions: convert_prior, inverse_parameter_transform
+using OceanTurbulenceParameterEstimation.Parameters: unconstrained_prior, transform_to_constrained
 
 Nsamples = 50000000
 
-samples(prior) = [inverse_parameter_transform(prior, θ) for θ in rand(convert_prior(prior), Nsamples)]
+sample(prior) = [transform_to_constrained(prior, X) for X in rand(unconstrained_prior(prior), Nsamples)]
 
-convective_κz_samples = samples(priors.convective_κz)
-background_κz_samples = samples(priors.background_κz)
+convective_κz_samples = sample(priors.convective_κz)
+background_κz_samples = sample(priors.background_κz)
 
 fig = Figure()
 ax_top = Axis(fig[1, 1], xlabel = "convective κᶻ [m² s⁻¹]", ylabel = "Density")
