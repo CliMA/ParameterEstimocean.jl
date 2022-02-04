@@ -38,7 +38,7 @@ ensemble_simulation = Simulation(ensemble_model; Δt = 10seconds, stop_time = 2d
 ##### Build free parameters
 #####
 
-build_prior(name) = ConstrainedNormal(0.0, 1.0, bounds(name) .* 0.5...)
+build_prior(name) = ScaledLogitNormal(bounds=bounds(name).*0.5)
 free_parameters = FreeParameters(named_tuple_map(names(parameter_set), build_prior))
 
 #####

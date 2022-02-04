@@ -22,8 +22,7 @@ export
     EnsembleKalmanInversion,
     Resampler,
     FullEnsembleDistribution,
-    SuccessfulEnsembleDistribution,
-    ConstrainedNormal
+    SuccessfulEnsembleDistribution
 
 include("Utils.jl")
 include("Observations.jl")

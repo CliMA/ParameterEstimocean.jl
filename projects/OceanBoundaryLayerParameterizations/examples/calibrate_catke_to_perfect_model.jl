@@ -51,7 +51,7 @@ ensemble_simulation, closure = build_ensemble_simulation(observations; Nensemble
 ### Build Inverse Problem
 ###
 
-build_prior(name) = ConstrainedNormal(0.0, 1.0, bounds(name) .* 0.5...)
+build_prior(name) = ScaledLogitNormal(bounds=bounds(name))
 free_parameters = FreeParameters(named_tuple_map(names(parameter_set), build_prior))
 
 # Pack everything into Inverse Problem `calibration`
