@@ -14,8 +14,8 @@ function update_ensemble!(θ, y, G, Γη)
     ndims(y) == 1 && (y = reshape(y, length(y), 1))
 
     # Check dimensions in user-friendly manner
-    length(y) == Nobs || throw(ArgumentError("length(y) must be `size(G, 1)`."))
-    size(θ, 2) == Nens || throw(ArgumentError("size(θ, 2) must be `size(G, 2)`."))
+    length(y) == Nobs || throw(ArgumentError("length(y) must be size(G, 1)."))
+    size(θ, 2) == Nens || throw(ArgumentError("size(θ, 2) must be size(G, 2)."))
 
     # Compute noise first
     η = rand(MvNormal(Nobs, Γη), Nens)
