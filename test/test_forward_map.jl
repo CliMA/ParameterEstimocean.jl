@@ -22,10 +22,10 @@ using OceanTurbulenceParameterEstimation.InverseProblems: transpose_model_output
 
     dropped_y_grid = drop_y_dimension(ensemble_grid)
 
-    @test size(ensemble_grid) = (2, 3, 8)
-    @test halo_size(ensemble_grid) = (0, 0, 5)
-    @test size(dropped_y_grid) = (2, 1, 8)
-    @test halo_size(dropped_y_grid) = (0, 0, 5)
+    @test size(ensemble_grid) == (2, 3, 8)
+    @test halo_size(ensemble_grid) == (0, 0, 5)
+    @test size(dropped_y_grid) == (2, 1, 8)
+    @test halo_size(dropped_y_grid) == (0, 0, 5)
 end
 
 @testset "Forward map tests" begin
