@@ -16,7 +16,7 @@ using EnsembleKalmanProcesses.EnsembleKalmanProcessModule: sample_distribution
 using ..Parameters: unconstrained_prior, transform_to_constrained, inverse_covariance_transform
 using ..InverseProblems: Nensemble, observation_map, forward_map, tupify_parameters
 
-mutable struct EnsembleKalmanInversion{I, P, E, M, O, F, S, R, G}
+mutable struct EnsembleKalmanInversion{I, P, E, M, O, F, S, R, X, G}
     inverse_problem :: I
     parameter_distribution :: P
     ensemble_kalman_process :: E
@@ -26,6 +26,7 @@ mutable struct EnsembleKalmanInversion{I, P, E, M, O, F, S, R, G}
     iteration :: Int
     iteration_summaries :: S
     resampler :: R
+    unconstrained_parameters :: X
     forward_map_output :: G
 end
 
@@ -38,7 +39,9 @@ Base.show(io::IO, eki::EnsembleKalmanInversion) =
               "├── noise_covariance: ", summary(eki.noise_covariance), '\n',
               "├── inverting_forward_map: ", typeof(eki.inverting_forward_map).name.wrapper, '\n',
               "├── iteration: $(eki.iteration)", '\n',
-              "└── resampler: $(typeof(eki.resampler))")
+              "├── resampler: $(typeof(eki.resampler))",
+              "├── unconstrained_parameters: $(typeof(eki.unconstrained_parameters))", '\n',
+              "└── forward_map_output: $(typeof(eki.forward_map_output))")
 
 construct_noise_covariance(noise_covariance::AbstractMatrix, y) = noise_covariance
 
@@ -101,7 +104,7 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampl
                                                    no_constraints,
                                                    collect(string.(free_parameters.names)))
 
-    initial_ensemble = sample_distribution(parameter_distribution, Nensemble(inverse_problem))
+    Xᵢ = sample_distribution(parameter_distribution, Nensemble(inverse_problem))
 
     # Build EKP-friendly observations "y" and the covariance matrix of observational uncertainty "Γy"
     y = dropdims(observation_map(inverse_problem), dims=2) # length(forward_map_output) column vector
@@ -113,12 +116,12 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampl
 
         # Compute inverse transform from unconstrained (transformed) space to
         # constrained (physical) space
-        θ = [transform_to_constrained(priors, X[:, k]) for k = 1:Nensemble]
+        θ = transform_to_constrained(priors, X)
 
         return forward_map(inverse_problem, θ)
     end
 
-    ensemble_kalman_process = EnsembleKalmanProcess(initial_ensemble, y, Γy, Inversion())
+    ensemble_kalman_process = EnsembleKalmanProcess(Xᵢ, y, Γy, Inversion())
 
     eki′ = EnsembleKalmanInversion(inverse_problem,
                                    parameter_distribution,
@@ -129,6 +132,7 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampl
                                    0,
                                    nothing,
                                    resampler,
+                                   Xᵢ,
                                    nothing)
 
     # Rebuild eki with the summary and forward map (and potentially
@@ -147,6 +151,7 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampl
                                   iteration,
                                   iteration_summaries,
                                   eki′.resampler,
+                                  eki′.unconstrained_parameters,
                                   G)
 
     return eki
@@ -172,28 +177,23 @@ end
 Return the summary for ensemble Kalman inversion `eki` with free `parameters` and
 `forward_map_output`.
 """
-function IterationSummary(eki, parameters, forward_map_output=nothing)
+function IterationSummary(eki, X, forward_map_output=nothing)
     priors = eki.inverse_problem.free_parameters.priors
 
-    ensemble_mean = mean(parameters, dims=2)
-    constrained_ensemble_mean = transform_to_constrained.(values(priors), ensemble_mean)
-    constrained_ensemble_mean = tupify_parameters(eki.inverse_problem, constrained_ensemble_mean)
+    ensemble_mean = mean(X, dims=2)[:] 
+    constrained_ensemble_mean = transform_to_constrained(priors, ensemble_mean)
 
-    ensemble_covariance = cov(parameters, dims=2)
-    constrained_ensemble_covariance = inverse_covariance_transform(values(priors), parameters, ensemble_covariance)
+    ensemble_covariance = cov(X, dims=2)
+    constrained_ensemble_covariance = inverse_covariance_transform(values(priors), X, ensemble_covariance)
     constrained_ensemble_variance = tupify_parameters(eki.inverse_problem, diag(constrained_ensemble_covariance))
 
-    constrained_parameters = transform_to_constrained.(values(priors), parameters)
-
-    constrained_parameters = [tupify_parameters(eki.inverse_problem, constrained_parameters[:, i])
-                              for i = 1:size(constrained_parameters, 2)]
+    constrained_parameters = transform_to_constrained(priors, X)
 
     if !isnothing(forward_map_output)
-        Nobservations, Nensemble = size(forward_map_output)
-        mean_square_errors = [
-            mapreduce((x, y) -> (x - y)^2, +, eki.mapped_observations, view(forward_map_output, :, m)) / Nobservations
-            for m = 1:Nensemble
-        ]
+        Nobs, Nens= size(forward_map_output)
+        y = eki.mapped_observations
+        G = forward_map_output
+        mean_square_errors = [mapreduce((x, y) -> (x - y)^2, +, y, view(G, :, k)) / Nobs for k = 1:Nens]
     else
         mean_square_errors = nothing
     end
@@ -216,7 +216,7 @@ function Base.show(io::IO, is::IterationSummary)
     min_parameters = minimum(parameter_matrix, dims=2)
     max_parameters = maximum(parameter_matrix, dims=2)
 
-    print(io, summary(is))
+    print(io, summary(is), '\n')
 
     print(io, "                      ", param_str.(keys(is.ensemble_mean))..., '\n',
               "             minimum: ", param_str.(min_parameters)..., '\n',
@@ -230,7 +230,7 @@ function Base.show(io::IO, is::IterationSummary)
     return nothing
 end
 
-Base.summary(is::IterationSummary) = string("IterationSummary for ", length(is.ensemble_mean),
+Base.summary(is::IterationSummary) = string("IterationSummary for ", length(is.parameters),
                                             " particles and ", length(keys(is.ensemble_mean)),
                                             " parameters at iteration ", is.iteration)
 
@@ -291,11 +291,10 @@ function sample(eki, θ, G, Nsample)
 end
 
 function forward_map_and_summary(eki)
-    θ = get_u_final(eki.ensemble_kalman_process) # (Nθ, Nensemble) array
-    G = eki.inverting_forward_map(θ)             # (len(G), Nensemble)
-    resample!(eki.resampler, θ, G, eki)
-    
-    return G, IterationSummary(eki, θ, G)
+    X = eki.unconstrained_parameters
+    G = eki.inverting_forward_map(X)             # (len(G), Nensemble)
+    resample!(eki.resampler, X, G, eki)
+    return G, IterationSummary(eki, X, G)
 end
 
 """
@@ -313,11 +312,16 @@ function iterate!(eki::EnsembleKalmanInversion; iterations = 1, show_progress = 
     iterator = show_progress ? ProgressBar(1:iterations) : 1:iterations
 
     for _ in iterator
+        # Ensemble update
         update_ensemble!(eki.ensemble_kalman_process, eki.forward_map_output)
-        G, summary = forward_map_and_summary(eki) 
-        push!(eki.iteration_summaries, summary)
-        eki.forward_map_output .= G
+        X = get_u_final(eki.ensemble_kalman_process)
+        eki.unconstrained_parameters .= X
         eki.iteration += 1
+
+        # Forward map
+        G, summary = forward_map_and_summary(eki) 
+        eki.forward_map_output .= G
+        push!(eki.iteration_summaries, summary)
     end
 
     # Return ensemble mean (best guess for optimal parameters)
@@ -362,6 +366,12 @@ end
 """ Return a BitVector indicating which particles are NaN."""
 column_has_nan(G) = vec(mapslices(any, isnan.(G); dims=1))
 
+function failed_particle_str(θ, k, error=nothing)
+    first = string(@sprintf(" particle % 3d: ", k), param_str.(values(θ[k]))...)
+    error_str = isnothing(error) ? "" : @sprintf(" error = %.6e", error)
+    return string(first, error_str, '\n')
+end
+
 """
     resample!(resampler::Resampler, θ, G, eki)
     
@@ -377,18 +387,18 @@ function resample!(resampler::Resampler, X, G, eki)
 
     if nan_fraction > 0
 
-        priors = eki.inverse_problem.free_parameters.priors
-        θ = transform_to_constrained.(values(priors), X)
-        θ = [tupify_parameters(eki.inverse_problem, θ[:, i]) for i = 1:size(θ, 2)]
-
+        # Print a nice message
         particles = nan_count == 1 ? "particle" : "particles"
-        failed_columns = nan_count == 1 ? "particle is $nan_columns" : "particles are $nan_columns"
-        failed_parameters = [θ[k] for k in nan_columns]
+
+        priors = eki.inverse_problem.free_parameters.priors
+        θ = transform_to_constrained(priors, X)
+        failed_parameters_message = string("               ",  param_str.(keys(priors))..., '\n',
+                                           (failed_particle_str(θ, k) for k in nan_columns)...)
 
         @warn("""
               The forward map for $nan_count $particles ($(100nan_fraction)%) included NaNs.
-              The failed $failed_columns.
-              The parameters are $failed_parameters.
+              The failed particles are:
+              $failed_parameters_message
               """)
     end
 
@@ -427,6 +437,25 @@ function resample!(resampler::Resampler, X, G, eki)
                                             eki.ensemble_kalman_process.process)
 
         eki.ensemble_kalman_process = new_process
+
+        # Sanity...
+        if resampler.only_failed_particles # print a helpful message about the failure replacements
+            Nobs, Nensemble = size(G)
+            y = eki.mapped_observations
+            errors = [mapreduce((x, y) -> (x - y)^2, +, y, view(G, :, k)) / Nobs for k in nan_columns]
+
+            priors = eki.inverse_problem.free_parameters.priors
+            new_θ = transform_to_constrained(priors, X)
+
+            particle_strings = [failed_particle_str(new_θ, k, errors[i]) for (i, k) in enumerate(nan_columns)]
+            failed_parameters_message = string("               ",  param_str.(keys(priors))..., '\n',
+                                               particle_strings...)
+
+            @info """
+            The replacements for failed particles are
+            $failed_parameters_message
+            """
+        end
     end
 
     return too_much_failure
