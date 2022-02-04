@@ -29,6 +29,7 @@ include("Observations.jl")
 include("EnsembleSimulations.jl")
 include("Parameters.jl")
 include("InverseProblems.jl")
+include("EnsembleKalmanUpdate.jl")
 include("EnsembleKalmanInversions.jl")
 
 using .Observations:
