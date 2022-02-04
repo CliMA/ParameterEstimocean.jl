@@ -85,12 +85,16 @@ scaled_logit_normal_forward_transform(L, U, θ) = log((U - θ) / (θ - L))
 unit_normal_std(mass) = 1 / (2 * √2 * erfinv(mass))
 
 """
-    ScaledLogitNormal(FT=Float64; bounds=(0, 1), midspread=nothing)
+    ScaledLogitNormal(FT=Float64; bounds=(0, 1), mass=0.5, interval=nothing)
 
 Return a `ScaledLogitNormal` distribution with `bounds`.
-`midspread` determines the parameters `μ`, `σ`; by default
-`μ = 0` and `σ = 1`. `ScaledLogitNormal` limits to the
-`LogitNormal` when `bounds = (0, 1)`.
+
+`interval` is an optional 2-element tuple or Array. When specified,
+the parameters `μ` and `σ` of the underlying `Normal` distribution
+are calculated so that `mass` fraction of the probability density
+lies within `interval`.
+
+If `interval` is not specified, then `μ=0` and `σ=1` by default.
 
 Notes
 =====
@@ -109,10 +113,9 @@ where ``X ∼ N(μ, σ)``. The four parameters are
 * ``μ`` (mean of the underlying `Normal` distribution)
 * ``σ²`` (variance of the underlying `Normal` distribution)
 """
-function ScaledLogitNormal(FT=Float64;
-                           bounds = (0, 1),
-                           mass = 0.5,
-                           interval = nothing)
+function ScaledLogitNormal(FT=Float64; bounds=(0, 1), mass=0.5, interval=nothing)
+    0 < mass < 1 ||
+        throw(ArgumentError("Mass must lie between 0 and 1."))
 
     L, U = bounds
 
@@ -150,9 +153,6 @@ function ScaledLogitNormal(FT=Float64;
         # and rearranging to solve for σ yields
         # 
         σ = (Ũi - L̃i) / (2 * √2 * erfinv(mass))
-
-        @show μ
-        @show σ
     end
 
     return ScaledLogitNormal{FT}(μ, σ, L, U)
