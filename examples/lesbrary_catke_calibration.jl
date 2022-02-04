@@ -86,7 +86,7 @@ catke_mixing_length = MixingLength(Cᴷcʳ=0.0, Cᴷuʳ=0.0, Cᴷeʳ=0.0)
 catke = CATKEVerticalDiffusivity(mixing_length=catke_mixing_length)
 
 simulation = ensemble_column_model_simulation(observations;
-                                              Nensemble = 40,
+                                              Nensemble = 20,
                                               architecture = CPU(),
                                               tracers = (:b, :e),
                                               closure = catke)
@@ -107,12 +107,12 @@ N² .= observations.metadata.parameters.N²_deep
 # We identify a subset of the CATKE parameters to calibrate by specifying
 # parameter names and prior distributions:
 
-priors = (Cᴰ   = lognormal_with_mean_std(0.02, 0.005),
-          Cᵂu★ = lognormal_with_mean_std(1.5, 0.25),
-          Cᴸᵇ  = lognormal_with_mean_std(0.01, 0.005),
-          Cᴷu⁻ = ConstrainedNormal(1.5, 0.1, 0.0, 4.0),
-          Cᴷc⁻ = ConstrainedNormal(1e-3, 1e-4, 0.0, 1.0),
-          Cᴷe⁻ = ConstrainedNormal(1.2, 0.25, 0.0, 3.0))
+priors = (Cᴰ   = lognormal(mean=0.02, std=0.005),
+          Cᵂu★ = lognormal(mean=1.5,  std=0.25),
+          Cᴸᵇ  = lognormal(mean=0.01, std=0.005),
+          Cᴷu⁻ = ScaledLogitNormal(bounds=(0, 4)),
+          Cᴷc⁻ = ScaledLogitNormal(bounds=(0, 1)),
+          Cᴷe⁻ = ScaledLogitNormal(bounds=(0, 3)))
 
 free_parameters = FreeParameters(priors)
 
@@ -127,7 +127,7 @@ calibration = InverseProblem(observations, simulation, free_parameters)
 
 eki = EnsembleKalmanInversion(calibration;
                               noise_covariance = 1e-2,
-                              resampler = Resampler(acceptable_failure_fraction=0.5))
+                              resampler = Resampler(acceptable_failure_fraction=0.1))
 
 iterate!(eki; iterations = 5)
 

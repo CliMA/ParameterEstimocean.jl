@@ -166,19 +166,17 @@ ensemble_simulation
 # constrain the prior distributions so that neither very high nor very low values for diffusivities
 # can be drawn out of the distribution.
 
-priors = (
-    κ_skew = ConstrainedNormal(0.0, 1.0, 400.0, 1300.0),
-    κ_symmetric = ConstrainedNormal(0.0, 1.0, 700.0, 1700.0)
-)
+priors = (κ_skew = ScaledLogitNormal(bounds=(400.0, 1300.0)),
+          κ_symmetric = ScaledLogitNormal(bounds=(700.0, 1700.0)))
 
 free_parameters = FreeParameters(priors)
 
 # To visualize the prior distributions we randomly sample out values from then and plot the p.d.f.
 
 using CairoMakie
-using OceanTurbulenceParameterEstimation.EnsembleKalmanInversions: convert_prior, inverse_parameter_transform
+using OceanTurbulenceParameterEstimation.Parameters: unconstrained_prior, transform_to_constrained
 
-samples(prior) = [inverse_parameter_transform(prior, x) for x in rand(convert_prior(prior), 10000000)]
+samples(prior) = [transform_to_constrained(prior, x) for x in rand(unconstrained_prior(prior), 10000000)]
 
 samples_κ_skew = samples(priors.κ_skew)
 samples_κ_symmetric = samples(priors.κ_symmetric)

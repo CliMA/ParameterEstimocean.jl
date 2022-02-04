@@ -20,12 +20,12 @@ Private = false
 Pages   = ["Observations.jl"]
 ```
 
-## TurbulenceClosureParameters
+## Parameters
 
 ```@autodocs
-Modules = [OceanTurbulenceParameterEstimation.TurbulenceClosureParameters]
+Modules = [OceanTurbulenceParameterEstimation.Parameters]
 Private = false
-Pages   = ["TurbulenceClosureParameters.jl"]
+Pages   = ["Parameters.jl"]
 ```
 
 ## EnsembleKalmanInversions

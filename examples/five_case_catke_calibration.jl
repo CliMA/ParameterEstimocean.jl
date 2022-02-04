@@ -22,9 +22,10 @@ using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities:
 ##### Compile LESbrary
 #####
 
-case_path(case) = @datadep_str("two_day_suite_2m/$(case)_instantaneous_statistics.jld2")
+#case_path(case) = @datadep_str("four_day_suite_4m/$(case)_instantaneous_statistics.jld2")
+case_path(case) = @datadep_str("two_day_suite_4m/$(case)_instantaneous_statistics.jld2")
 
-times = [4hours, 24hours, 48hours]
+times = [4hours, 12hours]
 field_names = (:b, :e, :u, :v)
 
 normalization = (b = ZScore(),
@@ -56,9 +57,11 @@ cases = ["free_convection",
 =#
 
 cases = [
-         "free_convection",
-         "strong_wind_weak_cooling",
+         #"free_convection",
+         #"strong_wind_weak_cooling",
          "weak_wind_strong_cooling",
+         #"strong_wind",
+         #"strong_wind_no_rotation",
         ]
 
 observations = [observation_library[case] for case in cases]
@@ -73,7 +76,7 @@ catke_mixing_length = MixingLength(Cᴬu=0.0, Cᴬc=0.0, Cᴬe=0.0,
 catke = CATKEVerticalDiffusivity(mixing_length=catke_mixing_length)
 
 simulation = ensemble_column_model_simulation(observations;
-                                              Nensemble = 100,
+                                              Nensemble = 30,
                                               architecture = GPU(),
                                               tracers = (:b, :e),
                                               closure = catke)
@@ -82,7 +85,7 @@ simulation = ensemble_column_model_simulation(observations;
 # with a `FluxBoundaryCondition` array initialized to 0 and a default
 # time-step. We modify these for our particular problem,
 
-simulation.Δt = 5.0
+simulation.Δt = 2.0
 
 Qᵘ = simulation.model.velocities.u.boundary_conditions.top.condition
 Qᵇ = simulation.model.tracers.b.boundary_conditions.top.condition
@@ -105,35 +108,39 @@ end
 #####
 
 prior_library = Dict()
-prior_library[:Cᴰ]    = ConstrainedNormal(2.9, 1.0, 0.0, 5.0)
-prior_library[:CᵂwΔ]  = ConstrainedNormal(3.5, 1.0, 0.0, 5.0)
-prior_library[:Cᵂu★]  = ConstrainedNormal(1.0, 1.0, 0.0, 5.0)
-prior_library[:Cᴸᵇ]   = ConstrainedNormal(1.0, 1.0, 0.0, 5.0)
-prior_library[:Cᴬu]   = ConstrainedNormal(1.0, 0.1, 0.0, 1.0)
-prior_library[:Cᴬc]   = ConstrainedNormal(1.0, 0.1, 0.0, 1.0)
-prior_library[:Cᴬe]   = ConstrainedNormal(1.0, 0.1, 0.0, 1.0)
-prior_library[:Cᴷu⁻]  = ConstrainedNormal(0.1, 0.2, 0.0, 2.0)
-prior_library[:Cᴷc⁻]  = ConstrainedNormal(0.4, 0.2, 0.0, 2.0)
-prior_library[:Cᴷe⁻]  = ConstrainedNormal(0.2, 0.2, 0.0, 2.0)
+prior_library[:Cᴰ]    = ScaledLogitNormal(bounds=(0,  3))
+prior_library[:Cᴸᵇ]   = ScaledLogitNormal(bounds=(0,  2), interval=(0.05, 0.2),  mass=0.9)
+prior_library[:CᵂwΔ]  = ScaledLogitNormal(bounds=(0,  8), interval=(4, 6),       mass=0.9)
+prior_library[:Cᵂu★]  = ScaledLogitNormal(bounds=(0, 10), interval=(6, 8),       mass=0.9)
+
+prior_library[:Cᴷu⁻]  = ScaledLogitNormal(bounds=(0,  1), interval=(0.05, 0.1),  mass=0.9)
+prior_library[:Cᴷc⁻]  = ScaledLogitNormal(bounds=(0,  3))
+prior_library[:Cᴷe⁻]  = ScaledLogitNormal(bounds=(0,  1), interval=(1e-3, 1e-1), mass=0.9)
+
 prior_library[:Cᴷuʳ]  = Normal(0.1, 0.1)
 prior_library[:Cᴷcʳ]  = Normal(0.1, 0.1)
 prior_library[:Cᴷeʳ]  = Normal(0.1, 0.1)
-prior_library[:CᴷRiʷ] = ConstrainedNormal(0.1, 0.1, 0.0, 1.0)
+
+prior_library[:Cᴬc]   = ScaledLogitNormal(bounds=(0, 10), interval=(5, 8), mass=0.9)
+prior_library[:Cᴬe]   = ScaledLogitNormal(bounds=(0, 10), interval=(1, 2), mass=0.5)
+
+prior_library[:CᴷRiʷ] = ScaledLogitNormal(bounds=(0, 1))
 prior_library[:CᴷRiᶜ] = Normal(0.2, 0.1)
 
+prior_library[:Cᴬu]   = ScaledLogitNormal(bounds=(0.0, 1.0))
 
 # No convective adjustment:
 constant_Ri_parameters = (:Cᴰ, :CᵂwΔ, :Cᵂu★, :Cᴸᵇ, :Cᴷu⁻, :Cᴷc⁻, :Cᴷe⁻)
 variable_Ri_parameters = tuple(constant_Ri_parameters..., :Cᴷuʳ, :Cᴷcʳ, :Cᴷeʳ, :CᴷRiʷ, :CᴷRiᶜ)
 constant_Ri_convective_adjustment_parameters = tuple(constant_Ri_parameters..., :Cᴬu, :Cᴬc, :Cᴬe)
-variable_Ri_convective_adjustment_parameters = keys(prior_library)
+variable_Ri_convective_adjustment_parameters = tuple(variable_Ri_parameters..., :Cᴬu, :Cᴬc, :Cᴬe)
 
-free_parameters = FreeParameters(prior_library, names=constant_Ri_parameters)
+free_parameters = FreeParameters(prior_library, names=variable_Ri_convective_adjustment_parameters)
 calibration = InverseProblem(observations, simulation, free_parameters)
 
 eki = EnsembleKalmanInversion(calibration;
-                              noise_covariance = 1e1,
-                              resampler = Resampler(acceptable_failure_fraction=0.9))
+                              noise_covariance = 1e-1,
+                              resampler = Resampler(acceptable_failure_fraction=1.0, only_failed_particles=true))
 
 #####
 ##### Plot utils
