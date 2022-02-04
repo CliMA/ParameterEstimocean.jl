@@ -314,7 +314,7 @@ end
 
 function drop_y_dimension(grid::RectilinearGrid{<:Any, <:Flat, <:Flat, <:Bounded})
     new_size = ColumnEnsembleSize(Nz=grid.Nz, ensemble=(grid.Nx, 1), Hz=grid.Hz)
-    new_halo_size = ColumnEnsembleSize(Hz=grid.Hz)
+    new_halo_size = ColumnEnsembleSize(Nz=1, Hz=grid.Hz)
     z_domain = (grid.zᵃᵃᶠ[1], grid.zᵃᵃᶠ[grid.Nz])
     new_grid = RectilinearGrid(size=new_size, halo=new_halo_size, z=z_domain, topology=(Flat, Flat, Bounded))
     return new_grid
