@@ -19,6 +19,7 @@ for dep in ["two_day_suite_1m",
             "four_day_suite_1m",
             "four_day_suite_2m",
             "four_day_suite_4m",
+            "six_day_suite_1m",
             "six_day_suite_2m",
             "six_day_suite_4m"]
 
