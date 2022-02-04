@@ -153,40 +153,6 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampl
 end
 
 """
-    UnscentedKalmanInversionPostprocess(eki)
-
-Returns
-
-- `mean :: Matrix{Float64}`: `N_iterations` × `N_parameters` mean matrix
-- `cov :: Vector{Matrix{Float64}}`: `N_iterations` vector of `N_parameters` × `N_parameters` covariance matrix
-- `std :: Matrix{Float64}`: `N_iterations` × `N_parameters` standard deviation matrix
-- `err :: Vector{Float64}`: `N_iterations` error array
-"""
-function UnscentedKalmanInversionPostprocess(eki)
-    original_priors = eki.inverse_problem.free_parameters.priors
-    θ_mean_raw = hcat(eki.ensemble_kalman_process.process.u_mean...)
-    θθ_cov_raw = eki.ensemble_kalman_process.process.uu_cov
-
-    θ_mean = similar(θ_mean_raw)
-    θθ_cov = similar(θθ_cov_raw)
-    θθ_std_arr = similar(θ_mean_raw)
-
-    for i = 1:size(θ_mean, 2) # number of iterations
-        θ_mean[:, i] = inverse_parameter_transform.(values(original_priors), θ_mean_raw[:, i])
-        θθ_cov[i] = inverse_covariance_transform(values(original_priors), θ_mean_raw[:, i], θθ_cov_raw[i])
-
-        for j = 1:size(θ_mean, 1) # number of parameters
-            θθ_std_arr[j, i] = sqrt(θθ_cov[i][j, j])
-        end
-    end
-
-    return θ_mean, θθ_cov, θθ_std_arr, eki.ensemble_kalman_process.err
-end
-
-# Operator ⟨x, x⟩_Γ = ⟨x, Γ⁻¹x⟩ = xᵀΓ⁻¹x
-xᵀΓ⁻¹x(x, Γ) = transpose(x) * inv(Γ) * x
-
-"""
     Φ(eki, θ, G)
 
 Return a tuple `(Φ1, Φ2)` of terms in the EKI regularized objective function, where
