@@ -44,8 +44,8 @@ ensemble_simulation, closure★ = build_ensemble_simulation(observations; Nensem
 # Here we calibrate `convective_κz` and `background_κz`, using
 # log-normal priors to prevent the parameters from becoming negative:
 
-priors = (convective_κz = lognormal_with_mean_std(0.3, 0.5),
-          background_κz = lognormal_with_mean_std(2.5e-4, 2.5e-5))
+priors = (convective_κz = lognormal(mean=0.3, std=0.5),
+          background_κz = lognormal(mean=2.5e-4, std=2.5e-5))
 
 free_parameters = FreeParameters(priors)
 

@@ -24,9 +24,9 @@ using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalD
 examples_path = joinpath(pathof(OceanTurbulenceParameterEstimation), "..", "..", "examples")
 include(joinpath(examples_path, "intro_to_inverse_problems.jl"))
 
-mixing_length = MixingLength(Cᴬu  = 0.1,
-                             Cᴬc  = 0.5,
-                             Cᴬe  = 0.1,
+mixing_length = MixingLength(Cᴬu  = 0.0,
+                             Cᴬc  = 1.0,
+                             Cᴬe  = 0.0,
                              Cᴷu⁻ = 0.1,
                              Cᴷc⁻ = 0.1,
                              Cᴷe⁻ = 0.1,
@@ -73,11 +73,11 @@ for i = 1:length(observations.times)
     label = "t = " * prettytime(t)
     u_label = i == 1 ? "u, " * label : label
     v_label = i == 1 ? "v, " * label : label
-
-    lines!(ax_b, 1e4 * interior(b)[1, 1, :], z; label, color=colorcycle[i]) # convert units m s⁻² -> 10⁻⁴ m s⁻²
-    lines!(ax_u, 1e2 * interior(u)[1, 1, :], z; linestyle=:solid, color=colorcycle[i], label=u_label) # convert units m s⁻¹ -> cm s⁻¹
-    lines!(ax_u, 1e2 * interior(v)[1, 1, :], z; linestyle=:dash, color=colorcycle[i], label=v_label) # convert units m s⁻¹ -> cm s⁻¹
-    lines!(ax_e, 1e4 * interior(e)[1, 1, :], z; label, color=colorcycle[i]) # convert units m² s⁻² -> 10⁻⁴ m² s⁻²
+    ## Note unit conversions below, eg m s⁻² -> 10⁻⁴ m s⁻²
+    lines!(ax_b, 1e4 * interior(b)[1, 1, :], z; label, color=colorcycle[i])
+    lines!(ax_u, 1e2 * interior(u)[1, 1, :], z; linestyle=:solid, color=colorcycle[i], label=u_label)
+    lines!(ax_u, 1e2 * interior(v)[1, 1, :], z; linestyle=:dash, color=colorcycle[i], label=v_label)
+    lines!(ax_e, 1e4 * interior(e)[1, 1, :], z; label, color=colorcycle[i])
 end
 
 axislegend(ax_b, position=:rb)
@@ -98,13 +98,13 @@ save("synthetic_catke_observations.svg", fig); nothing # hide
 # CATKE using Ensemble Kalman Inversion.
 
 architecture = CPU()
-ensemble_simulation, closure★ = build_ensemble_simulation(observations, architecture; Nensemble=50)
+ensemble_simulation, closure★ = build_ensemble_simulation(observations, architecture; Nensemble=20)
 
 # We choose to calibrate a subset of the CATKE parameters,
 
-priors = (Cᴬu = lognormal_with_mean_std(0.05, 0.01),
-          Cᴬc = lognormal_with_mean_std(0.6, 0.1),
-          Cᴬe = lognormal_with_mean_std(0.2, 0.04))
+priors = (Cᴬu = lognormal(mean=0.05, std=0.01),
+          Cᴬc = lognormal(mean=0.6,  std=0.1),
+          Cᴬe = lognormal(mean=0.2,  std=0.04))
 
 free_parameters = FreeParameters(priors)
 
@@ -139,7 +139,9 @@ y = observation_map(calibration)
 
 noise_variance = (observation_map_variance_across_time(calibration)[1, :, 1] .+ 1) .* 1e-3
 
-eki = EnsembleKalmanInversion(calibration; noise_covariance = Matrix(Diagonal(noise_variance)))
+eki = EnsembleKalmanInversion(calibration;
+                              noise_covariance = Matrix(Diagonal(noise_variance)),
+                              resampler = Resampler(acceptable_failure_fraction=0.1))
 
 # and perform few iterations to see if we can converge to the true parameter values.
 

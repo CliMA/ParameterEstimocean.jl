@@ -16,7 +16,8 @@ export
     ConcatenatedOutputMap,
     ConcatenatedVectorNormMap,
     eki,
-    lognormal_with_mean_std,
+    lognormal,
+    ScaledLogitNormal,
     iterate!,
     EnsembleKalmanInversion,
     Resampler,
@@ -27,7 +28,7 @@ export
 include("Utils.jl")
 include("Observations.jl")
 include("EnsembleSimulations.jl")
-include("TurbulenceClosureParameters.jl")
+include("Parameters.jl")
 include("InverseProblems.jl")
 include("EnsembleKalmanInversions.jl")
 
@@ -40,7 +41,7 @@ using .Observations:
 
 using .EnsembleSimulations: ensemble_column_model_simulation
 
-using .TurbulenceClosureParameters: FreeParameters
+using .Parameters: FreeParameters, lognormal, ScaledLogitNormal
 
 using .InverseProblems:
     InverseProblem,
@@ -54,8 +55,6 @@ using .InverseProblems:
 using .EnsembleKalmanInversions:
     iterate!,
     EnsembleKalmanInversion,
-    ConstrainedNormal,
-    lognormal_with_mean_std,
     Resampler,
     FullEnsembleDistribution,
     SuccessfulEnsembleDistribution
