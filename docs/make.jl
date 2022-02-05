@@ -23,6 +23,7 @@ const OUTPUT_DIR   = joinpath(@__DIR__, "src/literated")
 examples = [
   "intro_to_observations.jl",
   "intro_to_inverse_problems.jl",
+  "exploring_priors.jl",
   "perfect_convective_adjustment_calibration.jl",
   "perfect_catke_calibration.jl",
   "lesbrary_catke_calibration.jl",
@@ -55,6 +56,7 @@ pages = [
     "Examples" => [ 
         "literated/intro_to_observations.md",
         "literated/intro_to_inverse_problems.md",
+        "literated/exploring_priors.md",
         "literated/perfect_convective_adjustment_calibration.md",
         "literated/perfect_catke_calibration.md",
         "literated/lesbrary_catke_calibration.md",
