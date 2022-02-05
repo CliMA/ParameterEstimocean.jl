@@ -23,22 +23,21 @@ architecture = CPU()
 
 # download from https://www.dropbox.com/s/91altratyy1g0fc/eddying_channel_catke_zonal_average.jld2?dl=0
 # and change path below accordingly
-filedir = @__DIR__
-filename = "eddying_channel_catke_zonal_average.jld2"
-filepath = joinpath(filedir, filename)
-Base.download("https://www.dropbox.com/s/91altratyy1g0fc/$filename", filepath)
+# filedir = @__DIR__
+# filename = "eddying_channel_catke_zonal_average.jld2"
+# filepath = joinpath(filedir, filename)
+# Base.download("https://www.dropbox.com/s/91altratyy1g0fc/$filename", filepath)
+filepath = "/Users/navid/Research/mesoscale-parametrization-OSM2022/eddying_channel/Ny200Nx200_Lx2000_Ly2000/eddying_channel_catke_zonal_average.jld2"
 
 b_timeseries = FieldTimeSeries(filepath, "b")
 
-field_names = (:b, :w)
-# field_names = (:b, :c, :u, :w)
+field_names = (:b, :c, :u)
 
 normalization = (b = ZScore(),
-                #  c = ZScore(),
-                #  u = ZScore(),
-                 w = RescaledZScore(1e-2))
+                 c = ZScore(),
+                 u = ZScore()) #  w = RescaledZScore(1e-2)
 
-times = b_timeseries.times[500:2:502]
+times = b_timeseries.times[1001:2:1003]
 
 observations = SyntheticObservations(filepath; normalization, times, field_names)
 
@@ -47,18 +46,18 @@ observations = SyntheticObservations(filepath; normalization, times, field_names
 #####
 
 file = jldopen(filepath)
-
 coriolis = file["serialized/coriolis"]
-
+close(file)
 
 # Domain
-const Ly, Lz= file["grid/Ly"], file["grid/Lz"]
+Ly = observations.grid.Ly
+Lz = observations.grid.Lz
 
 # number of grid points
-Ny, Nz= file["grid/Ny"], file["grid/Nz"]
+Ny = observations.grid.Ny
+Nz = observations.grid.Nz
 
 Nensemble = 6
-
 slice_ensemble_size = SliceEnsembleSize(size=(Ny, Nz), ensemble=Nensemble)
 
 ensemble_grid = RectilinearGrid(architecture,
@@ -80,6 +79,8 @@ closures = file["serialized/closure"]
 
 closure_ensemble = ([deepcopy(gent_mcwilliams_diffusivity) for _ = 1:Nensemble], closures[1], closures[2])
 
+# closure_ensemble = [deepcopy(gent_mcwilliams_diffusivity) for k = 1:Nensemble]
+
 ensemble_model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
                                              tracers = (:b, :e, :c),
                                              buoyancy = BuoyancyTracer(),
@@ -91,8 +92,8 @@ ensemble_model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
 simulation = Simulation(ensemble_model; Δt, stop_time=observations.times[end])
 
 priors = (
-    κ_skew = ConstrainedNormal(0.0, 1.0, 400.0, 1300.0),
-    κ_symmetric = ConstrainedNormal(0.0, 1.0, 700.0, 1700.0)
+    κ_skew = ScaledLogitNormal(bounds = (300, 700)),
+    κ_symmetric = ScaledLogitNormal(bounds = (300, 700))
 )
 
 free_parameters = FreeParameters(priors)
@@ -100,9 +101,12 @@ free_parameters = FreeParameters(priors)
 collected_fields = (b = simulation.model.tracers.b,
                     w = simulation.model.velocities.w)
 
-time_series_collector = FieldTimeSeriesCollector(collected_fields, observations.times)
+calibration = InverseProblem(observations, simulation, free_parameters)
+eki = EnsembleKalmanInversion(calibration; noise_covariance = 1e-1)
+                    
+# time_series_collector = FieldTimeSeriesCollector(collected_fields, observations.times)
 
-calibration = InverseProblem(observations, simulation, free_parameters; time_series_collector)
+# calibration = InverseProblem(observations, simulation, free_parameters; time_series_collector)
 
-eki = EnsembleKalmanInversion(calibration; noise_covariance = 1e-2)
+# eki = EnsembleKalmanInversion(calibration; noise_covariance = 1e-2)
 
