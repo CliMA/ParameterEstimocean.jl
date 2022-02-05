@@ -16,9 +16,8 @@ using EnsembleKalmanProcesses.EnsembleKalmanProcessModule: sample_distribution
 using ..Parameters: unconstrained_prior, transform_to_constrained, inverse_covariance_transform
 using ..InverseProblems: Nensemble, observation_map, forward_map, tupify_parameters
 
-mutable struct EnsembleKalmanInversion{I, P, E, M, O, F, S, R, X, G}
+mutable struct EnsembleKalmanInversion{I, E, M, O, F, S, R, X, G}
     inverse_problem :: I
-    parameter_distribution :: P
     ensemble_kalman_process :: E
     mapped_observations :: M
     noise_covariance :: O
@@ -33,7 +32,6 @@ end
 Base.show(io::IO, eki::EnsembleKalmanInversion) =
     print(io, "EnsembleKalmanInversion", '\n',
               "├── inverse_problem: ", typeof(eki.inverse_problem).name.wrapper, '\n',
-              "├── parameter_distribution: ", typeof(eki.parameter_distribution).name.wrapper, '\n',
               "├── ensemble_kalman_process: ", typeof(eki.ensemble_kalman_process), '\n',
               "├── mapped_observations: ", summary(eki.mapped_observations), '\n',
               "├── noise_covariance: ", summary(eki.noise_covariance), '\n',
@@ -97,19 +95,6 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampl
     free_parameters = inverse_problem.free_parameters
     priors = free_parameters.priors
 
-    transformed_priors = [Parameterized(unconstrained_prior(Π)) for Π in priors]
-    no_constraints = [[no_constraint()] for _ in transformed_priors]
-
-    parameter_distribution = ParameterDistribution(transformed_priors,
-                                                   no_constraints,
-                                                   collect(string.(free_parameters.names)))
-
-    Xᵢ = sample_distribution(parameter_distribution, Nensemble(inverse_problem))
-
-    # Build EKP-friendly observations "y" and the covariance matrix of observational uncertainty "Γy"
-    y = dropdims(observation_map(inverse_problem), dims=2) # length(forward_map_output) column vector
-    Γy = construct_noise_covariance(noise_covariance, y)
-
     # The closure G(θ) maps (Nθ, Nensemble) array to (Noutput, Nensemble)
     function inverting_forward_map(X::AbstractMatrix)
         Nensemble = size(X, 2)
@@ -121,10 +106,20 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampl
         return forward_map(inverse_problem, θ)
     end
 
+    Nθ = length(priors)
+    Nens = Nensemble(inverse_problem)
+
+    # Generate an initial sample of parameters
+    unconstrained_priors = NamedTuple(name => unconstrained_prior(priors[name]) for name in free_parameters.names)
+    Xᵢ = [rand(unconstrained_priors[i]) for i=1:Nθ, k=1:Nens]
+
+    # Build EKP-friendly observations "y" and the covariance matrix of observational uncertainty "Γy"
+    y = dropdims(observation_map(inverse_problem), dims=2) # length(forward_map_output) column vector
+    Γy = construct_noise_covariance(noise_covariance, y)
+
     ensemble_kalman_process = EnsembleKalmanProcess(Xᵢ, y, Γy, Inversion())
 
     eki′ = EnsembleKalmanInversion(inverse_problem,
-                                   parameter_distribution,
                                    ensemble_kalman_process,
                                    y,
                                    Γy,
@@ -137,13 +132,12 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampl
 
     # Rebuild eki with the summary and forward map (and potentially
     # resampled parameters) for iteration 0:
-    G, summary = forward_map_and_summary(eki′)
+    forward_map_output, summary = forward_map_and_summary(eki′)
 
     iteration_summaries = OffsetArray([summary], -1)
     iteration = 0
 
-    eki = EnsembleKalmanInversion(eki′.inverse_problem,
-                                  eki′.parameter_distribution,
+    eki = EnsembleKalmanInversion(inverse_problem,
                                   eki′.ensemble_kalman_process,
                                   eki′.mapped_observations,
                                   eki′.noise_covariance,
@@ -152,7 +146,7 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampl
                                   iteration_summaries,
                                   eki′.resampler,
                                   eki′.unconstrained_parameters,
-                                  G)
+                                  forward_map_output)
 
     return eki
 end
@@ -290,8 +284,7 @@ function sample(eki, θ, G, Nsample)
     return found_X[:, 1:Nsample], found_G[:, 1:Nsample]
 end
 
-function forward_map_and_summary(eki)
-    X = eki.unconstrained_parameters
+function forward_map_and_summary(eki, X=eki.unconstrained_parameters)
     G = eki.inverting_forward_map(X)             # (len(G), Nensemble)
     resample!(eki.resampler, X, G, eki)
     return G, IterationSummary(eki, X, G)
