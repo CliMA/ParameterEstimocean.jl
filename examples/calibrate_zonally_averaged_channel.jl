@@ -79,7 +79,7 @@ closures = file["serialized/closure"]
 
 closure_ensemble = ([deepcopy(gent_mcwilliams_diffusivity) for _ = 1:Nensemble], closures[1], closures[2])
 
-# closure_ensemble = [deepcopy(gent_mcwilliams_diffusivity) for k = 1:Nensemble]
+closure_ensemble = [deepcopy(gent_mcwilliams_diffusivity) for k = 1:Nensemble]
 
 ensemble_model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
                                              tracers = (:b, :e, :c),
@@ -98,15 +98,15 @@ priors = (
 
 free_parameters = FreeParameters(priors)
 
-collected_fields = (b = simulation.model.tracers.b,
-                    w = simulation.model.velocities.w)
-
 calibration = InverseProblem(observations, simulation, free_parameters)
 eki = EnsembleKalmanInversion(calibration; noise_covariance = 1e-1)
-                    
-# time_series_collector = FieldTimeSeriesCollector(collected_fields, observations.times)
 
-# calibration = InverseProblem(observations, simulation, free_parameters; time_series_collector)
+#=
+collected_fields = (b = simulation.model.tracers.b,
+                    w = simulation.model.velocities.w)
+time_series_collector = FieldTimeSeriesCollector(collected_fields, observations.times)
+calibration = InverseProblem(observations, simulation, free_parameters; time_series_collector)
+eki = EnsembleKalmanInversion(calibration; noise_covariance = 1e-2)
+=#
 
-# eki = EnsembleKalmanInversion(calibration; noise_covariance = 1e-2)
-
+iterate!(eki; iterations = 5)
