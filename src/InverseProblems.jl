@@ -208,8 +208,11 @@ function transform_time_series(output_map::ConcatenatedOutputMap, time_series::S
     for field_name in keys(time_series.field_time_serieses)
         field_time_series = time_series.field_time_serieses[field_name]
 
-        # Copy time series data to `Array`, keeping only `time_indices` and discarding halos
-        field_time_series_data = Array(interior(field_time_series))[:, :, :, output_map.time_indices]
+        # Copy time series data to `Array`, keeping only `time_indices` (without the initial
+        # condition) and discarding halos
+        Nt = size(field_time_series, 4) 
+        time_indices = output_map.time_indices isa Colon ? UnitRange(2, Nt) : output_map.time_indices[2:end]
+        field_time_series_data = Array(interior(field_time_series))[:, :, :, time_indices]
 
         # Normalize data according to observation-specified normalization
         normalize!(field_time_series_data, time_series.normalization[field_name])
