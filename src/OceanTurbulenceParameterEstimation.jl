@@ -85,6 +85,7 @@ function __init__()
     four_day_suite_1m_paths = [glom_url("four_day_suite", "2m_2m_1m", case) for case in cases]
     four_day_suite_2m_paths = [glom_url("four_day_suite", "4m_4m_2m", case) for case in cases]
     four_day_suite_4m_paths = [glom_url("four_day_suite", "8m_8m_4m", case) for case in cases]
+    six_day_suite_1m_paths  = [glom_url( "six_day_suite", "2m_2m_1m", case) for case in cases]
     six_day_suite_2m_paths  = [glom_url( "six_day_suite", "4m_4m_2m", case) for case in cases]
     six_day_suite_4m_paths  = [glom_url( "six_day_suite", "8m_8m_4m", case) for case in cases]
 
@@ -104,6 +105,9 @@ function __init__()
     DataDeps.register(dep)
 
     dep = DataDep("four_day_suite_4m", "Idealized 4 day simulation data with 4m vertical resolution", four_day_suite_4m_paths)
+    DataDeps.register(dep)
+
+    dep = DataDep("six_day_suite_1m", "Idealized 6 day simulation data with 1m vertical resolution", six_day_suite_2m_paths)
     DataDeps.register(dep)
 
     dep = DataDep("six_day_suite_2m", "Idealized 6 day simulation data with 2m vertical resolution", six_day_suite_2m_paths)

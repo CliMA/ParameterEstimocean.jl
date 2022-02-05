@@ -229,19 +229,23 @@ transform_to_constrained(Π::ScaledLogitNormal, X) =
     normal_to_scaled_logit_normal(Π.lower_bound, Π.upper_bound, X)
 
 # Convenience vectorized version
-transform_to_constrained(priors::NamedTuple, parameters::Vector) =
-    NamedTuple(name => transform_to_constrained(priors[name], parameters[i])
+transform_to_constrained(priors::NamedTuple, X::AbstractVector) =
+    NamedTuple(name => transform_to_constrained(priors[name], X[i])
                for (i, name) in enumerate(keys(priors)))
 
-function inverse_covariance_transform(Π, parameters, covariance)
-    diag = [covariance_transform_diagonal(Π[i], parameters[i]) for i=1:length(Π)]
+# Convenience matrixized version assuming particles vary on 2nd dimension
+transform_to_constrained(priors::NamedTuple, X::AbstractMatrix) =
+    [transform_to_constrained(priors, X[:, k]) for k = 1:size(X, 2)]
+
+function inverse_covariance_transform(Π, X, covariance)
+    diag = [covariance_transform_diagonal(Π[i], X[i]) for i=1:length(Π)]
     dT = Diagonal(diag)
     return dT * covariance * dT'
 end
 
-covariance_transform_diagonal(::LogNormal, p) = exp(p)
-covariance_transform_diagonal(::Normal, p) = 1
-covariance_transform_diagonal(Π::ScaledLogitNormal, p) = - (Π.upper_bound - Π.lower_bound) * exp(p) / (1 + exp(p))^2
+covariance_transform_diagonal(::LogNormal, X) = exp(X)
+covariance_transform_diagonal(::Normal, X) = 1
+covariance_transform_diagonal(Π::ScaledLogitNormal, X) = - (Π.upper_bound - Π.lower_bound) * exp(X) / (1 + exp(X))^2
 
 #####
 ##### Free parameters
