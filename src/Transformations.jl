@@ -152,7 +152,7 @@ compute_normalization(r::RescaledZScore, transformation, fts) =
 
 function normalize!(data, normalization::RescaledZScore)
     normalize!(data, normalization.zscore)
-    @. data *= normalization.data
+    @. data *= normalization.scale
     return nothing
 end
 

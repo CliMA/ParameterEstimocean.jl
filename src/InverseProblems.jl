@@ -236,7 +236,7 @@ transpose_model_output(time_series_collector, observations::YZSliceObservations)
                           time_series_collector.times,
                           nothing,
                           nothing,
-                          observations.normalization)
+                          observations.transformation)
 
 """
     transpose_model_output(time_series_collector, observations)
@@ -285,7 +285,7 @@ function transpose_model_output(time_series_collector, observations)
                                              times,
                                              nothing,
                                              nothing,
-                                             observation.normalization)
+                                             observation.transformation)
 
         push!(transposed_output, batch_output)
     end
