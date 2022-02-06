@@ -27,7 +27,7 @@ examples_path = joinpath(pathof(OceanTurbulenceParameterEstimation), "..", "..",
 include(joinpath(examples_path, "intro_to_inverse_problems.jl"))
 
 data_path = generate_synthetic_observations()
-observations = SyntheticObservations(data_path, field_names=:b, normalization=ZScore())
+observations = SyntheticObservations(data_path, field_names=:b, transformation=ZScore())
 
 # and an ensemble_simulation,
 

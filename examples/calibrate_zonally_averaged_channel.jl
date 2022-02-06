@@ -29,7 +29,7 @@ b_timeseries = FieldTimeSeries(filepath, "b")
 field_names = (:b, :u, :v, :w)
 # field_names = (:b, :c, :u, :v, :w)
 
-normalization = (b = ZScore(),
+transformation = (b = ZScore(),
                 #  c = ZScore(),
                  u = ZScore(),
                  v = ZScore(),
@@ -37,7 +37,7 @@ normalization = (b = ZScore(),
 
 times = b_timeseries.times[500:10:800]
 
-observations = SyntheticObservations(filepath; normalization, times, field_names)
+observations = SyntheticObservations(filepath; transformation, times, field_names)
      
 #####
 ##### Simulation

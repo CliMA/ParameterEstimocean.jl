@@ -51,7 +51,7 @@ data_path = generate_synthetic_observations("catke",
 
 # Next, we load and inspect the observations to make sure they're sensible:
 
-observations = SyntheticObservations(data_path, field_names=(:u, :v, :b, :e), normalization=ZScore())
+observations = SyntheticObservations(data_path, field_names=(:u, :v, :b, :e), transformation=ZScore())
 
 fig = Figure()
 

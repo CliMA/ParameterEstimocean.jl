@@ -122,7 +122,7 @@ end
 
 # ## Load truth data as observations
 
-observations = SyntheticObservations(data_path, field_names=(:b, :c), normalization=ZScore())
+observations = SyntheticObservations(data_path, field_names=(:b, :c), transformation=ZScore())
 
 # ## Calibration with Ensemble Kalman Inversion
 

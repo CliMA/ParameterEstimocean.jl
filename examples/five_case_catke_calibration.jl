@@ -28,7 +28,7 @@ case_path(case) = @datadep_str("two_day_suite_4m/$(case)_instantaneous_statistic
 times = [4hours, 12hours]
 field_names = (:b, :e, :u, :v)
 
-normalization = (b = ZScore(),
+transformation = (b = ZScore(),
                  u = ZScore(),
                  v = ZScore(),
                  e = RescaledZScore(1e-3))
@@ -37,15 +37,15 @@ observation_library = Dict()
 
 # Don't optimize u, v for free_convection
 observation_library["free_convection"] =
-    SyntheticObservations(case_path("free_convection"); normalization, times, field_names = (:b, :e))
+    SyntheticObservations(case_path("free_convection"); transformation, times, field_names = (:b, :e))
                                                                 
 # Don't optimize v for non-rotating cases
 observation_library["strong_wind_no_rotation"] =
-    SyntheticObservations(case_path("strong_wind_no_rotation"); normalization, times, field_names = (:b, :e, :u))
+    SyntheticObservations(case_path("strong_wind_no_rotation"); transformation, times, field_names = (:b, :e, :u))
 
 # The rest are standard
 for case in ["strong_wind", "strong_wind_weak_cooling", "weak_wind_strong_cooling"]
-    observation_library[case] = SyntheticObservations(case_path(case); field_names, normalization, times)
+    observation_library[case] = SyntheticObservations(case_path(case); field_names, transformation, times)
 end
 
 #=
