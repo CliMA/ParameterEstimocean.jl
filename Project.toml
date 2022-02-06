@@ -32,7 +32,7 @@ Oceananigans = "^0.70"
 OffsetArrays = "1"
 OrderedCollections = "1"
 ProgressBars = "1"
-SpecialFunctions = "1"
+SpecialFunctions = "1, 2"
 StatProfilerHTML = "1"
 Suppressor = "0.2"
 
