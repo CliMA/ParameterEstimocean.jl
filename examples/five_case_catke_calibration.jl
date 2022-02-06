@@ -22,7 +22,7 @@ using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities:
 ##### Compile LESbrary
 #####
 
-case_path(case) = @datadep_str("two_day_suite_4m/$(case)_instantaneous_statistics.jld2")
+case_path(case) = @datadep_str("two_day_suite_2m/$(case)_instantaneous_statistics.jld2")
 #case_path(case) = @datadep_str("four_day_suite_1m/$(case)_instantaneous_statistics.jld2")
 
 times = [2hours, 12hours, 24hours]
@@ -90,7 +90,7 @@ simulation = ensemble_column_model_simulation(observations;
 # with a `FluxBoundaryCondition` array initialized to 0 and a default
 # time-step. We modify these for our particular problem,
 
-simulation.Δt = 2.0
+simulation.Δt = 1.0
 
 Qᵘ = simulation.model.velocities.u.boundary_conditions.top.condition
 Qᵇ = simulation.model.tracers.b.boundary_conditions.top.condition
@@ -147,7 +147,7 @@ free_parameters = FreeParameters(prior_library, names=variable_Ri_parameters)
 calibration = InverseProblem(observations, simulation, free_parameters)
 
 eki = EnsembleKalmanInversion(calibration;
-                              noise_covariance = 5.0,
+                              noise_covariance = 10.0,
                               resampler = Resampler(acceptable_failure_fraction=0.5,
                                                     only_failed_particles=false))
 
