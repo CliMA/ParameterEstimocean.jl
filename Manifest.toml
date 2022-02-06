@@ -171,9 +171,9 @@ uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
 [[Distributions]]
 deps = ["ChainRulesCore", "DensityInterface", "FillArrays", "LinearAlgebra", "PDMats", "Printf", "QuadGK", "Random", "SparseArrays", "SpecialFunctions", "Statistics", "StatsBase", "StatsFuns", "Test"]
-git-tree-sha1 = "0c8693f37a265b6c0e552861cad8bf4b13d65686"
+git-tree-sha1 = "2e97190dfd4382499a4ac349e8d316491c9db341"
 uuid = "31c24e10-a181-5473-b8eb-7969acd0382f"
-version = "0.25.42"
+version = "0.25.46"
 
 [[DocStringExtensions]]
 deps = ["LibGit2"]
@@ -334,9 +334,9 @@ version = "1.0.0"
 
 [[JLD2]]
 deps = ["DataStructures", "FileIO", "MacroTools", "Mmap", "Pkg", "Printf", "Reexport", "TranscodingStreams", "UUIDs"]
-git-tree-sha1 = "bcb31db46795eeb64480c89d854615bc78a13289"
+git-tree-sha1 = "b528d68220e2aba1d2d0c0461b6f7eda8c5c1e33"
 uuid = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
-version = "0.4.19"
+version = "0.4.20"
 
 [[JLLWrappers]]
 deps = ["Preferences"]
@@ -488,9 +488,9 @@ uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
 
 [[Oceananigans]]
 deps = ["Adapt", "CUDA", "CUDAKernels", "Crayons", "CubedSphere", "Dates", "DocStringExtensions", "FFTW", "Glob", "IncompleteLU", "InteractiveUtils", "IterativeSolvers", "JLD2", "KernelAbstractions", "LinearAlgebra", "Logging", "MPI", "NCDatasets", "OffsetArrays", "OrderedCollections", "PencilFFTs", "Pkg", "Printf", "Random", "Rotations", "SafeTestsets", "SeawaterPolynomials", "SparseArrays", "Statistics", "StructArrays", "Tullio"]
-git-tree-sha1 = "3f0b34f3907f1b8a7d564f71ddc6f7d248c7c346"
+git-tree-sha1 = "e7f30b746ea0b861e1de7bd53de3100f6081f8fc"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
-version = "0.69.2"
+version = "0.69.5"
 
 [[OffsetArrays]]
 deps = ["Adapt"]
