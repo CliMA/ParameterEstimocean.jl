@@ -21,7 +21,6 @@ using ElectronDisplay
 
 architecture = CPU()
 
-
 # filepath = "/Users/navid/Research/mesoscale-parametrization-OSM2022/eddying_channel/Ny200Nx200_Lx2000_Ly2000/eddying_channel_catke_zonal_average.jld2"
 # filepath = "/Users/navid/Research/mesoscale-parametrization-OSM2022/eddying_channel/eddying_channel_convadj_zonal_time_average_1year.jld2"
 
@@ -30,11 +29,15 @@ filename = "eddying_channel_convadj_zonal_time_average_1year.jld2"
 filepath = joinpath(filedir, filename)
 Base.download("https://www.dropbox.com/s/8wa05l2iqnbck1z/$filename", filepath)
 
+file = jldopen(filepath)
+
 # number of grid points
 Nx, Ny, Nz = file["grid/Nx"], file["grid/Ny"], file["grid/Nz"]
 
 # Domain
 const Lx, Ly, Lz = file["grid/Lx"], file["grid/Ly"], file["grid/Lz"]
+
+close(file)
 
 grid = RectilinearGrid(architecture;
                        topology = (Periodic, Bounded, Bounded),
