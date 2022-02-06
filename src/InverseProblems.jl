@@ -11,6 +11,7 @@ using ..Parameters: new_closure_ensemble
 using OffsetArrays, Statistics
 
 using Oceananigans: run!, fields, FieldTimeSeries, CPU
+using Oceananigans.Architectures: architecture
 using Oceananigans.OutputReaders: InMemory
 using Oceananigans.Fields: interior, location
 using Oceananigans.Grids: Flat, Bounded,
@@ -63,7 +64,11 @@ struct InverseProblem{F, O, S, T, P}
 end
 
 """
-    InverseProblem(observations, simulation, free_parameters; output_map=ConcatenatedOutputMap())
+    InverseProblem(observations,
+                        simulation,
+                        free_parameters;
+                        output_map = ConcatenatedOutputMap(),
+                        time_series_collector = nothing)
 
 Return an `InverseProblem`.
 """
@@ -163,7 +168,7 @@ function forward_run!(ip::InverseProblem, parameters)
     closures = simulation.model.closure
 
     θ = expand_parameters(ip, parameters)
-    simulation.model.closure = new_closure_ensemble(closures, θ)
+    simulation.model.closure = new_closure_ensemble(closures, θ, architecture(simulation.model.grid))
 
     initialize_simulation!(simulation, observations, ip.time_series_collector)
 
@@ -251,7 +256,7 @@ vectorize(observations::Vector) = observations
 transpose_model_output(time_series_collector, observations) =
     transpose_model_output(time_series_collector.grid, time_series_collector, observations)
 
-transpose_model_output(collector_grid, time_series_collector, observations) =
+transpose_model_output(collector_grid::YZSliceGrid, time_series_collector, observations) =
     SyntheticObservations(time_series_collector.field_time_serieses,
                           collector_grid,
                           time_series_collector.times,

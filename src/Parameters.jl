@@ -9,6 +9,8 @@ using Distributions
 using LinearAlgebra
 using SpecialFunctions: erfinv
 
+using Distributions: AbstractRNG, ContinuousUnivariateDistribution
+
 #####
 ##### Priors
 #####
@@ -70,18 +72,23 @@ function lognormal(; mean, std)
     return LogNormal(μ, σ)
 end
 
-struct ScaledLogitNormal{FT}
-    μ :: FT
-    σ :: FT
-    lower_bound :: FT
-    upper_bound :: FT
+struct ScaledLogitNormal{T} <: ContinuousUnivariateDistribution
+    μ :: T
+    σ :: T
+    lower_bound :: T
+    upper_bound :: T
+
+    ScaledLogitNormal{T}(μ, σ, L, U) where T = new{T}(T(μ), T(σ), T(L), T(U))
 end
 
-# From unconstrained to constrained
-scaled_logit_normal_inverse_transform(L, U, X) = L + (U - L) / (1 + exp(X))
+"""Return a logit-normally distributed variate given the normally-distributed variate `X`."""
+normal_to_scaled_logit_normal(L, U, X) = L + (U - L) / (1 + exp(X))
 
-# From constrained to unconstrained
-scaled_logit_normal_forward_transform(L, U, Y) = log((Y - L) / (U - Y))
+"""Return a normally-distributed variate given the logit-normally distributed variate `Y`."""
+scaled_logit_normal_to_normal(L, U, Y) = log((U - Y) / (Y - L))
+
+Base.rand(rng::AbstractRNG, d::ScaledLogitNormal) =
+    normal_to_scaled_logit_normal(d.lower_bound, d.upper_bound, rand(rng, Normal(d.μ, d.σ)))
 
 unit_normal_std(mass) = 1 / (2 * √2 * erfinv(mass))
 
@@ -115,24 +122,28 @@ governing the distribution of ``Y`` are thus
 - ``μ``:  mean of the underlying `Normal` distribution
 - ``σ²``: variance of the underlying `Normal` distribution
 """
-function ScaledLogitNormal(FT=Float64; bounds=(0, 1), mass=0.5, interval=nothing)
-    0 < mass < 1 ||
-        throw(ArgumentError("Mass must lie between 0 and 1."))
-
+function ScaledLogitNormal(FT=Float64; bounds=(0, 1), mass=0.5, interval=nothing, μ=nothing, σ=nothing)
     L, U = bounds
 
-    if isnothing(interval)
-        μ = 0
-        σ = 1
-    else # compute μ and σ from `interval` and `mass`.
+    if isnothing(interval) # use default μ=0 and σ=1 if not set
+        isnothing(μ) && (μ = 0)
+        isnothing(σ) && (σ = 1)
+
+    elseif !isnothing(interval) # try to compute μ and σ
+
         Li, Ui = interval
 
-        Li > L && Ui < U ||
-            throw(ArgumentError("Interval limits must lie between `bounds`."))
+        # User friendliness
+        (!isnothing(μ) || !isnothing(σ)) && @warn "Using interval and mass to determine μ and σ."
+        0 < mass < 1 || throw(ArgumentError("Mass must lie between 0 and 1."))
+        Li > L && Ui < U || throw(ArgumentError("Interval limits must lie between `bounds`."))
 
         # Compute lower and upper limits of midspread in unconstrained space
-        L̃i = scaled_logit_normal_forward_transform(L, U, Li)
-        Ũi = scaled_logit_normal_forward_transform(L, U, Ui)
+        #
+        # Note that the _lower_ bound in unconstrained space is associated with the
+        # _upper_ bound in constrained space, and vice versa.
+        L̃i = scaled_logit_normal_to_normal(L, U, Ui)
+        Ũi = scaled_logit_normal_to_normal(L, U, Li)
         
         μ = (Ũi + L̃i) / 2
 
@@ -202,7 +213,7 @@ transform_to_unconstrained(Π::Normal,    Y) = Y / abs(Π.μ)
 transform_to_unconstrained(Π::LogNormal, Y) = log(Y^(1 / abs(Π.μ))) # log(Y) / abs(Π.μ)
 
 transform_to_unconstrained(Π::ScaledLogitNormal, Y) =
-    scaled_logit_normal_forward_transform(Π.lower_bound, Π.upper_bound, Y)
+    scaled_logit_normal_to_normal(Π.lower_bound, Π.upper_bound, Y)
 
 """
     transform_to_constrained(Π, X)
@@ -215,22 +226,26 @@ transform_to_constrained(Π::Normal, X)    = X * abs(Π.μ)
 transform_to_constrained(Π::LogNormal, X) = exp(X * abs(Π.μ))
 
 transform_to_constrained(Π::ScaledLogitNormal, X) =
-    scaled_logit_normal_inverse_transform(Π.lower_bound, Π.upper_bound, X)
+    normal_to_scaled_logit_normal(Π.lower_bound, Π.upper_bound, X)
 
 # Convenience vectorized version
-transform_to_constrained(priors::NamedTuple, parameters::Vector) =
-    NamedTuple(name => transform_to_constrained(priors[name], parameters[i])
+transform_to_constrained(priors::NamedTuple, X::AbstractVector) =
+    NamedTuple(name => transform_to_constrained(priors[name], X[i])
                for (i, name) in enumerate(keys(priors)))
 
-function inverse_covariance_transform(Π, parameters, covariance)
-    diag = [covariance_transform_diagonal(Π[i], parameters[i]) for i=1:length(Π)]
+# Convenience matrixized version assuming particles vary on 2nd dimension
+transform_to_constrained(priors::NamedTuple, X::AbstractMatrix) =
+    [transform_to_constrained(priors, X[:, k]) for k = 1:size(X, 2)]
+
+function inverse_covariance_transform(Π, X, covariance)
+    diag = [covariance_transform_diagonal(Π[i], X[i]) for i=1:length(Π)]
     dT = Diagonal(diag)
     return dT * covariance * dT'
 end
 
-covariance_transform_diagonal(::LogNormal, p) = exp(p)
-covariance_transform_diagonal(::Normal, p) = 1
-covariance_transform_diagonal(Π::ScaledLogitNormal, p) = - (Π.upper_bound - Π.lower_bound) * exp(p) / (1 + exp(p))^2
+covariance_transform_diagonal(::LogNormal, X) = exp(X)
+covariance_transform_diagonal(::Normal, X) = 1
+covariance_transform_diagonal(Π::ScaledLogitNormal, X) = - (Π.upper_bound - Π.lower_bound) * exp(X) / (1 + exp(X))^2
 
 #####
 ##### Free parameters
@@ -381,8 +396,10 @@ function update_closure_ensemble_member!(closure_tuple::Tuple, p_ensemble, param
     return nothing
 end
 
-function new_closure_ensemble(closures, θ)
-    arch = architecture(closures)
+new_closure_ensemble(closure, θ, arch) = closure
+new_closure_ensemble(closure_tuple::Tuple, θ, arch) = Tuple(new_closure_ensemble(closure, θ, arch) for closure in closure_tuple)
+
+function new_closure_ensemble(closures::AbstractArray, θ, arch)
     cpu_closures = arch_array(CPU(), closures)
 
     for (p, θp) in enumerate(θ)

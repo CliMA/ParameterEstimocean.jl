@@ -5,7 +5,6 @@ authors = ["Adeline Hillier <adelineh2000@gmail.com>", "Gregory L. Wagner <wagne
 version = "0.6.0"
 
 [deps]
-CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 DataDeps = "124859b0-ceae-595e-8997-d05f6a7a8dfe"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 EnsembleKalmanProcesses = "aa8a2aa5-91d8-4396-bcef-d4f2ec43552d"
@@ -24,16 +23,16 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 Suppressor = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
 
 [compat]
-CUDA = "3"
 DataDeps = "0.7"
 Distributions = "0.25"
 EnsembleKalmanProcesses = "0.1"
 FileIO = "1"
 JLD2 = "0.4"
-Oceananigans = "^0.69.1"
+Oceananigans = "^0.70"
 OffsetArrays = "1"
 OrderedCollections = "1"
 ProgressBars = "1"
+SpecialFunctions = "1"
 StatProfilerHTML = "1"
 Suppressor = "0.2"
 
