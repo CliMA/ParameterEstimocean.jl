@@ -396,7 +396,20 @@ function update_closure_ensemble_member!(closure_tuple::Tuple, p_ensemble, param
     return nothing
 end
 
-function new_closure_ensemble(closures, θ, arch)
+function new_closure_ensemble(closure_tuple::Tuple, θ, arch)
+    new_closures = Array{Any, 1}(undef, length(closure_tuple))
+
+    for (index, closure) in enumerate(closure_tuple)
+        new_closure = new_closure_ensemble(closure, θ, arch)
+        new_closures[index] = new_closure
+    end
+
+    return Tuple(new_closures)
+end
+
+new_closure_ensemble(closure, θ, arch) = closure
+
+function new_closure_ensemble(closures::AbstractArray, θ, arch)
     cpu_closures = arch_array(CPU(), closures)
 
     for (p, θp) in enumerate(θ)
