@@ -55,6 +55,8 @@ save_interval = 0.25days  # save observation every so often
 generate_observations = true
 nothing # hide
 
+anisotropic_diffusivity = AnisotropicDiffusivity(κh=100, κz=1e-2)
+
 # The isopycnal skew-symmetric diffusivity closure.
 gerdes_koberle_willebrand_tapering = FluxTapering(1e-2)
 gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = κ_skew,
@@ -70,12 +72,14 @@ if generate_observations || !(isfile(data_path))
                            y = (-Ly/2, Ly/2),
                            z = (-Lz, 0),
                            halo = (3, 3))
+
+    closures = (gent_mcwilliams_diffusivity, anisotropic_diffusivity)
     
     model = HydrostaticFreeSurfaceModel(grid = grid,
                                         tracers = (:b, :c),
                                         buoyancy = BuoyancyTracer(),
                                         coriolis = BetaPlane(latitude=-45),
-                                        closure = gent_mcwilliams_diffusivity,
+                                        closure = closures,
                                         free_surface = ImplicitFreeSurface())
     
     @info "Built $model."
@@ -132,6 +136,7 @@ observations = SyntheticObservations(data_path, field_names=(:b, :c), transforma
 ensemble_size = 20
 
 slice_ensemble_size = SliceEnsembleSize(size=(Ny, Nz), ensemble=ensemble_size)
+
 @show ensemble_grid = RectilinearGrid(architecture,
                                       size=slice_ensemble_size,
                                       topology = (Flat, Bounded, Bounded),
@@ -139,13 +144,14 @@ slice_ensemble_size = SliceEnsembleSize(size=(Ny, Nz), ensemble=ensemble_size)
                                       z = (-Lz, 0),
                                       halo=(3, 3))
 
-closure_ensemble = [deepcopy(gent_mcwilliams_diffusivity) for i = 1:ensemble_size] 
+gm_ensemble = [deepcopy(gent_mcwilliams_diffusivity) for i = 1:ensemble_size] 
+closures = (gm_ensemble, anisotropic_diffusivity)
 
 @show ensemble_model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
                                                    tracers = (:b, :c),
                                                    buoyancy = BuoyancyTracer(),
                                                    coriolis = BetaPlane(latitude=-45),
-                                                   closure = closure_ensemble,
+                                                   closure = closures,
                                                    free_surface = ImplicitFreeSurface())
 
 # and then we create an ensemble simulation: 
