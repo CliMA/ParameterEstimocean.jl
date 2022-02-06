@@ -336,28 +336,28 @@ map measured across time, for each ensemble member, where `Nx` is the ensemble s
 `Nz` is the number of grid elements in the vertical, and `Nfields` is the number of fields in `observation`.
 """
 function observation_map_variance_across_time(map::ConcatenatedOutputMap, observation::SyntheticObservations)
+    # These aren't right because every field can have a different transformation, so...
+    Nx, Ny, Nz = size(observation.grid)
+    Nt = length(first(observation.transformation).time)
 
-    N_fields = length(keys(observation.field_time_serieses))
+    Nfields = length(keys(observation.field_time_serieses))
 
-    a = transform_time_series(map, observation)
-    a = transpose(a) # (Nx, Ny*Nz*Nt)
+    y = transform_time_series(map, observation)
+    @assert length(y) == Nx * Ny * Nz * Nt * Nfields # otherwise we're headed for trouble...
 
-    example_field_time_series = values(observation.field_time_serieses)[1]
+    y = transpose(y) # (Nx, Ny*Nz*Nt*Nfields)
 
-    Nx, Ny, Nz, Nt = size(interior(example_field_time_series))
+    # Transpose `Nfields` dimension
+    reshaped_y = reshape(y, Nx, Ny * Nz, Nt, Nfields) # (Nx, Ny*Nz, Nt, Nfields)
+    permuted_y = permutedims(y, [1, 2, 4, 3])
+    reshaped_permuted_y = reshape(permuted_y, Nx, Ny * Nz * Nfields, Nt)
 
-    # Assume all fields have the same size
-    b = reshape(a, Nx, Ny * Nz, Nt, N_fields) # (Nx, Ny*Nz, Nt, Nfields)
+    # Compute `var`iance across time
+    dataset = [reshape(var(reshaped_permuted_y[:, :, 1:n], dims = 3), Nx, Ny * Nz, Nfields) for n = 1:Nt]
+    concatenated_dataset = cat(dataset..., dims = 2)
+    replace!(concatenated_dataset, NaN => 0) # variance for first time step is zero
 
-    c = cat((b[:, :, :, i] for i = 1:N_fields)..., dims = 2) # (Nx, Ny*Nz*Nfields, Nt)
-
-    ds = [reshape(var(c[:, :, 1:t], dims = 3), Nx, Ny * Nz, N_fields) for t = 1:Nt]
-
-    e = cat(ds..., dims = 2)
-
-    replace!(e, NaN => 0) # variance for first time step is zero
-
-    return reshape(e, Nx, Ny * Nz * Nt * N_fields)
+    return reshape(concatenated_dataset, Nx, Ny * Nz * Nt * Nfields)
 end
 
 observation_map_variance_across_time(map::ConcatenatedOutputMap, observations::Vector) =
