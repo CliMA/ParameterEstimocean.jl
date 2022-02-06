@@ -25,14 +25,14 @@ using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities:
 case_path(case) = @datadep_str("two_day_suite_4m/$(case)_instantaneous_statistics.jld2")
 #case_path(case) = @datadep_str("four_day_suite_1m/$(case)_instantaneous_statistics.jld2")
 
-times = [2hours, 24hours, 48hours]
+times = [2hours, 12hours, 24hours]
 field_names = (:b, :e, :u, :v)
 regrid_size = nothing #(1, 1, 32)
 
 normalization = (b = ZScore(),
-                 u = RescaledZScore(1e-1),
-                 v = RescaledZScore(1e-1),
-                 e = RescaledZScore(1e-2))
+                 u = ZScore(),
+                 v = ZScore(),
+                 e = RescaledZScore(1e-1))
 
 observation_library = Dict()
 
@@ -62,9 +62,9 @@ cases = [
 =#
 
 cases = [
-         "free_convection",
-         "strong_wind_weak_cooling",
-         "weak_wind_strong_cooling",
+         #"free_convection",
+         #"weak_wind_strong_cooling",
+         #"strong_wind_weak_cooling",
          "strong_wind",
          "strong_wind_no_rotation",
         ]
@@ -81,7 +81,7 @@ catke_mixing_length = MixingLength(Cᴬu=0.0, Cᴬc=0.0, Cᴬe=0.0,
 catke = CATKEVerticalDiffusivity(mixing_length=catke_mixing_length)
 
 simulation = ensemble_column_model_simulation(observations;
-                                              Nensemble = 100,
+                                              Nensemble = 1000,
                                               architecture = GPU(),
                                               tracers = (:b, :e),
                                               closure = catke)
@@ -90,7 +90,7 @@ simulation = ensemble_column_model_simulation(observations;
 # with a `FluxBoundaryCondition` array initialized to 0 and a default
 # time-step. We modify these for our particular problem,
 
-simulation.Δt = 5.0
+simulation.Δt = 2.0
 
 Qᵘ = simulation.model.velocities.u.boundary_conditions.top.condition
 Qᵇ = simulation.model.tracers.b.boundary_conditions.top.condition
@@ -113,39 +113,43 @@ end
 #####
 
 prior_library = Dict()
-prior_library[:Cᴰ]    = ScaledLogitNormal(bounds=(0, 4), interval=(2.5, 3))
-prior_library[:Cᴸᵇ]   = ScaledLogitNormal(bounds=(0, 3), interval=(1.5, 2.5), mass=0.5)
-prior_library[:CᵂwΔ]  = ScaledLogitNormal(bounds=(0, 6), interval=(3, 5))
-prior_library[:Cᵂu★]  = ScaledLogitNormal(bounds=(0, 6))
+prior_library[:Cᴰ]    = ScaledLogitNormal(bounds=(1, 3)) #, interval=(0.9, 1.1), mass=0.7)
+prior_library[:CᵂwΔ]  = ScaledLogitNormal(bounds=(3, 6)) #, interval=(0.9, 1.2), mass=0.7)
+prior_library[:Cᵂu★]  = ScaledLogitNormal(bounds=(2, 4)) #, interval=(4.0, 5.0), mass=0.7)
+prior_library[:Cᴸᵇ]   = ScaledLogitNormal(bounds=(0.5, 3)) #, interval=(1.1, 1.5), mass=0.7)
 
-prior_library[:Cᴷu⁻]  = ScaledLogitNormal(bounds=(0, 1), interval=(1e-2, 1e-1), mass=0.9)
-prior_library[:Cᴷc⁻]  = ScaledLogitNormal(bounds=(0, 4))
-prior_library[:Cᴷe⁻]  = ScaledLogitNormal(bounds=(0, 4))
+prior_library[:Cᴷu⁻]  = ScaledLogitNormal(bounds=(0, 0.1), interval=(0.02, 0.08), mass=0.7)
+prior_library[:Cᴷc⁻]  = ScaledLogitNormal(bounds=(0, 2), interval=(0.2, 1.8), mass=0.8)
+prior_library[:Cᴷe⁻]  = ScaledLogitNormal(bounds=(0, 4), interval=(0.2, 1.8), mass=0.8)
 
-prior_library[:Cᴷuʳ]  = Normal(-1.0, 0.5)
-prior_library[:Cᴷcʳ]  = Normal(-0.2, 0.1)
-prior_library[:Cᴷeʳ]  = Normal(0.1, 0.1)
+prior_library[:Cᴷuʳ]  = Normal(0.01, 0.1)
+prior_library[:Cᴷcʳ]  = Normal(0.01, 0.1)
+prior_library[:Cᴷeʳ]  = Normal(0.01, 0.1)
+
+prior_library[:CᴷRiᶜ] = Normal(0.1, 0.1)
+prior_library[:CᴷRiʷ] = ScaledLogitNormal(bounds=(0.0, 1.0))
 
 prior_library[:Cᴬu]   = ScaledLogitNormal(bounds=(0, 0.1))
 prior_library[:Cᴬc]   = ScaledLogitNormal(bounds=(0, 10))
 prior_library[:Cᴬe]   = ScaledLogitNormal(bounds=(0, 0.1))
 
-prior_library[:CᴷRiʷ] = ScaledLogitNormal(bounds=(0.0, 1.5))
-prior_library[:CᴷRiᶜ] = Normal(-0.2, 0.5)
-
+prior_library[:Cᵟu]  = ScaledLogitNormal(bounds=(0, 1), interval=(0.05, 0.15), mass=0.7)
+prior_library[:Cᵟc]  = ScaledLogitNormal(bounds=(0, 2), interval=(0.3, 0.4), mass=0.7)
+prior_library[:Cᵟe]  = ScaledLogitNormal(bounds=(0, 2))
 
 # No convective adjustment:
-constant_Ri_parameters = (:Cᴰ, :CᵂwΔ, :Cᵂu★, :Cᴸᵇ, :Cᴷu⁻, :Cᴷc⁻, :Cᴷe⁻)
+constant_Ri_parameters = (:Cᴰ, :CᵂwΔ, :Cᵂu★, :Cᴸᵇ, :Cᴷu⁻, :Cᴷc⁻, :Cᴷe⁻, :Cᵟu, :Cᵟc, :Cᵟe)
 variable_Ri_parameters = tuple(constant_Ri_parameters..., :Cᴷuʳ, :Cᴷcʳ, :Cᴷeʳ, :CᴷRiʷ, :CᴷRiᶜ)
 constant_Ri_convective_adjustment_parameters = tuple(constant_Ri_parameters..., :Cᴬu, :Cᴬc, :Cᴬe)
 variable_Ri_convective_adjustment_parameters = tuple(variable_Ri_parameters..., :Cᴬu, :Cᴬc, :Cᴬe)
 
-free_parameters = FreeParameters(prior_library, names=constant_Ri_convective_adjustment_parameters)
+free_parameters = FreeParameters(prior_library, names=variable_Ri_parameters)
 calibration = InverseProblem(observations, simulation, free_parameters)
 
 eki = EnsembleKalmanInversion(calibration;
-                              noise_covariance = 1e-1,
-                              resampler = Resampler(acceptable_failure_fraction=1.0, only_failed_particles=true))
+                              noise_covariance = 5.0,
+                              resampler = Resampler(acceptable_failure_fraction=0.5,
+                                                    only_failed_particles=false))
 
 #####
 ##### Plot utils
@@ -161,13 +165,14 @@ for observation in observations
     push!(observed_data, case_data)
 end
 
-function get_modeled_case(icase, name)
+function get_modeled_case(icase, name, k=1)
     model_time_serieses = calibration.time_series_collector.field_time_serieses 
     field = getproperty(model_time_serieses, name)[Nt]
-    return view(interior(field), 1, icase, :)
+    return view(interior(field), k, icase, :)
 end
 
-modeled_data = [NamedTuple(n => get_modeled_case(c, n) for n in field_names) for c = 1:length(observations)]
+mean_modeled_data = [NamedTuple(n => get_modeled_case(c, n, 1) for n in field_names) for c = 1:length(observations)]
+best_modeled_data = [NamedTuple(n => get_modeled_case(c, n, 2) for n in field_names) for c = 1:length(observations)]
 
 colorcycle =  [:black, :red, :darkblue, :orange, :pink1, :seagreen, :magenta2, :red4, :khaki1,   :darkgreen, :bisque4,
                :silver, :lightsalmon, :lightseagreen, :teal, :royalblue1, :darkorchid4]
@@ -209,10 +214,12 @@ function compare_model_observations(model_label="modeled")
         label = replace(case, "_" => "\n")
         axs = make_axes(fig, c, label)
         observed = observed_data[c]
-        modeled = modeled_data[c]
+        mean_modeled = mean_modeled_data[c]
+        best_modeled = best_modeled_data[c]
 
         plot_fields!(axs, "observed at t = " * prettytime(times[end]), :black, :solid, observed...)
-        plot_fields!(axs, model_label, :blue, :solid, modeled...)
+        plot_fields!(axs, "ensemble model mean", :blue, :solid, mean_modeled...)
+        plot_fields!(axs, "ensemble model best", :red, :solid, best_modeled...)
         [axislegend(ax, position=:rb, labelsize=10) for ax in axs]
     end
     return fig
@@ -240,13 +247,26 @@ function visualize_parameter_evolution(eki)
     return nothing
 end
 
+latest_summary = eki.iteration_summaries[end]
+best_error, k_min = findmin(latest_summary.mean_square_errors)
+best_parameters = latest_summary.parameters[k_min]
+
 function latest_best_run!(eki)
     latest_summary = eki.iteration_summaries[end]
+    min_error, k_min = findmin(latest_summary.mean_square_errors)
 
+    if min_error < best_error
+        global best_error
+        global best_parameters
+        best_parameters = latest_summary.parameters[k_min]
+        best_error = min_error
+    end
+
+    @show best_error, best_parameters
     @show latest_summary
 
-    latest_best_parameters = latest_summary.ensemble_mean
-    forward_run!(eki.inverse_problem, latest_best_parameters)
+    latest_mean_parameters = latest_summary.ensemble_mean
+    forward_run!(eki.inverse_problem, [latest_mean_parameters, best_parameters])
     i = eki.iteration
     fig = compare_model_observations("modeled after $i iterations")
     display(fig)
