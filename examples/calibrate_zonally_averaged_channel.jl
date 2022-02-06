@@ -28,8 +28,52 @@ architecture = CPU()
 # filepath = joinpath(filedir, filename)
 # Base.download("https://www.dropbox.com/s/91altratyy1g0fc/$filename", filepath)
 filepath = "/Users/navid/Research/mesoscale-parametrization-OSM2022/eddying_channel/Ny200Nx200_Lx2000_Ly2000/eddying_channel_catke_zonal_average.jld2"
+filepath = "/Users/navid/Research/mesoscale-parametrization-OSM2022/eddying_channel/eddying_channel_convadj_zonal_time_average_1year.jld2"
 
-b_timeseries = FieldTimeSeries(filepath, "b")
+# Domain
+const Lx = 2000kilometers # zonal domain length [m]
+const Ly = 2000kilometers # meridional domain length [m]
+const Lz = 2kilometers    # depth [m]
+
+# number of grid points
+Nx = 128
+Ny = 128
+Nz = 60
+
+grid = RectilinearGrid(CPU();
+                       topology = (Periodic, Bounded, Bounded),
+                       size = (Nx, Ny, Nz),
+                       halo = (3, 3, 3),
+                       x = (0, Lx),
+                       y = (0, Ly),
+                       z = (-Lz, 0)) # z_faces)
+
+
+function get_field(filepath, name, times)
+    file = jldopen(filepath)
+    iterations = parse.(Int, keys(file["timeseries/t"]))
+    final_iteration = iterations[end]
+    
+    field = file["timeseries/$name/$final_iteration"]
+
+    LX, LY, LZ = file["timeseries/$name/serialized/location"]
+
+    close(file)
+
+    field_timeseries = FieldTimeSeries{LX, LY, LZ}(grid, times)
+
+    for n in 1:length(times)
+        field_timeseries[n] .= field
+    end
+
+    return field_timeseries
+end
+
+end_time = 60days
+
+u_timeseries = get_field(filepath, "u", [0, end_time])
+b_timeseries = get_field(filepath, "b", [0, end_time])
+c_timeseries = get_field(filepath, "c", [0, end_time])
 
 field_names = (:b, :c, :u)
 
@@ -37,9 +81,13 @@ normalization = (b = ZScore(),
                  c = ZScore(),
                  u = ZScore()) #  w = RescaledZScore(1e-2)
 
-times = b_timeseries.times[1001:2:1003]
+field_time_serieses = (b = b_timeseries, c = c_timeseries, u = u_timeseries)
 
-observations = SyntheticObservations(filepath; normalization, times, field_names)
+observations = SyntheticObservations(;
+                                     normalization,
+                                     times,
+                                     field_names, 
+                                     field_time_serieses)
 
 #####
 ##### Simulation
