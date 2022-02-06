@@ -182,14 +182,12 @@ struct ConcatenatedOutputMap end
 
 """ Transform and return `ip.observations` appropriate for `ip.output_map`. """
 observation_map(ip::InverseProblem) = observation_map(ip.output_map, ip.observations)
-
-observation_map(::ConcatenatedOutputMap, observations) =
-    transform_time_series(ConcatenatedOutputMap(), observations)
+observation_map(map::ConcatenatedOutputMap, observations) = transform_time_series(map, observations)
 
 """
-    transform_time_series(::ConcatenatedOutputMap, time_series::SyntheticObservations)
+    transform_time_series(::ConcatenatedOutputMap, observation::SyntheticObservations)
 
-Concatenates flattened, normalized data for each field in the `time_series`.
+Transforms, normalizes, and concatenates data for field time series in `observation`.
 """
 function transform_time_series(::ConcatenatedOutputMap, observation::SyntheticObservations)
     data_vector = []
@@ -211,9 +209,10 @@ function transform_time_series(::ConcatenatedOutputMap, observation::SyntheticOb
 end
 
 """
-    transform_time_series(map, time_serieses::Vector)
+    transform_time_series(map, batched_observations::Vector)
 
-Return the `transform_time_series` of each `time_series` in `time_serieses` vector.
+Concatenate the output of `transform_time_series` of each observation
+in `batched_observations`.
 """
 transform_time_series(map, batched_observations::Vector) =
     vcat(Tuple(transform_time_series(map, obs) for obs in batched_observations)...)
@@ -221,7 +220,7 @@ transform_time_series(map, batched_observations::Vector) =
 const BatchedOrSingletonObservations = Union{SyntheticObservations,
                                              Vector{<:SyntheticObservations}}
 
-function transform_forward_map_output(::ConcatenatedOutputMap,
+function transform_forward_map_output(map::ConcatenatedOutputMap,
                                       observations::BatchedOrSingletonObservations,
                                       time_series_collector)
 
