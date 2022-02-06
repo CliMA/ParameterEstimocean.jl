@@ -1,4 +1,4 @@
-# # Perfect CAKTE calibration with Ensemble Kalman Inversion
+# Perfect CAKTE calibration with Ensemble Kalman Inversion
 
 # ## Install dependencies
 
@@ -21,26 +21,22 @@ using ElectronDisplay
 
 architecture = CPU()
 
-# download from https://www.dropbox.com/s/91altratyy1g0fc/eddying_channel_catke_zonal_average.jld2?dl=0
-# and change path below accordingly
-# filedir = @__DIR__
-# filename = "eddying_channel_catke_zonal_average.jld2"
-# filepath = joinpath(filedir, filename)
-# Base.download("https://www.dropbox.com/s/91altratyy1g0fc/$filename", filepath)
-filepath = "/Users/navid/Research/mesoscale-parametrization-OSM2022/eddying_channel/Ny200Nx200_Lx2000_Ly2000/eddying_channel_catke_zonal_average.jld2"
-filepath = "/Users/navid/Research/mesoscale-parametrization-OSM2022/eddying_channel/eddying_channel_convadj_zonal_time_average_1year.jld2"
 
-# Domain
-const Lx = 2000kilometers # zonal domain length [m]
-const Ly = 2000kilometers # meridional domain length [m]
-const Lz = 2kilometers    # depth [m]
+# filepath = "/Users/navid/Research/mesoscale-parametrization-OSM2022/eddying_channel/Ny200Nx200_Lx2000_Ly2000/eddying_channel_catke_zonal_average.jld2"
+# filepath = "/Users/navid/Research/mesoscale-parametrization-OSM2022/eddying_channel/eddying_channel_convadj_zonal_time_average_1year.jld2"
+
+filedir = @__DIR__
+filename = "eddying_channel_convadj_zonal_time_average_1year.jld2"
+filepath = joinpath(filedir, filename)
+Base.download("https://www.dropbox.com/s/8wa05l2iqnbck1z/$filename", filepath)
 
 # number of grid points
-Nx = 128
-Ny = 128
-Nz = 60
+Nx, Ny, Nz = file["grid/Nx"], file["grid/Ny"], file["grid/Nz"]
 
-grid = RectilinearGrid(CPU();
+# Domain
+const Lx, Ly, Lz = file["grid/Lx"], file["grid/Ly"], file["grid/Lz"]
+
+grid = RectilinearGrid(architecture;
                        topology = (Periodic, Bounded, Bounded),
                        size = (Nx, Ny, Nz),
                        halo = (3, 3, 3),
@@ -48,9 +44,9 @@ grid = RectilinearGrid(CPU();
                        y = (0, Ly),
                        z = (-Lz, 0)) # z_faces)
 
-
-function get_field(filepath, name, times)
+function get_field_timeseries(filepath, name, times)
     file = jldopen(filepath)
+    
     iterations = parse.(Int, keys(file["timeseries/t"]))
     final_iteration = iterations[end]
     
@@ -69,19 +65,35 @@ function get_field(filepath, name, times)
     return field_timeseries
 end
 
-end_time = 60days
+end_time = 1day
 
-u_timeseries = get_field(filepath, "u", [0, end_time])
-b_timeseries = get_field(filepath, "b", [0, end_time])
-c_timeseries = get_field(filepath, "c", [0, end_time])
+times = [0, end_time]
 
-field_names = (:b, :c, :u)
+u_timeseries = get_field_timeseries(filepath, "u", times)
+v_timeseries = get_field_timeseries(filepath, "v", times)
+η_timeseries = get_field_timeseries(filepath, "η", times)
+b_timeseries = get_field_timeseries(filepath, "b", times)
+c_timeseries = get_field_timeseries(filepath, "c", times)
+
+#=
+field_names = (:b, :c, :u, :v, :η)
 
 normalization = (b = ZScore(),
                  c = ZScore(),
-                 u = ZScore()) #  w = RescaledZScore(1e-2)
+                 u = ZScore(),
+                 v = RescaledZScore(1e-2),
+                 η = RescaledZScore(1e-2))
 
-field_time_serieses = (b = b_timeseries, c = c_timeseries, u = u_timeseries)
+field_time_serieses = (b = b_timeseries, c = c_timeseries, u = u_timeseries, v = v_timeseries, η = η_timeseries)
+=#
+
+# let's try fewer fields
+field_names = (:b, :u)
+
+normalization = (b = ZScore(),
+                 u = ZScore())
+
+field_time_serieses = (b = b_timeseries, u = u_timeseries)
 
 observations = SyntheticObservations(;
                                      normalization,
@@ -97,15 +109,7 @@ file = jldopen(filepath)
 coriolis = file["serialized/coriolis"]
 close(file)
 
-# Domain
-Ly = observations.grid.Ly
-Lz = observations.grid.Lz
-
-# number of grid points
-Ny = observations.grid.Ny
-Nz = observations.grid.Nz
-
-Nensemble = 6
+Nensemble = 1
 slice_ensemble_size = SliceEnsembleSize(size=(Ny, Nz), ensemble=Nensemble)
 
 ensemble_grid = RectilinearGrid(architecture,
@@ -115,22 +119,18 @@ ensemble_grid = RectilinearGrid(architecture,
                                 z = (-Lz, 0),
                                 halo=(3, 3))
 
-κ_skew = 1000.0       # [m² s⁻¹] skew diffusivity
-κ_symmetric = 900.0   # [m² s⁻¹] symmetric diffusivity
+gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(slope_limiter = FluxTapering(1e-2))
 
-gerdes_koberle_willebrand_tapering = FluxTapering(1e-2)
-gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = κ_skew,
-                                                                κ_symmetric = κ_symmetric,
-                                                                slope_limiter = gerdes_koberle_willebrand_tapering)
-
+file = jldopen(filepath)
 closures = file["serialized/closure"]
+close(file)
 
 closure_ensemble = ([deepcopy(gent_mcwilliams_diffusivity) for _ = 1:Nensemble], closures[1], closures[2])
 
-closure_ensemble = [deepcopy(gent_mcwilliams_diffusivity) for k = 1:Nensemble]
+# closure_ensemble = [deepcopy(gent_mcwilliams_diffusivity) for k = 1:Nensemble]
 
 ensemble_model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
-                                             tracers = (:b, :e, :c),
+                                             tracers = (:b, :c),
                                              buoyancy = BuoyancyTracer(),
                                              coriolis = coriolis,
                                              closure = closure_ensemble,
@@ -147,7 +147,8 @@ priors = (
 free_parameters = FreeParameters(priors)
 
 calibration = InverseProblem(observations, simulation, free_parameters)
-eki = EnsembleKalmanInversion(calibration; noise_covariance = 1e-1)
+
+eki = EnsembleKalmanInversion(calibration; noise_covariance = 1e-2)
 
 #=
 collected_fields = (b = simulation.model.tracers.b,
