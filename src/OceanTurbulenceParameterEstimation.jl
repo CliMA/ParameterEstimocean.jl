@@ -4,7 +4,6 @@ export
     SyntheticObservations,
     InverseProblem,
     FreeParameters,
-    IdentityNormalization,
     RescaledZScore,
     ZScore,
     forward_map,
@@ -25,21 +24,16 @@ export
     ConstrainedNormal
 
 include("Utils.jl")
+include("Transformations.jl")
 include("Observations.jl")
 include("EnsembleSimulations.jl")
 include("Parameters.jl")
 include("InverseProblems.jl")
 include("EnsembleKalmanInversions.jl")
 
-using .Observations:
-    SyntheticObservations,
-    IdentityNormalization,
-    ZScore,
-    RescaledZScore,
-    observation_times
-
+using .Transformations: Transformation, ZScore, RescaledZScore
+using .Observations: SyntheticObservations, observation_times
 using .EnsembleSimulations: ensemble_column_model_simulation
-
 using .Parameters: FreeParameters, lognormal, ScaledLogitNormal
 
 using .InverseProblems:

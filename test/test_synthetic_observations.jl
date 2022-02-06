@@ -75,22 +75,22 @@ using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
     @test keys(ub_observations.field_time_serieses) == tuple(:u, :b)
     @test keys(uvb_observations.field_time_serieses) == tuple(:u, :v, :b)
 
-    # normalization
+    # transformations and normalizations
     field_names = (:u, :v, :b)
-    normalization = ZScore()
-    uvb_observations = SyntheticObservations(data_path; field_names, normalization)
-    @test all(n isa ZScore for n in values(uvb_observations.normalization))
+    transformation = ZScore()
+    uvb_observations = SyntheticObservations(data_path; field_names, transformation)
+    @test all(t.normalization isa ZScore for t in values(uvb_observations.transformation))
 
-    normalization = (u = ZScore(), v = ZScore(), b = ZScore())
-    uvb_observations = SyntheticObservations(data_path; field_names, normalization)
-    @test all(n isa ZScore for n in values(uvb_observations.normalization))
+    transformation = (u = ZScore(), v = ZScore(), b = ZScore())
+    uvb_observations = SyntheticObservations(data_path; field_names, transformation)
+    @test all(t.normalization isa ZScore for t in values(uvb_observations.transformation))
 
-    normalization = (u = IdentityNormalization(), v = ZScore(), b = RescaledZScore(0.1))
-    uvb_observations = SyntheticObservations(data_path; field_names, normalization)
-    @test uvb_observations.normalization[:u] isa IdentityNormalization
-    @test uvb_observations.normalization[:v] isa ZScore
-    @test uvb_observations.normalization[:b] isa RescaledZScore
-    @test uvb_observations.normalization[:b].scale === 0.1
+    transformation = (u = nothing, v = ZScore(), b = RescaledZScore(0.1))
+    uvb_observations = SyntheticObservations(data_path; field_names, transformation)
+    @test uvb_observations.transformation[:u].normalization isa Nothing
+    @test uvb_observations.transformation[:v].normalization isa ZScore
+    @test uvb_observations.transformation[:b].normalization isa RescaledZScore
+    @test uvb_observations.transformation[:b].normalization.scale === 0.1
 
     # Regridding
     coarsened_observations = SyntheticObservations(data_path, field_names=(:u, :v, :b), regrid_size=(1, 1, Int(Nz/2)))
