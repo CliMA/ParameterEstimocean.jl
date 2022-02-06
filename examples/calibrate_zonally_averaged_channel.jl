@@ -1,4 +1,4 @@
-# Perfect CAKTE calibration with Ensemble Kalman Inversion
+# # Calibrate zonally-averaged channel from 3D eddying channel output
 
 # ## Install dependencies
 
@@ -68,7 +68,7 @@ function get_field_timeseries(filepath, name, times)
     return field_timeseries
 end
 
-end_time = 1day
+end_time = 60day
 
 times = [0, end_time]
 
@@ -112,7 +112,7 @@ file = jldopen(filepath)
 coriolis = file["serialized/coriolis"]
 close(file)
 
-Nensemble = 1
+Nensemble = 5
 slice_ensemble_size = SliceEnsembleSize(size=(Ny, Nz), ensemble=Nensemble)
 
 ensemble_grid = RectilinearGrid(architecture,
@@ -143,8 +143,8 @@ ensemble_model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
 simulation = Simulation(ensemble_model; Δt, stop_time=observations.times[end])
 
 priors = (
-    κ_skew = ScaledLogitNormal(bounds = (300, 700)),
-    κ_symmetric = ScaledLogitNormal(bounds = (300, 700))
+    κ_skew = ScaledLogitNormal(bounds = (300, 1200)),
+    κ_symmetric = ScaledLogitNormal(bounds = (300, 1200))
 )
 
 free_parameters = FreeParameters(priors)
@@ -162,3 +162,95 @@ eki = EnsembleKalmanInversion(calibration; noise_covariance = 1e-2)
 =#
 
 iterate!(eki; iterations = 5)
+
+# Last, we visualize few metrics regarding how the EKI calibration went about.
+
+θ̅(iteration) = [eki.iteration_summaries[iteration].ensemble_mean...]
+varθ(iteration) = eki.iteration_summaries[iteration].ensemble_var
+
+weight_distances = [norm(θ̅(iter)) for iter in 1:eki.iteration]
+output_distances = [norm(forward_map(calibration, θ̅(iter))[:, 1] - y) for iter in 1:eki.iteration]
+ensemble_variances = [varθ(iter) for iter in 1:eki.iteration]
+
+f = Figure()
+lines(f[1, 1], 1:eki.iteration, weight_distances, color = :red, linewidth = 2,
+      axis = (title = "Parameter norm",
+              xlabel = "Iteration",
+              ylabel="|θ̅ₙ|",
+              yscale = log10))
+lines(f[1, 2], 1:eki.iteration, output_distances, color = :blue, linewidth = 2,
+      axis = (title = "Output distance",
+              xlabel = "Iteration",
+              ylabel="|G(θ̅ₙ) - y|",
+              yscale = log10))
+ax3 = Axis(f[2, 1:2], title = "Parameter convergence",
+           xlabel = "Iteration",
+           ylabel = "Ensemble variance",
+           yscale = log10)
+
+for (i, pname) in enumerate(free_parameters.names)
+    ev = getindex.(ensemble_variances, i)
+    lines!(ax3, 1:eki.iteration, ev / ev[1], label = String(pname), linewidth = 2)
+end
+
+axislegend(ax3, position = :rt)
+save("summary_channel.svg", f); nothing #hide 
+
+# ![](summary_channel.svg)
+
+# And also we plot the the distributions of the various model ensembles for few EKI iterations to see
+# if and how well they converge to the true diffusivity values.
+
+f = Figure()
+
+axtop = Axis(f[1, 1])
+
+axmain = Axis(f[2, 1],
+              xlabel = "κ_skew [m² s⁻¹]",
+              ylabel = "κ_symmetric [m² s⁻¹]")
+
+axright = Axis(f[2, 2])
+scatters = []
+labels = String[]
+
+for iteration in [0, 1, 2, 5]
+    ## Make parameter matrix
+    parameters = eki.iteration_summaries[iteration].parameters
+    Nensemble = length(parameters)
+    Nparameters = length(first(parameters))
+    parameter_ensemble_matrix = [parameters[i][j] for i=1:Nensemble, j=1:Nparameters]
+
+    label = iteration == 0 ? "Initial ensemble" : "Iteration $iteration"
+    push!(labels, label)
+    push!(scatters, scatter!(axmain, parameter_ensemble_matrix))
+    density!(axtop, parameter_ensemble_matrix[:, 1])
+    density!(axright, parameter_ensemble_matrix[:, 2], direction = :y)
+end
+
+vlines!(axmain, [κ_skew], color = :red)
+vlines!(axtop, [κ_skew], color = :red)
+
+hlines!(axmain, [κ_symmetric], color = :red)
+hlines!(axright, [κ_symmetric], color = :red)
+
+colsize!(f.layout, 1, Fixed(300))
+colsize!(f.layout, 2, Fixed(200))
+
+rowsize!(f.layout, 1, Fixed(200))
+rowsize!(f.layout, 2, Fixed(300))
+
+Legend(f[1, 2], scatters, labels, position = :lb)
+
+hidedecorations!(axtop, grid = false)
+hidedecorations!(axright, grid = false)
+
+xlims!(axmain, 350, 1350)
+xlims!(axtop, 350, 1350)
+ylims!(axmain, 650, 1750)
+ylims!(axright, 650, 1750)
+xlims!(axright, 0, 0.025)
+ylims!(axtop, 0, 0.025)
+
+save("distributions_channel.svg", f); nothing #hide 
+
+# ![](distributions_channel.svg)
