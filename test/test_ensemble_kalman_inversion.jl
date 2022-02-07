@@ -15,7 +15,7 @@ using OceanTurbulenceParameterEstimation.EnsembleKalmanInversions: resample!, co
 
 data_path = "convective_adjustment_test.jld2"
 Nensemble = 3
-archtecture = CPU()
+architecture = CPU()
 
 @testset "EnsembleKalmanInversions tests" begin
     @info "  Testing EnsembleKalmanInversion..."
