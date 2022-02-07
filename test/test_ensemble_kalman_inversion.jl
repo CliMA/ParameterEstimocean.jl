@@ -6,6 +6,7 @@ using LinearAlgebra
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
+using Oceananigans: fields
 
 using OceanTurbulenceParameterEstimation
 using OceanTurbulenceParameterEstimation.EnsembleKalmanInversions: iterate!
@@ -14,43 +15,39 @@ using OceanTurbulenceParameterEstimation.EnsembleKalmanInversions: resample!, co
 
 data_path = "convective_adjustment_test.jld2"
 Nensemble = 3
+archtecture = CPU()
 
 @testset "EnsembleKalmanInversions tests" begin
+    @info "  Testing EnsembleKalmanInversion..."
+
     #####
-    ##### Build InverseProblem
+    ##### Build two InverseProblem
     #####
 
     observation = SyntheticObservations(data_path, field_names=(:u, :v, :b))
-
-    Nz = observation.grid.Nz
-    Hz = observation.grid.Hz
-    Lz = observation.grid.Lz
-    Δt = observation.metadata.parameters.Δt
-
-    Qᵘ, Qᵇ, N², f = [zeros(Nensemble, 1) for i = 1:4]
-    Qᵘ[:, 1] .= observation.metadata.parameters.Qᵘ
-    Qᵇ[:, 1] .= observation.metadata.parameters.Qᵇ
-    N²[:, 1] .= observation.metadata.parameters.N²
-    f[:, 1] .= observation.metadata.coriolis.f
 
     file = jldopen(observation.path)
     closure = file["serialized/closure"]
     close(file)
 
-    column_ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(Nensemble, 1), Hz=Hz)
-    ensemble_grid = RectilinearGrid(size = column_ensemble_size, topology = (Flat, Flat, Bounded), z = (-Lz, 0))
+    simulation = ensemble_column_model_simulation(observation;
+                                                  Nensemble,
+                                                  architecture,
+                                                  closure,
+                                                  tracers = :b)
 
-    u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
-    b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ), bottom = GradientBoundaryCondition(N²))
+    batched_simulation = ensemble_column_model_simulation([observation, observation];
+                                                          Nensemble,
+                                                          architecture,
+                                                          closure,
+                                                          tracers = :b)
 
-    ensemble_model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
-                                                 tracers = :b,
-                                                 buoyancy = BuoyancyTracer(),
-                                                 boundary_conditions = (; u=u_bcs, b=b_bcs),
-                                                 coriolis = FPlane.(f),
-                                                 closure = [deepcopy(closure) for i=1:Nensemble, j=1:1])
-
-    ensemble_simulation = Simulation(ensemble_model; Δt=Δt, stop_time=observation.times[end])
+    for sim in [simulation, batched_simulation]
+        sim.model.velocities.u.boundary_conditions.top.condition .= observation.metadata.parameters.Qᵘ
+        sim.model.tracers.b.boundary_conditions.top.condition .= observation.metadata.parameters.Qᵇ
+        sim.model.tracers.b.boundary_conditions.bottom.condition .= observation.metadata.parameters.N²
+        sim.Δt = observation.metadata.parameters.Δt
+    end
 
     lower_bound, upper_bound = bounds = [0.9, 1.1]
     priors = (convective_κz = ScaledLogitNormal(; bounds),
@@ -59,117 +56,158 @@ Nensemble = 3
     Nparams = length(priors)
     
     free_parameters = FreeParameters(priors)
-
-    calibration = InverseProblem(observation, ensemble_simulation, free_parameters)
+    calibration = InverseProblem(observation, simulation, free_parameters)
+    batched_calibration = InverseProblem([observation, observation], batched_simulation, free_parameters)
 
     #####
     ##### Test EKI
     #####
 
-    eki = EnsembleKalmanInversion(calibration; noise_covariance=0.01)
+    for eki in [EnsembleKalmanInversion(calibration; noise_covariance=0.01),
+                EnsembleKalmanInversion(batched_calibration; noise_covariance=0.01)]
 
-    iterations = 5
-    iterate!(eki; iterations = iterations, show_progress = false)
+        batch_str = string("(Nbatch = ", size(eki.inverse_problem.simulation.model.grid, 2), ")")
+        @testset "EnsembleKalmanInversions construction and iteration tests $batch_str" begin
+            @info "  Testing EnsembleKalmanInversion construcation and basic iteration $batch_str..."
 
-    @test length(eki.iteration_summaries) == iterations + 1
-    @test eki.iteration == iterations
+            iterations = 5
+            iterate!(eki; iterations = iterations, show_progress = false)
 
-    θθ_std_arr = sqrt.(hcat(diag.(getproperty.(eki.iteration_summaries, :ensemble_cov))...))
-    @test size(θθ_std_arr) == (Nparams, iterations + 1)
+            @test length(eki.iteration_summaries) == iterations + 1
+            @test eki.iteration == iterations
 
-    # Test that parameters stay within bounds
-    parameters = eki.iteration_summaries[0].parameters
-    convective_κzs = getproperty.(parameters, :convective_κz)
-    @test all(convective_κzs .> lower_bound)
-    @test all(convective_κzs .< upper_bound)
+            θθ_std_arr = sqrt.(hcat(diag.(getproperty.(eki.iteration_summaries, :ensemble_cov))...))
+            @test size(θθ_std_arr) == (Nparams, iterations + 1)
 
-    # Test that parameters change
-    @test convective_κzs[1] != convective_κzs[2]
+            # Test that parameters stay within bounds
+            parameters = eki.iteration_summaries[0].parameters
+            convective_κzs = getproperty.(parameters, :convective_κz)
+            @test all(convective_κzs .> lower_bound)
+            @test all(convective_κzs .< upper_bound)
 
-    iterate!(eki; iterations = 1, show_progress = false)
+            # Test that parameters change
+            @test convective_κzs[1] != convective_κzs[2]
 
-    @test length(eki.iteration_summaries) == iterations + 2
-    @test eki.iteration == iterations + 1
+            iterate!(eki; iterations = 1, show_progress = false)
 
-    #####
-    ##### Test Resampler
-    #####
+            @test length(eki.iteration_summaries) == iterations + 2
+            @test eki.iteration == iterations + 1
+        end
 
-    resampler = Resampler(acceptable_failure_fraction = 1.0,
-                          distribution = FullEnsembleDistribution())
+        #####
+        ##### Test Resampler
+        #####
 
-    θ = rand(Nparams, Nensemble)
-    θ1 = deepcopy(θ[:, 1])
-    θ2 = deepcopy(θ[:, 2])
-    θ3 = deepcopy(θ[:, 3])
+        @testset "Resampler tests $batch_str" begin
+            @info "  Testing resampling and NaN handling $batch_str"
 
-    # Fake a forward map output with NaNs
-    G = eki.inverting_forward_map(θ)
-    view(G, :, 2) .= NaN
-    @test any(isnan.(G)) == true
+            # Test resample!
+            resampler = Resampler(acceptable_failure_fraction = 1.0,
+                                  distribution = FullEnsembleDistribution())
 
-    @test sum(column_has_nan(G)) == 1
-    @test column_has_nan(G)[1] == false
-    @test column_has_nan(G)[2] == true
-    @test column_has_nan(G)[3] == false
+            θ = rand(Nparams, Nensemble)
+            θ1 = deepcopy(θ[:, 1])
+            θ2 = deepcopy(θ[:, 2])
+            θ3 = deepcopy(θ[:, 3])
 
-    resample!(resampler, θ, G, eki)
+            # Fake a forward map output with NaNs
+            G = eki.inverting_forward_map(θ)
+            view(G, :, 2) .= NaN
+            @test any(isnan.(G)) == true
 
-    @test sum(column_has_nan(G)) == 0
+            @test sum(column_has_nan(G)) == 1
+            @test column_has_nan(G)[1] == false
+            @test column_has_nan(G)[2] == true
+            @test column_has_nan(G)[3] == false
 
-    @test any(isnan.(G)) == false
-    @test θ[:, 1] == θ1
-    @test θ[:, 2] != θ2
-    @test θ[:, 3] == θ3
+            resample!(resampler, θ, G, eki)
 
-    # Resample all particles, not just failed ones
+            @test sum(column_has_nan(G)) == 0
 
-    resampler = Resampler(acceptable_failure_fraction = 1.0,
-                          only_failed_particles = false,
-                          distribution = FullEnsembleDistribution())
+            @test any(isnan.(G)) == false
+            @test θ[:, 1] == θ1
+            @test θ[:, 2] != θ2
+            @test θ[:, 3] == θ3
 
-    θ = rand(Nparams, Nensemble)
-    θ1 = deepcopy(θ[:, 1])
-    θ2 = deepcopy(θ[:, 2])
-    θ3 = deepcopy(θ[:, 3])
+            # Test that model fields get overwritten without NaN
+            G = eki.inverting_forward_map(θ)
 
-    # Fake a forward map output with NaNs
-    G = eki.inverting_forward_map(θ)
-    Gcopy = deepcopy(G)
+            # Particle 2
+            view(G, :, 2) .= NaN
+            model = eki.inverse_problem.simulation.model
+            time_series_collector = eki.inverse_problem.time_series_collector
 
-    resample!(resampler, θ, G, eki)
-    @test G != Gcopy
-    @test θ[:, 1] != θ1
-    @test θ[:, 2] != θ2
-    @test θ[:, 3] != θ3
+            # Fill one batch...
+            for field_name in keys(fields(model))
+                field = fields(model)[field_name]
+                collector = time_series_collector.field_time_serieses[field_name]
 
-    # Resample particles with SuccessfulEnsembleDistribution.
-    # NaN out 2 or 3 columns so that all particles end up identical
-    # after resampling.
+                field2 = view(parent(field), 2, 1, :) 
+                collector2 = view(parent(collector), 2, 1, :, :) 
+                fill!(field2, NaN)
+                fill!(collector2, NaN)
+            end
 
-    resampler = Resampler(acceptable_failure_fraction = 1.0,
-                          only_failed_particles = false,
-                          distribution = SuccessfulEnsembleDistribution())
+            @test any(isnan.(model.tracers.b))       
+            @test any(isnan.(time_series_collector.field_time_serieses.b))       
+            @test any(isnan.(G))
 
-    θ = rand(Nparams, Nensemble)
-    θ1 = deepcopy(θ[:, 1])
-    θ2 = deepcopy(θ[:, 2])
-    θ3 = deepcopy(θ[:, 3])
+            resample!(resampler, θ, G, eki)
 
-    # Fake a forward map output with NaNs
-    G = eki.inverting_forward_map(θ)
-    view(G, :, 1) .= NaN
-    view(G, :, 2) .= NaN
+            @test !any(isnan.(model.tracers.b))
+            @test !any(isnan.(time_series_collector.field_time_serieses.b))
 
-    @test sum(column_has_nan(G)) == 2
-    @test column_has_nan(G)[1] == true
-    @test column_has_nan(G)[2] == true
-    @test column_has_nan(G)[3] == false
+            # Resample all particles, not just failed ones
 
-    resample!(resampler, θ, G, eki)
+            resampler = Resampler(acceptable_failure_fraction = 1.0,
+                                  only_failed_particles = false,
+                                  distribution = FullEnsembleDistribution())
 
-    @test any(isnan.(G)) == false
-    @test θ[:, 1] != θ3
-    @test θ[:, 2] != θ3
-    @test θ[:, 3] != θ3
+            θ = rand(Nparams, Nensemble)
+            θ1 = deepcopy(θ[:, 1])
+            θ2 = deepcopy(θ[:, 2])
+            θ3 = deepcopy(θ[:, 3])
+
+            # Fake a forward map output with NaNs
+            G = eki.inverting_forward_map(θ)
+            Gcopy = deepcopy(G)
+
+            resample!(resampler, θ, G, eki)
+            @test G != Gcopy
+            @test θ[:, 1] != θ1
+            @test θ[:, 2] != θ2
+            @test θ[:, 3] != θ3
+
+            # Resample particles with SuccessfulEnsembleDistribution.
+            # NaN out 2 or 3 columns so that all particles end up identical
+            # after resampling.
+
+            resampler = Resampler(acceptable_failure_fraction = 1.0,
+                                  only_failed_particles = false,
+                                  distribution = SuccessfulEnsembleDistribution())
+
+            θ = rand(Nparams, Nensemble)
+            θ1 = deepcopy(θ[:, 1])
+            θ2 = deepcopy(θ[:, 2])
+            θ3 = deepcopy(θ[:, 3])
+
+            # Fake a forward map output with NaNs
+            G = eki.inverting_forward_map(θ)
+            view(G, :, 1) .= NaN
+            view(G, :, 2) .= NaN
+
+            @test sum(column_has_nan(G)) == 2
+            @test column_has_nan(G)[1]
+            @test column_has_nan(G)[2]
+            @test !(column_has_nan(G)[3])
+
+            resample!(resampler, θ, G, eki)
+
+            @test !any(isnan.(G))
+            @test θ[:, 1] != θ3
+            @test θ[:, 2] != θ3
+            @test θ[:, 3] != θ3
+        end
+    end
 end
+
