@@ -131,7 +131,7 @@ end
 # In particular, we choose to exclude the 3 grid points on either side of the `y` dimension,
 # and 3 grid points from the bottom of the domain.
 
-transformation = Transformation(space=SpaceIndices(y=4:Ny-3, z=4:Nz), time=3:5, normalization=ZScore())
+transformation = Transformation(space=SpaceIndices(y=4:Ny-3, z=4:Nz), time=TimeIndices(3:5), normalization=ZScore())
 observations = SyntheticObservations(data_path; field_names=(:b, :c), transformation)
 
 # ## Calibration with Ensemble Kalman Inversion

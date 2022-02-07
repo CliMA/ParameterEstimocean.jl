@@ -16,7 +16,7 @@ using Statistics
     time_indices = 101
     z_indices = [collect(20:2:Int(Nz/2)); Nz-4]
 
-    time_transformation = time_indices
+    time_transformation = TimeIndices(t=time_indices)
     space_transformation = SpaceIndices(y=:, z=z_indices)
 
     transformation = Transformation(space = space_transformation,
@@ -36,7 +36,7 @@ using Statistics
     time_indices = [100, 200]
     z_indices = 20:40
 
-    time_transformation = time_indices
+    time_transformation = TimeIndices(t=time_indices)
     space_transformation = SpaceIndices(y=:, z=z_indices)
 
     transformation = Transformation(space = space_transformation,

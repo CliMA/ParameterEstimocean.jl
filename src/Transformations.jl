@@ -22,21 +22,6 @@ end
 Transformation(; time=nothing, space=nothing, normalization=nothing) =
     Transformation(time, space, normalization)
 
-"""
-    compute_time_transformation(user_time_transformation, fts)
-
-Compute a time transformation for the field time series `fts`
-given `user_time_transformation`.
-
-By default, we include all time slices except the initial condition.
-"""
-function compute_time_transformation(::Nothing, fts)
-    Nt = length(fts.times)
-    return 2:Nt
-end
-
-compute_time_transformation(indices, fts) = indices
-
 compute_normalization(::Nothing, transformation, fts) = nothing
 
 function compute_transformation(transformation, field_time_series)
@@ -50,9 +35,29 @@ end
 ##### Time transformations
 #####
 
+"""
+    compute_time_transformation(user_time_transformation, fts)
+
+Compute a time transformation for the field time series `fts`
+given `user_time_transformation`.
+
+By default, we include all time slices except the initial condition.
+"""
+function compute_time_transformation(::Nothing, fts)
+    Nt = length(fts.times)
+    return 2:Nt
+end
+
 time_transform(::Nothing, data) = data
-time_transform(indices::AbstractVector, data) = data[:, :, :, indices]
-time_transform(index::Int, data) = data[:, :, :, index:index]
+
+struct TimeIndices{T}
+    t :: T
+end
+
+TimeIndices(; t) = TimeIndices(t)
+
+compute_time_transformation(indices::TimeIndices, fts) = indices
+time_transform(indices::TimeIndices, data) = data[:, :, :, indices.t]
 
 function time_transform(weights::AbstractVector, data)
     weights = reshape(weights, 1, 1, 1, length(weights))
