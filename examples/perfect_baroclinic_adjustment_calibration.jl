@@ -17,6 +17,8 @@
 # First we load few things
 
 using OceanTurbulenceParameterEstimation
+using OceanTurbulenceParameterEstimation.Transformations: Transformation, space_transform
+
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.TurbulenceClosures: FluxTapering
@@ -126,7 +128,15 @@ end
 
 # ## Load truth data as observations
 
-observations = SyntheticObservations(data_path, field_names=(:b, :c), transformation=ZScore())
+# We use here the `Transformation` functionality to slice up the observation data a bit.
+# In particular, we choose to exclude the 3 grid points on either side of the `y` dimension,
+# and 3 grid points from the bottom of the domain.
+
+space_transformation = (1:1, 4:Ny-3, 4:Nz)
+
+transformation = Transformation(space=space_transformation, normalization=ZScore())
+
+observations = SyntheticObservations(data_path, field_names=(:b, :c), transformation=transformation)
 
 # ## Calibration with Ensemble Kalman Inversion
 
@@ -204,13 +214,21 @@ calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
 # members with the true parameter values. We then confirm that the output of the `forward_map` matches
 # the observations to machine precision.
 
-G = forward_map(calibration, [θ★])
+G = forward_map(calibration, θ★)
 y = observation_map(calibration)
 nothing #hide
 
-# The `forward_map` output `x` is a two-dimensional matrix whose first dimension is the size of the state space
-# (here, ``2 N_y N_z``; the 2 comes from the two tracers we used as observations) and whose second dimension is
-# the `ensemble_size`. In the case above, all columns of `x` are identical.
+# The `forward_map` output `G` is a two-dimensional matrix whose first dimension is the size of the state
+# space. Here, after the transformation we applied to the observations, we have that the state space size
+# is `` 2 \times (N_y - 6) \times (N_z - 3) \times 4``; the 2 comes from the two tracers we used as observations
+# and the 4 comes from the 4 times in the observations (by default, the inital instance is exclude
+# from the observations. The second dimension of the `forward_map` output is the `ensemble_size`.
+
+@show size(G)
+@show 2 * (Ny-6) * (Nz-3) * 4
+
+# Since above we computed `G` using the true parameters ``θ_*``, all columns of the forward map output should
+# be the same as the observations:
 
 mean(G, dims=2) ≈ y
 
