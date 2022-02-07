@@ -17,7 +17,6 @@
 # First we load few things
 
 using OceanTurbulenceParameterEstimation
-using OceanTurbulenceParameterEstimation.Transformations: Transformation, space_transform
 
 using Oceananigans
 using Oceananigans.Units
@@ -54,7 +53,7 @@ Nz = 16                   # grid points in the vertical
 stop_time = 1days         # length of run
 save_interval = 0.25days  # save observation every so often
 
-generate_observations = true
+generate_observations = false
 nothing # hide
 
 anisotropic_diffusivity = AnisotropicDiffusivity(κh=100, κz=1e-2)
@@ -132,11 +131,8 @@ end
 # In particular, we choose to exclude the 3 grid points on either side of the `y` dimension,
 # and 3 grid points from the bottom of the domain.
 
-space_transformation = (1:1, 4:Ny-3, 4:Nz)
-
-transformation = Transformation(space=space_transformation, normalization=ZScore())
-
-observations = SyntheticObservations(data_path, field_names=(:b, :c), transformation=transformation)
+transformation = Transformation(space=SpaceIndices(y=4:Ny-3, z=4:Nz), time=3:5, normalization=ZScore())
+observations = SyntheticObservations(data_path; field_names=(:b, :c), transformation)
 
 # ## Calibration with Ensemble Kalman Inversion
 

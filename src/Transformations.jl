@@ -38,7 +38,7 @@ end
 compute_time_transformation(indices, fts) = indices
 
 compute_space_transformation(::Nothing, fts) = nothing
-compute_space_transformation(indices::Tuple, fts) = indices
+compute_space_transformation(indices::SpaceIndices, fts) = indices
 compute_normalization(::Nothing, transformation, fts) = nothing
 
 function compute_transformation(transformation, field_time_series)
@@ -64,8 +64,19 @@ end
 ##### Space transformations
 #####
 
+struct SpaceIndices{X, Y, Z}
+    x :: X
+    y :: Y
+    z :: Z
+end
+
+function SpaceIndices(; x=:, y=:, z=:)
+    x isa Colon || throw(ArgumentError("Cannot transform in x because x is reserved for the ensemble dimension."))
+    return SpaceIndices(x, y, z)
+end
+
 space_transform(::Nothing, data) = data
-space_transform(indices::Tuple, data) = data[indices[1], indices[2], indices[3], :]
+space_transform(indices::SpaceIndices, data) = data[indices.x, indices.y, indices.z, :]
 
 function space_transform(weights::AbstractArray, data)
     Nx, Ny, Nz = size(weights)
