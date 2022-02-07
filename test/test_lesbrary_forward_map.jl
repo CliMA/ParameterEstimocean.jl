@@ -15,7 +15,7 @@ using OceanTurbulenceParameterEstimation.Parameters: unconstrained_prior, transf
 
         data_path = datadep"two_day_suite_4m/free_convection_instantaneous_statistics.jld2"
         times = [1hours, 2hours]
-        observations = SyntheticObservations(data_path; field_names=:b, times, normalization=ZScore())
+        observations = SyntheticObservations(data_path; field_names=:b, times, transformation=ZScore())
         Nensemble = 10
 
         simulation = ensemble_column_model_simulation(observations; Nensemble, tracers=:b,
@@ -52,8 +52,8 @@ using OceanTurbulenceParameterEstimation.Parameters: unconstrained_prior, transf
         data_path = datadep"two_day_suite_4m/weak_wind_strong_cooling_instantaneous_statistics.jld2"
         times = [1hours, 2hours]
         field_names = (:b, :u, :v, :e)
-        normalization = (b=ZScore(), u=ZScore(), v=ZScore(), e=RescaledZScore(0.1)) 
-        observations = SyntheticObservations(data_path; field_names, times, normalization)
+        transformation = (b=ZScore(), u=ZScore(), v=ZScore(), e=RescaledZScore(0.1)) 
+        observations = SyntheticObservations(data_path; field_names, times, transformation)
 
         mixing_length = MixingLength(Cᴬc=0.0, Cᴬu=0.0, Cᴬe=0.0, Cᴷcʳ=0.0, Cᴷuʳ=0.0, Cᴷeʳ=0.0)
         catke = CATKEVerticalDiffusivity(; mixing_length)

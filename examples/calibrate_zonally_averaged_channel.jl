@@ -81,11 +81,11 @@ c_timeseries = get_field_timeseries(filepath, "c", times)
 #=
 field_names = (:b, :c, :u, :v, :η)
 
-normalization = (b = ZScore(),
-                 c = ZScore(),
-                 u = ZScore(),
-                 v = RescaledZScore(1e-2),
-                 η = RescaledZScore(1e-2))
+transformation = (b = ZScore(),
+                  c = ZScore(),
+                  u = ZScore(),
+                  v = RescaledZScore(1e-2),
+                  η = RescaledZScore(1e-2))
 
 field_time_serieses = (b = b_timeseries, c = c_timeseries, u = u_timeseries, v = v_timeseries, η = η_timeseries)
 =#
@@ -93,16 +93,12 @@ field_time_serieses = (b = b_timeseries, c = c_timeseries, u = u_timeseries, v =
 # let's try fewer fields
 field_names = (:b, :u)
 
-normalization = (b = ZScore(),
-                 u = ZScore())
+transformation = (b = ZScore(),
+                  u = ZScore())
 
-field_time_serieses = (b = b_timeseries, u = u_timeseries)
+field_time_serieses = (b = b_timeseries, u = u_timeseries) 
 
-observations = SyntheticObservations(;
-                                     normalization,
-                                     times,
-                                     field_names, 
-                                     field_time_serieses)
+observations = SyntheticObservations(; transformation, times, field_names, field_time_serieses)
 
 #####
 ##### Simulation

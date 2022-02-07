@@ -46,7 +46,8 @@ end
         buoyancy = BuoyancyTracer(),
         coriolis = FPlane(f=1e-4),
         boundary_conditions = (u = FieldBoundaryConditions(top = FluxBoundaryCondition(-1e-4)),
-                               b = FieldBoundaryConditions(top = FluxBoundaryCondition(1e-7), bottom = GradientBoundaryCondition(N²)))
+                               b = FieldBoundaryConditions(top = FluxBoundaryCondition(1e-7),
+                                                           bottom = GradientBoundaryCondition(N²)))
     )
 
     function build_simulation(size=Nz)
@@ -75,7 +76,8 @@ end
     run!(truth_simulation)
 
     data_path = experiment_name * ".jld2"
-    observations = SyntheticObservations(data_path, field_names=(:u, :b), normalization=(u=RescaledZScore(0.1), b=ZScore()))
+    observations = SyntheticObservations(data_path, field_names = (:u, :b),
+                                         transformation = (u=RescaledZScore(0.1), b=ZScore()))
     
     #####
     ##### Make model data
