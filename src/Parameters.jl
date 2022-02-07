@@ -207,7 +207,7 @@ Y = \\exp(X),
 
 and the inverse trasnform is the natural logarithm ``f^{-1} ≡ \\log``,
 
-```
+```math
 \\log(Y) = X ∼ 𝒩(μ, σ).
 ```
 """
