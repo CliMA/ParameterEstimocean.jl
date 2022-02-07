@@ -1,5 +1,7 @@
 module EnsembleSimulations
 
+using .Observations: tupleit
+
 using Oceananigans
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 using Oceananigans.Architectures: arch_array
@@ -38,6 +40,8 @@ function ensemble_column_model_simulation(observations;
 
     momentum_boundary_conditions =
         (; u = FieldBoundaryConditions(top = FluxBoundaryCondition(zeros(grid, Nensemble, Nbatch))))
+
+    tracers = tupleit(tracers)
 
     tracer_boundary_conditions =
         NamedTuple(name => FieldBoundaryConditions(top = FluxBoundaryCondition(zeros(grid, Nensemble, Nbatch)),
