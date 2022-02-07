@@ -35,6 +35,8 @@ function compute_time_transformation(::Nothing, fts)
     return 2:Nt
 end
 
+compute_time_transformation(indices::Tuple, fts) = indices
+
 compute_space_transformation(::Nothing, fts) = nothing
 compute_space_transformation(indices::Tuple, fts) = indices
 compute_normalization(::Nothing, transformation, fts) = nothing
