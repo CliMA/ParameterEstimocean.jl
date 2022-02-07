@@ -1,7 +1,6 @@
 using Test
 using DataDeps
 using OceanTurbulenceParameterEstimation
-using OceanTurbulenceParameterEstimation.Observations: IdentityNormalization
 
 using Statistics
 
