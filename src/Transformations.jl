@@ -51,7 +51,7 @@ end
 #####
 
 time_transform(::Nothing, data) = data
-time_transform(indices::UnitRange, data) = data[:, :, :, indices]
+time_transform(indices::Union{Int, UnitRange, AbstractVector}, data) = data[:, :, :, indices]
 
 function time_transform(weights::AbstractVector, data)
     weights = reshape(weights, 1, 1, 1, length(weights))
