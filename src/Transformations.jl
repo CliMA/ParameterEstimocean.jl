@@ -36,6 +36,7 @@ function compute_time_transformation(::Nothing, fts)
 end
 
 compute_space_transformation(::Nothing, fts) = nothing
+compute_space_transformation(indices::Tuple, fts) = indices
 compute_normalization(::Nothing, transformation, fts) = nothing
 
 function compute_transformation(transformation, field_time_series)
