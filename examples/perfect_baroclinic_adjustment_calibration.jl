@@ -128,11 +128,14 @@ end
 # ## Load truth data as observations
 
 # We use here the `Transformation` functionality to slice up the observation data a bit.
-# In particular, we choose to exclude the 3 grid points on either side in the ``y`` dimension,
+# In particular, we choose to exclude the 3 grid points on either side of the `y` dimension,
 # and 3 grid points from the bottom of the domain. Also, we only use the last 3 snapshots of
 # the observations.
+#
+# We use `SpaceIndices` and `TimeIndices` to denote which space-time indices we would like to
+# keep in observations.
 
-transformation = Transformation(space=SpaceIndices(y=4:Ny-3, z=4:Nz), time=3:5, normalization=ZScore())
+transformation = Transformation(space=SpaceIndices(y=4:Ny-3, z=4:Nz), time=TimeIndices(3:5), normalization=ZScore())
 observations = SyntheticObservations(data_path; field_names=(:b, :c), transformation)
 
 # ## Calibration with Ensemble Kalman Inversion
