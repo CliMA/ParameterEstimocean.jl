@@ -38,8 +38,10 @@ deviation or `std`) are related to the parameters ``μ``
 and ``σ²`` via
 
 ```math
-m = \\exp(μ + σ² / 2) \\
+\begin{gather}
+m &= \\exp(μ + σ² / 2) \\
 s² = [\\exp(σ²) - 1] m²
+\end{gather}
 ```
 
 These formula allow us to calculate ``μ`` and ``σ`` given
@@ -53,10 +55,10 @@ gives
 which then yields
 
 ```math
-σ = \\sqrt[\\log(k)], 
+σ = \sqrt\{[\\log(m² / s² + 1)]\}.
 ```
 
-where ``k = m² / s² + 1``. We then find that
+We then find that
 
 ```math
 μ = \\log(m) - σ² / 2 .
