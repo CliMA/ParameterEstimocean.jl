@@ -28,8 +28,8 @@ using Statistics
     map = ConcatenatedOutputMap()
 
     sliced_raw_observations = raw_observations.field_time_serieses.u[:, :, z_indices, time_indices][1, 1, :, :]
-    m, n = size(sliced_raw_observations)
-    sliced_raw_observations = reshape(sliced_raw_observations, (m * n, 1))
+    ny, nz = size(sliced_raw_observations)
+    sliced_raw_observations = reshape(sliced_raw_observations, (ny * nz, 1))
     
     @test parent(observation_map(map, observations₁)) ≈ parent(sliced_raw_observations)
 
@@ -46,8 +46,8 @@ using Statistics
     observations₂ = SyntheticObservations(data_path; field_names = field_names, transformation)
 
     sliced_raw_observations = raw_observations.field_time_serieses.u[:, :, z_indices, time_indices][1, 1, :, :]
-    m, n = size(sliced_raw_observations)
-    sliced_raw_observations = reshape(sliced_raw_observations, (m * n, 1))
+    ny, nz = size(sliced_raw_observations)
+    sliced_raw_observations = reshape(sliced_raw_observations, (ny * nz, 1))
 
     # normalize
     μ, σ =  mean(sliced_raw_observations), sqrt(cov(sliced_raw_observations; corrected=false))
