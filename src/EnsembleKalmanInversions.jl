@@ -249,7 +249,7 @@ by the ensemble mean and covariance computed based on the `Nθ` × `Nensemble` e
 array `θ`, under the condition that all `Nsample` particles produce successful forward map
 outputs (don't include `NaNs`).
 
-`G` (size(G) =  Noutput × Nensemble`) is the forward map output produced by `θ`.
+`G` (`size(G) =  Noutput × Nensemble`) is the forward map output produced by `θ`.
 
 Returns `Nθ × Nsample` parameter `Array` and `Noutput × Nsample` forward map output `Array`.
 """
