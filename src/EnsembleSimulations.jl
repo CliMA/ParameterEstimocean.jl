@@ -36,15 +36,17 @@ function ensemble_column_model_simulation(observations;
     closure_ensemble = [deepcopy(closure) for i = 1:Nensemble, j=1:Nbatch]
     closure_ensemble = arch_array(architecture, closure_ensemble)
 
-    Qᵘ = zeros(grid, Nensemble, Nbatch)
-    Qᵇ = zeros(grid, Nensemble, Nbatch)
-    N² = zeros(grid, Nensemble, Nbatch)
+    momentum_boundary_conditions =
+        (; u = FieldBoundaryConditions(top = FluxBoundaryCondition(zeros(grid, Nensemble, Nbatch))))
 
-    u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
-    b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ), bottom = GradientBoundaryCondition(N²))
+    tracer_boundary_conditions =
+        NamedTuple(name => FieldBoundaryConditions(top = FluxBoundaryCondition(zeros(grid, Nensemble, Nbatch)),
+                                                   bottom = GradientBoundaryCondition(zeros(grid, Nensemble, Nbatch)))
+                   for name in tracers if name != :e)
 
-    ensemble_model = HydrostaticFreeSurfaceModel(; grid, tracers, buoyancy,
-                                                 boundary_conditions = (; u=u_bcs, b=b_bcs),
+    boundary_conditions = merge(momentum_boundary_conditions, tracer_boundary_conditions)
+
+    ensemble_model = HydrostaticFreeSurfaceModel(; grid, tracers, buoyancy, boundary_conditions,
                                                  coriolis = coriolis_ensemble,
                                                  closure = closure_ensemble,
                                                  kwargs...)
