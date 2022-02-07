@@ -35,19 +35,6 @@ end
 ##### Time transformations
 #####
 
-"""
-    compute_time_transformation(user_time_transformation, fts)
-
-Compute a time transformation for the field time series `fts`
-given `user_time_transformation`.
-
-By default, we include all time slices except the initial condition.
-"""
-function compute_time_transformation(::Nothing, fts)
-    Nt = length(fts.times)
-    return 2:Nt
-end
-
 time_transform(::Nothing, data) = data
 
 struct TimeIndices{T}
@@ -56,7 +43,17 @@ end
 
 TimeIndices(; t) = TimeIndices(t)
 
+"""
+    compute_time_transformation(user_time_transformation, fts)
+
+Compute a time transformation for the field time series `fts`
+given `user_time_transformation`.
+
+By default, we include all time slices except the initial condition.
+"""
+compute_time_transformation(::Nothing, fts) = TimeIndices(2:length(fts.times))
 compute_time_transformation(indices::TimeIndices, fts) = indices
+
 time_transform(indices::TimeIndices, data) = data[:, :, :, indices.t]
 
 function time_transform(weights::AbstractVector, data)
