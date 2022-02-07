@@ -185,8 +185,6 @@ end
 # Need docstrings
 struct ConcatenatedOutputMap end
 
-""" Transform and return `ip.observations` appropriate for `ip.output_map`. """
-observation_map(ip::InverseProblem) = observation_map(ip.output_map, ip.observations)
 observation_map(map::ConcatenatedOutputMap, observations) = transform_time_series(map, observations)
 
 """
