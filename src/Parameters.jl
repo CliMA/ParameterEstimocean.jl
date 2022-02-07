@@ -38,8 +38,8 @@ deviation or `std`) are related to the parameters ``μ``
 and ``σ²`` via
 
 ```math
-m = \exp{(μ + σ² / 2)} \\
-s² = [\exp{(σ²)} - 1] m²
+m = \exp(μ + σ² / 2) \\
+s² = [\exp(σ²) - 1] m²
 ```
 
 These formula allow us to calculate ``μ`` and ``σ`` given
@@ -47,7 +47,7 @@ These formula allow us to calculate ``μ`` and ``σ`` given
 gives
 
 ```math
-\exp{(σ²)} = m² / s² + 1
+\exp(σ²) = m² / s² + 1
 ```
 
 which then yields
