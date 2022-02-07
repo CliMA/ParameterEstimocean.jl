@@ -1,6 +1,8 @@
 module EnsembleSimulations
 
-using .Observations: tupleit
+using DataDeps
+
+using ..Observations: tupleit
 
 using Oceananigans
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
@@ -13,6 +15,7 @@ function ensemble_column_model_simulation(observations;
                                           architecture = CPU(),
                                           tracers = :b,
                                           buoyancy = BuoyancyTracer(),
+                                          magic_boundary_conditions = true,
                                           kwargs...)
 
     observations isa Vector || (observations = [observations]) # Singleton batch
@@ -43,10 +46,10 @@ function ensemble_column_model_simulation(observations;
 
     tracers = tupleit(tracers)
 
-    tracer_boundary_conditions =
-        NamedTuple(name => FieldBoundaryConditions(top = FluxBoundaryCondition(zeros(grid, Nensemble, Nbatch)),
+    ensemble_tracer_bcs() = FieldBoundaryConditions(top = FluxBoundaryCondition(zeros(grid, Nensemble, Nbatch)),
                                                    bottom = GradientBoundaryCondition(zeros(grid, Nensemble, Nbatch)))
-                   for name in tracers if name != :e)
+
+    tracer_boundary_conditions = NamedTuple(name => ensemble_tracer_bcs() for name in tracers if name != :e)
 
     boundary_conditions = merge(momentum_boundary_conditions, tracer_boundary_conditions)
 
@@ -59,6 +62,14 @@ function ensemble_column_model_simulation(observations;
 
     return ensemble_simulation
 end
+
+function is_registered_observation(observation)
+
+    pathparts = splitpath(path)
+    name = first(pathparts)
+    return name ∈ keys(DataDeps.registry)
+end
+
 
 end # module
 

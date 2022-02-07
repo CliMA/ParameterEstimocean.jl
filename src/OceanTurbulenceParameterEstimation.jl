@@ -28,8 +28,8 @@ export
 include("Utils.jl")
 include("Transformations.jl")
 include("Observations.jl")
-include("EnsembleSimulations.jl")
 include("Parameters.jl")
+include("EnsembleSimulations.jl")
 include("InverseProblems.jl")
 include("EnsembleKalmanInversions.jl")
 

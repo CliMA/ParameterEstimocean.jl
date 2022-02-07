@@ -22,8 +22,8 @@ function prettyvector(v::AbstractVector, bookends=3)
     ending = [string(v[end+1-i]) for i=1:bookends]
 
     for i = 1:bookends-1
-        beginning[i] *= " "
-        ending[i] *= " "
+        beginning[i] *= ", "
+        ending[i] *= ", "
     end
 
     N = length(v)

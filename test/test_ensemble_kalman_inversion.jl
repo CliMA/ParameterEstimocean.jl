@@ -16,6 +16,7 @@ data_path = "convective_adjustment_test.jld2"
 Nensemble = 3
 
 @testset "EnsembleKalmanInversions tests" begin
+    @info "  Testing EnsembleKalmanInversion..."
     #####
     ##### Build InverseProblem
     #####
@@ -66,6 +67,9 @@ Nensemble = 3
     ##### Test EKI
     #####
 
+    @testset "EnsembleKalmanInversions construction and iteration tests" begin
+        @info "  Testing EnsembleKalmanInversion construcation and basic iteration..."
+
     eki = EnsembleKalmanInversion(calibration; noise_covariance=0.01)
 
     iterations = 5
@@ -95,81 +99,124 @@ Nensemble = 3
     ##### Test Resampler
     #####
 
-    resampler = Resampler(acceptable_failure_fraction = 1.0,
-                          distribution = FullEnsembleDistribution())
+    @testset "Resampler tests" begin
+        @info "  Testing resampling and NaN handling..."
 
-    θ = rand(Nparams, Nensemble)
-    θ1 = deepcopy(θ[:, 1])
-    θ2 = deepcopy(θ[:, 2])
-    θ3 = deepcopy(θ[:, 3])
+        # Test resample!
+        resampler = Resampler(acceptable_failure_fraction = 1.0,
+                              distribution = FullEnsembleDistribution())
 
-    # Fake a forward map output with NaNs
-    G = eki.inverting_forward_map(θ)
-    view(G, :, 2) .= NaN
-    @test any(isnan.(G)) == true
+        θ = rand(Nparams, Nensemble)
+        θ1 = deepcopy(θ[:, 1])
+        θ2 = deepcopy(θ[:, 2])
+        θ3 = deepcopy(θ[:, 3])
 
-    @test sum(column_has_nan(G)) == 1
-    @test column_has_nan(G)[1] == false
-    @test column_has_nan(G)[2] == true
-    @test column_has_nan(G)[3] == false
+        # Fake a forward map output with NaNs
+        G = eki.inverting_forward_map(θ)
+        view(G, :, 2) .= NaN
+        @test any(isnan.(G)) == true
 
-    resample!(resampler, θ, G, eki)
+        @test sum(column_has_nan(G)) == 1
+        @test column_has_nan(G)[1] == false
+        @test column_has_nan(G)[2] == true
+        @test column_has_nan(G)[3] == false
 
-    @test sum(column_has_nan(G)) == 0
+        resample!(resampler, θ, G, eki)
 
-    @test any(isnan.(G)) == false
-    @test θ[:, 1] == θ1
-    @test θ[:, 2] != θ2
-    @test θ[:, 3] == θ3
+        @test sum(column_has_nan(G)) == 0
 
-    # Resample all particles, not just failed ones
+        @test any(isnan.(G)) == false
+        @test θ[:, 1] == θ1
+        @test θ[:, 2] != θ2
+        @test θ[:, 3] == θ3
 
-    resampler = Resampler(acceptable_failure_fraction = 1.0,
-                          only_failed_particles = false,
-                          distribution = FullEnsembleDistribution())
+        # Test that model fields get overwritten without NaN
+        G = eki.inverting_forward_map(θ)
 
-    θ = rand(Nparams, Nensemble)
-    θ1 = deepcopy(θ[:, 1])
-    θ2 = deepcopy(θ[:, 2])
-    θ3 = deepcopy(θ[:, 3])
+        # Particle 2
+        view(G, :, 2) .= NaN
+        model = eki.inverse_problem.simulation
+        time_series_collector = eki.inverse_problem.time_series_collector
 
-    # Fake a forward map output with NaNs
-    G = eki.inverting_forward_map(θ)
-    Gcopy = deepcopy(G)
+        for field_name in keys(fields(model))
+            field = fields(model)[field_name]
+            collector = time_series_collector.field_time_serieses[field_name]
 
-    resample!(resampler, θ, G, eki)
-    @test G != Gcopy
-    @test θ[:, 1] != θ1
-    @test θ[:, 2] != θ2
-    @test θ[:, 3] != θ3
+            field2 = view(parent(field), 2, :, :) 
+            collector2 = view(parent(collector), 2, :, :, :) 
+            fill!(field2, NaN)
+            fill!(collector2, NaN)
+        end
 
-    # Resample particles with SuccessfulEnsembleDistribution.
-    # NaN out 2 or 3 columns so that all particles end up identical
-    # after resampling.
+        @test any(isnan.(model.tracers.b))       
+        @test any(isnan.(G))
 
-    resampler = Resampler(acceptable_failure_fraction = 1.0,
-                          only_failed_particles = false,
-                          distribution = SuccessfulEnsembleDistribution())
+        @test sum(column_has_nan(G)) == 1
+        @test !(column_has_nan(G)[1])
+        @test column_has_nan(G)[2]
+        @test !(column_has_nan(G)[3])
 
-    θ = rand(Nparams, Nensemble)
-    θ1 = deepcopy(θ[:, 1])
-    θ2 = deepcopy(θ[:, 2])
-    θ3 = deepcopy(θ[:, 3])
+        resample!(resampler, θ, G, eki)
 
-    # Fake a forward map output with NaNs
-    G = eki.inverting_forward_map(θ)
-    view(G, :, 1) .= NaN
-    view(G, :, 2) .= NaN
+        @test sum(column_has_nan(G)) == 0
 
-    @test sum(column_has_nan(G)) == 2
-    @test column_has_nan(G)[1] == true
-    @test column_has_nan(G)[2] == true
-    @test column_has_nan(G)[3] == false
+        @test any(isnan.(G)) == false
+        @test θ[:, 1] == θ1
+        @test θ[:, 2] != θ2
+        @test θ[:, 3] == θ3
 
-    resample!(resampler, θ, G, eki)
 
-    @test any(isnan.(G)) == false
-    @test θ[:, 1] != θ3
-    @test θ[:, 2] != θ3
-    @test θ[:, 3] != θ3
+
+        # Resample all particles, not just failed ones
+
+        resampler = Resampler(acceptable_failure_fraction = 1.0,
+                              only_failed_particles = false,
+                              distribution = FullEnsembleDistribution())
+
+        θ = rand(Nparams, Nensemble)
+        θ1 = deepcopy(θ[:, 1])
+        θ2 = deepcopy(θ[:, 2])
+        θ3 = deepcopy(θ[:, 3])
+
+        # Fake a forward map output with NaNs
+        G = eki.inverting_forward_map(θ)
+        Gcopy = deepcopy(G)
+
+        resample!(resampler, θ, G, eki)
+        @test G != Gcopy
+        @test θ[:, 1] != θ1
+        @test θ[:, 2] != θ2
+        @test θ[:, 3] != θ3
+
+        # Resample particles with SuccessfulEnsembleDistribution.
+        # NaN out 2 or 3 columns so that all particles end up identical
+        # after resampling.
+
+        resampler = Resampler(acceptable_failure_fraction = 1.0,
+                              only_failed_particles = false,
+                              distribution = SuccessfulEnsembleDistribution())
+
+        θ = rand(Nparams, Nensemble)
+        θ1 = deepcopy(θ[:, 1])
+        θ2 = deepcopy(θ[:, 2])
+        θ3 = deepcopy(θ[:, 3])
+
+        # Fake a forward map output with NaNs
+        G = eki.inverting_forward_map(θ)
+        view(G, :, 1) .= NaN
+        view(G, :, 2) .= NaN
+
+        @test sum(column_has_nan(G)) == 2
+        @test column_has_nan(G)[1]
+        @test column_has_nan(G)[2]
+        @test !(column_has_nan(G)[3])
+
+        resample!(resampler, θ, G, eki)
+
+        @test !any(isnan.(G))
+        @test θ[:, 1] != θ3
+        @test θ[:, 2] != θ3
+        @test θ[:, 3] != θ3
+    end
 end
+
