@@ -62,7 +62,7 @@ end
 #####
 
 space_transform(::Nothing, data) = data
-space_transform(indices::UnitRange, data) = data[indices[1], indices[2], indices[3], :]
+space_transform(indices::Tuple, data) = data[indices[1], indices[2], indices[3], :]
 
 function space_transform(weights::AbstractArray, data)
     Nx, Ny, Nz = size(weights)
