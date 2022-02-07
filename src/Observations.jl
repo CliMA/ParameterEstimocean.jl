@@ -182,7 +182,6 @@ function observation_times(obs::Vector)
     return observation_times(first(obs))
 end
 
-
 #####
 ##### set! for simulation models and observations
 #####
@@ -226,7 +225,7 @@ function set!(model, obs::SyntheticObservations, time_index=1)
             obs_field = obs.field_time_serieses[field_name][time_index]
             set!(model_field, obs_field)
         else
-            set!(model_field, 0)
+            fill!(parent(model_field), 0)
         end
     end
 
@@ -301,8 +300,9 @@ function (collector::FieldTimeSeriesCollector)(simulation)
 
     for field_name in keys(collector.collected_fields)
         field_time_series = collector.field_time_serieses[field_name]
-        if architecture(collector.grid) != architecture(simulation.model.grid) isa GPU
-            device_collected_field_data = arch_array(architecture, parent(collector.collected_fields[field_name]))
+        if architecture(collector.grid) != architecture(simulation.model.grid)
+            arch = architecture(collector.grid)
+            device_collected_field_data = arch_array(arch, parent(collector.collected_fields[field_name]))
             parent(field_time_series[time_index]) .= device_collected_field_data
         else
             set!(field_time_series[time_index], collector.collected_fields[field_name])
@@ -320,15 +320,15 @@ function initialize_simulation!(simulation, observations, time_series_collector,
     set!(simulation.model, observations, time_index)
 
     times = observation_times(observations)
-
     initial_time = times[time_index]
     simulation.model.clock.time = initial_time
     simulation.model.clock.iteration = 0
     simulation.model.timestepper.previous_Δt = Inf
+    simulation.initialized = false
 
     # Zero out time series data
     for time_series in time_series_collector.field_time_serieses
-        time_series.data .= 0
+        parent(time_series.data) .= 0
     end
 
     simulation.callbacks[:data_collector] = Callback(time_series_collector, SpecifiedTimes(times...))
