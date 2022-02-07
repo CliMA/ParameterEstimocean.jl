@@ -347,12 +347,15 @@ end
 summarize_metadata(::Nothing) = ""
 summarize_metadata(metadata) = keys(metadata)
 
-Base.show(io::IO, obs::SyntheticObservations) =
+function Base.show(io::IO, obs::SyntheticObservations)
+    times_str = prettyvector(prettytime.(obs.times))
+
     print(io, "SyntheticObservations with fields $(propertynames(obs.field_time_serieses))", '\n',
-              "├── times: $(obs.times)", '\n',
+              "├── times: $times_str", '\n',
               "├── grid: $(summary(obs.grid))", '\n',
               "├── path: \"$(obs.path)\"", '\n',
               "├── metadata: ", summarize_metadata(obs.metadata), '\n',
               "└── transformation: $(summary(obs.transformation))")
+end
 
 end # module
