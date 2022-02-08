@@ -30,25 +30,25 @@ observation_library = Dict()
 
 # Don't optimize u, v for free_convection
 observation_library["free_convection"] =
-    SyntheticObservations(case_path("free_convection"); normalization, times, regrid_size,
+    SyntheticObservations(case_path("free_convection"); transformation, times, regrid_size,
                           field_names = (:b, :e))
                                                                 
 # Don't optimize v for non-rotating cases
 observation_library["strong_wind_no_rotation"] =
-    SyntheticObservations(case_path("strong_wind_no_rotation"); normalization, times, regrid_size,
+    SyntheticObservations(case_path("strong_wind_no_rotation"); transformation, times, regrid_size,
                           field_names = (:b, :e, :u))
 
 # The rest are standard
 for case in ["strong_wind", "strong_wind_weak_cooling", "weak_wind_strong_cooling"]
-    observation_library[case] = SyntheticObservations(case_path(case); field_names, normalization, times, regrid_size)
+    observation_library[case] = SyntheticObservations(case_path(case); field_names, transformation, times, regrid_size)
 end
 
 cases = [
-         #"free_convection",
-         #"weak_wind_strong_cooling",
-         #"strong_wind_weak_cooling",
-         "strong_wind",
-         "strong_wind_no_rotation",
+         "free_convection",
+         "weak_wind_strong_cooling",
+         "strong_wind_weak_cooling",
+         #"strong_wind",
+         #"strong_wind_no_rotation",
         ]
 
 observations = [observation_library[case] for case in cases]
@@ -57,6 +57,7 @@ observations = [observation_library[case] for case in cases]
 ##### Simulation
 #####
 
+# Constant Ri
 mixing_length = MixingLength(Cᴬu   = 0.0,
                              Cᴬc   = 0.0,
                              Cᴬe   = 0.0,
@@ -73,8 +74,29 @@ mixing_length = MixingLength(Cᴬu   = 0.0,
                              Cᴷeʳ  = 0.0)
 
 surface_TKE_flux = SurfaceTKEFlux(CᵂwΔ=4.74, Cᵂu★=2.76)
-                                  
-catke = CATKEVerticalDiffusivity(; Cᴰ=1.779, mixing_length)
+catke = CATKEVerticalDiffusivity(; Cᴰ=1.78, mixing_length)
+
+#=
+# Variable Ri
+mixing_length = MixingLength(Cᴬu   = 0.0,
+                             Cᴬc   = 0.0,
+                             Cᴬe   = 0.0,
+                             Cᴸᵇ   = 1.36,
+                             Cᴷu⁻  = 0.101,
+                             Cᴷc⁻  = 0.0574,
+                             Cᴷe⁻  = 3.32,
+                             Cᵟu   = 0.296,
+                             Cᵟc   = 1.32,
+                             Cᵟe   = 1.49,
+                             CᴷRiᶜ = 2.11,
+                             CᴷRiʷ = 1.27,
+                             Cᴷuʳ  = -0.790,
+                             Cᴷcʳ  = -0.430,
+                             Cᴷeʳ  = -0.878)
+
+surface_TKE_flux = SurfaceTKEFlux(CᵂwΔ=4.68, Cᵂu★=2.47)
+catke = CATKEVerticalDiffusivity(; Cᴰ=1.53, mixing_length)
+=#
 
 simulation = ensemble_column_model_simulation(observations;
                                               Nensemble = 1000,
@@ -143,8 +165,9 @@ constant_Ri_parameters = (:Cᴰ, :CᵂwΔ, :Cᵂu★, :Cᴸᵇ, :Cᴷu⁻, :Cᴷ
 variable_Ri_parameters = (:Cᴷuʳ, :Cᴷcʳ, :Cᴷeʳ, :CᴷRiʷ, :CᴷRiᶜ, :Cᴰ, :Cᴸᵇ, :CᵂwΔ, :Cᵂu★)
 convective_adjustment_parameters = (:Cᴬu, :Cᴬc, :Cᴬe)
 
-free_parameters = FreeParameters(prior_library, names=tuple(:Cᴷu⁻, :Cᴷc⁻, :Cᴷe⁻, variable_Ri_parameters...))
+#free_parameters = FreeParameters(prior_library, names=tuple(:Cᴷu⁻, :Cᴷc⁻, :Cᴷe⁻, variable_Ri_parameters...))
 #free_parameters = FreeParameters(prior_library, names=variable_Ri_parameters)
+free_parameters = FreeParameters(prior_library, names=convective_adjustment_parameters)
 calibration = InverseProblem(observations, simulation, free_parameters)
 
 eki = EnsembleKalmanInversion(calibration;
@@ -172,10 +195,10 @@ function get_modeled_case(icase, name, k=1)
     return view(interior(field), k, icase, :)
 end
 
-mean_modeled_data        = [NamedTuple(n => get_modeled_case(c, n, 1) for n in field_names) for c = 1:length(observations)]
-best_modeled_data        = [NamedTuple(n => get_modeled_case(c, n, 2) for n in field_names) for c = 1:length(observations)]
-latest_best_modeled_data = [NamedTuple(n => get_modeled_case(c, n, 3) for n in field_names) for c = 1:length(observations)]
-worst_modeled_data       = [NamedTuple(n => get_modeled_case(c, n, 4) for n in field_names) for c = 1:length(observations)]
+mean_modeled_data        = [NamedTuple(n => get_modeled_case(c, n, 1) for n in keys(observations[c].field_time_serieses)) for c = 1:length(observations)]
+best_modeled_data        = [NamedTuple(n => get_modeled_case(c, n, 2) for n in keys(observations[c].field_time_serieses)) for c = 1:length(observations)]
+latest_best_modeled_data = [NamedTuple(n => get_modeled_case(c, n, 3) for n in keys(observations[c].field_time_serieses)) for c = 1:length(observations)]
+worst_modeled_data       = [NamedTuple(n => get_modeled_case(c, n, 4) for n in keys(observations[c].field_time_serieses)) for c = 1:length(observations)]
 
 colorcycle =  [:black, :darkblue, :orange, :pink1, :seagreen, :magenta2, :red4, :khaki1,   :darkgreen, :bisque4,
                :silver, :lightsalmon, :lightseagreen, :teal, :royalblue1, :darkorchid4]
