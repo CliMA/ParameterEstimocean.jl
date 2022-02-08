@@ -274,8 +274,8 @@ for iteration in [0, 2, 10, 20]
     density!(ax3, parameter_ensemble_matrix[:, 2], direction = :y)
 end
 
-vlines!(ax1, [θ★.Cᴷu⁻], color = :red)
-vlines!(ax2, [θ★.Cᴷu⁻], color = :red)
+vlines!(ax1, [θ★.Cᴬu], color = :red)
+vlines!(ax2, [θ★.Cᴬu], color = :red)
 hlines!(ax2, [θ★.Cᴬc], color = :red)
 hlines!(ax3, [θ★.Cᴬc], color = :red)
 
