@@ -103,7 +103,7 @@ ensemble_simulation, closure★ = build_ensemble_simulation(observations, archit
 # We choose to calibrate a subset of the CATKE parameters,
 
 priors = (Cᴬu = lognormal(mean=0.05, std=0.01),
-          Cᴬc = lognormal(mean=0.6,  std=0.1),
+          Cᴬc = lognormal(mean=0.6,  std=0.2),
           Cᴬe = lognormal(mean=0.2,  std=0.04))
 
 free_parameters = FreeParameters(priors)
@@ -289,8 +289,8 @@ Legend(fig[1, 2], scatters, labels, position = :lb)
 hidedecorations!(ax1, grid = false)
 hidedecorations!(ax3, grid = false)
 
-xlims!(ax1, 0.0, 0.5)
-xlims!(ax2, 0.0, 0.5)
+xlims!(ax1, -0.1, 0.1)
+xlims!(ax2, -0.1, 0.1)
 ylims!(ax2, 0.0, 2.0)
 ylims!(ax3, 0.0, 2.0)
 
