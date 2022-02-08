@@ -88,7 +88,7 @@ Arguments
                                                      it's converted to an identity matrix scaled by
                                                      `noise_covariance`.
 
-- `resampler`: controls particle resampling procedure. See [`Resampler`].
+- `resampler`: controls particle resampling procedure. See `Resampler`.
 """
 function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampler=Resampler())
 
