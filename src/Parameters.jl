@@ -7,8 +7,8 @@ using Oceananigans.TurbulenceClosures: AbstractTimeDiscretization, ExplicitTimeD
 using Printf
 using Distributions
 using LinearAlgebra
-using SpecialFunctions: erfinv
 
+using SpecialFunctions: erfinv
 using Distributions: AbstractRNG, ContinuousUnivariateDistribution
 
 #####
@@ -253,6 +253,12 @@ covariance_transform_diagonal(Π::ScaledLogitNormal, X) = - (Π.upper_bound - Π
 ##### Free parameters
 #####
 
+"""
+    struct FreeParameters{N, P}
+
+A container for free parameters that includes the parameter names and their
+corresponding prior distributions.
+"""
 struct FreeParameters{N, P}
      names :: N
     priors :: P
@@ -338,7 +344,7 @@ end
 """
     closure_with_parameters(closure, parameters)
 
-Returns a new object where for each (`parameter_name`, `parameter_value`) pair 
+Return a new object where for each (`parameter_name`, `parameter_value`) pair 
 in `parameters`, the value corresponding to the key in `object` that matches
 `parameter_name` is replaced with `parameter_value`.
 
@@ -376,7 +382,8 @@ closure_with_parameters(closures::Tuple, parameters) =
 """
     update_closure_ensemble_member!(closures, p_ensemble, parameters)
 
-Use `parameters` to update closure from `closures` that corresponds to ensemble member `p_ensemble`.
+Use `parameters` to update the `p_ensemble`-th closure from and array of `closures`.
+The `p_ensemble`-th closure corresponds to ensemble member `p_ensemble`.
 """
 update_closure_ensemble_member!(closure, p_ensemble, parameters) = nothing
 
@@ -398,9 +405,16 @@ function update_closure_ensemble_member!(closure_tuple::Tuple, p_ensemble, param
     return nothing
 end
 
-new_closure_ensemble(closure, θ, arch) = closure
-new_closure_ensemble(closure_tuple::Tuple, θ, arch) = Tuple(new_closure_ensemble(closure, θ, arch) for closure in closure_tuple)
+"""
+    new_closure_ensemble(closures, θ, arch)
 
+Return a new set of `closures` in which all closures that have
+free parameters are updated. Closures with free parameters are
+expected as `Arrays` of `TurbulenceClosures`, and this allows
+`new_closure_ensemble` to go through all closures in `closures`
+and only update the parameters for the any closure that is of
+type `AbstractArray`.
+"""
 function new_closure_ensemble(closures::AbstractArray, θ, arch)
     cpu_closures = arch_array(CPU(), closures)
 
@@ -410,5 +424,8 @@ function new_closure_ensemble(closures::AbstractArray, θ, arch)
 
     return arch_array(arch, cpu_closures)
 end
+new_closure_ensemble(closures::Tuple, θ, arch) = 
+    Tuple(new_closure_ensemble(closure, θ, arch) for closure in closures)
+new_closure_ensemble(closure, θ, arch) = closure
 
 end # module

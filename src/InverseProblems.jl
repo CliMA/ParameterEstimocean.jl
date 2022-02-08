@@ -336,7 +336,7 @@ end
 """
     observation_map_variance_across_time(map::ConcatenatedOutputMap, observation::SyntheticObservations)
 
-Returns an (Nx, Ny*Nz*Nfields, Ny*Nz*Nfields) array storing the covariance of each element of the observation 
+Return an (Nx, Ny*Nz*Nfields, Ny*Nz*Nfields) array storing the covariance of each element of the observation 
 map measured across time, for each ensemble member, where `Nx` is the ensemble size, `Ny` is the batch size, 
 `Nz` is the number of grid elements in the vertical, and `Nfields` is the number of fields in `observation`.
 """
