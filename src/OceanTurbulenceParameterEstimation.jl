@@ -6,6 +6,7 @@ export
     FreeParameters,
     Transformation,
     SpaceIndices,
+    TimeIndices,
     RescaledZScore,
     ZScore,
     forward_map,
@@ -33,7 +34,7 @@ include("Parameters.jl")
 include("InverseProblems.jl")
 include("EnsembleKalmanInversions.jl")
 
-using .Transformations: Transformation, ZScore, RescaledZScore, SpaceIndices
+using .Transformations: Transformation, ZScore, RescaledZScore, SpaceIndices, TimeIndices
 using .Observations: SyntheticObservations, observation_times
 using .EnsembleSimulations: ensemble_column_model_simulation
 using .Parameters: FreeParameters, lognormal, ScaledLogitNormal
