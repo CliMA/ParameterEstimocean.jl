@@ -9,12 +9,12 @@ using Statistics
     field_names = :u
 
     raw_observations = SyntheticObservations(data_path; field_names = field_names)
-
-    @info "  Test space and time slicing..."
-
     Nz = raw_observations.grid.Nz
     times = raw_observations.times
 
+    map = ConcatenatedOutputMap()
+
+    @info "  Test space and time slicing..."
     time_indices = 101
     z_indices = [collect(20:2:Int(Nz/2)); Nz-4]
 
@@ -26,8 +26,6 @@ using Statistics
                                     normalization = nothing)
 
     observations = SyntheticObservations(data_path; field_names = field_names, transformation)
-
-    map = ConcatenatedOutputMap()
 
     sliced_raw_observations = raw_observations.field_time_serieses.u[:, :, z_indices, time_indices][1, 1, :, :]
     ny, nz = size(sliced_raw_observations)
@@ -66,8 +64,7 @@ using Statistics
     z = raw_observations.grid.zᵃᵃᶜ[1:Nz]
     space_weights = ones(1, 1, Nz)
     z_weights = @. exp(raw_observations.grid.zᵃᵃᶜ[1:Nz] / depth_scale)
-    z_weights_3D = reshape(z_weights, 1, 1, Nz)
-    @. space_weights *= z_weights_3D
+    space_weights .*= reshape(z_weights, 1, 1, Nz)
 
     transformation = Transformation(space = space_weights,
                                     time = time_weights,
