@@ -62,9 +62,8 @@ using Statistics
 
     depth_scale = 100
     z = raw_observations.grid.zᵃᵃᶜ[1:Nz]
-    space_weights = ones(1, 1, Nz)
     z_weights = @. exp(raw_observations.grid.zᵃᵃᶜ[1:Nz] / depth_scale)
-    space_weights .*= reshape(z_weights, 1, 1, Nz)
+    space_weights = reshape(z_weights, 1, 1, Nz)
 
     transformation = Transformation(space = space_weights,
                                     time = time_weights,
