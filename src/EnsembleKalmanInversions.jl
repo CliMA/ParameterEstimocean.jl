@@ -208,13 +208,12 @@ function Base.show(io::IO, is::IterationSummary)
     print(io, summary(is), '\n')
 
     print(io, "                      ", param_str.(keys(is.ensemble_mean))..., '\n',
+              "       ensemble_mean: ", param_str.(values(is.ensemble_mean))..., '\n',
+              particle_str("best", is.mean_square_errors[imin], is.parameters[imin]), '\n',
+              particle_str("worst", is.mean_square_errors[imax], is.parameters[imax]), '\n',
               "             minimum: ", param_str.(min_parameters)..., '\n',
               "             maximum: ", param_str.(max_parameters)..., '\n',
-              "       ensemble_mean: ", param_str.(values(is.ensemble_mean))..., '\n',
-              "       ensemble_mean: ", param_str.(values(is.ensemble_mean))..., '\n',
-              "   ensemble_variance: ", param_str.(values(is.ensemble_var))..., '\n',
-              particle_str("best", is.mean_square_errors[imin], is.parameters[imin]), '\n',
-              particle_str("worst", is.mean_square_errors[imax], is.parameters[imax]))
+              "   ensemble_variance: ", param_str.(values(is.ensemble_var))...)
 
     return nothing
 end
