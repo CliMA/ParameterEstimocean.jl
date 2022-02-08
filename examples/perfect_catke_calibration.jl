@@ -256,7 +256,7 @@ save("perfect_catke_calibration_particle_realizations.svg", fig); nothing # hide
 fig = Figure()
 
 ax1 = Axis(fig[1, 1])
-ax2 = Axis(fig[2, 1], xlabel = "Cᴷu⁻", ylabel = "Cᴬc")
+ax2 = Axis(fig[2, 1], xlabel = "Cᴬu", ylabel = "Cᴬc")
 ax3 = Axis(fig[2, 2])
 scatters = []
 labels = String[]
