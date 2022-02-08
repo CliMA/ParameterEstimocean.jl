@@ -49,7 +49,8 @@ TimeIndices(; t) = TimeIndices(t)
 Compute a time transformation for the field time series `fts`
 given `user_time_transformation`.
 
-By default, we include all time slices except the initial condition.
+By default, if `user_time_transformation isa nothing`, then we include all time instances
+except the initial condition.
 """
 compute_time_transformation(::Nothing, fts) = TimeIndices(2:length(fts.times))
 compute_time_transformation(indices::TimeIndices, fts) = indices

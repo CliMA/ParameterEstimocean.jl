@@ -194,7 +194,7 @@ end
 """
     column_ensemble_interior(observations::Vector{<:SyntheticObservations}, field_name, time_indices::Vector, N_ens)
 
-Returns an `Nensemble × Nbatch × Nz` Array of `(1, 1, Nz)` `field_name` data,
+Return an `Nensemble × Nbatch × Nz` Array of `(1, 1, Nz)` `field_name` data,
 given `Nbatch` `SyntheticObservations` objects.
 The `Nbatch × Nz` data for `field_name` is copied `Nensemble` times to form a 3D Array.
 """
@@ -271,9 +271,10 @@ struct FieldTimeSeriesCollector{G, D, F, T}
 end
 
 """
-    FieldTimeSeriesCollector(collected_fields, times; architecture=CPU())
+    FieldTimeSeriesCollector(collected_fields, times;
+                             architecture = Architectures.architecture(first(collected_fields)))
 
-Returns a `FieldTimeSeriesCollector` for `fields` of `simulation`.
+Return a `FieldTimeSeriesCollector` for `fields` of `simulation`.
 `fields` is a `NamedTuple` of `AbstractField`s that are to be collected.
 """
 function FieldTimeSeriesCollector(collected_fields, times;
