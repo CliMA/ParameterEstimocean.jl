@@ -62,6 +62,8 @@ function time_transform(weights::AbstractVector, data)
     return data .* weights
 end
 
+compute_time_transformation(weights::AbstractVector, fts) = weights
+
 #####
 ##### Space transformations
 #####
