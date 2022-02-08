@@ -60,7 +60,7 @@ y = G(θ) + η,
 ```
 
 for the parameters ``θ``, where ``y`` is a "normalized" vector of observations,
-``G(θ)`` is a forward map that predicts the observations, and ``η ∼ N(0, Γ_y)`` is zero-mean
+``G(θ)`` is a forward map that predicts the observations, and ``η ∼ 𝒩(0, Γ_y)`` is zero-mean
 random noise with covariance matrix ``Γ_y`` representing uncertainty in the observations.
 
 By "solve", we mean that the iteration finds the parameter values ``θ`` that minimizes the
@@ -88,7 +88,7 @@ Arguments
                                                      it's converted to an identity matrix scaled by
                                                      `noise_covariance`.
 
-- `resampler`: controls particle resampling procedure. See `Resampler`.
+- `resampler`: controls particle resampling procedure. See [`Resampler`].
 """
 function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampler=Resampler())
 
