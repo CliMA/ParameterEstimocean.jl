@@ -2,7 +2,7 @@ name = "OceanTurbulenceParameterEstimation"
 uuid = "eca81dc5-87a6-4430-aec8-c76695404a43"
 license = "MIT"
 authors = ["Adeline Hillier <adelineh2000@gmail.com>", "Gregory L. Wagner <wagner.greg@gmail.com>", "Navid C. Constantinou <navidcy@gmail.com>", "and co-contributors"]
-version = "0.6.0"
+version = "0.8.1"
 
 [deps]
 DataDeps = "124859b0-ceae-595e-8997-d05f6a7a8dfe"
@@ -32,7 +32,7 @@ Oceananigans = "^0.70"
 OffsetArrays = "1"
 OrderedCollections = "1"
 ProgressBars = "1"
-SpecialFunctions = "1"
+SpecialFunctions = "1, 2"
 StatProfilerHTML = "1"
 Suppressor = "0.2"
 

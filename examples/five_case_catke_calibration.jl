@@ -21,7 +21,7 @@ times = [6hours, 24hours, 96hours]
 field_names = (:b, :e, :u, :v)
 regrid_size = nothing #(1, 1, 32)
 
-normalization = (b = ZScore(),
+transformation = (b = ZScore(),
                  u = ZScore(),
                  v = ZScore(),
                  e = RescaledZScore(1e-1))

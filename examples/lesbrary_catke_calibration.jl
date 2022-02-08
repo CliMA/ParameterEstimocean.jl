@@ -25,13 +25,13 @@ data_path = datadep"two_day_suite_4m/strong_wind_instantaneous_statistics.jld2"
 times = [2hours, 6hours, 12hours]
 field_names = (:b, :u, :v, :e)
 
-## Use a special normalization that emphasizes buoyancy and de-emphasizes TKE
-normalization = (b = ZScore(),
+## Use a special transformation that emphasizes buoyancy and de-emphasizes TKE
+transformation = (b = ZScore(),
                  u = ZScore(), 
                  v = ZScore(), 
                  e = RescaledZScore(0.1)) 
 
-observations = SyntheticObservations(data_path; field_names, times, normalization)
+observations = SyntheticObservations(data_path; field_names, times, transformation)
 
 # Let's take a look at the observations. We define a few
 # plotting utilities along the way to use later in the example:
