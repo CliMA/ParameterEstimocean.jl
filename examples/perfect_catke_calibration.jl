@@ -138,7 +138,7 @@ y = observation_map(calibration)
 # https://clima.github.io/EnsembleKalmanProcesses.jl/stable/ensemble_kalman_inversion/).
 
 eki = EnsembleKalmanInversion(calibration;
-                              noise_covariance = 1e-3,
+                              noise_covariance = 5e-3,
                               resampler = Resampler(acceptable_failure_fraction=0.1))
 
 # and perform few iterations to see if we can converge to the true parameter values.
