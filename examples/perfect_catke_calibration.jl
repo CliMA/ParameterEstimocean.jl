@@ -102,9 +102,9 @@ ensemble_simulation, closure★ = build_ensemble_simulation(observations, archit
 
 # We choose to calibrate a subset of the CATKE parameters,
 
-priors = (Cᴬu = lognormal(mean=0.05, std=0.01),
-          Cᴬc = lognormal(mean=0.6,  std=0.1),
-          Cᴬe = lognormal(mean=0.2,  std=0.04))
+priors = (Cᴬu = lognormal(mean=0.05, std=0.2),
+          Cᴬc = lognormal(mean=0.8,  std=0.5),
+          Cᴬe = lognormal(mean=0.2,  std=0.05))
 
 free_parameters = FreeParameters(priors)
 
@@ -120,8 +120,8 @@ free_parameters = FreeParameters(priors)
 
 calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
 
-# We can check that the first ensemble member of the mapped output, which was run with the "true"
-# parameters, is identical to the mapped observations:
+# We can check that the first ensemble member of the mapped output, which was run with
+# the "true" # parameters, is identical to the mapped observations:
 
 G = forward_map(calibration, θ★)
 y = observation_map(calibration)
@@ -143,7 +143,7 @@ eki = EnsembleKalmanInversion(calibration;
 
 # and perform few iterations to see if we can converge to the true parameter values.
 
-iterate!(eki; iterations = 20)
+iterate!(eki; iterations = 30)
 
 # Last, we visualize the outputs of EKI calibration.
 
@@ -152,9 +152,8 @@ optimal_θ = collect(values(θ★))
 ensemble_mean_θ = map(summary -> collect(values(summary.ensemble_mean)), eki.iteration_summaries)
 θ_variances = map(summary -> collect(values(summary.ensemble_var)), eki.iteration_summaries)
 
-names = keys(θ★)
-absolute_error = NamedTuple(name => map(θ -> θ[p] - θ★[p], ensemble_mean_θ) for (p, name) in enumerate(names))
-relative_error = NamedTuple(name => abs.(absolute_error[name]) ./ θ★[name] for name in names)
+absolute_error = NamedTuple(name => map(θ -> θ[p] - θ★[p], ensemble_mean_θ) for (p, name) in enumerate(free_parameters.names))
+relative_error = NamedTuple(name => abs.(absolute_error[name]) ./ θ★[name] for name in free_parameters.names)
 
 output_distances = map(θ -> norm(forward_map(calibration, θ)[:, 1:1] - y), ensemble_mean_θ)
 
@@ -162,7 +161,7 @@ fig = Figure()
 
 ax_error = Axis(fig[1, 1], title = "Parameter distance", xlabel = "Iteration", ylabel = "|⟨θₙ⟩ - θ★| / θ★")
 
-for name in names
+for name in free_parameters.names
     lines!(ax_error, 0:eki.iteration, parent(relative_error[name]), linewidth=2, label=string(name))
 end
 
@@ -256,12 +255,12 @@ save("perfect_catke_calibration_particle_realizations.svg", fig); nothing # hide
 fig = Figure()
 
 ax1 = Axis(fig[1, 1])
-ax2 = Axis(fig[2, 1], xlabel = "Cᴬu [m² s⁻¹]", ylabel = "Cᴬc [m² s⁻¹]")
+ax2 = Axis(fig[2, 1], xlabel = "Cᴬu", ylabel = "Cᴬc")
 ax3 = Axis(fig[2, 2])
 scatters = []
 labels = String[]
 
-for iteration in [0, 2, 10, 20]
+for iteration in [0, 2, 5, 15, 30]
     ## Make parameter matrix
     parameters = eki.iteration_summaries[iteration].parameters
     Nensemble = length(parameters)
@@ -288,11 +287,6 @@ Legend(fig[1, 2], scatters, labels, position = :lb)
 
 hidedecorations!(ax1, grid = false)
 hidedecorations!(ax3, grid = false)
-
-xlims!(ax1, 0.025, 0.125)
-xlims!(ax2, 0.025, 0.125)
-ylims!(ax2, 0.35, 0.9)
-ylims!(ax3, 0.35, 0.9)
 
 ##display(fig)
 
