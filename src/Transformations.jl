@@ -18,6 +18,39 @@ end
 """
     Transformation(; time=nothing, space=nothing, normalization=nothing)
 
+Return a transformation that is applied on the observation. Examples include slicing
+the data or multiplying with weight factors to make the loss function putting more 
+weight in particular regions of the domain or particular times. Also, we can denote
+a normalization proceduce that is applied to the data *after* the space- and time-
+transformations.
+
+Slicing is done via the `SpaceIndices` and `TimeIndices` functionality. For example
+
+```julia
+Transformation(time = TimeIndices(4:10))
+```
+
+will only keep time-snapshots 4-10 from the observations. Similarly,
+
+```julia
+Transformation(space = SpaceIndices(x=:, y=1:10, z=2:2:20))
+```
+
+won't affext the `x` dimension of the data, but will only slice that observations
+in `y` and `z`.
+
+Keyword Arguments
+=================
+
+- `time`: The time transformation either as a `TimeIndices` or as an `AbstractVector` of
+  weights of same size as `observations.times`. If `nothing` is given, then, by default,
+  the transformation ignores the first snapshot (initial state).
+
+- `space`: The space trasformation either as a `SpaceIndices` or as an `AbstractArray` of
+  weights of same size as a snapshot of the observations.
+
+- `normalization`: The normalization that is applied to the data after space and time 
+  transformations have been applied first.
 """
 Transformation(; time=nothing, space=nothing, normalization=nothing) =
     Transformation(time, space, normalization)
