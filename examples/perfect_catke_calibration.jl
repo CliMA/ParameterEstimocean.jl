@@ -102,9 +102,9 @@ ensemble_simulation, closure★ = build_ensemble_simulation(observations, archit
 
 # We choose to calibrate a subset of the CATKE parameters,
 
-priors = (Cᴬu = lognormal(mean=0.05, std=0.01),
-          Cᴬc = lognormal(mean=0.6,  std=0.2),
-          Cᴬe = lognormal(mean=0.2,  std=0.04))
+priors = (Cᴬu = lognormal(mean=0.05, std=0.2),
+          Cᴬc = lognormal(mean=0.8,  std=0.5),
+          Cᴬe = lognormal(mean=0.2,  std=0.05))
 
 free_parameters = FreeParameters(priors)
 
@@ -120,8 +120,8 @@ free_parameters = FreeParameters(priors)
 
 calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
 
-# We can check that the first ensemble member of the mapped output, which was run with the "true"
-# parameters, is identical to the mapped observations:
+# We can check that the first ensemble member of the mapped output, which was run with
+# the "true" # parameters, is identical to the mapped observations:
 
 G = forward_map(calibration, θ★)
 y = observation_map(calibration)
