@@ -57,7 +57,7 @@ fig = Figure()
 
 ax_b = Axis(fig[1, 1], xlabel = "Buoyancy\n[10⁻⁴ m s⁻²]", ylabel = "z [m]")
 ax_u = Axis(fig[1, 2], xlabel = "Velocities\n[cm s⁻¹]")
-ax_e = Axis(fig[1, 3], xlabel = "Turbulent kinetic energy\n[10⁻⁴ m² s⁻²]")
+ax_e = Axis(fig[1, 3], xlabel = "Turbulent kinetic energy\n[cm² s⁻²]")
 
 z = znodes(Center, observations.grid)
 
@@ -139,7 +139,7 @@ y = observation_map(calibration)
 
 eki = EnsembleKalmanInversion(calibration;
                               noise_covariance = 5e-3,
-                              resampler = Resampler(acceptable_failure_fraction=0.1))
+                              resampler = Resampler(acceptable_failure_fraction=0.3))
 
 # and perform few iterations to see if we can converge to the true parameter values.
 
@@ -207,8 +207,8 @@ z = znodes(b)
 b★ = 1e4 * interior(b)[1, 1, :]  # convert units m s⁻² -> 10⁻⁴ m s⁻²
 b¹ = 1e4 * interior(b)[2, 1, :]  # convert units m s⁻² -> 10⁻⁴ m s⁻²
 
-e★ = 1e4 * interior(e)[1, 1, :]  # convert units m² s⁻² -> 10⁻⁴ m² s⁻²
-e¹ = 1e4 * interior(e)[2, 1, :]  # convert units m² s⁻² -> 10⁻⁴ m² s⁻²
+e★ = 1e4 * interior(e)[1, 1, :]  # convert units m² s⁻² -> cm² s⁻²
+e¹ = 1e4 * interior(e)[2, 1, :]  # convert units m² s⁻² -> cm² s⁻²
 
 u★ = 1e2 * interior(u)[1, 1, :]  # convert units m s⁻¹ -> cm s⁻¹
 u¹ = 1e2 * interior(u)[2, 1, :]  # convert units m s⁻¹ -> cm s⁻¹
@@ -225,7 +225,7 @@ lines!(ax, b★, z; label=b★_label, linewidth=3)
 lines!(ax, b¹, z; label=b¹_label, linewidth=2)
 axislegend(ax, position=:lb)
 
-ax = Axis(fig[1, 2], xlabel = "Turbulent kinetic energy\n[10⁻⁴ m² s⁻²]")
+ax = Axis(fig[1, 2], xlabel = "Turbulent kinetic energy\n[cm² s⁻²]")
 e★_label = "true e at " * prettytime(t)
 e¹_label = "e with ⟨θ⟩"
 lines!(ax, e★, z; label=e★_label, linewidth=3)
