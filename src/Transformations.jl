@@ -21,7 +21,7 @@ end
 Return a transformation that is applied on the observation. Examples include slicing
 the data or multiplying with weight factors to make the loss function putting more 
 weight in particular regions of the domain or particular times. Also, we can denote
-a normalization proceduce that is applied to the data *after* the space- and time-
+a normalization procedure applied to the data *after* the space- and time-
 transformations.
 
 Slicing is prescribed as `SpaceIndices` and `TimeIndices`. For example
