@@ -24,20 +24,20 @@ weight in particular regions of the domain or particular times. Also, we can den
 a normalization proceduce that is applied to the data *after* the space- and time-
 transformations.
 
-Slicing is done via the `SpaceIndices` and `TimeIndices` functionality. For example
+Slicing is prescribed as `SpaceIndices` and `TimeIndices`. For example
 
 ```julia
 Transformation(time = TimeIndices(4:10))
 ```
 
-will only keep time-snapshots 4-10 from the observations. Similarly,
+will only keep time instances 4 to 10 from the observations. Similarly,
 
 ```julia
 Transformation(space = SpaceIndices(x=:, y=1:10, z=2:2:20))
 ```
 
-won't affext the `x` dimension of the data, but will only slice that observations
-in `y` and `z`.
+will not affect the `x` dimension of the data, but will slice the observations
+in `y` and `z` as prescribed.
 
 Keyword Arguments
 =================
