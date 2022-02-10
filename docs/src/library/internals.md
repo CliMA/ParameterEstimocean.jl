@@ -10,6 +10,14 @@ Public = false
 Pages   = ["OceanTurbulenceParameterEstimation.jl"]
 ```
 
+## Transformations
+
+```@autodocs
+Modules = [OceanTurbulenceParameterEstimation.Transformations]
+Public = false
+Pages   = ["Transformations.jl"]
+```
+
 ## Observations
 
 ```@autodocs
@@ -18,12 +26,29 @@ Public = false
 Pages   = ["Observations.jl"]
 ```
 
+## Ensemble Simulations
+
+```@autodocs
+Modules = [OceanTurbulenceParameterEstimation.EnsembleSimulations]
+Public = false
+Pages   = ["EnsembleSimulations.jl"]
+```
+include("InverseProblems.jl")
+
 ## Parameters
 
 ```@autodocs
 Modules = [OceanTurbulenceParameterEstimation.Parameters]
 Public = false
 Pages   = ["Parameters.jl"]
+```
+
+## Inverse Problems
+
+```@autodocs
+Modules = [OceanTurbulenceParameterEstimation.InverseProblems]
+Public = false
+Pages   = ["InverseProblems.jl"]
 ```
 
 ## EnsembleKalmanInversions
