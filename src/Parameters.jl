@@ -345,27 +345,41 @@ end
     closure_with_parameters(closure, parameters)
 
 Return a new object where for each (`parameter_name`, `parameter_value`) pair 
-in `parameters`, the value corresponding to the key in `object` that matches
+in `parameters`, the value corresponding to the key in `closure` that matches
 `parameter_name` is replaced with `parameter_value`.
 
 Example
 =======
 
-```jldoctest
-julia> using OceanTurbulenceParameterEstimation.Parameters: closure_with_parameters
+Create a placeholder `Closure` type that includes a parameter `c` and a sub-closure
+with two parameters: `a` and `b`. Then construct a closure with values `a, b, c = 1, 2, 3`.
+
+```jldoctest closure_with_parameters
+julia> struct Closure; subclosure; c end
 
 julia> struct ClosureSubModel; a; b end
 
-julia> struct Closure; test; c end
+julia> sub_closure = ClosureSubModel(1, 2)
+ClosureSubModel(1, 2)
 
-julia> closure = Closure(ClosureSubModel(1, 2), 3)
+julia> closure = Closure(sub_closure, 3)
 Closure(ClosureSubModel(1, 2), 3)
+```
 
-julia> parameters = (a = 12, d = 7)
-(a = 12, d = 7)
+Providing `closure_with_parameters` with a named tuple of parameter names and values,
+and a recursive search in all types and subtypes within `closure` is done and whenever
+a parameter is found whose name exists in the named tuple we provided, its value is 
+then replaced with the value provided.
 
-julia> closure_with_parameters(closure, parameters)
-Closure(ClosureSubModel(12, 2), 3)
+```jldoctest closure_with_parameters
+
+julia> new_parameters = (a = π, d = 7)
+(a = π, d = 7)
+
+julia> using OceanTurbulenceParameterEstimation.Parameters: closure_with_parameters
+
+julia> closure_with_parameters(closure, new_parameters)
+Closure(ClosureSubModel(π, 2), 3)
 ```
 """
 closure_with_parameters(closure, parameters) = construct_object(dict_properties(closure), parameters)
