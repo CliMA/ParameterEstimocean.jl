@@ -3,14 +3,22 @@ module InverseProblems
 using OrderedCollections
 using Suppressor: @suppress
 
-using ..Observations: AbstractObservation, SyntheticObservations, initialize_simulation!, FieldTimeSeriesCollector,
-    observation_times, observation_names
+using ..Transformations: transform_field_time_series
+
+using ..Observations:
+    AbstractObservation,
+    SyntheticObservations,
+    initialize_simulation!,
+    FieldTimeSeriesCollector,
+    observation_times,
+    observation_names
 
 using ..Parameters: new_closure_ensemble
 
 using OffsetArrays, Statistics
 
 using Oceananigans: run!, fields, FieldTimeSeries, CPU
+using Oceananigans.Architectures: architecture
 using Oceananigans.OutputReaders: InMemory
 using Oceananigans.Fields: interior, location
 using Oceananigans.Grids: Flat, Bounded,
@@ -20,35 +28,6 @@ using Oceananigans.Grids: Flat, Bounded,
                           interior_parent_indices
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SingleColumnGrid, YZSliceGrid, ColumnEnsembleSize
-
-import ..Observations: normalize!
-
-#####
-##### Output maps (maps from simulation output to observation space)
-#####
-
-abstract type AbstractOutputMap end
-
-output_map_type(fp) = output_map_str(fp)
-
-struct ConcatenatedOutputMap{T}
-    time_indices::T
-end
-
-ConcatenatedOutputMap(; time_indices = Colon()) = ConcatenatedOutputMap(time_indices)
-
-output_map_str(::ConcatenatedOutputMap) = "ConcatenatedOutputMap"
-
-"""
-    ConcatenatedVectorNormMap()
-
-Forward map transformation of simulation output to a scalar by
-taking a naive `norm` of the difference between concatenated vectors of the
-observations and simulation output.
-"""
-struct ConcatenatedVectorNormMap end
-
-output_map_str(::ConcatenatedVectorNormMap) = "ConcatenatedVectorNormMap"
 
 #####
 ##### InverseProblems
@@ -63,7 +42,11 @@ struct InverseProblem{F, O, S, T, P}
 end
 
 """
-    InverseProblem(observations, simulation, free_parameters; output_map=ConcatenatedOutputMap())
+    InverseProblem(observations,
+                        simulation,
+                        free_parameters;
+                        output_map = ConcatenatedOutputMap(),
+                        time_series_collector = nothing)
 
 Return an `InverseProblem`.
 """
@@ -84,11 +67,9 @@ end
 
 function Base.show(io::IO, ip::InverseProblem)
     sim_str = "Simulation on $(summary(ip.simulation.model.grid)) with Δt=$(ip.simulation.Δt)"
+    out_map_str = summary(ip.output_map)
 
-    out_map_type = output_map_type(ip.output_map)
-    out_map_str = output_map_str(ip.output_map)
-
-    print(io, "InverseProblem{$out_map_type}", '\n',
+    print(io, "InverseProblem{$out_map_str}", '\n',
         "├── observations: $(summary(ip.observations))", '\n',
         "├── simulation: $sim_str", '\n',
         "├── free_parameters: $(summary(ip.free_parameters))", '\n',
@@ -163,7 +144,7 @@ function forward_run!(ip::InverseProblem, parameters)
     closures = simulation.model.closure
 
     θ = expand_parameters(ip, parameters)
-    simulation.model.closure = new_closure_ensemble(closures, θ)
+    simulation.model.closure = new_closure_ensemble(closures, θ, architecture(simulation.model.grid))
 
     initialize_simulation!(simulation, observations, ip.time_series_collector)
 
@@ -189,73 +170,83 @@ function forward_map(ip, parameters)
     # The result has `size(output) = (output_size, ensemble_capacity)`,
     # where `output_size` is determined by both the `output_map` and the
     # data collection dictated by `ip.observations`.
-    output = transform_output(ip.output_map, ip.observations, ip.time_series_collector)
+    output = transform_forward_map_output(ip.output_map, ip.observations, ip.time_series_collector)
 
-    # (output_size, ensemble_size)
+    # (Nobservations, Nensemble)
     return output
 end
 
 (ip::InverseProblem)(θ) = forward_map(ip, θ)
 
+#####
+##### ConcatenatedOutputMap
+#####
+
+# Need docstrings
+struct ConcatenatedOutputMap end
+
+observation_map(map::ConcatenatedOutputMap, observations) = transform_time_series(map, observations)
+
 """
-    transform_time_series(::ConcatenatedOutputMap, time_series::SyntheticObservations)
+    transform_time_series(::ConcatenatedOutputMap, observation::SyntheticObservations)
 
-Concatenates flattened, normalized data for each field in the `time_series`.
+Transforms, normalizes, and concatenates data for field time series in `observation`.
 """
-function transform_time_series(output_map::ConcatenatedOutputMap, time_series::SyntheticObservations)
-    flattened_normalized_data = []
+function transform_time_series(::ConcatenatedOutputMap, observation::SyntheticObservations)
+    data_vector = []
 
-    for field_name in keys(time_series.field_time_serieses)
-        field_time_series = time_series.field_time_serieses[field_name]
+    for field_name in keys(observation.field_time_serieses)
+        # Transform time series data observation-specified `transformation`
+        field_time_series = observation.field_time_serieses[field_name]
+        transformation = observation.transformation[field_name]
+        transformed_datum = transform_field_time_series(transformation, field_time_series)
 
-        # Copy time series data to `Array`, keeping only `time_indices` and discarding halos
-        field_time_series_data = Array(interior(field_time_series))[:, :, :, output_map.time_indices]
-
-        # Normalize data according to observation-specified normalization
-        normalize!(field_time_series_data, time_series.normalization[field_name])
-
-        # Reshape data to 2D array with size (Nx, :)
-        Nx, Ny, Nz, Nt = size(field_time_series_data)
-        field_time_series_data = reshape(field_time_series_data, Nx, Ny * Nz * Nt)
-
-        push!(flattened_normalized_data, field_time_series_data)
+        # Build out array
+        push!(data_vector, transformed_datum)
     end
 
-    transformed = hcat(flattened_normalized_data...)
+    # Concatenate!
+    concatenated_data = hcat(data_vector...)
 
-    return Matrix(transpose(transformed))
+    return Matrix(transpose(concatenated_data))
 end
 
 """
-    transform_time_series(map, time_serieses::Vector)
+    transform_time_series(map, batched_observations::Vector)
 
-Return the `transform_time_series` of each `time_series` in `time_serieses` vector.
+Concatenate the output of `transform_time_series` of each observation
+in `batched_observations`.
 """
-transform_time_series(map, time_serieses::Vector) =
-    vcat(Tuple(transform_time_series(map, time_series) for time_series in time_serieses)...)
+transform_time_series(map, batched_observations::Vector) =
+    vcat(Tuple(transform_time_series(map, obs) for obs in batched_observations)...)
 
-function transform_output(map::ConcatenatedOutputMap,
-                          observations::Union{SyntheticObservations, Vector{<:SyntheticObservations}},
-                          time_series_collector)
+const BatchedOrSingletonObservations = Union{SyntheticObservations,
+                                             Vector{<:SyntheticObservations}}
+
+function transform_forward_map_output(map::ConcatenatedOutputMap,
+                                      observations::BatchedOrSingletonObservations,
+                                      time_series_collector)
 
     # transposed_output isa Vector{SyntheticObservations} where SyntheticObservations is Nx by Nz by Nt
-    transposed_output = transpose_model_output(time_series_collector, observations)
+    transposed_forward_map_output = transpose_model_output(time_series_collector, observations)
 
-    return transform_time_series(map, transposed_output)
+    return transform_time_series(map, transposed_forward_map_output)
 end
 
 vectorize(observation) = [observation]
 vectorize(observations::Vector) = observations
 
-const YZSliceObservations = SyntheticObservations{<:Any, <:YZSliceGrid}
+# Dispatch transpose_model_output based on collector grid
+transpose_model_output(time_series_collector, observations) =
+    transpose_model_output(time_series_collector.grid, time_series_collector, observations)
 
-transpose_model_output(time_series_collector, observations::YZSliceObservations) =
+transpose_model_output(collector_grid::YZSliceGrid, time_series_collector, observations) =
     SyntheticObservations(time_series_collector.field_time_serieses,
-                          time_series_collector.grid,
+                          collector_grid,
                           time_series_collector.times,
                           nothing,
                           nothing,
-                          observations.normalization)
+                          observations.transformation)
 
 """
     transpose_model_output(time_series_collector, observations)
@@ -265,19 +256,19 @@ into a Vector of `SyntheticObservations` for each member of the observation batc
 
 Return a 1-vector in the case of singleton observations.
 """
-function transpose_model_output(time_series_collector, observations)
+function transpose_model_output(collector_grid::SingleColumnGrid, time_series_collector, observations)
     observations = vectorize(observations)
     times = time_series_collector.times
 
     transposed_output = []
 
-    Nensemble = time_series_collector.grid.Nx
-    Nbatch = time_series_collector.grid.Ny
-    Nz = time_series_collector.grid.Nz
-    Hz = time_series_collector.grid.Hz
+    Nensemble = collector_grid.Nx
+    Nbatch =  collector_grid.Ny
+    Nz = collector_grid.Nz
+    Hz = collector_grid.Hz
     Nt = length(times)
 
-    grid = drop_y_dimension(time_series_collector.grid)
+    grid = drop_y_dimension(collector_grid)
 
     for j = 1:Nbatch
         observation = observations[j]
@@ -304,7 +295,7 @@ function transpose_model_output(time_series_collector, observations)
                                              times,
                                              nothing,
                                              nothing,
-                                             observation.normalization)
+                                             observation.transformation)
 
         push!(transposed_output, batch_output)
     end
@@ -312,43 +303,66 @@ function transpose_model_output(time_series_collector, observations)
     return transposed_output
 end
 
-function drop_y_dimension(grid::RectilinearGrid{<:Any, <:Flat, <:Flat, <:Bounded})
+function drop_y_dimension(grid::SingleColumnGrid)
     new_size = ColumnEnsembleSize(Nz=grid.Nz, ensemble=(grid.Nx, 1), Hz=grid.Hz)
+    new_halo_size = ColumnEnsembleSize(Nz=1, Hz=grid.Hz)
     z_domain = (grid.zᵃᵃᶠ[1], grid.zᵃᵃᶠ[grid.Nz])
-    new_grid = RectilinearGrid(size=new_size, z=z_domain, topology=(Flat, Flat, Bounded))
+    new_grid = RectilinearGrid(size=new_size, halo=new_halo_size, z=z_domain, topology=(Flat, Flat, Bounded))
     return new_grid
 end
+
+#####
+##### VectorNormMap
+#####
+
+struct VectorNormMap end
+
+observation_map(::VectorNormMap, observations) = reshape([0], 1, 1)
+
+function transform_forward_map_output(::VectorNormMap, obs, time_series_collector)
+    # Collected concatenated output and observations
+    G = transform_forward_map_output(ConcatenatedOutputMap(), obs, time_series_collector)
+    y = observation_map(ConcatenatedOutputMap(), obs)
+
+    # Compute vector norm across ensemble members. result should be
+    # (1, Nensemble)
+    return mapslices(Gᵏ -> norm(Gᵏ - y), G, dims=1)
+end
+
+#####
+##### Utils
+#####
 
 """
     observation_map_variance_across_time(map::ConcatenatedOutputMap, observation::SyntheticObservations)
 
-Returns an (Nx, Ny*Nz*Nfields, Ny*Nz*Nfields) array storing the covariance of each element of the observation 
+Return an (Nx, Ny*Nz*Nfields, Ny*Nz*Nfields) array storing the covariance of each element of the observation 
 map measured across time, for each ensemble member, where `Nx` is the ensemble size, `Ny` is the batch size, 
 `Nz` is the number of grid elements in the vertical, and `Nfields` is the number of fields in `observation`.
 """
 function observation_map_variance_across_time(map::ConcatenatedOutputMap, observation::SyntheticObservations)
+    # These aren't right because every field can have a different transformation, so...
+    Nx, Ny, Nz = size(observation.grid)
+    Nt = length(first(observation.transformation).time)
 
-    N_fields = length(keys(observation.field_time_serieses))
+    Nfields = length(keys(observation.field_time_serieses))
 
-    a = transform_time_series(map, observation)
-    a = transpose(a) # (Nx, Ny*Nz*Nt)
+    y = transform_time_series(map, observation)
+    @assert length(y) == Nx * Ny * Nz * Nt * Nfields # otherwise we're headed for trouble...
 
-    example_field_time_series = values(observation.field_time_serieses)[1]
+    y = transpose(y) # (Nx, Ny*Nz*Nt*Nfields)
 
-    Nx, Ny, Nz, Nt = size(interior(example_field_time_series))
+    # Transpose `Nfields` dimension
+    reshaped_y = reshape(y, Nx, Ny * Nz, Nt, Nfields) # (Nx, Ny*Nz, Nt, Nfields)
+    permuted_y = permutedims(y, [1, 2, 4, 3])
+    reshaped_permuted_y = reshape(permuted_y, Nx, Ny * Nz * Nfields, Nt)
 
-    # Assume all fields have the same size
-    b = reshape(a, Nx, Ny * Nz, Nt, N_fields) # (Nx, Ny*Nz, Nt, Nfields)
+    # Compute `var`iance across time
+    dataset = [reshape(var(reshaped_permuted_y[:, :, 1:n], dims = 3), Nx, Ny * Nz, Nfields) for n = 1:Nt]
+    concatenated_dataset = cat(dataset..., dims = 2)
+    replace!(concatenated_dataset, NaN => 0) # variance for first time step is zero
 
-    c = cat((b[:, :, :, i] for i = 1:N_fields)..., dims = 2) # (Nx, Ny*Nz*Nfields, Nt)
-
-    ds = [reshape(var(c[:, :, 1:t], dims = 3), Nx, Ny * Nz, N_fields) for t = 1:Nt]
-
-    e = cat(ds..., dims = 2)
-
-    replace!(e, NaN => 0) # variance for first time step is zero
-
-    return reshape(e, Nx, Ny * Nz * Nt * N_fields)
+    return reshape(concatenated_dataset, Nx, Ny * Nz * Nt * Nfields)
 end
 
 observation_map_variance_across_time(map::ConcatenatedOutputMap, observations::Vector) =

@@ -15,11 +15,12 @@ Zenodo: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5762810.svg)](https:
 
 ## Installation
 
-To install, use Julia's  built-in package manager (accessed by pressing `]` in the Julia REPL command prompt) to add the package and also to instantiate/build all the required dependencies
+To install, use Julia's  built-in package manager (accessed by pressing `]` in the Julia REPL command prompt) to add the package and also to instantiate/build all the required dependencies. The package is not yet included in Julia's official
+registry so you need to install via Github. To install a tagged version of the package, e.g., v0.6.0, use
 
 ```julia
 julia>]
-(v1.6) pkg> add https://github.com/CliMA/OceanTurbulenceParameterEstimation.jl
+(v1.6) pkg> add https://github.com/CliMA/OceanTurbulenceParameterEstimation.jl#v0.6.0
 (v1.6) pkg> instantiate
 ```
 
@@ -37,5 +38,4 @@ julia>]
 
 The code is citable via [zenodo](https://zenodo.org). Please cite as:
 
-> Adeline Hillier, Gregory L. Wagner, and Navid C. Constantinou. (2021). CliMA/OceanTurbulenceParameterEstimation.jl: OceanTurbulenceParameterEstimation.jl v0.1.0 (Version v0.1.0). Zenodo. [http://doi.org/10.5281/zenodo.5762810](http://doi.org/10.5281/zenodo.5762810)
-
+> Adeline Hillier, Gregory L. Wagner, and Navid C. Constantinou. (2022). CliMA/OceanTurbulenceParameterEstimation.jl: OceanTurbulenceParameterEstimation.jl v0.8.0 (Version v0.8.0). Zenodo. [http://doi.org/10.5281/zenodo.5762810](http://doi.org/10.5281/zenodo.5762810)

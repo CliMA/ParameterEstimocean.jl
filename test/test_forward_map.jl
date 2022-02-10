@@ -4,11 +4,29 @@ using Distributions
 using OceanTurbulenceParameterEstimation
 using Oceananigans
 using Oceananigans.Units
+using Oceananigans.Grids: halo_size
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
 
 using OceanTurbulenceParameterEstimation.Observations: FieldTimeSeriesCollector, initialize_simulation!, observation_times
-using OceanTurbulenceParameterEstimation.InverseProblems: transpose_model_output, forward_run!
+using OceanTurbulenceParameterEstimation.InverseProblems: transpose_model_output, forward_run!, drop_y_dimension
+
+@testset "Unit tests for forward_map" begin
+    # Test drop_y_dimension
+    column_ensemble_size = ColumnEnsembleSize(Nz=8, ensemble=(2, 3))
+    column_ensemble_halo_size = ColumnEnsembleSize(Nz=1, Hz=5)
+    ensemble_grid = RectilinearGrid(size = column_ensemble_size,
+                                    halo = column_ensemble_halo_size,
+                                    z = (-128, 0),
+                                    topology = (Flat, Flat, Bounded))
+
+    dropped_y_grid = drop_y_dimension(ensemble_grid)
+
+    @test size(ensemble_grid) == (2, 3, 8)
+    @test halo_size(ensemble_grid) == (0, 0, 5)
+    @test size(dropped_y_grid) == (2, 1, 8)
+    @test halo_size(dropped_y_grid) == (0, 0, 5)
+end
 
 @testset "Forward map tests" begin
 
@@ -28,7 +46,8 @@ using OceanTurbulenceParameterEstimation.InverseProblems: transpose_model_output
         buoyancy = BuoyancyTracer(),
         coriolis = FPlane(f=1e-4),
         boundary_conditions = (u = FieldBoundaryConditions(top = FluxBoundaryCondition(-1e-4)),
-                               b = FieldBoundaryConditions(top = FluxBoundaryCondition(1e-7), bottom = GradientBoundaryCondition(N²)))
+                               b = FieldBoundaryConditions(top = FluxBoundaryCondition(1e-7),
+                                                           bottom = GradientBoundaryCondition(N²)))
     )
 
     function build_simulation(size=Nz)
@@ -57,7 +76,8 @@ using OceanTurbulenceParameterEstimation.InverseProblems: transpose_model_output
     run!(truth_simulation)
 
     data_path = experiment_name * ".jld2"
-    observations = SyntheticObservations(data_path, field_names=(:u, :b), normalization=(u=RescaledZScore(0.1), b=ZScore()))
+    observations = SyntheticObservations(data_path, field_names = (:u, :b),
+                                         transformation = (u=RescaledZScore(0.1), b=ZScore()))
     
     #####
     ##### Make model data
