@@ -44,7 +44,7 @@ time_transform(::Nothing, data) = data
 struct TimeIndices{T}
     t :: T
 
-    function TimeIndices(t::T) where T
+    function TimeIndices(t)
         t = int_to_range(t)
         T = typeof(t)
         return new{T}(t)
