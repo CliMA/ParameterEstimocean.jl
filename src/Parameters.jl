@@ -342,7 +342,7 @@ included in `specification_dict` under key `:type`.
 Example
 =======
 
-```jldoctest
+```jldoctest; filter = [r".*Dict{Symbol.*", r".*:type       => Closure.*", r".*:c          => 3.*", r".*:subclosure => Dict{Symbol.*"]
 julia> using OceanTurbulenceParameterEstimation.Parameters: construct_object, dict_properties, closure_with_parameters
 
 julia> struct Closure; subclosure; c end
