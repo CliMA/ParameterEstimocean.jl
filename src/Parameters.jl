@@ -325,6 +325,50 @@ Base.length(p::FreeParameters) = length(p.names)
 
 const ParameterValue = Union{Number, AbstractArray}
 
+"""
+    construct_object(specification_dict, parameters;
+                     name=nothing, type_parameter=nothing)
+    construct_object(d::ParameterValue, parameters; name=nothing)
+
+Return a composite type object whose properties are prescribed by the `specification_dict`
+dictionary. All parameter values are given the values in `specification_dict` *unless* they
+are included as a parameter name-value pair in the named tuple `parameters`, in which case
+the value in `parameters` is asigned.
+
+The `construct_object` is recursively called upon every property that is included in `specification_dict`
+until a property with a numerical value is reached. The object's constructor name must be
+included in `specification_dict` under key `:type`.
+
+Example
+=======
+
+```jldoctest
+julia> using OceanTurbulenceParameterEstimation.Parameters: construct_object, dict_properties, closure_with_parameters
+
+julia> struct Closure; subclosure; c end
+
+julia> struct ClosureSubModel; a; b end
+
+julia> sub_closure = ClosureSubModel(1, 2)
+ClosureSubModel(1, 2)
+
+julia> closure = Closure(sub_closure, 3)
+Closure(ClosureSubModel(1, 2), 3)
+
+julia> specification_dict = dict_properties(closure)
+Dict{Symbol, Any} with 3 entries:
+  :type       => Closure
+  :c          => 3
+  :subclosure => Dict{Symbol, Any}(:a=>1, :b=>2, :type=>ClosureSubModel)
+
+julia> new_closure = construct_object(specification_dict, (a=2.1,))
+Closure(ClosureSubModel(2.1, 2), 3)
+  
+julia> another_new_closure = construct_object(specification_dict, (b=π, c=2π))
+Closure(ClosureSubModel(1, π), 6.283185307179586)
+```
+
+"""
 construct_object(d::ParameterValue, parameters; name=nothing) =
     name ∈ keys(parameters) ? getproperty(parameters, name) : d
 
@@ -351,7 +395,7 @@ only stops when properties with numerical values are found.
 function dict_properties(object)
     p = Dict{Symbol, Any}(n => dict_properties(getproperty(object, n)) for n in propertynames(object))
     p[:type] = typeof(object).name.wrapper
-    
+
     return p
 end
 
