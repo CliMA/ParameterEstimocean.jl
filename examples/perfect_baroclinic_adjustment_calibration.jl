@@ -53,7 +53,7 @@ Nz = 16                   # grid points in the vertical
 stop_time = 1days         # length of run
 save_interval = 0.25days  # save observation every so often
 
-generate_observations = false
+force_generate_observations = false
 nothing # hide
 
 anisotropic_diffusivity = AnisotropicDiffusivity(κh=100, κz=1e-2)
@@ -66,7 +66,7 @@ gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = κ_ske
 
 # ## Generate synthetic observations
 
-if generate_observations || !(isfile(data_path))
+if force_generate_observations || !(isfile(data_path))
     grid = RectilinearGrid(architecture,
                            topology = (Flat, Bounded, Bounded), 
                            size = (Ny, Nz), 
@@ -129,9 +129,13 @@ end
 
 # We use here the `Transformation` functionality to slice up the observation data a bit.
 # In particular, we choose to exclude the 3 grid points on either side of the `y` dimension,
-# and 3 grid points from the bottom of the domain.
+# and 3 grid points from the bottom of the domain. Also, we only use the last 3 snapshots of
+# the observations.
+#
+# We use `SpaceIndices` and `TimeIndices` to denote which space-time indices we would like to
+# keep in observations.
 
-transformation = Transformation(space=SpaceIndices(y=4:Ny-3, z=4:Nz), time=3:5, normalization=ZScore())
+transformation = Transformation(space=SpaceIndices(y=4:Ny-3, z=4:Nz), time=TimeIndices(3:5), normalization=ZScore())
 observations = SyntheticObservations(data_path; field_names=(:b, :c), transformation)
 
 # ## Calibration with Ensemble Kalman Inversion
@@ -216,12 +220,11 @@ nothing #hide
 
 # The `forward_map` output `G` is a two-dimensional matrix whose first dimension is the size of the state
 # space. Here, after the transformation we applied to the observations, we have that the state space size
-# is `` 2 \times (N_y - 6) \times (N_z - 3) \times 4``; the 2 comes from the two tracers we used as observations
-# and the 4 comes from the 4 times in the observations (by default, the inital instance is exclude
-# from the observations. The second dimension of the `forward_map` output is the `ensemble_size`.
+# is `` 2 \times (N_y - 6) \times (N_z - 3) \times 3``; the 2 comes from the two tracers we used as observations
+# and the 3 comes from only using the last three snapshots of the observations. The second dimension of
+# the `forward_map` output is the `ensemble_size`.
 
-@show size(G)
-@show 2 * (Ny-6) * (Nz-3) * 4
+@show size(G) == (2 * (Ny-6) * (Nz-3) * 3, ensemble_size)
 
 # Since above we computed `G` using the true parameters ``θ_*``, all columns of the forward map output should
 # be the same as the observations:

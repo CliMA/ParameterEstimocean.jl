@@ -60,7 +60,7 @@ y = G(θ) + η,
 ```
 
 for the parameters ``θ``, where ``y`` is a "normalized" vector of observations,
-``G(θ)`` is a forward map that predicts the observations, and ``η ∼ N(0, Γ_y)`` is zero-mean
+``G(θ)`` is a forward map that predicts the observations, and ``η ∼ 𝒩(0, Γ_y)`` is zero-mean
 random noise with covariance matrix ``Γ_y`` representing uncertainty in the observations.
 
 By "solve", we mean that the iteration finds the parameter values ``θ`` that minimizes the
@@ -118,13 +118,14 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampl
     Γy = construct_noise_covariance(noise_covariance, y)
 
     ensemble_kalman_process = EnsembleKalmanProcess(Xᵢ, y, Γy, Inversion())
+    iteration = 0
 
     eki′ = EnsembleKalmanInversion(inverse_problem,
                                    ensemble_kalman_process,
                                    y,
                                    Γy,
                                    inverting_forward_map,
-                                   0,
+                                   iteration,
                                    nothing,
                                    resampler,
                                    Xᵢ,
@@ -135,7 +136,6 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampl
     forward_map_output, summary = forward_map_and_summary(eki′)
 
     iteration_summaries = OffsetArray([summary], -1)
-    iteration = 0
 
     eki = EnsembleKalmanInversion(inverse_problem,
                                   eki′.ensemble_kalman_process,
@@ -151,11 +151,6 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampl
     return eki
 end
 
-"""
-    struct IterationSummary{P, M, C, V, E}
-
-Container with information about each iteration of the Ensemble Kalman Process.
-"""
 struct IterationSummary{P, M, C, V, E}
     parameters :: P     # constrained
     ensemble_mean :: M  # constrained
@@ -166,10 +161,10 @@ struct IterationSummary{P, M, C, V, E}
 end
 
 """
-    IterationSummary(eki, parameters, forward_map_output=nothing)
+    IterationSummary(eki, X, forward_map_output=nothing)
 
-Return the summary for ensemble Kalman inversion `eki` with free `parameters` and
-`forward_map_output`.
+Return the summary for ensemble Kalman inversion `eki`
+with unconstrained parameters `X` and `forward_map_output`.
 """
 function IterationSummary(eki, X, forward_map_output=nothing)
     priors = eki.inverse_problem.free_parameters.priors
@@ -213,13 +208,12 @@ function Base.show(io::IO, is::IterationSummary)
     print(io, summary(is), '\n')
 
     print(io, "                      ", param_str.(keys(is.ensemble_mean))..., '\n',
+              "       ensemble_mean: ", param_str.(values(is.ensemble_mean))..., '\n',
+              particle_str("best", is.mean_square_errors[imin], is.parameters[imin]), '\n',
+              particle_str("worst", is.mean_square_errors[imax], is.parameters[imax]), '\n',
               "             minimum: ", param_str.(min_parameters)..., '\n',
               "             maximum: ", param_str.(max_parameters)..., '\n',
-              "       ensemble_mean: ", param_str.(values(is.ensemble_mean))..., '\n',
-              "       ensemble_mean: ", param_str.(values(is.ensemble_mean))..., '\n',
-              "   ensemble_variance: ", param_str.(values(is.ensemble_var))..., '\n',
-              particle_str("best", is.mean_square_errors[imin], is.parameters[imin]), '\n',
-              particle_str("worst", is.mean_square_errors[imax], is.parameters[imax]))
+              "   ensemble_variance: ", param_str.(values(is.ensemble_var))...)
 
     return nothing
 end
@@ -249,7 +243,7 @@ by the ensemble mean and covariance computed based on the `Nθ` × `Nensemble` e
 array `θ`, under the condition that all `Nsample` particles produce successful forward map
 outputs (don't include `NaNs`).
 
-`G` (size(G) =  Noutput × Nensemble`) is the forward map output produced by `θ`.
+`G` (`size(G) =  Noutput × Nensemble`) is the forward map output produced by `θ`.
 
 Returns `Nθ × Nsample` parameter `Array` and `Noutput × Nsample` forward map output `Array`.
 """

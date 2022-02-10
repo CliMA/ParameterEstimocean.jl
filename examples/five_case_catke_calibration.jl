@@ -1,12 +1,3 @@
-# # Perfect CAKTE calibration with Ensemble Kalman Inversion
-
-# ## Install dependencies
-
-# ```julia
-# using Pkg
-# pkg"add OceanTurbulenceParameterEstimation, Oceananigans, Distributions, CairoMakie"
-# ```
-
 using Oceananigans
 using Oceananigans.Units
 using OceanTurbulenceParameterEstimation
@@ -16,52 +7,48 @@ using ElectronDisplay
 
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities:
     CATKEVerticalDiffusivity,
+    SurfaceTKEFlux,
     MixingLength
 
 #####
 ##### Compile LESbrary
 #####
 
-#case_path(case) = @datadep_str("four_day_suite_4m/$(case)_instantaneous_statistics.jld2")
-case_path(case) = @datadep_str("two_day_suite_4m/$(case)_instantaneous_statistics.jld2")
+#case_path(case) = @datadep_str("two_day_suite_1m/$(case)_instantaneous_statistics.jld2")
+case_path(case) = @datadep_str("four_day_suite_1m/$(case)_instantaneous_statistics.jld2")
 
-times = [4hours, 12hours]
+times = [6hours, 24hours, 96hours]
 field_names = (:b, :e, :u, :v)
+regrid_size = nothing #(1, 1, 32)
 
 transformation = (b = ZScore(),
                  u = ZScore(),
                  v = ZScore(),
-                 e = RescaledZScore(1e-3))
+                 e = RescaledZScore(1e-1))
 
 observation_library = Dict()
 
 # Don't optimize u, v for free_convection
 observation_library["free_convection"] =
-    SyntheticObservations(case_path("free_convection"); transformation, times, field_names = (:b, :e))
+    SyntheticObservations(case_path("free_convection"); normalization, times, regrid_size,
+                          field_names = (:b, :e))
                                                                 
 # Don't optimize v for non-rotating cases
 observation_library["strong_wind_no_rotation"] =
-    SyntheticObservations(case_path("strong_wind_no_rotation"); transformation, times, field_names = (:b, :e, :u))
+    SyntheticObservations(case_path("strong_wind_no_rotation"); normalization, times, regrid_size,
+                          field_names = (:b, :e, :u))
 
 # The rest are standard
 for case in ["strong_wind", "strong_wind_weak_cooling", "weak_wind_strong_cooling"]
-    observation_library[case] = SyntheticObservations(case_path(case); field_names, transformation, times)
+    observation_library[case] = SyntheticObservations(case_path(case); field_names, normalization, times, regrid_size)
 end
-
-#=
-cases = ["free_convection",
-         "strong_wind",
-         "strong_wind_no_rotation",
-         "strong_wind_weak_cooling",
-         "weak_wind_strong_cooling"]
-=#
 
 cases = [
          #"free_convection",
+         #"weak_wind_strong_cooling",
          #"strong_wind_weak_cooling",
-         "weak_wind_strong_cooling",
-         #"strong_wind",
-         #"strong_wind_no_rotation",
+         "strong_wind",
+         "strong_wind_no_rotation",
         ]
 
 observations = [observation_library[case] for case in cases]
@@ -70,13 +57,27 @@ observations = [observation_library[case] for case in cases]
 ##### Simulation
 #####
 
-catke_mixing_length = MixingLength(Cᴬu=0.0, Cᴬc=0.0, Cᴬe=0.0,
-                                   Cᴷuʳ=0.0, Cᴷcʳ=0.0, Cᴷeʳ=0.0)
+mixing_length = MixingLength(Cᴬu   = 0.0,
+                             Cᴬc   = 0.0,
+                             Cᴬe   = 0.0,
+                             Cᴸᵇ   = 1.36,
+                             Cᴷu⁻  = 0.101,
+                             Cᴷc⁻  = 0.0574,
+                             Cᴷe⁻  = 3.32,
+                             Cᵟu   = 0.296,
+                             Cᵟc   = 1.32,
+                             Cᵟe   = 1.49,
+                             CᴷRiᶜ = 2.0,
+                             Cᴷuʳ  = 0.0,
+                             Cᴷcʳ  = 0.0,
+                             Cᴷeʳ  = 0.0)
+
+surface_TKE_flux = SurfaceTKEFlux(CᵂwΔ=4.74, Cᵂu★=2.76)
                                   
-catke = CATKEVerticalDiffusivity(mixing_length=catke_mixing_length)
+catke = CATKEVerticalDiffusivity(; Cᴰ=1.779, mixing_length)
 
 simulation = ensemble_column_model_simulation(observations;
-                                              Nensemble = 30,
+                                              Nensemble = 1000,
                                               architecture = GPU(),
                                               tracers = (:b, :e),
                                               closure = catke)
@@ -85,7 +86,7 @@ simulation = ensemble_column_model_simulation(observations;
 # with a `FluxBoundaryCondition` array initialized to 0 and a default
 # time-step. We modify these for our particular problem,
 
-simulation.Δt = 2.0
+simulation.Δt = 20.0
 
 Qᵘ = simulation.model.velocities.u.boundary_conditions.top.condition
 Qᵇ = simulation.model.tracers.b.boundary_conditions.top.condition
@@ -107,40 +108,49 @@ end
 ##### Calibration
 #####
 
+mass = 0.5
 prior_library = Dict()
-prior_library[:Cᴰ]    = ScaledLogitNormal(bounds=(0,  3))
-prior_library[:Cᴸᵇ]   = ScaledLogitNormal(bounds=(0,  2), interval=(0.05, 0.2),  mass=0.9)
-prior_library[:CᵂwΔ]  = ScaledLogitNormal(bounds=(0,  8), interval=(4, 6),       mass=0.9)
-prior_library[:Cᵂu★]  = ScaledLogitNormal(bounds=(0, 10), interval=(6, 8),       mass=0.9)
+prior_library[:Cᴰ]    = ScaledLogitNormal(; bounds=(0, 5), interval=(1.6, 1.9), mass)
+prior_library[:CᵂwΔ]  = ScaledLogitNormal(; bounds=(0, 9), interval=(4.6, 4.8), mass)
+prior_library[:Cᵂu★]  = ScaledLogitNormal(; bounds=(0, 9), interval=(2.6, 2.9), mass)
+prior_library[:Cᴸᵇ]   = ScaledLogitNormal(; bounds=(0, 5), interval=(1.0, 1.6), mass)
 
-prior_library[:Cᴷu⁻]  = ScaledLogitNormal(bounds=(0,  1), interval=(0.05, 0.1),  mass=0.9)
-prior_library[:Cᴷc⁻]  = ScaledLogitNormal(bounds=(0,  3))
-prior_library[:Cᴷe⁻]  = ScaledLogitNormal(bounds=(0,  1), interval=(1e-3, 1e-1), mass=0.9)
+prior_library[:Cᴷu⁻]  = ScaledLogitNormal(; bounds=(0.05, 0.2))
+prior_library[:Cᴷc⁻]  = ScaledLogitNormal(; bounds=(0.05, 0.1))
+prior_library[:Cᴷe⁻]  = ScaledLogitNormal(; bounds=(3, 4))
 
-prior_library[:Cᴷuʳ]  = Normal(0.1, 0.1)
-prior_library[:Cᴷcʳ]  = Normal(0.1, 0.1)
-prior_library[:Cᴷeʳ]  = Normal(0.1, 0.1)
+#prior_library[:Cᴷu⁻]  = ScaledLogitNormal(; bounds=(0, 1), interval=(0.05, 0.2), mass)
+#prior_library[:Cᴷc⁻]  = ScaledLogitNormal(; bounds=(0, 1), interval=(0.01, 0.2), mass)
+#prior_library[:Cᴷe⁻]  = ScaledLogitNormal(; bounds=(0, 9), interval=(3, 4), mass)
 
-prior_library[:Cᴬc]   = ScaledLogitNormal(bounds=(0, 10), interval=(5, 8), mass=0.9)
-prior_library[:Cᴬe]   = ScaledLogitNormal(bounds=(0, 10), interval=(1, 2), mass=0.5)
+prior_library[:Cᵟu]  = ScaledLogitNormal(; bounds=(0, 1), interval=(0.1, 0.5), mass)
+prior_library[:Cᵟc]  = ScaledLogitNormal(; bounds=(0, 3), interval=(1.0, 1.5), mass)
+prior_library[:Cᵟe]  = ScaledLogitNormal(; bounds=(0, 3), interval=(1.0, 2.0), mass)
 
-prior_library[:CᴷRiʷ] = ScaledLogitNormal(bounds=(0, 1))
-prior_library[:CᴷRiᶜ] = Normal(0.2, 0.1)
+prior_library[:Cᴷuʳ]  = ScaledLogitNormal(; bounds=(-1, 1)) #, interval=(-0.05, 0.05), mass)
+prior_library[:Cᴷcʳ]  = ScaledLogitNormal(; bounds=(-1, 1)) #, interval=(-0.05, 0.05), mass)
+prior_library[:Cᴷeʳ]  = ScaledLogitNormal(; bounds=(-1, 1)) #, interval=(-0.05, 0.05), mass)
 
-prior_library[:Cᴬu]   = ScaledLogitNormal(bounds=(0.0, 1.0))
+prior_library[:CᴷRiʷ] = ScaledLogitNormal(; bounds=(0, 2.0))
+prior_library[:CᴷRiᶜ] = ScaledLogitNormal(; bounds=(2, 3))
+
+prior_library[:Cᴬu]   = ScaledLogitNormal(bounds=(0, 0.1))
+prior_library[:Cᴬc]   = ScaledLogitNormal(bounds=(0, 10))
+prior_library[:Cᴬe]   = ScaledLogitNormal(bounds=(0, 0.1))
 
 # No convective adjustment:
-constant_Ri_parameters = (:Cᴰ, :CᵂwΔ, :Cᵂu★, :Cᴸᵇ, :Cᴷu⁻, :Cᴷc⁻, :Cᴷe⁻)
-variable_Ri_parameters = tuple(constant_Ri_parameters..., :Cᴷuʳ, :Cᴷcʳ, :Cᴷeʳ, :CᴷRiʷ, :CᴷRiᶜ)
-constant_Ri_convective_adjustment_parameters = tuple(constant_Ri_parameters..., :Cᴬu, :Cᴬc, :Cᴬe)
-variable_Ri_convective_adjustment_parameters = tuple(variable_Ri_parameters..., :Cᴬu, :Cᴬc, :Cᴬe)
+constant_Ri_parameters = (:Cᴰ, :CᵂwΔ, :Cᵂu★, :Cᴸᵇ, :Cᴷu⁻, :Cᴷc⁻, :Cᴷe⁻, :Cᵟu, :Cᵟc, :Cᵟe)
+variable_Ri_parameters = (:Cᴷuʳ, :Cᴷcʳ, :Cᴷeʳ, :CᴷRiʷ, :CᴷRiᶜ, :Cᴰ, :Cᴸᵇ, :CᵂwΔ, :Cᵂu★)
+convective_adjustment_parameters = (:Cᴬu, :Cᴬc, :Cᴬe)
 
-free_parameters = FreeParameters(prior_library, names=variable_Ri_convective_adjustment_parameters)
+free_parameters = FreeParameters(prior_library, names=tuple(:Cᴷu⁻, :Cᴷc⁻, :Cᴷe⁻, variable_Ri_parameters...))
+#free_parameters = FreeParameters(prior_library, names=variable_Ri_parameters)
 calibration = InverseProblem(observations, simulation, free_parameters)
 
 eki = EnsembleKalmanInversion(calibration;
                               noise_covariance = 1e-1,
-                              resampler = Resampler(acceptable_failure_fraction=1.0, only_failed_particles=true))
+                              resampler = Resampler(acceptable_failure_fraction = 0.5,
+                                                    only_failed_particles = true))
 
 #####
 ##### Plot utils
@@ -156,15 +166,18 @@ for observation in observations
     push!(observed_data, case_data)
 end
 
-function get_modeled_case(icase, name)
+function get_modeled_case(icase, name, k=1)
     model_time_serieses = calibration.time_series_collector.field_time_serieses 
     field = getproperty(model_time_serieses, name)[Nt]
-    return view(interior(field), 1, icase, :)
+    return view(interior(field), k, icase, :)
 end
 
-modeled_data = [NamedTuple(n => get_modeled_case(c, n) for n in field_names) for c = 1:length(observations)]
+mean_modeled_data        = [NamedTuple(n => get_modeled_case(c, n, 1) for n in field_names) for c = 1:length(observations)]
+best_modeled_data        = [NamedTuple(n => get_modeled_case(c, n, 2) for n in field_names) for c = 1:length(observations)]
+latest_best_modeled_data = [NamedTuple(n => get_modeled_case(c, n, 3) for n in field_names) for c = 1:length(observations)]
+worst_modeled_data       = [NamedTuple(n => get_modeled_case(c, n, 4) for n in field_names) for c = 1:length(observations)]
 
-colorcycle =  [:black, :red, :darkblue, :orange, :pink1, :seagreen, :magenta2, :red4, :khaki1,   :darkgreen, :bisque4,
+colorcycle =  [:black, :darkblue, :orange, :pink1, :seagreen, :magenta2, :red4, :khaki1,   :darkgreen, :bisque4,
                :silver, :lightsalmon, :lightseagreen, :teal, :royalblue1, :darkorchid4]
 
 markercycle = [:rect, :utriangle, :star5, :circle, :cross, :+, :pentagon, :ltriangle, :airplane, :diamond, :star4]
@@ -186,15 +199,20 @@ function make_axes(fig, row=1, label=nothing)
     return (ax_b, ax_u, ax_v, ax_e)
 end
 
-function plot_fields!(axs, label, color, linestyle, b, e, u=zeros(size(b)), v=zeros(size(b)))
+function plot_fields!(axs, label, color, b, e, u=zeros(size(b)), v=zeros(size(b)); linewidth=2, linestyle=:solid)
     grid = first(values(observation_library)).grid
     z = znodes(Center, grid)
     b, u, v, e = Tuple(Array(f) for f in (b, u, v, e))
-    ## Note unit conversions below, eg m s⁻¹ -> cm s⁻¹:
-    lines!(axs[1], 1e2 * b, z; color, linestyle, label) 
-    lines!(axs[2], 1e2 * u, z; color, linestyle, label)
-    lines!(axs[3], 1e2 * v, z; color, linestyle, label)
-    lines!(axs[4], 1e4 * e, z; color, linestyle, label)
+
+    for (q, name) in zip((b, u, v, e), ("b", "u", "v", "e"))
+        any(isnan.(q)) && @warn("NaNs found in $label $(name)!")
+    end
+
+    ## Note unit conversions below, eg m s⁻¹ -> cm s⁻¹:cyan
+    lines!(axs[1], 1e2 * b, z; color, linestyle, label, linewidth) 
+    lines!(axs[2], 1e2 * u, z; color, linestyle, label, linewidth)
+    lines!(axs[3], 1e2 * v, z; color, linestyle, label, linewidth)
+    lines!(axs[4], 1e4 * e, z; color, linestyle, label, linewidth)
     return nothing
 end
 
@@ -204,12 +222,19 @@ function compare_model_observations(model_label="modeled")
         label = replace(case, "_" => "\n")
         axs = make_axes(fig, c, label)
         observed = observed_data[c]
-        modeled = modeled_data[c]
+        mean_modeled = mean_modeled_data[c]
+        best_modeled = best_modeled_data[c]
+        latest_best_modeled = latest_best_modeled_data[c]
+        worst_modeled = worst_modeled_data[c]
 
-        plot_fields!(axs, "observed at t = " * prettytime(times[end]), :black, :solid, observed...)
-        plot_fields!(axs, model_label, :blue, :solid, modeled...)
+        plot_fields!(axs, "observed at t = " * prettytime(times[end]), (:gray23, 0.6), observed...; linewidth=4)
+        plot_fields!(axs, "ensemble model mean",                       :navy,          mean_modeled...)
+        plot_fields!(axs, "ensemble model best",                       :purple1,       best_modeled...)
+        plot_fields!(axs, "ensemble model latest best",                :aquamarine4,   latest_best_modeled...)
+        plot_fields!(axs, "ensemble model worst",                      :orangered3,    worst_modeled...)
         [axislegend(ax, position=:rb, labelsize=10) for ax in axs]
     end
+
     return fig
 end
 
@@ -227,7 +252,6 @@ function visualize_parameter_evolution(eki)
         marker = markercycle[i]
         color = colorcycle[i]
         scatterlines!(ax, 0:length(summaries)-1, parent(ensemble_means[name]); marker, color, label)
-        #scatterlines!(ax, 0:length(summaries)-1, parent(ensemble_means[name]); label)
     end
 
     axislegend(ax, position=:rb)
@@ -236,17 +260,36 @@ function visualize_parameter_evolution(eki)
     return nothing
 end
 
+latest_summary = eki.iteration_summaries[end]
+best_error, k_min = findmin(latest_summary.mean_square_errors)
+best_parameters = latest_summary.parameters[k_min]
+
 function latest_best_run!(eki)
     latest_summary = eki.iteration_summaries[end]
+    min_error, k_min = findmin(latest_summary.mean_square_errors)
+    max_error, k_max = findmax(latest_summary.mean_square_errors)
+
+    if min_error < best_error
+        global best_error
+        global best_parameters
+        best_parameters = latest_summary.parameters[k_min]
+        best_error = min_error
+    else
+        @warn "Parameters did not improve over iteration $(eki.iteration)."
+    end
 
     @show latest_summary
+    @show min_error k_min max_error k_max
 
-    # @show best_parameters = latest_summary.ensemble_mean
-    # @show extrema(latest_summary.mean_square_errors)
-    # @show mean(latest_summary.mean_square_errors)
-    
-    latest_best_parameters = latest_summary.ensemble_mean
-    forward_run!(eki.inverse_problem, latest_best_parameters)
+    θ = [latest_summary.ensemble_mean,
+         best_parameters,
+         latest_summary.parameters[k_min],
+         latest_summary.parameters[k_max]]
+
+    @info "Executing a forward run for plotting purposes..."
+    forward_run!(eki.inverse_problem, θ)
+    @info "  ... done with the forward run."
+
     i = eki.iteration
     fig = compare_model_observations("modeled after $i iterations")
     display(fig)
@@ -271,7 +314,7 @@ for (o, observation) in enumerate(observations)
         label = "t = " * prettytime(t)
         names = keys(observation.field_time_serieses)
         data = map(name -> interior(observation.field_time_serieses[name][n])[1, 1, :], names)
-        plot_fields!(axs, label, colorcycle[n], :solid, data...)
+        plot_fields!(axs, label, colorcycle[n], data...)
     end
 end
 

@@ -8,6 +8,8 @@
 # ```
 
 using OceanTurbulenceParameterEstimation, LinearAlgebra, CairoMakie
+
+using OceanTurbulenceParameterEstimation.Transformations: Transformation
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity, MixingLength, SurfaceTKEFlux
 
 # # Perfect observations of CATKE-driven mixing
@@ -51,13 +53,18 @@ data_path = generate_synthetic_observations("catke",
 
 # Next, we load and inspect the observations to make sure they're sensible:
 
-observations = SyntheticObservations(data_path, field_names=(:u, :v, :b, :e), transformation=ZScore())
+transformation = (u = ZScore(),
+                  v = ZScore(),
+                  b = ZScore(),
+                  e = RescaledZScore(1e-1))
+
+observations = SyntheticObservations(data_path; field_names=(:u, :v, :b, :e), transformation)
 
 fig = Figure()
 
 ax_b = Axis(fig[1, 1], xlabel = "Buoyancy\n[10⁻⁴ m s⁻²]", ylabel = "z [m]")
 ax_u = Axis(fig[1, 2], xlabel = "Velocities\n[cm s⁻¹]")
-ax_e = Axis(fig[1, 3], xlabel = "Turbulent kinetic energy\n[10⁻⁴ m² s⁻²]")
+ax_e = Axis(fig[1, 3], xlabel = "Turbulent kinetic energy\n[cm² s⁻²]")
 
 z = znodes(Center, observations.grid)
 
@@ -102,9 +109,9 @@ ensemble_simulation, closure★ = build_ensemble_simulation(observations, archit
 
 # We choose to calibrate a subset of the CATKE parameters,
 
-priors = (Cᴬu = lognormal(mean=0.05, std=0.01),
-          Cᴬc = lognormal(mean=0.6,  std=0.1),
-          Cᴬe = lognormal(mean=0.2,  std=0.04))
+priors = (Cᴬu = lognormal(mean=0.05, std=0.05),
+          Cᴬc = lognormal(mean=0.8,  std=0.1),
+          Cᴬe = lognormal(mean=0.1,  std=0.05))
 
 free_parameters = FreeParameters(priors)
 
@@ -120,8 +127,8 @@ free_parameters = FreeParameters(priors)
 
 calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
 
-# We can check that the first ensemble member of the mapped output, which was run with the "true"
-# parameters, is identical to the mapped observations:
+# We can check that the first ensemble member of the mapped output, which was run with
+# the "true" # parameters, is identical to the mapped observations:
 
 G = forward_map(calibration, θ★)
 y = observation_map(calibration)
@@ -138,12 +145,12 @@ y = observation_map(calibration)
 # https://clima.github.io/EnsembleKalmanProcesses.jl/stable/ensemble_kalman_inversion/).
 
 eki = EnsembleKalmanInversion(calibration;
-                              noise_covariance = 1e-2,
-                              resampler = Resampler(acceptable_failure_fraction=0.1))
+                              noise_covariance = 1e-3,
+                              resampler = Resampler(acceptable_failure_fraction=0.3))
 
 # and perform few iterations to see if we can converge to the true parameter values.
 
-iterate!(eki; iterations = 20)
+iterate!(eki; iterations = 10)
 
 # Last, we visualize the outputs of EKI calibration.
 
@@ -152,9 +159,8 @@ optimal_θ = collect(values(θ★))
 ensemble_mean_θ = map(summary -> collect(values(summary.ensemble_mean)), eki.iteration_summaries)
 θ_variances = map(summary -> collect(values(summary.ensemble_var)), eki.iteration_summaries)
 
-names = keys(θ★)
-absolute_error = NamedTuple(name => map(θ -> θ[p] - θ★[p], ensemble_mean_θ) for (p, name) in enumerate(names))
-relative_error = NamedTuple(name => abs.(absolute_error[name]) ./ θ★[name] for name in names)
+absolute_error = NamedTuple(name => map(θ -> θ[p] - θ★[p], ensemble_mean_θ) for (p, name) in enumerate(free_parameters.names))
+relative_error = NamedTuple(name => abs.(absolute_error[name]) ./ θ★[name] for name in free_parameters.names)
 
 output_distances = map(θ -> norm(forward_map(calibration, θ)[:, 1:1] - y), ensemble_mean_θ)
 
@@ -162,7 +168,7 @@ fig = Figure()
 
 ax_error = Axis(fig[1, 1], title = "Parameter distance", xlabel = "Iteration", ylabel = "|⟨θₙ⟩ - θ★| / θ★")
 
-for name in names
+for name in free_parameters.names
     lines!(ax_error, 0:eki.iteration, parent(relative_error[name]), linewidth=2, label=string(name))
 end
 
@@ -208,8 +214,8 @@ z = znodes(b)
 b★ = 1e4 * interior(b)[1, 1, :]  # convert units m s⁻² -> 10⁻⁴ m s⁻²
 b¹ = 1e4 * interior(b)[2, 1, :]  # convert units m s⁻² -> 10⁻⁴ m s⁻²
 
-e★ = 1e4 * interior(e)[1, 1, :]  # convert units m² s⁻² -> 10⁻⁴ m² s⁻²
-e¹ = 1e4 * interior(e)[2, 1, :]  # convert units m² s⁻² -> 10⁻⁴ m² s⁻²
+e★ = 1e4 * interior(e)[1, 1, :]  # convert units m² s⁻² -> cm² s⁻²
+e¹ = 1e4 * interior(e)[2, 1, :]  # convert units m² s⁻² -> cm² s⁻²
 
 u★ = 1e2 * interior(u)[1, 1, :]  # convert units m s⁻¹ -> cm s⁻¹
 u¹ = 1e2 * interior(u)[2, 1, :]  # convert units m s⁻¹ -> cm s⁻¹
@@ -226,7 +232,7 @@ lines!(ax, b★, z; label=b★_label, linewidth=3)
 lines!(ax, b¹, z; label=b¹_label, linewidth=2)
 axislegend(ax, position=:lb)
 
-ax = Axis(fig[1, 2], xlabel = "Turbulent kinetic energy\n[10⁻⁴ m² s⁻²]")
+ax = Axis(fig[1, 2], xlabel = "Turbulent kinetic energy\n[cm² s⁻²]")
 e★_label = "true e at " * prettytime(t)
 e¹_label = "e with ⟨θ⟩"
 lines!(ax, e★, z; label=e★_label, linewidth=3)
@@ -256,12 +262,12 @@ save("perfect_catke_calibration_particle_realizations.svg", fig); nothing # hide
 fig = Figure()
 
 ax1 = Axis(fig[1, 1])
-ax2 = Axis(fig[2, 1], xlabel = "Cᴬu [m² s⁻¹]", ylabel = "Cᴬc [m² s⁻¹]")
+ax2 = Axis(fig[2, 1], xlabel = "Cᴬu", ylabel = "Cᴬc")
 ax3 = Axis(fig[2, 2])
 scatters = []
 labels = String[]
 
-for iteration in [0, 2, 10, 20]
+for iteration in [0, 1, 5, 10]
     ## Make parameter matrix
     parameters = eki.iteration_summaries[iteration].parameters
     Nensemble = length(parameters)
@@ -288,11 +294,6 @@ Legend(fig[1, 2], scatters, labels, position = :lb)
 
 hidedecorations!(ax1, grid = false)
 hidedecorations!(ax3, grid = false)
-
-xlims!(ax1, 0.025, 0.125)
-xlims!(ax2, 0.025, 0.125)
-ylims!(ax2, 0.35, 0.9)
-ylims!(ax3, 0.35, 0.9)
 
 ##display(fig)
 
