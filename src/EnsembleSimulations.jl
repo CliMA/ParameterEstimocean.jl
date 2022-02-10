@@ -2,7 +2,7 @@ module EnsembleSimulations
 
 using DataDeps
 
-using ..Observations: tupleit
+using ..Observations: SyntheticObservations, tupleit
 
 using Oceananigans
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
@@ -15,7 +15,6 @@ function ensemble_column_model_simulation(observations;
                                           architecture = CPU(),
                                           tracers = :b,
                                           buoyancy = BuoyancyTracer(),
-                                          magic_boundary_conditions = true,
                                           kwargs...)
 
     observations isa Vector || (observations = [observations]) # Singleton batch
@@ -44,11 +43,10 @@ function ensemble_column_model_simulation(observations;
     momentum_boundary_conditions =
         (; u = FieldBoundaryConditions(top = FluxBoundaryCondition(zeros(grid, Nensemble, Nbatch))))
 
-    tracers = tupleit(tracers)
-
     ensemble_tracer_bcs() = FieldBoundaryConditions(top = FluxBoundaryCondition(zeros(grid, Nensemble, Nbatch)),
-                                                   bottom = GradientBoundaryCondition(zeros(grid, Nensemble, Nbatch)))
+                                                    bottom = GradientBoundaryCondition(zeros(grid, Nensemble, Nbatch)))
 
+    tracers = tupleit(tracers)
     tracer_boundary_conditions = NamedTuple(name => ensemble_tracer_bcs() for name in tracers if name != :e)
 
     boundary_conditions = merge(momentum_boundary_conditions, tracer_boundary_conditions)
@@ -63,13 +61,13 @@ function ensemble_column_model_simulation(observations;
     return ensemble_simulation
 end
 
-function is_registered_observation(observation)
-
-    pathparts = splitpath(path)
+function is_registered(obs::SyntheticObservations)
+    pathparts = splitpath(obs.path)
     name = first(pathparts)
     return name ∈ keys(DataDeps.registry)
 end
 
+is_registered(observations) = all(is_registered(obs) for obs in observations)
 
 end # module
 
