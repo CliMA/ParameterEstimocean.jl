@@ -8,6 +8,8 @@
 # ```
 
 using OceanTurbulenceParameterEstimation, LinearAlgebra, CairoMakie
+
+using OceanTurbulenceParameterEstimation.Transformations: Transformation
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity, MixingLength, SurfaceTKEFlux
 
 # # Perfect observations of CATKE-driven mixing
@@ -51,7 +53,12 @@ data_path = generate_synthetic_observations("catke",
 
 # Next, we load and inspect the observations to make sure they're sensible:
 
-observations = SyntheticObservations(data_path, field_names=(:u, :v, :b, :e), transformation=ZScore())
+transformation = (u = Transformation(normalization=ZScore()),
+                  v = Transformation(normalization=ZScore()),
+                  b = Transformation(normalization=ZScore()),
+                  e = Transformation(normalization=RescaledZScore(1e-1)))
+
+observations = SyntheticObservations(data_path, field_names=(:u, :v, :b, :e); transformation)
 
 fig = Figure()
 
@@ -138,7 +145,7 @@ y = observation_map(calibration)
 # https://clima.github.io/EnsembleKalmanProcesses.jl/stable/ensemble_kalman_inversion/).
 
 eki = EnsembleKalmanInversion(calibration;
-                              noise_covariance = 5e-3,
+                              noise_covariance = 1e-3,
                               resampler = Resampler(acceptable_failure_fraction=0.3))
 
 # and perform few iterations to see if we can converge to the true parameter values.
