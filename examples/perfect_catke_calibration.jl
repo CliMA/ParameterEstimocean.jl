@@ -53,12 +53,12 @@ data_path = generate_synthetic_observations("catke",
 
 # Next, we load and inspect the observations to make sure they're sensible:
 
-transformation = (u = Transformation(normalization=ZScore()),
-                  v = Transformation(normalization=ZScore()),
-                  b = Transformation(normalization=ZScore()),
-                  e = Transformation(normalization=RescaledZScore(1e-1)))
+transformation = (u = ZScore(),
+                  v = ZScore(),
+                  b = ZScore(),
+                  e = RescaledZScore(1e-1))
 
-observations = SyntheticObservations(data_path, field_names=(:u, :v, :b, :e); transformation)
+observations = SyntheticObservations(data_path; field_names=(:u, :v, :b, :e), transformation)
 
 fig = Figure()
 
