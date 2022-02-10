@@ -104,7 +104,7 @@ function __init__()
     dep = DataDep("four_day_suite_4m", "Idealized 4 day simulation data with 4m vertical resolution", four_day_suite_4m_paths)
     DataDeps.register(dep)
 
-    dep = DataDep("six_day_suite_1m", "Idealized 6 day simulation data with 1m vertical resolution", six_day_suite_2m_paths)
+    dep = DataDep("six_day_suite_1m", "Idealized 6 day simulation data with 1m vertical resolution", six_day_suite_1m_paths)
     DataDeps.register(dep)
 
     dep = DataDep("six_day_suite_2m", "Idealized 6 day simulation data with 2m vertical resolution", six_day_suite_2m_paths)
