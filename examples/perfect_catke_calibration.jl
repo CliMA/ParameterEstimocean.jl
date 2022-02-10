@@ -267,7 +267,7 @@ ax3 = Axis(fig[2, 2])
 scatters = []
 labels = String[]
 
-for iteration in [0, 2, 5, 15, 30]
+for iteration in [0, 1, 5, 10]
     ## Make parameter matrix
     parameters = eki.iteration_summaries[iteration].parameters
     Nensemble = length(parameters)
