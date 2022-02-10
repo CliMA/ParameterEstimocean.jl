@@ -14,17 +14,16 @@ using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities:
 ##### Compile LESbrary
 #####
 
-#case_path(case) = @datadep_str("two_day_suite_1m/$(case)_instantaneous_statistics.jld2")
-case_path(case) = @datadep_str("four_day_suite_1m/$(case)_instantaneous_statistics.jld2")
+case_path(case) = @datadep_str("four_day_suite_4m/$(case)_instantaneous_statistics.jld2")
 
-times = [6hours, 24hours, 96hours]
+times = [96hours - 12hour, 96hours]
 field_names = (:b, :e, :u, :v)
 regrid_size = nothing #(1, 1, 32)
 
 transformation = (b = ZScore(),
-                 u = ZScore(),
-                 v = ZScore(),
-                 e = RescaledZScore(1e-1))
+                  u = RescaledZScore(1e-2),
+                  v = RescaledZScore(1e-2),
+                  e = RescaledZScore(1e-2))
 
 observation_library = Dict()
 
@@ -47,8 +46,8 @@ cases = [
          "free_convection",
          "weak_wind_strong_cooling",
          "strong_wind_weak_cooling",
-         #"strong_wind",
-         #"strong_wind_no_rotation",
+         "strong_wind",
+         "strong_wind_no_rotation",
         ]
 
 observations = [observation_library[case] for case in cases]
@@ -57,7 +56,7 @@ observations = [observation_library[case] for case in cases]
 ##### Simulation
 #####
 
-# Constant Ri
+# Constant Ri, no convection
 mixing_length = MixingLength(Cᴬu   = 0.0,
                              Cᴬc   = 0.0,
                              Cᴬe   = 0.0,
@@ -65,9 +64,9 @@ mixing_length = MixingLength(Cᴬu   = 0.0,
                              Cᴷu⁻  = 0.101,
                              Cᴷc⁻  = 0.0574,
                              Cᴷe⁻  = 3.32,
-                             Cᵟu   = 0.296,
-                             Cᵟc   = 1.32,
-                             Cᵟe   = 1.49,
+                             Cᵟu   = 0.5,
+                             Cᵟc   = 0.5,
+                             Cᵟe   = 0.5,
                              CᴷRiᶜ = 2.0,
                              Cᴷuʳ  = 0.0,
                              Cᴷcʳ  = 0.0,
@@ -76,39 +75,53 @@ mixing_length = MixingLength(Cᴬu   = 0.0,
 surface_TKE_flux = SurfaceTKEFlux(CᵂwΔ=4.74, Cᵂu★=2.76)
 catke = CATKEVerticalDiffusivity(; Cᴰ=1.78, mixing_length)
 
-#=
-# Variable Ri
-mixing_length = MixingLength(Cᴬu   = 0.0,
-                             Cᴬc   = 0.0,
-                             Cᴬe   = 0.0,
-                             Cᴸᵇ   = 1.36,
-                             Cᴷu⁻  = 0.101,
-                             Cᴷc⁻  = 0.0574,
-                             Cᴷe⁻  = 3.32,
-                             Cᵟu   = 0.296,
-                             Cᵟc   = 1.32,
-                             Cᵟe   = 1.49,
-                             CᴷRiᶜ = 2.11,
-                             CᴷRiʷ = 1.27,
-                             Cᴷuʳ  = -0.790,
-                             Cᴷcʳ  = -0.430,
-                             Cᴷeʳ  = -0.878)
+#####
+##### Calibration
+#####
 
-surface_TKE_flux = SurfaceTKEFlux(CᵂwΔ=4.68, Cᵂu★=2.47)
-catke = CATKEVerticalDiffusivity(; Cᴰ=1.53, mixing_length)
-=#
+mass = 0.6
+prior_library = Dict()
+prior_library[:CᵂwΔ]  = ScaledLogitNormal(; bounds=(0, 12), interval=(2, 5), mass)
+prior_library[:Cᵂu★]  = ScaledLogitNormal(; bounds=(0, 11), interval=(3, 5), mass)
+prior_library[:Cᴸᵇ]   = ScaledLogitNormal(; bounds=(0,  6), interval=(0.1, 2), mass)
+prior_library[:Cᴰ]    = ScaledLogitNormal(; bounds=(0,  6), interval=(0.5, 2), mass)
+
+prior_library[:Cᴷu⁻]  = ScaledLogitNormal(; bounds=(0, 0.3)) #, interval=(0.01, 0.1), mass)
+prior_library[:Cᴷc⁻]  = ScaledLogitNormal(; bounds=(0, 0.5)) #, interval=(0.5, 1.0), mass)
+prior_library[:Cᴷe⁻]  = ScaledLogitNormal(; bounds=(0, 10)) #, interval=(1.5, 3), mass)
+
+prior_library[:Cᴷuʳ]  = ScaledLogitNormal(; bounds=(0,  3), interval=(2, 2.5), mass)
+prior_library[:Cᴷcʳ]  = ScaledLogitNormal(; bounds=(0,  6), interval=(3, 5), mass)
+prior_library[:Cᴷeʳ]  = ScaledLogitNormal(; bounds=(0,  1)) #, interval=(0.5, 2), mass)
+
+prior_library[:CᴷRiᶜ] = ScaledLogitNormal(; bounds=(1, 3)) #)
+prior_library[:CᴷRiʷ] = ScaledLogitNormal(; bounds=(0, 0.3)) #)
+
+prior_library[:Cᴬu]   = ScaledLogitNormal(; bounds=(0, 1))
+prior_library[:Cᴬc]   = ScaledLogitNormal(; bounds=(0, 10), interval=(3, 6), mass)
+prior_library[:Cᴬe]   = ScaledLogitNormal(; bounds=(0, 2)) #, interval=(1, 3), mass)
+
+prior_library[:Cᵟu]  = ScaledLogitNormal(; bounds=(0, 10))
+prior_library[:Cᵟc]  = ScaledLogitNormal(; bounds=(0, 10))
+prior_library[:Cᵟe]  = ScaledLogitNormal(; bounds=(0, 10))
+
+# No convective adjustment:
+constant_Ri_parameters = (:Cᴰ, :CᵂwΔ, :Cᵂu★, :Cᴸᵇ, :Cᴷu⁻, :Cᴷc⁻, :Cᴷe⁻, :Cᵟu, :Cᵟc, :Cᵟe)
+variable_Ri_parameters = (:Cᴷuʳ, :Cᴷcʳ, :Cᴷeʳ, :CᴷRiʷ, :CᴷRiᶜ, :Cᴰ, :Cᴸᵇ, :CᵂwΔ, :Cᵂu★)
+convective_adjustment_parameters = (:Cᴬc, :Cᴬe) # Cᴬu
+
+# For tomorrow
+parameter_names = (:CᵂwΔ, :Cᵂu★, :Cᴷe⁻, :Cᴸᵇ, :Cᴰ, :Cᴷc⁻, :Cᴷu⁻, :Cᴷuʳ, :Cᴷcʳ, :Cᴷeʳ, :CᴷRiᶜ, :CᴷRiʷ, :Cᴬc, :Cᴬe)
+free_parameters = FreeParameters(prior_library, names=parameter_names)
+
+noise_covariance = 1e2
+simulation.Δt = 5.0 
 
 simulation = ensemble_column_model_simulation(observations;
                                               Nensemble = 1000,
                                               architecture = GPU(),
                                               tracers = (:b, :e),
                                               closure = catke)
-
-# `ensemble_column_model_simulation` sets up `simulation`
-# with a `FluxBoundaryCondition` array initialized to 0 and a default
-# time-step. We modify these for our particular problem,
-
-simulation.Δt = 20.0
 
 Qᵘ = simulation.model.velocities.u.boundary_conditions.top.condition
 Qᵇ = simulation.model.tracers.b.boundary_conditions.top.condition
@@ -126,52 +139,9 @@ for (case, obs) in enumerate(observations)
     view(simulation.model.coriolis, :, case) .= Ref(FPlane(f=f))
 end
 
-#####
-##### Calibration
-#####
-
-mass = 0.5
-prior_library = Dict()
-prior_library[:Cᴰ]    = ScaledLogitNormal(; bounds=(0, 5), interval=(1.6, 1.9), mass)
-prior_library[:CᵂwΔ]  = ScaledLogitNormal(; bounds=(0, 9), interval=(4.6, 4.8), mass)
-prior_library[:Cᵂu★]  = ScaledLogitNormal(; bounds=(0, 9), interval=(2.6, 2.9), mass)
-prior_library[:Cᴸᵇ]   = ScaledLogitNormal(; bounds=(0, 5), interval=(1.0, 1.6), mass)
-
-prior_library[:Cᴷu⁻]  = ScaledLogitNormal(; bounds=(0.05, 0.2))
-prior_library[:Cᴷc⁻]  = ScaledLogitNormal(; bounds=(0.05, 0.1))
-prior_library[:Cᴷe⁻]  = ScaledLogitNormal(; bounds=(3, 4))
-
-#prior_library[:Cᴷu⁻]  = ScaledLogitNormal(; bounds=(0, 1), interval=(0.05, 0.2), mass)
-#prior_library[:Cᴷc⁻]  = ScaledLogitNormal(; bounds=(0, 1), interval=(0.01, 0.2), mass)
-#prior_library[:Cᴷe⁻]  = ScaledLogitNormal(; bounds=(0, 9), interval=(3, 4), mass)
-
-prior_library[:Cᵟu]  = ScaledLogitNormal(; bounds=(0, 1), interval=(0.1, 0.5), mass)
-prior_library[:Cᵟc]  = ScaledLogitNormal(; bounds=(0, 3), interval=(1.0, 1.5), mass)
-prior_library[:Cᵟe]  = ScaledLogitNormal(; bounds=(0, 3), interval=(1.0, 2.0), mass)
-
-prior_library[:Cᴷuʳ]  = ScaledLogitNormal(; bounds=(-1, 1)) #, interval=(-0.05, 0.05), mass)
-prior_library[:Cᴷcʳ]  = ScaledLogitNormal(; bounds=(-1, 1)) #, interval=(-0.05, 0.05), mass)
-prior_library[:Cᴷeʳ]  = ScaledLogitNormal(; bounds=(-1, 1)) #, interval=(-0.05, 0.05), mass)
-
-prior_library[:CᴷRiʷ] = ScaledLogitNormal(; bounds=(0, 2.0))
-prior_library[:CᴷRiᶜ] = ScaledLogitNormal(; bounds=(2, 3))
-
-prior_library[:Cᴬu]   = ScaledLogitNormal(bounds=(0, 0.1))
-prior_library[:Cᴬc]   = ScaledLogitNormal(bounds=(0, 10))
-prior_library[:Cᴬe]   = ScaledLogitNormal(bounds=(0, 0.1))
-
-# No convective adjustment:
-constant_Ri_parameters = (:Cᴰ, :CᵂwΔ, :Cᵂu★, :Cᴸᵇ, :Cᴷu⁻, :Cᴷc⁻, :Cᴷe⁻, :Cᵟu, :Cᵟc, :Cᵟe)
-variable_Ri_parameters = (:Cᴷuʳ, :Cᴷcʳ, :Cᴷeʳ, :CᴷRiʷ, :CᴷRiᶜ, :Cᴰ, :Cᴸᵇ, :CᵂwΔ, :Cᵂu★)
-convective_adjustment_parameters = (:Cᴬu, :Cᴬc, :Cᴬe)
-
-#free_parameters = FreeParameters(prior_library, names=tuple(:Cᴷu⁻, :Cᴷc⁻, :Cᴷe⁻, variable_Ri_parameters...))
-#free_parameters = FreeParameters(prior_library, names=variable_Ri_parameters)
-free_parameters = FreeParameters(prior_library, names=convective_adjustment_parameters)
 calibration = InverseProblem(observations, simulation, free_parameters)
 
-eki = EnsembleKalmanInversion(calibration;
-                              noise_covariance = 1e-1,
+eki = EnsembleKalmanInversion(calibration; noise_covariance,
                               resampler = Resampler(acceptable_failure_fraction = 0.5,
                                                     only_failed_particles = true))
 
@@ -195,12 +165,16 @@ function get_modeled_case(icase, name, k=1)
     return view(interior(field), k, icase, :)
 end
 
-mean_modeled_data        = [NamedTuple(n => get_modeled_case(c, n, 1) for n in keys(observations[c].field_time_serieses)) for c = 1:length(observations)]
-best_modeled_data        = [NamedTuple(n => get_modeled_case(c, n, 2) for n in keys(observations[c].field_time_serieses)) for c = 1:length(observations)]
-latest_best_modeled_data = [NamedTuple(n => get_modeled_case(c, n, 3) for n in keys(observations[c].field_time_serieses)) for c = 1:length(observations)]
-worst_modeled_data       = [NamedTuple(n => get_modeled_case(c, n, 4) for n in keys(observations[c].field_time_serieses)) for c = 1:length(observations)]
+mean_modeled_data        = [NamedTuple(n => get_modeled_case(c, n, 1)
+                                       for n in keys(observations[c].field_time_serieses)) for c = 1:length(observations)]
+best_modeled_data        = [NamedTuple(n => get_modeled_case(c, n, 2)
+                                       for n in keys(observations[c].field_time_serieses)) for c = 1:length(observations)]
+latest_best_modeled_data = [NamedTuple(n => get_modeled_case(c, n, 3)
+                                       for n in keys(observations[c].field_time_serieses)) for c = 1:length(observations)]
+worst_modeled_data       = [NamedTuple(n => get_modeled_case(c, n, 4)
+                                       for n in keys(observations[c].field_time_serieses)) for c = 1:length(observations)]
 
-colorcycle =  [:black, :darkblue, :orange, :pink1, :seagreen, :magenta2, :red4, :khaki1,   :darkgreen, :bisque4,
+colorcycle =  [:black, :royalblue1, :darkgreen, :lightsalmon, :seagreen, :magenta2, :red4, :khaki1,   :darkgreen, :bisque4,
                :silver, :lightsalmon, :lightseagreen, :teal, :royalblue1, :darkorchid4]
 
 markercycle = [:rect, :utriangle, :star5, :circle, :cross, :+, :pentagon, :ltriangle, :airplane, :diamond, :star4]
@@ -236,6 +210,7 @@ function plot_fields!(axs, label, color, b, e, u=zeros(size(b)), v=zeros(size(b)
     lines!(axs[2], 1e2 * u, z; color, linestyle, label, linewidth)
     lines!(axs[3], 1e2 * v, z; color, linestyle, label, linewidth)
     lines!(axs[4], 1e4 * e, z; color, linestyle, label, linewidth)
+
     return nothing
 end
 
@@ -251,33 +226,82 @@ function compare_model_observations(model_label="modeled")
         worst_modeled = worst_modeled_data[c]
 
         plot_fields!(axs, "observed at t = " * prettytime(times[end]), (:gray23, 0.6), observed...; linewidth=4)
-        plot_fields!(axs, "ensemble model mean",                       :navy,          mean_modeled...)
-        plot_fields!(axs, "ensemble model best",                       :purple1,       best_modeled...)
-        plot_fields!(axs, "ensemble model latest best",                :aquamarine4,   latest_best_modeled...)
-        plot_fields!(axs, "ensemble model worst",                      :orangered3,    worst_modeled...)
-        [axislegend(ax, position=:rb, labelsize=10) for ax in axs]
+        plot_fields!(axs, "mean",        :navy,        mean_modeled...)
+        plot_fields!(axs, "latest best", :aquamarine4, latest_best_modeled...)
+        plot_fields!(axs, "worst",       :orangered3,  worst_modeled...)
+
+        # plot_fields!(axs, "best",        :purple1,       best_modeled...)
+
+        fig[1, 6] = Legend(fig, axs[1]) 
     end
 
     return fig
 end
 
+function min_max_parameters(summary)
+    names = keys(summary.ensemble_mean)
+    Nens = length(summary.parameters)
+    parameter_matrix = [summary.parameters[k][name] for name in names, k = 1:Nens]
+    θ_min = minimum(parameter_matrix, dims=2)
+    θ_max = maximum(parameter_matrix, dims=2)
+    return θ_min, θ_max
+end
+
 function visualize_parameter_evolution(eki)
     summaries = eki.iteration_summaries
-    parameter_names = keys(first(summaries).ensemble_mean)
-    ensemble_means = NamedTuple(name => map(summary -> summary.ensemble_mean[name], summaries)
-                                for name in parameter_names)
+    Niters = length(summaries)
+    names = eki.inverse_problem.free_parameters.names
+    θ_mean = NamedTuple(name => map(s -> s.ensemble_mean[name], summaries) for name in names)
 
-    fig = Figure()
-    ax = Axis(fig[1, 1], xlabel = "Iteration", ylabel = "Parameter value")
+    k_best(s) = findmin(s.mean_square_errors)[2]
+    θ_best = NamedTuple(name => map(s -> s.parameters[k_best(s)][name], summaries) for name in names)
 
-    for (i, name) in enumerate(parameter_names)
+    θ_min_max = [min_max_parameters(s) for s in summaries]
+    θ_min = [[θn[1][i] for θn in θ_min_max] for i in 1:length(names)]
+    θ_max = [[θn[2][i] for θn in θ_min_max] for i in 1:length(names)]
+
+    θᵢ = NamedTuple(name => first(θ_mean[name]) for name in names)
+    Δθ = NamedTuple(name => (θ_mean[name] .- θᵢ[name]) ./ θᵢ[name] for name in names)
+    iterations = 0:length(summaries)-1
+
+    fig = Figure(resolution=(1200, 1200))
+    ax1 = Axis(fig[1:3, 1], xlabel = "Iteration", ylabel = "Δθ")
+    for (i, name) in enumerate(names)
         label = string(name)
         marker = markercycle[i]
         color = colorcycle[i]
-        scatterlines!(ax, 0:length(summaries)-1, parent(ensemble_means[name]); marker, color, label)
+        scatterlines!(ax1, iterations, parent(Δθ[name]); marker, color=(color, 0.8), label, linewidth=4)
     end
 
-    axislegend(ax, position=:rb)
+    fig[1:3, 2] = Legend(fig, ax1)
+
+    Nparts = 3
+    Nθpart = floor(Int, length(names) / Nparts)
+
+    for p in 1:Nparts
+        axp = Axis(fig[p+3, 1], xlabel = "Iteration", ylabel = "θ")
+
+        if p == Nparts
+            np = UnitRange((p-1) * Nθpart + 1, length(names))
+        else
+            np = UnitRange((p-1) * Nθpart + 1, p * Nθpart)
+        end
+
+        partnames = names[np]
+
+        for (n, name) in enumerate(partnames)
+            i = (p - 1) * Nθpart + n
+            label = string(name)
+            marker = markercycle[i]
+            color = colorcycle[i]
+            scatterlines!(axp, iterations, parent(θ_mean[name]); marker, color=(color, 0.6), label, linewidth=4)
+            lines!(axp, iterations, parent(θ_best[name]); color, linewidth=2)
+            band!(axp, iterations, parent(θ_min[i]), parent(θ_max[i]), color=(color, 0.3))
+        end
+
+        fig[p+3, 2] = Legend(fig, axp)
+    end
+
     display(fig)
 
     return nothing
@@ -302,7 +326,6 @@ function latest_best_run!(eki)
     end
 
     @show latest_summary
-    @show min_error k_min max_error k_max
 
     θ = [latest_summary.ensemble_mean,
          best_parameters,
@@ -352,9 +375,9 @@ latest_best_run!(eki)
 
 # Continuously update
 for i = 1:100
-    @info "Iterating..."
+    @info "Performing two iterations..."
     start_time = time_ns()
-    iterate!(eki)
+    iterate!(eki, iterations=2)
     elapsed = 1e-9 * (time_ns() - start_time)
     @info string("   done. (", prettytime(elapsed), ")")
     latest_best_run!(eki)
