@@ -325,21 +325,37 @@ Base.length(p::FreeParameters) = length(p.names)
 
 const ParameterValue = Union{Number, AbstractArray}
 
-dict_properties(d::ParameterValue) = d
+construct_object(d::ParameterValue, parameters; name=nothing) =
+    name ∈ keys(parameters) ? getproperty(parameters, name) : d
 
-function dict_properties(d)
-    p = Dict{Symbol, Any}(n => dict_properties(getproperty(d, n)) for n in propertynames(d))
-    p[:type] = typeof(d).name.wrapper
+function construct_object(specification_dict, parameters;
+                          name=nothing, type_parameter=nothing)
+
+    type = Constructor = specification_dict[:type]
+    kwargs_vector = [construct_object(specification_dict[name], parameters; name)
+                        for name in fieldnames(type) if name != :type]
+
+    return isnothing(type_parameter) ? Constructor(kwargs_vector...) : 
+                                       Constructor{type_parameter}(kwargs_vector...)
+end
+
+"""
+    dict_properties(object)
+
+Return a dictionary with all properties of an `object` and their values, including the 
+`object`'s type name. If any of the `object`'s properties is not a numerical value but
+instead a composite type, then `dict_properties` is called recursively on that `object`'s
+property returning a dictionary with all properties of that composite type. Recursion
+only stops when properties with numerical values are found.
+"""
+function dict_properties(object)
+    p = Dict{Symbol, Any}(n => dict_properties(getproperty(object, n)) for n in propertynames(object))
+    p[:type] = typeof(object).name.wrapper
+    
     return p
 end
 
-construct_object(d::ParameterValue, parameters; name=nothing) = name ∈ keys(parameters) ? getproperty(parameters, name) : d
-
-function construct_object(specification_dict, parameters; name=nothing, type_parameter=nothing)
-    type = Constructor = specification_dict[:type]
-    kwargs_vector = [construct_object(specification_dict[name], parameters; name) for name in fieldnames(type) if name != :type]
-    return isnothing(type_parameter) ? Constructor(kwargs_vector...) : Constructor{type_parameter}(kwargs_vector...)
-end
+dict_properties(object::ParameterValue) = object
 
 """
     closure_with_parameters(closure, parameters)
