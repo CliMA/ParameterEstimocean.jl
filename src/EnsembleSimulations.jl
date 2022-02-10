@@ -61,13 +61,5 @@ function ensemble_column_model_simulation(observations;
     return ensemble_simulation
 end
 
-function is_registered(obs::SyntheticObservations)
-    pathparts = splitpath(obs.path)
-    name = first(pathparts)
-    return name ∈ keys(DataDeps.registry)
-end
-
-is_registered(observations) = all(is_registered(obs) for obs in observations)
-
 end # module
 
