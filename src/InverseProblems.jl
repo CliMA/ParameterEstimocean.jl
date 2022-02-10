@@ -163,11 +163,11 @@ end
 Run `ip.simulation` forward with `parameters` and return the data,
 transformed into an array format expected by `EnsembleKalmanProcesses.jl`.
 """
-function forward_map(ip, parameters)
+function forward_map(ip, parameters; suppress=true)
 
     # Run the simulation forward and populate the time series collector
     # with model data.
-    forward_run!(ip, parameters)
+    forward_run!(ip, parameters; suppress=true)
 
     # Transform the model data according to `ip.output_map` into
     # the array format expected by EnsembleKalmanProcesses.jl
