@@ -372,14 +372,13 @@ a parameter is found whose name exists in the named tuple we provided, its value
 then replaced with the value provided.
 
 ```jldoctest closure_with_parameters
-
-julia> new_parameters = (a = π, d = 7)
-(a = π, d = 7)
+julia> new_parameters = (a = 12, d = 7)
+(a = 12, d = 7)
 
 julia> using OceanTurbulenceParameterEstimation.Parameters: closure_with_parameters
 
 julia> closure_with_parameters(closure, new_parameters)
-Closure(ClosureSubModel(π, 2), 3)
+Closure(ClosureSubModel(12, 2), 3)
 ```
 """
 closure_with_parameters(closure, parameters) = construct_object(dict_properties(closure), parameters)
