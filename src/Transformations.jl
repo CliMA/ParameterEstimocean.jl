@@ -68,10 +68,20 @@ end
 ##### Time transformations
 #####
 
+# Convert Integers to UnitRange
+int_to_range(t) = t
+int_to_range(t::Int) = UnitRange(t, t)
+
 time_transform(::Nothing, data) = data
 
 struct TimeIndices{T}
     t :: T
+
+    function TimeIndices(t)
+        t = int_to_range(t)
+        T = typeof(t)
+        return new{T}(t)
+    end
 end
 
 TimeIndices(; t) = TimeIndices(t)
@@ -110,8 +120,12 @@ struct SpaceIndices{X, Y, Z}
     z :: Z
 end
 
+
 function SpaceIndices(; x=:, y=:, z=:)
     x isa Colon || throw(ArgumentError("Cannot transform in x because x is reserved for the ensemble dimension."))
+    x = int_to_range(x)
+    y = int_to_range(y)
+    z = int_to_range(z)
     return SpaceIndices(x, y, z)
 end
 
