@@ -390,7 +390,7 @@ Return a dictionary with all properties of an `object` and their values, includi
 `object`'s type name. If any of the `object`'s properties is not a numerical value but
 instead a composite type, then `dict_properties` is called recursively on that `object`'s
 property returning a dictionary with all properties of that composite type. Recursion
-only stops when properties with numerical values are found.
+ends when properties of type `ParameterValue` are found.
 """
 function dict_properties(object)
     p = Dict{Symbol, Any}(n => dict_properties(getproperty(object, n)) for n in propertynames(object))
