@@ -326,8 +326,8 @@ Base.length(p::FreeParameters) = length(p.names)
 const ParameterValue = Union{Number, AbstractArray}
 
 """
-    construct_object(specification_dict, parameters;
-                     name=nothing, type_parameter=nothing)
+    construct_object(specification_dict, parameters; name=nothing, type_parameter=nothing)
+    
     construct_object(d::ParameterValue, parameters; name=nothing)
 
 Return a composite type object whose properties are prescribed by the `specification_dict`
