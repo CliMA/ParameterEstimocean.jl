@@ -481,14 +481,13 @@ function update_closure_ensemble_member!(closure_tuple::Tuple, p_ensemble, param
 end
 
 """
-    new_closure_ensemble(closures, θ, arch)
+    new_closure_ensemble(closures, θ, arch=CPU())
 
-Return a new set of `closures` in which all closures that have
-free parameters are updated. Closures with free parameters are
-expected as `Arrays` of `TurbulenceClosures`, and this allows
-`new_closure_ensemble` to go through all closures in `closures`
-and only update the parameters for the any closure that is of
-type `AbstractArray`.
+Return a new set of `closures` in which all closures that have free parameters are updated.
+Closures with free parameters are expected as `AbstractArray` of `TurbulenceClosures`, and
+this allows `new_closure_ensemble` to go through all closures in `closures` and only update
+the parameters for the any closure that is of type `AbstractArray`. The `arch`itecture
+(`CPU()` or `GPU()`) defines whethere `Array` or `CuArray` is returned.
 """
 function new_closure_ensemble(closures::AbstractArray, θ, arch)
     cpu_closures = arch_array(CPU(), closures)
@@ -501,6 +500,7 @@ function new_closure_ensemble(closures::AbstractArray, θ, arch)
 end
 new_closure_ensemble(closures::Tuple, θ, arch) = 
     Tuple(new_closure_ensemble(closure, θ, arch) for closure in closures)
+
 new_closure_ensemble(closure, θ, arch) = closure
 
 end # module

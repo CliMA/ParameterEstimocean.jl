@@ -51,10 +51,10 @@ end
 
 """
     InverseProblem(observations,
-                        simulation,
-                        free_parameters;
-                        output_map = ConcatenatedOutputMap(),
-                        time_series_collector = nothing)
+                simulation,
+                free_parameters;
+                output_map = ConcatenatedOutputMap(),
+                time_series_collector = nothing)
 
 Return an `InverseProblem`.
 """
@@ -137,7 +137,11 @@ Nobservations(grid::TwoDimensionalEnsembleGrid) = 1
 Nensemble(grid::Union{OneDimensionalEnsembleGrid, TwoDimensionalEnsembleGrid}) = grid.Nx
 Nensemble(ip::InverseProblem) = Nensemble(ip.simulation.model.grid)
 
-""" Transform and return `ip.observations` appropriate for `ip.output_map`. """
+"""
+    observation_map(ip::InverseProblem)
+
+Transform and return `ip.observations` appropriately for `ip.output_map`.
+"""
 observation_map(ip::InverseProblem) = transform_time_series(ip.output_map, ip.observations)
 
 """
@@ -380,4 +384,3 @@ observation_map_variance_across_time(map::ConcatenatedOutputMap, observations::V
 observation_map_variance_across_time(ip::InverseProblem) = observation_map_variance_across_time(ip.output_map, ip.observations)
 
 end # module
-
