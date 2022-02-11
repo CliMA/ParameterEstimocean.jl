@@ -52,11 +52,12 @@ format = Documenter.HTML(
 pages = [
     "Home" => "index.md",
     "Installation Instructions" => "installation_instructions.md",
-    
+
+    "Intro to observations" => "literated/intro_to_observations.md",
+    "Intro to inverse problems" => "literated/intro_to_inverse_problems.md",
+    "Exploring Prior distributions" => "literated/exploring_priors.md",
+
     "Examples" => [ 
-        "literated/intro_to_observations.md",
-        "literated/intro_to_inverse_problems.md",
-        "literated/exploring_priors.md",
         "literated/perfect_convective_adjustment_calibration.md",
         "literated/perfect_catke_calibration.md",
         "literated/lesbrary_catke_calibration.md",
