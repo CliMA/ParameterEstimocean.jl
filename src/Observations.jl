@@ -1,5 +1,7 @@
 module Observations
 
+export SyntheticObservations, observation_times
+
 using Oceananigans
 using Oceananigans: fields
 using Oceananigans.Grids: AbstractGrid

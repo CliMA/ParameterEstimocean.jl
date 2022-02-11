@@ -1,5 +1,7 @@
 module Parameters
 
+export FreeParameters, lognormal, ScaledLogitNormal
+
 using Oceananigans.Architectures: CPU, arch_array, architecture
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
 using Oceananigans.TurbulenceClosures: AbstractTimeDiscretization, ExplicitTimeDiscretization

@@ -1,5 +1,7 @@
 module Transformations
 
+export Transformation, ZScore, RescaledZScore, SpaceIndices, TimeIndices
+
 using Statistics
 
 using Oceananigans.Fields: interior

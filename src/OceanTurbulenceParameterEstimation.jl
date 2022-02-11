@@ -34,26 +34,6 @@ include("Parameters.jl")
 include("InverseProblems.jl")
 include("EnsembleKalmanInversions.jl")
 
-using .Transformations: Transformation, ZScore, RescaledZScore, SpaceIndices, TimeIndices
-using .Observations: SyntheticObservations, observation_times
-using .EnsembleSimulations: ensemble_column_model_simulation
-using .Parameters: FreeParameters, lognormal, ScaledLogitNormal
-
-using .InverseProblems:
-    InverseProblem,
-    forward_map,
-    forward_run!,
-    observation_map,
-    observation_map_variance_across_time,
-    ConcatenatedOutputMap
-
-using .EnsembleKalmanInversions:
-    iterate!,
-    EnsembleKalmanInversion,
-    Resampler,
-    FullEnsembleDistribution,
-    SuccessfulEnsembleDistribution
-
 #####
 ##### Data!
 #####

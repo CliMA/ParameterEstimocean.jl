@@ -1,5 +1,7 @@
 module EnsembleSimulations
 
+export ensemble_column_model_simulation
+
 using Oceananigans
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 using Oceananigans.Architectures: arch_array

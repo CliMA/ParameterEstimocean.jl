@@ -1,5 +1,13 @@
 module InverseProblems
 
+export
+    InverseProblem,
+    forward_map,
+    forward_run!,
+    observation_map,
+    observation_map_variance_across_time,
+    ConcatenatedOutputMap
+
 using OrderedCollections
 using Suppressor: @suppress
 
