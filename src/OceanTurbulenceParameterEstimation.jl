@@ -34,6 +34,14 @@ include("Parameters.jl")
 include("InverseProblems.jl")
 include("EnsembleKalmanInversions.jl")
 
+using .Utils
+using .Transformations
+using .Observations
+using .EnsembleSimulations
+using .Parameters
+using .InverseProblems
+using .EnsembleKalmanInversions
+
 #####
 ##### Data!
 #####
