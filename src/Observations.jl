@@ -2,6 +2,8 @@ module Observations
 
 export SyntheticObservations, observation_times
 
+using ..Utils: prettyvector
+
 using Oceananigans
 using Oceananigans: fields
 using Oceananigans.Grids: AbstractGrid
@@ -9,7 +11,7 @@ using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_fa
 using Oceananigans.Grids: pop_flat_elements, topology, halo_size, on_architecture
 using Oceananigans.TimeSteppers: update_state!
 using Oceananigans.Fields
-using Oceananigans.Utils: SpecifiedTimes
+using Oceananigans.Utils: SpecifiedTimes, prettytime
 using Oceananigans.Architectures
 using Oceananigans.Architectures: arch_array, architecture
 using JLD2
@@ -94,7 +96,8 @@ function SyntheticObservations(path=nothing; field_names,
     # validate_data(fields, grid, times) # might be a good idea to validate the data...
     if !isnothing(path)
         file = jldopen(path)
-        metadata = NamedTuple(Symbol(group) => read_group(file[group]) for group in filter(n -> n ∉ not_metadata_names, keys(file)))
+        metadata = NamedTuple(Symbol(group) => read_group(file[group])
+                              for group in filter(n -> n ∉ not_metadata_names, keys(file)))
         close(file)
     else
         metadata = nothing
@@ -337,7 +340,7 @@ function initialize_simulation!(simulation, observations, time_series_collector,
 
     # Zero out time series data
     for time_series in time_series_collector.field_time_serieses
-        parent(time_series.data) .= 0
+        parent(time_series) .= 0
     end
 
     simulation.callbacks[:data_collector] = Callback(time_series_collector, SpecifiedTimes(times...))
@@ -351,12 +354,16 @@ end
 summarize_metadata(::Nothing) = ""
 summarize_metadata(metadata) = keys(metadata)
 
-Base.show(io::IO, obs::SyntheticObservations) =
+function Base.show(io::IO, obs::SyntheticObservations)
+    times_str = prettyvector(prettytime.(obs.times, false))
+
     print(io, "SyntheticObservations with fields $(propertynames(obs.field_time_serieses))", '\n',
-              "├── times: $(obs.times)", '\n',
+              "├── times: $times_str", '\n',
               "├── grid: $(summary(obs.grid))", '\n',
               "├── path: \"$(obs.path)\"", '\n',
               "├── metadata: ", summarize_metadata(obs.metadata), '\n',
               "└── transformation: $(summary(obs.transformation))")
+end
 
 end # module
+

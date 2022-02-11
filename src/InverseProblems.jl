@@ -150,7 +150,7 @@ observation_map(ip::InverseProblem) = transform_time_series(ip.output_map, ip.ob
 Initialize `ip.simulation` with `parameters` and run it forward. Output is stored
 in `ip.time_series_collector`.
 """
-function forward_run!(ip::InverseProblem, parameters)
+function forward_run!(ip::InverseProblem, parameters; suppress=false)
     observations = ip.observations
     simulation = ip.simulation
     closures = simulation.model.closure
@@ -160,7 +160,11 @@ function forward_run!(ip::InverseProblem, parameters)
 
     initialize_simulation!(simulation, observations, ip.time_series_collector)
 
-    @suppress run!(simulation)
+    if suppress
+        @suppress run!(simulation)
+    else
+        run!(simulation)
+    end
     
     return nothing
 end
@@ -171,11 +175,11 @@ end
 Run `ip.simulation` forward with `parameters` and return the data,
 transformed into an array format expected by `EnsembleKalmanProcesses.jl`.
 """
-function forward_map(ip, parameters)
+function forward_map(ip, parameters; suppress=true)
 
     # Run the simulation forward and populate the time series collector
     # with model data.
-    forward_run!(ip, parameters)
+    forward_run!(ip, parameters; suppress=true)
 
     # Transform the model data according to `ip.output_map` into
     # the array format expected by EnsembleKalmanProcesses.jl
