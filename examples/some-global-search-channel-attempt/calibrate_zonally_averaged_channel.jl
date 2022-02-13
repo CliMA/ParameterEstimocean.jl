@@ -69,7 +69,6 @@ function get_field_timeseries(filepath, name, times)
 end
 
 end_time = 60days
-end_time = 5minutes
 
 times = [0, end_time]
 
@@ -79,19 +78,26 @@ v_timeseries = get_field_timeseries(filepath, "v", times)
 b_timeseries = get_field_timeseries(filepath, "b", times)
 c_timeseries = get_field_timeseries(filepath, "c", times)
 
+#=
+field_names = (:b, :c, :u, :v, :η)
+
+transformation = (b = ZScore(),
+                  c = ZScore(),
+                  u = ZScore(),
+                  v = RescaledZScore(1e-2),
+                  η = RescaledZScore(1e-2))
+
+field_time_serieses = (b = b_timeseries, c = c_timeseries, u = u_timeseries, v = v_timeseries, η = η_timeseries)
+=#
+
 # let's try fewer fields
-field_names = (:b, :u, :v)
+field_names = (:b, :c, :u,)
 
 using OceanTurbulenceParameterEstimation.Transformations: Transformation
 
-space_transformation = SpaceIndices(x=:, y=Ny-30:Ny-29, z=Nz-30:Nz-29)
+transformation = Transformation(normalization=ZScore())
 
-transformation = (b = Transformation(normalization=ZScore()),
-                  c = Transformation(normalization=ZScore()),
-                  u = Transformation(normalization=ZScore()),
-                  v = Transformation(normalization=RescaledZScore(1e-1)))
-
-field_time_serieses = (b = b_timeseries, u = u_timeseries, c = c_timeseries, v = v_timeseries) 
+field_time_serieses = (b = b_timeseries, c = c_timeseries, u = u_timeseries)
 
 observations = SyntheticObservations(; times, field_names, field_time_serieses, transformation)
 
@@ -103,7 +109,7 @@ file = jldopen(filepath)
 coriolis = file["serialized/coriolis"]
 close(file)
 
-Nensemble = 50
+Nensemble = 5
 slice_ensemble_size = SliceEnsembleSize(size=(Ny, Nz), ensemble=Nensemble)
 
 ensemble_grid = RectilinearGrid(architecture,
@@ -130,23 +136,19 @@ ensemble_model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
                                              closure = closure_ensemble,
                                              free_surface = ImplicitFreeSurface())
 
-Δt = 5seconds
+Δt = 3minutes
 simulation = Simulation(ensemble_model; Δt, stop_time=observations.times[end])
 
-mass = 0.8
-
 priors = (
-    κ_skew = ScaledLogitNormal(; bounds = (300, 3000), interval = (700, 1200), mass),
-    κ_symmetric = ScaledLogitNormal(; bounds = (300, 6000), interval = (2000, 3000), mass)
+    κ_skew = ScaledLogitNormal(bounds = (100, 1200)),
+    κ_symmetric = ScaledLogitNormal(bounds = (100, 1200))
 )
 
 free_parameters = FreeParameters(priors)
 
 calibration = InverseProblem(observations, simulation, free_parameters)
 
-eki = EnsembleKalmanInversion(calibration;
-                              noise_covariance = 1e-5,
-                              resampler = Resampler(acceptable_failure_fraction=0.3))
+eki = EnsembleKalmanInversion(calibration; noise_covariance = 1e-2)
 
 #=
 collected_fields = (b = simulation.model.tracers.b,
@@ -156,11 +158,9 @@ calibration = InverseProblem(observations, simulation, free_parameters; time_ser
 eki = EnsembleKalmanInversion(calibration; noise_covariance = 1e-2)
 =#
 
-iterate!(eki; iterations = 1)
+iterate!(eki; iterations = 5)
 
 # Last, we visualize few metrics regarding how the EKI calibration went about.
-
-y = observation_map(calibration)
 
 θ̅(iteration) = [eki.iteration_summaries[iteration].ensemble_mean...]
 varθ(iteration) = eki.iteration_summaries[iteration].ensemble_var
@@ -191,8 +191,6 @@ for (i, pname) in enumerate(free_parameters.names)
 end
 
 axislegend(ax3, position = :rt)
-
-save("summary_channel.png", f); nothing #hide 
 save("summary_channel.svg", f); nothing #hide 
 
 # ![](summary_channel.svg)
@@ -212,19 +210,25 @@ axright = Axis(f[2, 2])
 scatters = []
 labels = String[]
 
-for iter in [0, 1, 2, 3, 4, 5, 6]
+for iteration in [0, 1, 2, 5]
     ## Make parameter matrix
-    parameters = eki.iteration_summaries[iter].parameters
+    parameters = eki.iteration_summaries[iteration].parameters
     Nensemble = length(parameters)
     Nparameters = length(first(parameters))
     parameter_ensemble_matrix = [parameters[i][j] for i=1:Nensemble, j=1:Nparameters]
 
-    label = iter == 0 ? "Initial ensemble" : "Iteration $iteration"
+    label = iteration == 0 ? "Initial ensemble" : "Iteration $iteration"
     push!(labels, label)
     push!(scatters, scatter!(axmain, parameter_ensemble_matrix))
     density!(axtop, parameter_ensemble_matrix[:, 1])
     density!(axright, parameter_ensemble_matrix[:, 2], direction = :y)
 end
+
+vlines!(axmain, [κ_skew], color = :red)
+vlines!(axtop, [κ_skew], color = :red)
+
+hlines!(axmain, [κ_symmetric], color = :red)
+hlines!(axright, [κ_symmetric], color = :red)
 
 colsize!(f.layout, 1, Fixed(300))
 colsize!(f.layout, 2, Fixed(200))
@@ -240,8 +244,6 @@ hidedecorations!(axright, grid = false)
 xlims!(axright, 0, 0.025)
 ylims!(axtop, 0, 0.025)
 
-save("distributions_channel.png", f); nothing #hide 
 save("distributions_channel.svg", f); nothing #hide 
-f
 
 # ![](distributions_channel.svg)
