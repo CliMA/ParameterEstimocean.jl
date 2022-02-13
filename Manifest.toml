@@ -488,11 +488,9 @@ uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
 
 [[Oceananigans]]
 deps = ["Adapt", "CUDA", "CUDAKernels", "Crayons", "CubedSphere", "Dates", "DocStringExtensions", "FFTW", "Glob", "IncompleteLU", "InteractiveUtils", "IterativeSolvers", "JLD2", "KernelAbstractions", "LinearAlgebra", "Logging", "MPI", "NCDatasets", "OffsetArrays", "OrderedCollections", "PencilFFTs", "Pkg", "Printf", "Random", "Rotations", "SafeTestsets", "SeawaterPolynomials", "SparseArrays", "Statistics", "StructArrays", "Tullio"]
-git-tree-sha1 = "43466d6d54a6d751d4424fe198430bfa87f54353"
-repo-rev = "glw/pretty-shortform"
-repo-url = "https://github.com/CliMA/Oceananigans.jl.git"
+git-tree-sha1 = "0e88ed5b897f7505fee7cfc1f946e7693d2be307"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
-version = "0.70.2"
+version = "0.70.3"
 
 [[OffsetArrays]]
 deps = ["Adapt"]
