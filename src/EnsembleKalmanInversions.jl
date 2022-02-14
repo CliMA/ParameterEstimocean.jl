@@ -1,5 +1,12 @@
 module EnsembleKalmanInversions
 
+export
+    iterate!,
+    EnsembleKalmanInversion,
+    Resampler,
+    FullEnsembleDistribution,
+    SuccessfulEnsembleDistribution
+
 using OffsetArrays
 using ProgressBars
 using Random

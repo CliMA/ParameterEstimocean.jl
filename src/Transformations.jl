@@ -1,5 +1,7 @@
 module Transformations
 
+export Transformation, ZScore, RescaledZScore, SpaceIndices, TimeIndices
+
 using Statistics
 
 using Oceananigans.Fields: interior
@@ -247,4 +249,3 @@ function transform_field_time_series(transformation::Transformation,
 end
 
 end # module
-
