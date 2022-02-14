@@ -143,6 +143,7 @@ const not_metadata_names = ("serialized", "timeseries")
 read_group(group::JLD2.Group) = NamedTuple(Symbol(subgroup) => read_group(group[subgroup]) for subgroup in keys(group))
 read_group(group) = group
 
+# TODO: move to Oceananigans.jl
 function with_size(new_size, old_grid)
 
     topo = topology(old_grid)
