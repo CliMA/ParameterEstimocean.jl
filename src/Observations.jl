@@ -1,5 +1,9 @@
 module Observations
 
+export SyntheticObservations, observation_times
+
+using ..Utils: prettyvector
+
 using Oceananigans
 using Oceananigans: fields
 using Oceananigans.Grids: AbstractGrid
@@ -7,7 +11,7 @@ using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_fa
 using Oceananigans.Grids: pop_flat_elements, topology, halo_size, on_architecture
 using Oceananigans.TimeSteppers: update_state!
 using Oceananigans.Fields
-using Oceananigans.Utils: SpecifiedTimes
+using Oceananigans.Utils: SpecifiedTimes, prettytime
 using Oceananigans.Architectures
 using Oceananigans.Architectures: arch_array, architecture
 using JLD2
@@ -92,7 +96,8 @@ function SyntheticObservations(path=nothing; field_names,
     # validate_data(fields, grid, times) # might be a good idea to validate the data...
     if !isnothing(path)
         file = jldopen(path)
-        metadata = NamedTuple(Symbol(group) => read_group(file[group]) for group in filter(n -> n ∉ not_metadata_names, keys(file)))
+        metadata = NamedTuple(Symbol(group) => read_group(file[group])
+                              for group in filter(n -> n ∉ not_metadata_names, keys(file)))
         close(file)
     else
         metadata = nothing
@@ -105,27 +110,27 @@ function SyntheticObservations(path=nothing; field_names,
     return SyntheticObservations(field_time_serieses, grid, times, path, metadata, transformation)
 end
 
-observation_names(ts::SyntheticObservations) = keys(ts.field_time_serieses)
+observation_names(observations::SyntheticObservations) = keys(observations.field_time_serieses)
 
 """
-    observation_names(obs::Vector{<:SyntheticObservations})
+    observation_names(observations::Vector{<:SyntheticObservations})
 
 Return a Set representing the union of all names in `obs`.
 """
-function observation_names(obs_vector::Vector{<:SyntheticObservations})
+function observation_names(observations::Vector{<:SyntheticObservations})
     names = Set()
-    for obs in obs_vector
+    for obs in observations
         push!(names, observation_names(obs)...)
     end
 
     return names
 end
 
-Base.summary(obs::SyntheticObservations) =
-    "SyntheticObservations of $(keys(obs.field_time_serieses)) on $(summary(obs.grid))"
+Base.summary(observations::SyntheticObservations) =
+    "SyntheticObservations of $(keys(observations.field_time_serieses)) on $(summary(observations.grid))"
 
-Base.summary(obs::Vector{<:SyntheticObservations}) =
-    "Vector{<:SyntheticObservations} of $(keys(first(obs).field_time_serieses)) on $(summary(first(obs).grid))"
+Base.summary(observations::Vector{<:SyntheticObservations}) =
+    "Vector{<:SyntheticObservations} of $(keys(first(observations).field_time_serieses)) on $(summary(first(observations).grid))"
 
 tupleit(t) = try
     Tuple(t)
@@ -192,11 +197,12 @@ end
 #####
 
 """
-    column_ensemble_interior(observations::Vector{<:SyntheticObservations}, field_name, time_indices::Vector, N_ens)
+    column_ensemble_interior(observations::Vector{<:SyntheticObservations},
+                             field_name, time_index, (Nensemble, Nbatch, Nz))
 
-Returns an `Nensemble × Nbatch × Nz` Array of `(1, 1, Nz)` `field_name` data,
-given `Nbatch` `SyntheticObservations` objects.
-The `Nbatch × Nz` data for `field_name` is copied `Nensemble` times to form a 3D Array.
+Return an `Nensemble × Nbatch × Nz` Array of `(1, 1, Nz)` `field_name` data,
+given `Nbatch` `SyntheticObservations` objects. The `Nbatch × Nz` data for `field_name`
+is copied `Nensemble` times to form a 3D Array.
 """
 function column_ensemble_interior(observations::Vector{<:SyntheticObservations},
                                   field_name, time_index, (Nensemble, Nbatch, Nz))
@@ -271,9 +277,10 @@ struct FieldTimeSeriesCollector{G, D, F, T}
 end
 
 """
-    FieldTimeSeriesCollector(collected_fields, times; architecture=CPU())
+    FieldTimeSeriesCollector(collected_fields, times;
+                             architecture = Architectures.architecture(first(collected_fields)))
 
-Returns a `FieldTimeSeriesCollector` for `fields` of `simulation`.
+Return a `FieldTimeSeriesCollector` for `fields` of `simulation`.
 `fields` is a `NamedTuple` of `AbstractField`s that are to be collected.
 """
 function FieldTimeSeriesCollector(collected_fields, times;
@@ -333,7 +340,7 @@ function initialize_simulation!(simulation, observations, time_series_collector,
 
     # Zero out time series data
     for time_series in time_series_collector.field_time_serieses
-        parent(time_series.data) .= 0
+        parent(time_series) .= 0
     end
 
     simulation.callbacks[:data_collector] = Callback(time_series_collector, SpecifiedTimes(times...))
@@ -347,12 +354,16 @@ end
 summarize_metadata(::Nothing) = ""
 summarize_metadata(metadata) = keys(metadata)
 
-Base.show(io::IO, obs::SyntheticObservations) =
+function Base.show(io::IO, obs::SyntheticObservations)
+    times_str = prettyvector(prettytime.(obs.times, false))
+
     print(io, "SyntheticObservations with fields $(propertynames(obs.field_time_serieses))", '\n',
-              "├── times: $(obs.times)", '\n',
+              "├── times: $times_str", '\n',
               "├── grid: $(summary(obs.grid))", '\n',
               "├── path: \"$(obs.path)\"", '\n',
               "├── metadata: ", summarize_metadata(obs.metadata), '\n',
               "└── transformation: $(summary(obs.transformation))")
+end
 
 end # module
+

@@ -171,9 +171,9 @@ uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
 [[Distributions]]
 deps = ["ChainRulesCore", "DensityInterface", "FillArrays", "LinearAlgebra", "PDMats", "Printf", "QuadGK", "Random", "SparseArrays", "SpecialFunctions", "Statistics", "StatsBase", "StatsFuns", "Test"]
-git-tree-sha1 = "2e97190dfd4382499a4ac349e8d316491c9db341"
+git-tree-sha1 = "38012bf3553d01255e83928eec9c998e19adfddf"
 uuid = "31c24e10-a181-5473-b8eb-7969acd0382f"
-version = "0.25.46"
+version = "0.25.48"
 
 [[DocStringExtensions]]
 deps = ["LibGit2"]
@@ -488,11 +488,9 @@ uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
 
 [[Oceananigans]]
 deps = ["Adapt", "CUDA", "CUDAKernels", "Crayons", "CubedSphere", "Dates", "DocStringExtensions", "FFTW", "Glob", "IncompleteLU", "InteractiveUtils", "IterativeSolvers", "JLD2", "KernelAbstractions", "LinearAlgebra", "Logging", "MPI", "NCDatasets", "OffsetArrays", "OrderedCollections", "PencilFFTs", "Pkg", "Printf", "Random", "Rotations", "SafeTestsets", "SeawaterPolynomials", "SparseArrays", "Statistics", "StructArrays", "Tullio"]
-git-tree-sha1 = "79800499dd6195a7310dab17814bc30adc09b620"
-repo-rev = "glw/catke-reformulation"
-repo-url = "https://github.com/CliMA/Oceananigans.jl.git"
+git-tree-sha1 = "0e88ed5b897f7505fee7cfc1f946e7693d2be307"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
-version = "0.70.1"
+version = "0.70.3"
 
 [[OffsetArrays]]
 deps = ["Adapt"]
@@ -535,21 +533,21 @@ version = "0.11.5"
 
 [[Parsers]]
 deps = ["Dates"]
-git-tree-sha1 = "0b5cfbb704034b5b4c1869e36634438a047df065"
+git-tree-sha1 = "13468f237353112a01b2d6b32f3d0f80219944aa"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-version = "2.2.1"
+version = "2.2.2"
 
 [[PencilArrays]]
 deps = ["ArrayInterface", "JSON3", "LinearAlgebra", "MPI", "OffsetArrays", "Random", "Reexport", "Requires", "StaticArrays", "StaticPermutations", "Strided", "TimerOutputs", "VersionParsing"]
-git-tree-sha1 = "047267ac16375689d9582d04273d97bf8f388f87"
+git-tree-sha1 = "387fed6314fcd0b3ad868bf8076c89ad3ea38bb9"
 uuid = "0e08944d-e94e-41b1-9406-dcf66b6a9d2e"
-version = "0.14.1"
+version = "0.15.2"
 
 [[PencilFFTs]]
 deps = ["AbstractFFTs", "FFTW", "LinearAlgebra", "MPI", "PencilArrays", "Reexport", "TimerOutputs"]
-git-tree-sha1 = "a95a027da076b7b67b4cfcd85fcb5c006fe74438"
+git-tree-sha1 = "323bc75909576d8c660696d12f39bfec49b7223a"
 uuid = "4a48f351-57a6-4416-9ec4-c37015456aae"
-version = "0.13.1"
+version = "0.13.2"
 
 [[Pkg]]
 deps = ["Artifacts", "Dates", "Downloads", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
@@ -689,9 +687,9 @@ version = "1.4.1"
 
 [[Static]]
 deps = ["IfElse"]
-git-tree-sha1 = "d4da8b728580709d736704764e55d6ef38cb7c87"
+git-tree-sha1 = "00b725fffc9a7e9aac8850e4ed75b4c1acbe8cd2"
 uuid = "aedffcd0-7271-4cad-89d0-dc628f76c6d3"
-version = "0.5.3"
+version = "0.5.5"
 
 [[StaticArrays]]
 deps = ["LinearAlgebra", "Random", "Statistics"]
@@ -715,9 +713,9 @@ version = "1.2.0"
 
 [[StatsBase]]
 deps = ["DataAPI", "DataStructures", "LinearAlgebra", "LogExpFunctions", "Missings", "Printf", "Random", "SortingAlgorithms", "SparseArrays", "Statistics", "StatsAPI"]
-git-tree-sha1 = "51383f2d367eb3b444c961d485c565e4c0cf4ba0"
+git-tree-sha1 = "118e8411d506d583fbbcf4f3a0e3c5a9e83370b8"
 uuid = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
-version = "0.33.14"
+version = "0.33.15"
 
 [[StatsFuns]]
 deps = ["ChainRulesCore", "InverseFunctions", "IrrationalConstants", "LogExpFunctions", "Reexport", "Rmath", "SpecialFunctions"]

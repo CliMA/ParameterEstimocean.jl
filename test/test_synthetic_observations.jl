@@ -63,46 +63,55 @@ using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
     ##### Test synthetic observations construction
     #####
     
-    @info "  Testing construction of SyntheticObservations from Oceananigans data..."
-    data_path = experiment_name * ".jld2"
+    @testset "SyntheticObservations construction" begin
+        @info "    Testing construction of SyntheticObservations from Oceananigans data..."
+        data_path = experiment_name * ".jld2"
 
-    # field_names
-    b_observations = SyntheticObservations(data_path, field_names=:b)
-    ub_observations = SyntheticObservations(data_path, field_names=(:u, :b))
-    uvb_observations = SyntheticObservations(data_path, field_names=(:u, :v, :b))
+        # field_names
+        b_observations = SyntheticObservations(data_path, field_names=:b)
+        ub_observations = SyntheticObservations(data_path, field_names=(:u, :b))
+        uvb_observations = SyntheticObservations(data_path, field_names=(:u, :v, :b))
 
-    @test keys(b_observations.field_time_serieses) == tuple(:b)
-    @test keys(ub_observations.field_time_serieses) == tuple(:u, :b)
-    @test keys(uvb_observations.field_time_serieses) == tuple(:u, :v, :b)
+        @test keys(b_observations.field_time_serieses) == tuple(:b)
+        @test keys(ub_observations.field_time_serieses) == tuple(:u, :b)
+        @test keys(uvb_observations.field_time_serieses) == tuple(:u, :v, :b)
 
-    # transformations and normalizations
-    field_names = (:u, :v, :b)
-    transformation = ZScore()
-    uvb_observations = SyntheticObservations(data_path; field_names, transformation)
-    @test all(t.normalization isa ZScore for t in values(uvb_observations.transformation))
+        # transformations and normalizations
+        field_names = (:u, :v, :b)
+        transformation = ZScore()
+        uvb_observations = SyntheticObservations(data_path; field_names, transformation)
+        @test all(t.normalization isa ZScore for t in values(uvb_observations.transformation))
 
-    transformation = (u = ZScore(), v = ZScore(), b = ZScore())
-    uvb_observations = SyntheticObservations(data_path; field_names, transformation)
-    @test all(t.normalization isa ZScore for t in values(uvb_observations.transformation))
+        transformation = (u = ZScore(), v = ZScore(), b = ZScore())
+        uvb_observations = SyntheticObservations(data_path; field_names, transformation)
+        @test all(t.normalization isa ZScore for t in values(uvb_observations.transformation))
 
-    transformation = (u = nothing, v = ZScore(), b = RescaledZScore(0.1))
-    uvb_observations = SyntheticObservations(data_path; field_names, transformation)
-    @test uvb_observations.transformation[:u].normalization isa Nothing
-    @test uvb_observations.transformation[:v].normalization isa ZScore
-    @test uvb_observations.transformation[:b].normalization isa RescaledZScore
-    @test uvb_observations.transformation[:b].normalization.scale === 0.1
+        transformation = (u = nothing, v = ZScore(), b = RescaledZScore(0.1))
+        uvb_observations = SyntheticObservations(data_path; field_names, transformation)
+        @test uvb_observations.transformation[:u].normalization isa Nothing
+        @test uvb_observations.transformation[:v].normalization isa ZScore
+        @test uvb_observations.transformation[:b].normalization isa RescaledZScore
+        @test uvb_observations.transformation[:b].normalization.scale === 0.1
 
-    # Regridding
-    coarsened_observations = SyntheticObservations(data_path, field_names=(:u, :v, :b), regrid_size=(1, 1, Int(Nz/2)))
-    refined_observations = SyntheticObservations(data_path, field_names=(:u, :v, :b), regrid_size=(1, 1, 2Nz))
+        # Regridding
+        coarsened_observations = SyntheticObservations(data_path, field_names=(:u, :v, :b), regrid_size=(1, 1, Int(Nz/2)))
+        refined_observations = SyntheticObservations(data_path, field_names=(:u, :v, :b), regrid_size=(1, 1, 2Nz))
 
-    @test size(coarsened_observations.grid) === (1, 1, Int(Nz/2))
-    @test size(refined_observations.grid) === (1, 1, 2Nz)
+        @test size(coarsened_observations.grid) === (1, 1, Int(Nz/2))
+        @test size(refined_observations.grid) === (1, 1, 2Nz)
 
-    # Test regridding LESbrary observations
-    data_path = datadep"two_day_suite_2m/free_convection_instantaneous_statistics.jld2";
-    for Nz in (8, 16, 32, 64, 128, 256, 512)
-        observations = SyntheticObservations(data_path; field_names=(:u, :v, :b), regrid_size=(1, 1, Nz))
-        @test size(observations.grid) === (1, 1, Nz)
+        # Test regridding LESbrary observations
+        data_path = datadep"two_day_suite_2m/free_convection_instantaneous_statistics.jld2";
+        for Nz in (8, 16, 32, 64, 128, 256, 512)
+            observations = SyntheticObservations(data_path; field_names=(:u, :v, :b), regrid_size=(1, 1, Nz))
+            @test size(observations.grid) === (1, 1, Nz)
+        end
+    end
+
+    @testset "SyntheticObservations display" begin
+        data_path = experiment_name * ".jld2"
+        observations = SyntheticObservations(data_path, field_names=(:u, :v, :b))
+        @show observations 
+        @test true
     end
 end

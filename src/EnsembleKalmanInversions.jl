@@ -1,5 +1,12 @@
 module EnsembleKalmanInversions
 
+export
+    iterate!,
+    EnsembleKalmanInversion,
+    Resampler,
+    FullEnsembleDistribution,
+    SuccessfulEnsembleDistribution
+
 using OffsetArrays
 using ProgressBars
 using Random
@@ -60,7 +67,7 @@ y = G(θ) + η,
 ```
 
 for the parameters ``θ``, where ``y`` is a "normalized" vector of observations,
-``G(θ)`` is a forward map that predicts the observations, and ``η ∼ N(0, Γ_y)`` is zero-mean
+``G(θ)`` is a forward map that predicts the observations, and ``η ∼ 𝒩(0, Γ_y)`` is zero-mean
 random noise with covariance matrix ``Γ_y`` representing uncertainty in the observations.
 
 By "solve", we mean that the iteration finds the parameter values ``θ`` that minimizes the
@@ -243,7 +250,7 @@ by the ensemble mean and covariance computed based on the `Nθ` × `Nensemble` e
 array `θ`, under the condition that all `Nsample` particles produce successful forward map
 outputs (don't include `NaNs`).
 
-`G` (size(G) =  Noutput × Nensemble`) is the forward map output produced by `θ`.
+`G` (`size(G) =  Noutput × Nensemble`) is the forward map output produced by `θ`.
 
 Returns `Nθ × Nsample` parameter `Array` and `Noutput × Nsample` forward map output `Array`.
 """

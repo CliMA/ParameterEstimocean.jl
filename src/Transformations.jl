@@ -1,5 +1,7 @@
 module Transformations
 
+export Transformation, ZScore, RescaledZScore, SpaceIndices, TimeIndices
+
 using Statistics
 
 using Oceananigans.Fields: interior
@@ -18,6 +20,39 @@ end
 """
     Transformation(; time=nothing, space=nothing, normalization=nothing)
 
+Return a transformation that is applied on the observation. Examples include slicing
+the data or multiplying with weight factors to make the loss function putting more 
+weight in particular regions of the domain or particular times. Also, we can denote
+a normalization procedure applied to the data *after* the space- and time-
+transformations.
+
+Slicing is prescribed as `SpaceIndices` and `TimeIndices`. For example
+
+```julia
+Transformation(time = TimeIndices(4:10))
+```
+
+will only keep time instances 4 to 10 from the observations. Similarly,
+
+```julia
+Transformation(space = SpaceIndices(x=:, y=1:10, z=2:2:20))
+```
+
+will not affect the `x` dimension of the data, but will slice the observations
+in `y` and `z` as prescribed.
+
+Keyword Arguments
+=================
+
+- `time`: The time transformation either as a `TimeIndices` or as an `AbstractVector` of
+  weights of same size as `observations.times`. If `nothing` is given, then, by default,
+  the transformation ignores the first snapshot (initial state).
+
+- `space`: The space trasformation either as a `SpaceIndices` or as an `AbstractArray` of
+  weights of same size as a snapshot of the observations.
+
+- `normalization`: The normalization that is applied to the data after space and time 
+  transformations have been applied first.
 """
 Transformation(; time=nothing, space=nothing, normalization=nothing) =
     Transformation(time, space, normalization)
@@ -35,10 +70,20 @@ end
 ##### Time transformations
 #####
 
+# Convert Integers to UnitRange
+int_to_range(t) = t
+int_to_range(t::Int) = UnitRange(t, t)
+
 time_transform(::Nothing, data) = data
 
 struct TimeIndices{T}
     t :: T
+
+    function TimeIndices(t)
+        t = int_to_range(t)
+        T = typeof(t)
+        return new{T}(t)
+    end
 end
 
 TimeIndices(; t) = TimeIndices(t)
@@ -49,7 +94,8 @@ TimeIndices(; t) = TimeIndices(t)
 Compute a time transformation for the field time series `fts`
 given `user_time_transformation`.
 
-By default, we include all time slices except the initial condition.
+By default, if `user_time_transformation isa nothing`, then we include all time instances
+except the initial condition.
 """
 compute_time_transformation(::Nothing, fts) = TimeIndices(2:length(fts.times))
 compute_time_transformation(indices::TimeIndices, fts) = indices
@@ -60,6 +106,8 @@ function time_transform(weights::AbstractVector, data)
     weights = reshape(weights, 1, 1, 1, length(weights))
     return data .* weights
 end
+
+compute_time_transformation(weights::AbstractVector, fts) = weights
 
 #####
 ##### Space transformations
@@ -74,8 +122,12 @@ struct SpaceIndices{X, Y, Z}
     z :: Z
 end
 
+
 function SpaceIndices(; x=:, y=:, z=:)
     x isa Colon || throw(ArgumentError("Cannot transform in x because x is reserved for the ensemble dimension."))
+    x = int_to_range(x)
+    y = int_to_range(y)
+    z = int_to_range(z)
     return SpaceIndices(x, y, z)
 end
 
@@ -197,4 +249,3 @@ function transform_field_time_series(transformation::Transformation,
 end
 
 end # module
-

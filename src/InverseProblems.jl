@@ -1,5 +1,13 @@
 module InverseProblems
 
+export
+    InverseProblem,
+    forward_map,
+    forward_run!,
+    observation_map,
+    observation_map_variance_across_time,
+    ConcatenatedOutputMap
+
 using OrderedCollections
 using Suppressor: @suppress
 
@@ -43,10 +51,10 @@ end
 
 """
     InverseProblem(observations,
-                        simulation,
-                        free_parameters;
-                        output_map = ConcatenatedOutputMap(),
-                        time_series_collector = nothing)
+                simulation,
+                free_parameters;
+                output_map = ConcatenatedOutputMap(),
+                time_series_collector = nothing)
 
 Return an `InverseProblem`.
 """
@@ -129,7 +137,11 @@ Nobservations(grid::TwoDimensionalEnsembleGrid) = 1
 Nensemble(grid::Union{OneDimensionalEnsembleGrid, TwoDimensionalEnsembleGrid}) = grid.Nx
 Nensemble(ip::InverseProblem) = Nensemble(ip.simulation.model.grid)
 
-""" Transform and return `ip.observations` appropriate for `ip.output_map`. """
+"""
+    observation_map(ip::InverseProblem)
+
+Transform and return `ip.observations` appropriately for `ip.output_map`.
+"""
 observation_map(ip::InverseProblem) = transform_time_series(ip.output_map, ip.observations)
 
 """
@@ -138,7 +150,7 @@ observation_map(ip::InverseProblem) = transform_time_series(ip.output_map, ip.ob
 Initialize `ip.simulation` with `parameters` and run it forward. Output is stored
 in `ip.time_series_collector`.
 """
-function forward_run!(ip::InverseProblem, parameters)
+function forward_run!(ip::InverseProblem, parameters; suppress=false)
     observations = ip.observations
     simulation = ip.simulation
     closures = simulation.model.closure
@@ -148,7 +160,11 @@ function forward_run!(ip::InverseProblem, parameters)
 
     initialize_simulation!(simulation, observations, ip.time_series_collector)
 
-    @suppress run!(simulation)
+    if suppress
+        @suppress run!(simulation)
+    else
+        run!(simulation)
+    end
     
     return nothing
 end
@@ -159,11 +175,11 @@ end
 Run `ip.simulation` forward with `parameters` and return the data,
 transformed into an array format expected by `EnsembleKalmanProcesses.jl`.
 """
-function forward_map(ip, parameters)
+function forward_map(ip, parameters; suppress=true)
 
     # Run the simulation forward and populate the time series collector
     # with model data.
-    forward_run!(ip, parameters)
+    forward_run!(ip, parameters; suppress=true)
 
     # Transform the model data according to `ip.output_map` into
     # the array format expected by EnsembleKalmanProcesses.jl
@@ -336,9 +352,10 @@ end
 """
     observation_map_variance_across_time(map::ConcatenatedOutputMap, observation::SyntheticObservations)
 
-Returns an (Nx, Ny*Nz*Nfields, Ny*Nz*Nfields) array storing the covariance of each element of the observation 
-map measured across time, for each ensemble member, where `Nx` is the ensemble size, `Ny` is the batch size, 
-`Nz` is the number of grid elements in the vertical, and `Nfields` is the number of fields in `observation`.
+Return an array of size `(Nensemble, Ny * Nz * Nfields, Ny * Nz * Nfields)` that stores the covariance of
+each element of the observation map measured across time, for each ensemble member, where `Nensemble` is
+the ensemble size, `Ny` is either the number of grid elements in `y` or the batch size, `Nz` is the number
+of grid elements in the vertical, and `Nfields` is the number of fields in `observation`.
 """
 function observation_map_variance_across_time(map::ConcatenatedOutputMap, observation::SyntheticObservations)
     # These aren't right because every field can have a different transformation, so...
@@ -371,4 +388,3 @@ observation_map_variance_across_time(map::ConcatenatedOutputMap, observations::V
 observation_map_variance_across_time(ip::InverseProblem) = observation_map_variance_across_time(ip.output_map, ip.observations)
 
 end # module
-

@@ -29,30 +29,18 @@ export
 include("Utils.jl")
 include("Transformations.jl")
 include("Observations.jl")
-include("EnsembleSimulations.jl")
 include("Parameters.jl")
+include("EnsembleSimulations.jl")
 include("InverseProblems.jl")
 include("EnsembleKalmanInversions.jl")
 
-using .Transformations: Transformation, ZScore, RescaledZScore, SpaceIndices, TimeIndices
-using .Observations: SyntheticObservations, observation_times
-using .EnsembleSimulations: ensemble_column_model_simulation
-using .Parameters: FreeParameters, lognormal, ScaledLogitNormal
-
-using .InverseProblems:
-    InverseProblem,
-    forward_map,
-    forward_run!,
-    observation_map,
-    observation_map_variance_across_time,
-    ConcatenatedOutputMap
-
-using .EnsembleKalmanInversions:
-    iterate!,
-    EnsembleKalmanInversion,
-    Resampler,
-    FullEnsembleDistribution,
-    SuccessfulEnsembleDistribution
+using .Utils
+using .Transformations
+using .Observations
+using .EnsembleSimulations
+using .Parameters
+using .InverseProblems
+using .EnsembleKalmanInversions
 
 #####
 ##### Data!
@@ -104,7 +92,7 @@ function __init__()
     dep = DataDep("four_day_suite_4m", "Idealized 4 day simulation data with 4m vertical resolution", four_day_suite_4m_paths)
     DataDeps.register(dep)
 
-    dep = DataDep("six_day_suite_1m", "Idealized 6 day simulation data with 1m vertical resolution", six_day_suite_2m_paths)
+    dep = DataDep("six_day_suite_1m", "Idealized 6 day simulation data with 1m vertical resolution", six_day_suite_1m_paths)
     DataDeps.register(dep)
 
     dep = DataDep("six_day_suite_2m", "Idealized 6 day simulation data with 2m vertical resolution", six_day_suite_2m_paths)
