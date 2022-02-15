@@ -20,9 +20,9 @@ function prettyvector(v::AbstractVector, bookends=3)
     separator = " … "
     N = length(v)
 
-    if N < 2bookends + 2
+    if N < 2bookends + 4
         content = string.(v) .* ", "
-        content = content[1:end-2]
+        content[end] = content[end][1:end-2]
         return string("[", content..., "]")
     else
         separator = " … "
