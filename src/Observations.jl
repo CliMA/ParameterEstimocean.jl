@@ -355,7 +355,7 @@ summarize_metadata(::Nothing) = ""
 summarize_metadata(metadata) = keys(metadata)
 
 function Base.show(io::IO, obs::SyntheticObservations)
-    times_str = prettyvector(prettytime.(obs.times, false), length(obs.times))
+    times_str = prettyvector(prettytime.(obs.times, false))
 
     print(io, "SyntheticObservations with fields $(propertynames(obs.field_time_serieses))", '\n',
               "├── times: $times_str", '\n',
