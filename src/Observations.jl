@@ -1,5 +1,7 @@
 module Observations
 
+export SyntheticObservations, observation_times
+
 using ..Utils: prettyvector
 
 using Oceananigans
@@ -108,27 +110,27 @@ function SyntheticObservations(path=nothing; field_names,
     return SyntheticObservations(field_time_serieses, grid, times, path, metadata, transformation)
 end
 
-observation_names(ts::SyntheticObservations) = keys(ts.field_time_serieses)
+observation_names(observations::SyntheticObservations) = keys(observations.field_time_serieses)
 
 """
-    observation_names(obs::Vector{<:SyntheticObservations})
+    observation_names(observations::Vector{<:SyntheticObservations})
 
 Return a Set representing the union of all names in `obs`.
 """
-function observation_names(obs_vector::Vector{<:SyntheticObservations})
+function observation_names(observations::Vector{<:SyntheticObservations})
     names = Set()
-    for obs in obs_vector
+    for obs in observations
         push!(names, observation_names(obs)...)
     end
 
     return names
 end
 
-Base.summary(obs::SyntheticObservations) =
-    "SyntheticObservations of $(keys(obs.field_time_serieses)) on $(summary(obs.grid))"
+Base.summary(observations::SyntheticObservations) =
+    "SyntheticObservations of $(keys(observations.field_time_serieses)) on $(summary(observations.grid))"
 
-Base.summary(obs::Vector{<:SyntheticObservations}) =
-    "Vector{<:SyntheticObservations} of $(keys(first(obs).field_time_serieses)) on $(summary(first(obs).grid))"
+Base.summary(observations::Vector{<:SyntheticObservations}) =
+    "Vector{<:SyntheticObservations} of $(keys(first(observations).field_time_serieses)) on $(summary(first(observations).grid))"
 
 tupleit(t) = try
     Tuple(t)
@@ -195,11 +197,12 @@ end
 #####
 
 """
-    column_ensemble_interior(observations::Vector{<:SyntheticObservations}, field_name, time_indices::Vector, N_ens)
+    column_ensemble_interior(observations::Vector{<:SyntheticObservations},
+                             field_name, time_index, (Nensemble, Nbatch, Nz))
 
 Return an `Nensemble × Nbatch × Nz` Array of `(1, 1, Nz)` `field_name` data,
-given `Nbatch` `SyntheticObservations` objects.
-The `Nbatch × Nz` data for `field_name` is copied `Nensemble` times to form a 3D Array.
+given `Nbatch` `SyntheticObservations` objects. The `Nbatch × Nz` data for `field_name`
+is copied `Nensemble` times to form a 3D Array.
 """
 function column_ensemble_interior(observations::Vector{<:SyntheticObservations},
                                   field_name, time_index, (Nensemble, Nbatch, Nz))
