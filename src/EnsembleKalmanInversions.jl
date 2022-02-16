@@ -97,7 +97,7 @@ Arguments
 
 - `resampler`: controls particle resampling procedure. See `Resampler`.
 """
-function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampler=Resampler())
+function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampler=Resampler(), unconstrained_parameters=nothing)
 
     free_parameters = inverse_problem.free_parameters
     priors = free_parameters.priors
@@ -118,7 +118,12 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampl
 
     # Generate an initial sample of parameters
     unconstrained_priors = NamedTuple(name => unconstrained_prior(priors[name]) for name in free_parameters.names)
-    Xᵢ = [rand(unconstrained_priors[i]) for i=1:Nθ, k=1:Nens]
+
+    if isnothing(unconstrained_parameters)
+        Xᵢ = [rand(unconstrained_priors[i]) for i=1:Nθ, k=1:Nens]
+    else
+        Xᵢ = unconstrained_parameters
+    end
 
     # Build EKP-friendly observations "y" and the covariance matrix of observational uncertainty "Γy"
     y = dropdims(observation_map(inverse_problem), dims=2) # length(forward_map_output) column vector
