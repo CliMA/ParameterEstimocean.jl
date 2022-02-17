@@ -38,15 +38,14 @@ end
 
 Base.show(io::IO, eki::EnsembleKalmanInversion) =
     print(io, "EnsembleKalmanInversion", '\n',
-              "├── inverse_problem: ", typeof(eki.inverse_problem).name.wrapper, '\n',
-              "├── ensemble_kalman_process: ", typeof(eki.ensemble_kalman_process), '\n',
+              "├── inverse_problem: ", summary(eki.inverse_problem), '\n',
+              "├── ensemble_kalman_process: ", summary(eki.ensemble_kalman_process), '\n',
               "├── mapped_observations: ", summary(eki.mapped_observations), '\n',
               "├── noise_covariance: ", summary(eki.noise_covariance), '\n',
-              "├── inverting_forward_map: ", typeof(eki.inverting_forward_map).name.wrapper, '\n',
               "├── iteration: $(eki.iteration)", '\n',
-              "├── resampler: $(typeof(eki.resampler))",
-              "├── unconstrained_parameters: $(typeof(eki.unconstrained_parameters))", '\n',
-              "└── forward_map_output: $(typeof(eki.forward_map_output))")
+              "├── resampler: $(summary(eki.resampler))",
+              "├── unconstrained_parameters: $(summary(eki.unconstrained_parameters))", '\n',
+              "└── forward_map_output: $(summary(eki.forward_map_output))")
 
 construct_noise_covariance(noise_covariance::AbstractMatrix, y) = noise_covariance
 
@@ -97,7 +96,12 @@ Arguments
 
 - `resampler`: controls particle resampling procedure. See `Resampler`.
 """
-function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampler=Resampler(), unconstrained_parameters=nothing)
+function EnsembleKalmanInversion(inverse_problem;
+                                 noise_covariance = 1e-2,
+                                 resampler = Resampler(),
+                                 unconstrained_parameters = nothing,
+                                 iteration_summaries = nothing,
+                                 forward_map_output)
 
     free_parameters = inverse_problem.free_parameters
     priors = free_parameters.priors
@@ -143,9 +147,13 @@ function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampl
                                    Xᵢ,
                                    nothing)
 
-    # Rebuild eki with the summary and forward map (and potentially
-    # resampled parameters) for iteration 0:
-    forward_map_output, summary = forward_map_and_summary(eki′)
+    if isnothing(forward_map_output)
+        # Rebuild eki with the summary and forward map (and potentially
+        # resampled parameters) for iteration 0:
+        forward_map_output, summary = forward_map_and_summary(eki′)
+    else # output was provided, so avoid a forward run:
+        summary = IterationSummary(eki′, Xᵢ, forward_map_output)
+    end
 
     iteration_summaries = OffsetArray([summary], -1)
 
@@ -291,7 +299,7 @@ function sample(eki, θ, G, Nsample)
 end
 
 function forward_map_and_summary(eki, X=eki.unconstrained_parameters)
-    G = eki.inverting_forward_map(X)             # (len(G), Nensemble)
+    G = eki.forward_map_output = eki.inverting_forward_map(X)             # (len(G), Nensemble)
     resample!(eki.resampler, X, G, eki)
     return G, IterationSummary(eki, X, G)
 end
@@ -319,7 +327,7 @@ function iterate!(eki::EnsembleKalmanInversion; iterations = 1, show_progress = 
 
         # Forward map
         G, summary = forward_map_and_summary(eki) 
-        eki.forward_map_output .= G
+        eki.forward_map_output = G
         push!(eki.iteration_summaries, summary)
     end
 
