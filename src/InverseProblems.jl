@@ -194,6 +194,13 @@ end
 
 (ip::InverseProblem)(θ) = forward_map(ip, θ)
 
+# Compute inverse transform from unconstrained (transformed) space to
+# constrained (physical) space
+function inverting_forward_map(ip::InverseProblem, X)
+    θ = transform_to_constrained(ip.free_parameters.priors, X)
+    return forward_map(ip, θ)
+end
+
 #####
 ##### ConcatenatedOutputMap
 #####
