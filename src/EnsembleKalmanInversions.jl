@@ -59,7 +59,7 @@ end
 
 Return an object that interfaces with
 [EnsembleKalmanProcesses.jl](https://github.com/CliMA/EnsembleKalmanProcesses.jl)
-and uses Ensemble Kalman Inversion to iteratively "solve" the inverse problem:
+and uses Ensemble Kalman Inversion to iteratively solve the inverse problem:
 
 ```math
 y = G(θ) + η,
@@ -69,8 +69,8 @@ for the parameters ``θ``, where ``y`` is a "normalized" vector of observations,
 ``G(θ)`` is a forward map that predicts the observations, and ``η ∼ 𝒩(0, Γ_y)`` is zero-mean
 random noise with covariance matrix ``Γ_y`` representing uncertainty in the observations.
 
-By "solve", we mean that the iteration finds the parameter values ``θ`` that minimizes the
-distance between ``y`` and ``G(θ)``.
+Note that ensemble Kalman inversion is guaranteed only to find a local optimum ``θ★``
+to ``min || y - G(θ★) ||``.
 
 The "forward map output" `G` can have many interpretations. The specific statistics that `G` computes
 have to be selected for each use case to provide a concise summary of the complex model solution that
@@ -100,11 +100,13 @@ function EnsembleKalmanInversion(inverse_problem;
                                  noise_covariance = 1e-2,
                                  resampler = Resampler(),
                                  unconstrained_parameters = nothing,
-                                 iteration_summaries = nothing,
-                                 forward_map_output)
-
+                                 forward_map_output = nothing,
+                                 process = Inversion())
 
     if isnothing(unconstrained_parameters)
+        isnothing(forward_map_output) ||
+            throw(ArgumentError("Cannot provide forward_map_output without unconstrained_parameters."))
+
         free_parameters = inverse_problem.free_parameters
         priors = free_parameters.priors
         Nθ = length(priors)
@@ -114,16 +116,14 @@ function EnsembleKalmanInversion(inverse_problem;
         unconstrained_priors = NamedTuple(name => unconstrained_prior(priors[name])
                                           for name in free_parameters.names)
 
-        Xᵢ = [rand(unconstrained_priors[i]) for i=1:Nθ, k=1:Nens]
-    else
-        Xᵢ = unconstrained_parameters
+        unconstrained_parameters = [rand(unconstrained_priors[i]) for i=1:Nθ, k=1:Nens]
     end
 
     # Build EKP-friendly observations "y" and the covariance matrix of observational uncertainty "Γy"
     y = dropdims(observation_map(inverse_problem), dims=2) # length(forward_map_output) column vector
     Γy = construct_noise_covariance(noise_covariance, y)
-
-    ensemble_kalman_process = EnsembleKalmanProcess(Xᵢ, y, Γy, Inversion())
+    Xᵢ = unconstrained_parameters
+    ensemble_kalman_process = EnsembleKalmanProcess(Xᵢ, y, Γy, process)
     iteration = 0
 
     eki′ = EnsembleKalmanInversion(inverse_problem,
@@ -134,16 +134,17 @@ function EnsembleKalmanInversion(inverse_problem;
                                    nothing,
                                    resampler,
                                    Xᵢ,
-                                   nothing)
+                                   forward_map_output)
 
-    if isnothing(forward_map_output)
-        # Rebuild eki with the summary and forward map (and potentially
-        # resampled parameters) for iteration 0:
-        forward_map_output, summary = forward_map_and_summary(eki′)
-    else # output was provided, so avoid a forward run:
-        summary = IterationSummary(eki′, Xᵢ, forward_map_output)
+    if isnothing(forward_map_output) # execute forward map to generate initial summary and forward_map_output
+        @info "Executing forward map while building EnsembleKalmanInversion..."
+        start_time = time_ns()
+        forward_map_output = resampling_forward_map!(eki′, Xᵢ)
+        elapsed_time = (time_ns() - start_time) * 1e-9
+        @info "    ... done ($(prettytime(elapsed_time)))."
     end
 
+    summary = IterationSummary(eki′, Xᵢ, forward_map_output)
     iteration_summaries = OffsetArray([summary], -1)
 
     eki = EnsembleKalmanInversion(inverse_problem,
@@ -285,10 +286,10 @@ function sample(eki, θ, G, Nsample)
     return found_X[:, 1:Nsample], found_G[:, 1:Nsample]
 end
 
-function forward_map_and_summary(eki, X=eki.unconstrained_parameters)
-    G = eki.forward_map_output = inverting_forward_map(eki.inverse_problem, X)             # (len(G), Nensemble)
+function resampling_forward_map!(eki, X=eki.unconstrained_parameters)
+    G = inverting_forward_map(eki.inverse_problem, X) # (len(G), Nensemble)
     resample!(eki.resampler, X, G, eki)
-    return G, IterationSummary(eki, X, G)
+    return G
 end
 
 """
@@ -317,8 +318,9 @@ function iterate!(eki::EnsembleKalmanInversion; iterations = 1, show_progress = 
         eki.iteration += 1
 
         # Forward map
-        G, summary = forward_map_and_summary(eki) 
+        G = resampling_forward_map!(eki) 
         eki.forward_map_output = G
+        summary = IterationSummary(eki, eki.unconstrained_parameters, eki.forward_map_output)
         push!(eki.iteration_summaries, summary)
     end
 
