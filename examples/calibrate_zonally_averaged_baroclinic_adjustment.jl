@@ -44,10 +44,9 @@ space_transformation = SpaceIndices(x=:, y=2:2:Ny-1, z=2:2:Nz-1)
 
 transformation = (b = Transformation(space = space_transformation, normalization=ZScore()),
                   c = Transformation(space = space_transformation, normalization=ZScore()),
-                  u = Transformation(space = space_transformation, normalization=ZScore()),
-                  v = Transformation(space = space_transformation, normalization=RescaledZScore(1e-1)))
+                  u = Transformation(space = space_transformation, normalization=ZScore()))
 
-transformation = ZScore()
+# transformation = ZScore()
 
 times = [0, 1hours]
 
@@ -57,7 +56,7 @@ observations = SyntheticObservations(filepath; transformation, times, field_name
 ##### Simulation
 #####
 
-Nensemble = 10
+Nensemble = 5
 slice_ensemble_size = SliceEnsembleSize(size=(Ny, Nz), ensemble=Nensemble)
 
 ensemble_grid = RectilinearGrid(architecture,
