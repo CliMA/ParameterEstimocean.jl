@@ -6,7 +6,7 @@ using Oceananigans.Units
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SliceEnsembleSize
 using Oceananigans.TurbulenceClosures: FluxTapering
 using LinearAlgebra, CairoMakie, DataDeps, JLD2
-using ElectronDisplay
+# using ElectronDisplay
 
 architecture = CPU()
 
