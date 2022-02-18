@@ -83,7 +83,7 @@ ensemble_model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
                                              closure = closure_ensemble,
                                              free_surface = ImplicitFreeSurface())
 
-Δt = 1.0
+Δt = 0.5
 simulation = Simulation(ensemble_model; Δt, stop_time=times[end])
 
 priors = (
