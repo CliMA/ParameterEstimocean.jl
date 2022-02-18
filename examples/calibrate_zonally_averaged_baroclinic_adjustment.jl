@@ -163,7 +163,7 @@ for iter in [0, 1, 2, 3, 4, 5]
     Nparameters = length(first(parameters))
     parameter_ensemble_matrix = [parameters[i][j] for i=1:Nensemble, j=1:Nparameters]
 
-    label = iter == 0 ? "Initial ensemble" : "Iteration $iteration"
+    label = iter == 0 ? "Initial ensemble" : "Iteration $iter"
     push!(labels, label)
     push!(scatters, scatter!(axmain, parameter_ensemble_matrix))
     density!(axtop, parameter_ensemble_matrix[:, 1])
