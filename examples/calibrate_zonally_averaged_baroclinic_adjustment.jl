@@ -48,7 +48,7 @@ transformation = (b = Transformation(space = space_transformation, normalization
 
 # transformation = ZScore()
 
-times = [0, 1day]
+times = [0, 12hours]
 
 observations = SyntheticObservations(filepath; transformation, times, field_names)
 
@@ -83,7 +83,7 @@ ensemble_model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
                                              closure = closure_ensemble,
                                              free_surface = ImplicitFreeSurface())
 
-Δt = 5.0
+Δt = 1.0
 simulation = Simulation(ensemble_model; Δt, stop_time=times[end])
 
 priors = (
