@@ -15,7 +15,20 @@ architecture = CPU()
 # filepath = joinpath(filedir, filename)
 # Base.download("https://www.dropbox.com/s/f8zsb33vwwwmjjm/$filename", filepath)
 
-filepath = "/Users/navid/Research/mesoscale-parametrization-OSM2022/baroclinic_adjustment-double_Lx/short_save_often_run/baroclinic_adjustment_double_Lx_zonal_average.jld2"
+# filepath = "/Users/navid/Research/mesoscale-parametrization-OSM2022/baroclinic_adjustment-double_Lx/short_save_often_run/baroclinic_adjustment_double_Lx_zonal_average.jld2"
+filepath = "baroclinic_adjustment_double_Lx_zonal_average.jld2"
+
+file = jldopen(filepath)
+coriolis = file["serialized/coriolis"]
+
+# number of grid points
+Nx, Ny, Nz = file["grid/Nx"], file["grid/Ny"], file["grid/Nz"]
+
+# Domain
+const Lx, Ly, Lz = file["grid/Lx"], file["grid/Ly"], file["grid/Lz"]
+
+close(file)
+
 
 field_names = (:b, :c, :u)
 
@@ -43,17 +56,6 @@ observations = SyntheticObservations(filepath; transformation, times, field_name
 #####
 ##### Simulation
 #####
-
-file = jldopen(filepath)
-coriolis = file["serialized/coriolis"]
-
-# number of grid points
-Nx, Ny, Nz = file["grid/Nx"], file["grid/Ny"], file["grid/Nz"]
-
-# Domain
-const Lx, Ly, Lz = file["grid/Lx"], file["grid/Ly"], file["grid/Lz"]
-
-close(file)
 
 Nensemble = 10
 slice_ensemble_size = SliceEnsembleSize(size=(Ny, Nz), ensemble=Nensemble)
