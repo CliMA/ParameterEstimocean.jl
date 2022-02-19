@@ -76,6 +76,9 @@ gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(slope_limiter = 
 
 closure_ensemble = ([deepcopy(gent_mcwilliams_diffusivity) for _ = 1:Nensemble], closures[1], closures[2])
 
+@show "no convective adjustment"
+closure_ensemble = ([deepcopy(gent_mcwilliams_diffusivity) for _ = 1:Nensemble], closures[1])
+
 ensemble_model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
                                              tracers = (:b, :c),
                                              buoyancy = BuoyancyTracer(),
