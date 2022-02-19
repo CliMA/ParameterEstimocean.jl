@@ -12,7 +12,6 @@ using ProgressBars
 using Random
 using Printf
 using LinearAlgebra
-using Suppressor: @suppress
 using Statistics
 using Distributions
 using EnsembleKalmanProcesses.EnsembleKalmanProcessModule
