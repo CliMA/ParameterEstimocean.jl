@@ -40,7 +40,7 @@ transformation = (b = ZScore(),
 
 transformation = ZScore()
 
-space_transformation = SpaceIndices(x=:, y=2:2:Ny-1, z=2:2:Nz-1)
+space_transformation = SpaceIndices(x=:, y=2:4:Ny-1, z=2:4:Nz-1)
 
 transformation = (b = Transformation(space = space_transformation, normalization=ZScore()),
                   c = Transformation(space = space_transformation, normalization=ZScore()),
@@ -86,7 +86,7 @@ ensemble_model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
                                              closure = closure_ensemble,
                                              free_surface = ImplicitFreeSurface())
 
-Δt = 2.0
+Δt = 0.5
 simulation = Simulation(ensemble_model; Δt, stop_time=times[end])
 
 priors = (
