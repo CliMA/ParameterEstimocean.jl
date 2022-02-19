@@ -104,10 +104,10 @@ free_parameters = FreeParameters(priors)
 calibration = InverseProblem(observations, simulation, free_parameters)
 
 eki = EnsembleKalmanInversion(calibration;
-                              noise_covariance = 1e-3,
+                              noise_covariance = 1e-2,
                               resampler = Resampler(acceptable_failure_fraction=1.0))
 
-iterate!(eki; iterations = 30)
+iterate!(eki; iterations = 20)
 
 
 # Last, we visualize few metrics regarding how the EKI calibration went about.
@@ -164,7 +164,7 @@ axright = Axis(f[2, 2])
 scatters = []
 labels = String[]
 
-for iter in [0, 1, 2, 3, 4, 5, 10, 15, 20, 25, 30]
+for iter in [0, 1, 2, 3, 4, 5, 6, 8, 10, 15, 20]
     ## Make parameter matrix
     parameters = eki.iteration_summaries[iter].parameters
     Nensemble = length(parameters)
