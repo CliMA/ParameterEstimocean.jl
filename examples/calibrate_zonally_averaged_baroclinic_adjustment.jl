@@ -49,7 +49,7 @@ transformation = (b = Transformation(space = space_transformation, normalization
 
 # transformation = ZScore()
 
-times = [40days-12hours, 40days, 41days]
+times = [40days-12hours, 40days]
 
 observations = SyntheticObservations(filepath; transformation, times, field_names)
 
@@ -57,7 +57,7 @@ observations = SyntheticObservations(filepath; transformation, times, field_name
 ##### Simulation
 #####
 
-Nensemble = 50
+Nensemble = 10
 slice_ensemble_size = SliceEnsembleSize(size=(Ny, Nz), ensemble=Nensemble)
 
 ensemble_grid = RectilinearGrid(architecture,
@@ -91,7 +91,7 @@ ensemble_model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
                                              closure = closure_ensemble,
                                              free_surface = ImplicitFreeSurface())
 
-Δt = 2.0
+Δt = 1.0
 simulation = Simulation(ensemble_model; Δt, stop_time=times[end])
 
 priors = (
@@ -107,7 +107,7 @@ eki = EnsembleKalmanInversion(calibration;
                               noise_covariance = 1e-1,
                               resampler = Resampler(acceptable_failure_fraction=1.0))
 
-iterate!(eki; iterations = 20)
+iterate!(eki; iterations = 3)
 
 
 # Last, we visualize few metrics regarding how the EKI calibration went about.
@@ -167,7 +167,7 @@ axright = Axis(f[2, 2])
 scatters = []
 labels = String[]
 
-for iter in [0, 1, 2, 3, 4, 5, 6, 8, 10, 15, 20]
+for iter in [0, 1, 2, 3]
     ## Make parameter matrix
     parameters = eki.iteration_summaries[iter].parameters
     Nensemble = length(parameters)
