@@ -8,22 +8,19 @@ export
     observation_map_variance_across_time,
     ConcatenatedOutputMap
 
-using OrderedCollections
+using OffsetArrays, Statistics, OrderedCollections
 using Suppressor: @suppress
 
 using ..Transformations: transform_field_time_series
+using ..Parameters: new_closure_ensemble, transform_to_constrained
 
 using ..Observations:
     AbstractObservation,
     SyntheticObservations,
-    initialize_simulation!,
+    initialize_forward_run!,
     FieldTimeSeriesCollector,
     observation_times,
     observation_names
-
-using ..Parameters: new_closure_ensemble
-
-using OffsetArrays, Statistics
 
 using Oceananigans: run!, fields, FieldTimeSeries, CPU
 using Oceananigans.Architectures: architecture
@@ -51,10 +48,10 @@ end
 
 """
     InverseProblem(observations,
-                simulation,
-                free_parameters;
-                output_map = ConcatenatedOutputMap(),
-                time_series_collector = nothing)
+                   simulation,
+                   free_parameters;
+                   output_map = ConcatenatedOutputMap(),
+                   time_series_collector = nothing)
 
 Return an `InverseProblem`.
 """
@@ -158,7 +155,13 @@ function forward_run!(ip::InverseProblem, parameters; suppress=false)
     θ = expand_parameters(ip, parameters)
     simulation.model.closure = new_closure_ensemble(closures, θ, architecture(simulation.model.grid))
 
-    initialize_simulation!(simulation, observations, ip.time_series_collector)
+    initialize_forward_run!(simulation, observations, ip.time_series_collector)
+
+    time_series_collector = ip.time_series_collector
+    collected_fields = time_series_collector.collected_fields
+    arch = architecture(time_series_collector.grid)
+
+    initialize_forward_run!(simulation, observations, ip.time_series_collector)
 
     if suppress
         @suppress run!(simulation)
@@ -194,8 +197,12 @@ end
 
 (ip::InverseProblem)(θ) = forward_map(ip, θ)
 
-# Compute inverse transform from unconstrained (transformed) space to
-# constrained (physical) space
+"""
+    inverting_forward_map(ip::InverseProblem, X)
+
+Transform unconstrained parameters `X` into constrained,
+physical-space parameters `θ` and execute `forward_map(ip, θ)`.
+"""
 function inverting_forward_map(ip::InverseProblem, X)
     θ = transform_to_constrained(ip.free_parameters.priors, X)
     return forward_map(ip, θ)
