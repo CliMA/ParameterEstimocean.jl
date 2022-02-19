@@ -81,8 +81,8 @@ gm_closure_ensemble = arch_array(architecture, [deepcopy(gent_mcwilliams_diffusi
 
 closure_ensemble = (gm_closure_ensemble, closures[1], closures[2])
 
-@show "no convective adjustment"
-closure_ensemble = (gm_closure_ensemble, closures[1])
+# @show "no convective adjustment"
+# closure_ensemble = (gm_closure_ensemble, closures[1])
 
 ensemble_model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
                                              tracers = (:b, :c),
