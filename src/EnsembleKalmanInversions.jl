@@ -16,15 +16,14 @@ using Suppressor: @suppress
 using Statistics
 using Distributions
 using EnsembleKalmanProcesses.EnsembleKalmanProcessModule
-using EnsembleKalmanProcesses.ParameterDistributionStorage
-
-using EnsembleKalmanProcesses.EnsembleKalmanProcessModule: sample_distribution
 
 using ..Parameters: unconstrained_prior, transform_to_constrained, inverse_covariance_transform
 using ..InverseProblems: Nensemble, observation_map, forward_map, tupify_parameters
 using ..InverseProblems: inverting_forward_map
 
-mutable struct EnsembleKalmanInversion{I, E, M, O, F, S, R, X, G}
+using Oceananigans.Utils: prettytime
+
+mutable struct EnsembleKalmanInversion{I, E, M, O, S, R, X, G}
     inverse_problem :: I
     ensemble_kalman_process :: E
     mapped_observations :: M
@@ -243,49 +242,6 @@ particle_str(particle, error, parameters) =
     string(param_str.(values(parameters))...) *
     @sprintf("error = %.6e", error)
 
-"""
-    sample(eki, θ, G, Nsample)
-
-Generate `Nsample` new particles sampled from a multivariate Normal distribution parameterized 
-by the ensemble mean and covariance computed based on the `Nθ` × `Nensemble` ensemble 
-array `θ`, under the condition that all `Nsample` particles produce successful forward map
-outputs (don't include `NaNs`).
-
-`G` (`size(G) =  Noutput × Nensemble`) is the forward map output produced by `θ`.
-
-Returns `Nθ × Nsample` parameter `Array` and `Noutput × Nsample` forward map output `Array`.
-"""
-function sample(eki, θ, G, Nsample)
-    Nθ, Nensemble = size(θ)
-    Noutput = size(G, 1)
-
-    Nfound = 0
-    found_X = zeros(Nθ, 0)
-    found_G = zeros(Noutput, 0)
-    existing_sample_distribution = eki.resampler.distribution(θ, G)
-
-    while Nfound < Nsample
-        @info "Re-sampling ensemble members (found $Nfound of $Nsample)..."
-
-        # Generate `Nensemble` new samples in unconstrained space.
-        # Note that eki.inverse_problem.simulation
-        # must run `Nensemble` particles no matter what.
-        X_sample = rand(existing_sample_distribution, Nensemble)
-        G_sample = inverting_forward_map(eki.inverse_problem, X_sample)
-
-        nan_values = column_has_nan(G_sample)
-        success_columns = findall(.!column_has_nan(G_sample))
-        @info "    ... found $(length(success_columns)) successful particles."
-
-        found_X = cat(found_X, X_sample[:, success_columns], dims=2)
-        found_G = cat(found_G, G_sample[:, success_columns], dims=2)
-        Nfound = size(found_X, 2)
-    end
-
-    # Restrict found particles to requested size
-    return found_X[:, 1:Nsample], found_G[:, 1:Nsample]
-end
-
 function resampling_forward_map!(eki, X=eki.unconstrained_parameters)
     G = inverting_forward_map(eki.inverse_problem, X) # (len(G), Nensemble)
     resample!(eki.resampler, X, G, eki)
@@ -308,13 +264,8 @@ function iterate!(eki::EnsembleKalmanInversion; iterations = 1, show_progress = 
 
     for _ in iterator
         # Ensemble update
-        @show "Before update."
-        @show eki.unconstrained_parameters 
         update_ensemble!(eki.ensemble_kalman_process, eki.forward_map_output)
-        X = get_u_final(eki.ensemble_kalman_process)
-        eki.unconstrained_parameters .= X
-        @show "After update."
-        @show eki.unconstrained_parameters 
+        eki.unconstrained_parameters = get_u_final(eki.ensemble_kalman_process)
         eki.iteration += 1
 
         # Forward map
@@ -425,8 +376,8 @@ function resample!(resampler::Resampler, X, G, eki)
             replace_columns = Colon()
         end
 
-        found_X, found_G = sample(eki, X, G, Nsample)
-        
+        found_X, found_G = find_successful_particles(eki, X, G, Nsample)
+
         @info "Replacing columns $replace_columns..."
         view(X, :, replace_columns) .= found_X
         view(G, :, replace_columns) .= found_G
@@ -461,4 +412,49 @@ function resample!(resampler::Resampler, X, G, eki)
     return too_much_failure
 end
 
+"""
+    sample(eki, θ, G, Nsample)
+
+Generate `Nsample` new particles sampled from a multivariate Normal distribution parameterized 
+by the ensemble mean and covariance computed based on the `Nθ` × `Nensemble` ensemble 
+array `θ`, under the condition that all `Nsample` particles produce successful forward map
+outputs (don't include `NaNs`).
+
+`G` (`size(G) =  Noutput × Nensemble`) is the forward map output produced by `θ`.
+
+Returns `Nθ × Nsample` parameter `Array` and `Noutput × Nsample` forward map output `Array`.
+"""
+function find_successful_particles(eki, X, G, Nsample)
+    Nθ, Nensemble = size(X)
+    Noutput = size(G, 1)
+
+    Nfound = 0
+    found_X = zeros(Nθ, 0)
+    found_G = zeros(Noutput, 0)
+    existing_sample_distribution = eki.resampler.distribution(X, G)
+
+    while Nfound < Nsample
+        @info "Searching for successful particles (found $Nfound of $Nsample)..."
+
+        # Generate `Nensemble` new samples in unconstrained space.
+        # Note that eki.inverse_problem.simulation
+        # must run `Nensemble` particles no matter what.
+        X_sample = rand(existing_sample_distribution, Nensemble)
+
+        G_sample = inverting_forward_map(eki.inverse_problem, X_sample)
+
+        nan_values = column_has_nan(G_sample)
+        success_columns = findall(.!column_has_nan(G_sample))
+        @info "    ... found $(length(success_columns)) successful particles."
+
+        found_X = cat(found_X, X_sample[:, success_columns], dims=2)
+        found_G = cat(found_G, G_sample[:, success_columns], dims=2)
+        Nfound = size(found_X, 2)
+    end
+
+    # Restrict found particles to requested size
+    return found_X[:, 1:Nsample], found_G[:, 1:Nsample]
+end
+
 end # module
+
