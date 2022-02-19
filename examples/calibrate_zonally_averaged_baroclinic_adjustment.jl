@@ -8,7 +8,7 @@ using Oceananigans.TurbulenceClosures: FluxTapering
 using LinearAlgebra, CairoMakie, DataDeps, JLD2
 # using ElectronDisplay
 
-architecture = CPU()
+architecture = GPU()
 
 # filedir = @__DIR__
 # filename = "baroclinic_adjustment_double_Lx_zonal_average.jld2"
@@ -16,7 +16,7 @@ architecture = CPU()
 # Base.download("https://www.dropbox.com/s/f8zsb33vwwwmjjm/$filename", filepath)
 
 # filepath = "/Users/navid/Research/mesoscale-parametrization-OSM2022/baroclinic_adjustment-double_Lx/short_save_often_run/baroclinic_adjustment_double_Lx_zonal_average.jld2"
-filepath = "baroclinic_adjustment_double_Lx_zonal_average_average_80dayrun.jld2"
+filepath = "baroclinic_adjustment_double_Lx_zonal_average_80dayrun.jld2"
 
 file = jldopen(filepath)
 coriolis = file["serialized/coriolis"]
@@ -49,7 +49,7 @@ transformation = (b = Transformation(space = space_transformation, normalization
 
 # transformation = ZScore()
 
-times = [40days-12hours, 40days]
+times = [40days-12hours, 40days, 41days]
 
 observations = SyntheticObservations(filepath; transformation, times, field_names)
 
@@ -104,10 +104,10 @@ free_parameters = FreeParameters(priors)
 calibration = InverseProblem(observations, simulation, free_parameters)
 
 eki = EnsembleKalmanInversion(calibration;
-                              noise_covariance = 1.0,
+                              noise_covariance = 1e-3,
                               resampler = Resampler(acceptable_failure_fraction=1.0))
 
-iterate!(eki; iterations = 5)
+iterate!(eki; iterations = 30)
 
 
 # Last, we visualize few metrics regarding how the EKI calibration went about.
@@ -164,7 +164,7 @@ axright = Axis(f[2, 2])
 scatters = []
 labels = String[]
 
-for iter in [0, 1, 2, 3, 4, 5]
+for iter in [0, 1, 2, 3, 4, 5, 10, 15, 20, 25, 30]
     ## Make parameter matrix
     parameters = eki.iteration_summaries[iter].parameters
     Nensemble = length(parameters)
