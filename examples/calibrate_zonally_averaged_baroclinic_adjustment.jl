@@ -49,7 +49,7 @@ transformation = (b = Transformation(space = space_transformation, normalization
 
 # transformation = ZScore()
 
-times = [0, 1hours]
+times = [40days-12hours, 40days]
 
 observations = SyntheticObservations(filepath; transformation, times, field_names)
 
@@ -95,8 +95,8 @@ ensemble_model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
 simulation = Simulation(ensemble_model; Δt, stop_time=times[end])
 
 priors = (
-     κ_skew = ScaledLogitNormal(bounds = (300, 5000)),
-     κ_symmetric = ScaledLogitNormal(bounds = (300, 5000))
+     κ_skew = ScaledLogitNormal(bounds = (300, 3000)),
+     κ_symmetric = ScaledLogitNormal(bounds = (300, 3000))
  )
 
 free_parameters = FreeParameters(priors)
