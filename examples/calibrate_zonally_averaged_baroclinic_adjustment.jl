@@ -104,7 +104,7 @@ free_parameters = FreeParameters(priors)
 calibration = InverseProblem(observations, simulation, free_parameters)
 
 eki = EnsembleKalmanInversion(calibration;
-                              noise_covariance = 1e-2,
+                              noise_covariance = 1e-1,
                               resampler = Resampler(acceptable_failure_fraction=1.0))
 
 iterate!(eki; iterations = 20)
@@ -121,6 +121,7 @@ weight_distances = [norm(θ̅(iter)) for iter in 1:eki.iteration]
 output_distances = [norm(forward_map(calibration, θ̅(iter))[:, 1] - y) for iter in 1:eki.iteration]
 ensemble_variances = [varθ(iter) for iter in 1:eki.iteration]
 
+#=
 f = Figure()
 lines(f[1, 1], 1:eki.iteration, weight_distances, color = :red, linewidth = 2,
       axis = (title = "Parameter norm",
@@ -151,6 +152,8 @@ save("summary_bca.svg", f); nothing #hide
 
 # And also we plot the the distributions of the various model ensembles for few EKI iterations to see
 # if and how well they converge to the true diffusivity values.
+
+=#
 
 f = Figure()
 
