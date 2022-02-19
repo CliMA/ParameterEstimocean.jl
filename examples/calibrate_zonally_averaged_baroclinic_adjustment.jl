@@ -30,7 +30,7 @@ const Lx, Ly, Lz = file["grid/Lx"], file["grid/Ly"], file["grid/Lz"]
 close(file)
 
 
-field_names = (:b, :c, :u)
+field_names = (:b, :c, :u, :v)
 
 using OceanTurbulenceParameterEstimation.Transformations: Transformation
 
@@ -44,7 +44,8 @@ space_transformation = SpaceIndices(x=:, y=2:4:Ny-1, z=2:4:Nz-1)
 
 transformation = (b = Transformation(space = space_transformation, normalization=ZScore()),
                   c = Transformation(space = space_transformation, normalization=ZScore()),
-                  u = Transformation(space = space_transformation, normalization=ZScore()))
+                  u = Transformation(space = space_transformation, normalization=ZScore()),
+                  v = Transformation(space = space_transformation, normalization=RescaledZScore(1e-1)))
 
 # transformation = ZScore()
 
