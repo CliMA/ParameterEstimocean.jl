@@ -1,4 +1,5 @@
 # Calibration of Gent-McWilliams to a baroclinic adjustment problem
+pushfirst!(LOAD_PATH, joinpath(@__DIR__, ".."))
 
 using OceanTurbulenceParameterEstimation
 using Oceananigans
