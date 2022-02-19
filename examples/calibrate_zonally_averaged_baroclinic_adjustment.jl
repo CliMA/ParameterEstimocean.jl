@@ -16,7 +16,7 @@ architecture = CPU()
 # Base.download("https://www.dropbox.com/s/f8zsb33vwwwmjjm/$filename", filepath)
 
 # filepath = "/Users/navid/Research/mesoscale-parametrization-OSM2022/baroclinic_adjustment-double_Lx/short_save_often_run/baroclinic_adjustment_double_Lx_zonal_average.jld2"
-filepath = "baroclinic_adjustment_double_Lx_zonal_average.jld2"
+filepath = "baroclinic_adjustment_double_Lx_zonal_average_average_80dayrun.jld2"
 
 file = jldopen(filepath)
 coriolis = file["serialized/coriolis"]
