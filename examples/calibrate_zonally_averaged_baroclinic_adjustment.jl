@@ -40,7 +40,7 @@ transformation = (b = ZScore(),
 
 transformation = ZScore()
 
-space_transformation = SpaceIndices(x=:, y=2:4:Ny-1, z=2:4:Nz-1)
+space_transformation = SpaceIndices(x=:, y=2:2:Ny-1, z=2:2:Nz-1)
 
 transformation = (b = Transformation(space = space_transformation, normalization=ZScore()),
                   c = Transformation(space = space_transformation, normalization=ZScore()),
@@ -75,10 +75,14 @@ close(file)
 
 gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(slope_limiter = FluxTapering(1e-2))
 
-closure_ensemble = ([deepcopy(gent_mcwilliams_diffusivity) for _ = 1:Nensemble], closures[1], closures[2])
+using Oceananigans.Architectures: arch_array
+
+gm_closure_ensemble = arch_array(architecture, [deepcopy(gent_mcwilliams_diffusivity) for _ = 1:Nensemble])
+
+closure_ensemble = (gm_closure_ensemble, closures[1], closures[2])
 
 @show "no convective adjustment"
-closure_ensemble = ([deepcopy(gent_mcwilliams_diffusivity) for _ = 1:Nensemble], closures[1])
+closure_ensemble = (gm_closure_ensemble, closures[1])
 
 ensemble_model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
                                              tracers = (:b, :c),
@@ -100,7 +104,7 @@ free_parameters = FreeParameters(priors)
 calibration = InverseProblem(observations, simulation, free_parameters)
 
 eki = EnsembleKalmanInversion(calibration;
-                              noise_covariance = 1e-4,
+                              noise_covariance = 1.0,
                               resampler = Resampler(acceptable_failure_fraction=1.0))
 
 iterate!(eki; iterations = 5)
