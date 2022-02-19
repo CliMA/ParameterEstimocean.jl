@@ -57,7 +57,7 @@ observations = SyntheticObservations(filepath; transformation, times, field_name
 ##### Simulation
 #####
 
-Nensemble = 50
+Nensemble = 10
 slice_ensemble_size = SliceEnsembleSize(size=(Ny, Nz), ensemble=Nensemble)
 
 ensemble_grid = RectilinearGrid(architecture,
@@ -101,7 +101,7 @@ calibration = InverseProblem(observations, simulation, free_parameters)
 
 eki = EnsembleKalmanInversion(calibration;
                               noise_covariance = 1e-5,
-                              resampler = Resampler(acceptable_failure_fraction=0.3))
+                              resampler = Resampler(acceptable_failure_fraction=1.0))
 
 iterate!(eki; iterations = 5)
 
