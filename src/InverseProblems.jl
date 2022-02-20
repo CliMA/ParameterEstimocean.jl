@@ -70,11 +70,14 @@ function InverseProblem(observations,
     return InverseProblem(observations, simulation, time_series_collector, free_parameters, output_map)
 end
 
+Base.summary(ip::InverseProblem) =
+    string("InverseProblem{", summary(ip.output_map), "} with free parameters ", ip.free_parameters.names)
+
 function Base.show(io::IO, ip::InverseProblem)
     sim_str = "Simulation on $(summary(ip.simulation.model.grid)) with Δt=$(ip.simulation.Δt)"
     out_map_str = summary(ip.output_map)
 
-    print(io, "InverseProblem{$out_map_str}", '\n',
+    print(io, summary(ip), '\n',
         "├── observations: $(summary(ip.observations))", '\n',
         "├── simulation: $sim_str", '\n',
         "├── free_parameters: $(summary(ip.free_parameters))", '\n',
