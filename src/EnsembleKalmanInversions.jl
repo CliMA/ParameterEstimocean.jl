@@ -54,13 +54,14 @@ Base.show(io::IO, eki::EnsembleKalmanInversion) =
 construct_noise_covariance(noise_covariance::AbstractMatrix, y) = noise_covariance
 
 function construct_noise_covariance(noise_covariance::Number, y)
+    η = convert(eltype(y), noise_covariance)
     Nobs = length(y)
-    return Matrix(convert(eltype(y), noise_covariance) * I, Nobs, Nobs)
+    return Matrix(η * I, Nobs, Nobs)
 end
 
 """
     EnsembleKalmanInversion(inverse_problem;
-                            noise_covariance = 1e-2,
+                            noise_covariance = 1,
                             resampler = Resampler(),
                             unconstrained_parameters = nothing,
                             forward_map_output = nothing,
@@ -168,15 +169,15 @@ include("resampling.jl")
 #####
 
 function step_parameters(X, G, y, Γy, process; step_size=1.0)
-    ekp = EnsembleKalmanProcess(X, y, Γy, process)
-    update_ensemble!(ekp, G; Δt_new=step_size)
+    ekp = EnsembleKalmanProcess(X, y, Γy, process; Δt=step_size)
+    update_ensemble!(ekp, G)
     return get_u_final(ekp)
 end
 
 function volume_ratio(Xⁿ, Xⁿ⁺¹)
-    Vⁿ = det(cov(Xⁿ))
-    Vⁿ⁺¹ = det(cov(Xⁿ⁺¹))
-    return Vⁿ / Vⁿ⁺¹
+    Vⁿ = det(cov(Xⁿ, dims=2))
+    Vⁿ⁺¹ = det(cov(Xⁿ⁺¹, dims=2))
+    return Vⁿ⁺¹ / Vⁿ
 end
 
 function step_parameters(eki::EnsembleKalmanInversion, convergence_rate)
@@ -197,30 +198,28 @@ function step_parameters(eki::EnsembleKalmanInversion, convergence_rate)
                                   "Performing ensemble update with statistics from ",
                                   length(successful_columns), " successful particles.")
 
-
-    @show size(Xⁿ)
-    @show size(Gⁿ)
-    @show length(successful_columns)
-
     successful_Gⁿ = Gⁿ[:, successful_columns]
     successful_Xⁿ = Xⁿ[:, successful_columns]
 
-    @show size(successful_Xⁿ)
-    @show size(successful_Gⁿ)
-    @show any(isnan.(successful_Gⁿ))
-
     # Step forward with unity step size
-    successful_Xⁿ⁺¹ = step_parameters(successful_Xⁿ, successful_Gⁿ, y, Γy, process; step_size=1.0)
+    step_size = 1.0
+    successful_Xⁿ⁺¹ = step_parameters(successful_Xⁿ, successful_Gⁿ, y, Γy, process; step_size)
 
     # Recalculate step_size if convergence_rate is requested
     if !isnothing(convergence_rate)
         r = volume_ratio(successful_Xⁿ, successful_Xⁿ⁺¹)
-        
-        # Scale step-size so that the _new_ volume is `convergence_rate` smaller than Vⁿ
         step_size = r * convergence_rate
-        successful_Xⁿ⁺¹ = step_parameters(successful_Xⁿ, successful_Gⁿ, y, Γy, process; step_size)
 
-        r = volume_ratio(successful_Xⁿ, successful_Xⁿ⁺¹)
+        # Search
+        attempts = 1
+        while r < convergence_rate && attempts < 10
+            # Scale step-size so that the _new_ volume is `convergence_rate` smaller than Vⁿ
+            step_size *= 0.8 # sqrt(r / convergence_rate)
+            successful_Xⁿ⁺¹ = step_parameters(successful_Xⁿ, successful_Gⁿ, y, Γy, process; step_size)
+            r = volume_ratio(successful_Xⁿ, successful_Xⁿ⁺¹)
+            attempts += 1
+        end
+
         @info "Particles stepped adaptively with convergence rate $r (target $convergence_rate)"
     end
 
@@ -228,9 +227,8 @@ function step_parameters(eki::EnsembleKalmanInversion, convergence_rate)
     Xⁿ⁺¹[:, successful_columns] .= successful_Xⁿ⁺¹
 
     if some_failures # resample failed particles with new ensemble distribution
-        @show successful_Xⁿ⁺¹
         new_X_distribution = ensemble_normal_distribution(successful_Xⁿ⁺¹) 
-        sampled_Xⁿ⁺¹ = rand(new_X_distribution, nan_count)
+        sampled_Xⁿ⁺¹ = rand(new_X_distribution, length(failed_columns))
         Xⁿ⁺¹[:, failed_columns] .= sampled_Xⁿ⁺¹
     end
 
