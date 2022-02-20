@@ -345,6 +345,9 @@ function initialize_forward_run!(simulation, observations, time_series_collector
     arch = architecture(time_series_collector.grid)
 
     # Clear potential NaNs from timestepper data.
+    # Particularly important for Adams-Bashforth timestepping scheme.
+    # Oceananigans ≤ v0.71 initializes the Adams-Bashforth scheme with an Euler step by *multiplying* the tendency
+    # at time-step n-1 by 0. Because 0 * NaN = NaN, this fails when the tendency at n-1 contains NaNs.
     timestepper = simulation.model.timestepper 
     for field in tuple(timestepper.Gⁿ..., timestepper.G⁻...)
         if !isnothing(field)
