@@ -16,19 +16,18 @@ using Suppressor: @suppress
 using Statistics
 using Distributions
 using EnsembleKalmanProcesses.EnsembleKalmanProcessModule
-using EnsembleKalmanProcesses.ParameterDistributionStorage
-
-using EnsembleKalmanProcesses.EnsembleKalmanProcessModule: sample_distribution
 
 using ..Parameters: unconstrained_prior, transform_to_constrained, inverse_covariance_transform
 using ..InverseProblems: Nensemble, observation_map, forward_map, tupify_parameters
+using ..InverseProblems: inverting_forward_map
 
-mutable struct EnsembleKalmanInversion{I, E, M, O, F, S, R, X, G}
+using Oceananigans.Utils: prettytime
+
+mutable struct EnsembleKalmanInversion{I, E, M, O, S, R, X, G}
     inverse_problem :: I
     ensemble_kalman_process :: E
     mapped_observations :: M
     noise_covariance :: O
-    inverting_forward_map :: F
     iteration :: Int
     iteration_summaries :: S
     resampler :: R
@@ -38,15 +37,14 @@ end
 
 Base.show(io::IO, eki::EnsembleKalmanInversion) =
     print(io, "EnsembleKalmanInversion", '\n',
-              "├── inverse_problem: ", typeof(eki.inverse_problem).name.wrapper, '\n',
-              "├── ensemble_kalman_process: ", typeof(eki.ensemble_kalman_process), '\n',
+              "├── inverse_problem: ", summary(eki.inverse_problem), '\n',
+              "├── ensemble_kalman_process: ", summary(eki.ensemble_kalman_process), '\n',
               "├── mapped_observations: ", summary(eki.mapped_observations), '\n',
               "├── noise_covariance: ", summary(eki.noise_covariance), '\n',
-              "├── inverting_forward_map: ", typeof(eki.inverting_forward_map).name.wrapper, '\n',
               "├── iteration: $(eki.iteration)", '\n',
-              "├── resampler: $(typeof(eki.resampler))",
-              "├── unconstrained_parameters: $(typeof(eki.unconstrained_parameters))", '\n',
-              "└── forward_map_output: $(typeof(eki.forward_map_output))")
+              "├── resampler: $(summary(eki.resampler))",
+              "├── unconstrained_parameters: $(summary(eki.unconstrained_parameters))", '\n',
+              "└── forward_map_output: $(summary(eki.forward_map_output))")
 
 construct_noise_covariance(noise_covariance::AbstractMatrix, y) = noise_covariance
 
@@ -60,7 +58,7 @@ end
 
 Return an object that interfaces with
 [EnsembleKalmanProcesses.jl](https://github.com/CliMA/EnsembleKalmanProcesses.jl)
-and uses Ensemble Kalman Inversion to iteratively "solve" the inverse problem:
+and uses Ensemble Kalman Inversion to iteratively solve the inverse problem:
 
 ```math
 y = G(θ) + η,
@@ -70,8 +68,8 @@ for the parameters ``θ``, where ``y`` is a "normalized" vector of observations,
 ``G(θ)`` is a forward map that predicts the observations, and ``η ∼ 𝒩(0, Γ_y)`` is zero-mean
 random noise with covariance matrix ``Γ_y`` representing uncertainty in the observations.
 
-By "solve", we mean that the iteration finds the parameter values ``θ`` that minimizes the
-distance between ``y`` and ``G(θ)``.
+Note that ensemble Kalman inversion is guaranteed only to find a local optimum ``θ★``
+to ``min || y - G(θ★) ||``.
 
 The "forward map output" `G` can have many interpretations. The specific statistics that `G` computes
 have to be selected for each use case to provide a concise summary of the complex model solution that
@@ -97,58 +95,61 @@ Arguments
 
 - `resampler`: controls particle resampling procedure. See `Resampler`.
 """
-function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampler=Resampler())
+function EnsembleKalmanInversion(inverse_problem;
+                                 noise_covariance = 1e-2,
+                                 resampler = Resampler(),
+                                 unconstrained_parameters = nothing,
+                                 forward_map_output = nothing,
+                                 process = Inversion())
 
-    free_parameters = inverse_problem.free_parameters
-    priors = free_parameters.priors
+    if isnothing(unconstrained_parameters)
+        isnothing(forward_map_output) ||
+            throw(ArgumentError("Cannot provide forward_map_output without unconstrained_parameters."))
 
-    # The closure G(θ) maps (Nθ, Nensemble) array to (Noutput, Nensemble)
-    function inverting_forward_map(X::AbstractMatrix)
-        Nensemble = size(X, 2)
+        free_parameters = inverse_problem.free_parameters
+        priors = free_parameters.priors
+        Nθ = length(priors)
+        Nens = Nensemble(inverse_problem)
 
-        # Compute inverse transform from unconstrained (transformed) space to
-        # constrained (physical) space
-        θ = transform_to_constrained(priors, X)
+        # Generate an initial sample of parameters
+        unconstrained_priors = NamedTuple(name => unconstrained_prior(priors[name])
+                                          for name in free_parameters.names)
 
-        return forward_map(inverse_problem, θ)
+        unconstrained_parameters = [rand(unconstrained_priors[i]) for i=1:Nθ, k=1:Nens]
     end
-
-    Nθ = length(priors)
-    Nens = Nensemble(inverse_problem)
-
-    # Generate an initial sample of parameters
-    unconstrained_priors = NamedTuple(name => unconstrained_prior(priors[name]) for name in free_parameters.names)
-    Xᵢ = [rand(unconstrained_priors[i]) for i=1:Nθ, k=1:Nens]
 
     # Build EKP-friendly observations "y" and the covariance matrix of observational uncertainty "Γy"
     y = dropdims(observation_map(inverse_problem), dims=2) # length(forward_map_output) column vector
     Γy = construct_noise_covariance(noise_covariance, y)
-
-    ensemble_kalman_process = EnsembleKalmanProcess(Xᵢ, y, Γy, Inversion())
+    Xᵢ = unconstrained_parameters
+    ensemble_kalman_process = EnsembleKalmanProcess(Xᵢ, y, Γy, process)
     iteration = 0
 
     eki′ = EnsembleKalmanInversion(inverse_problem,
                                    ensemble_kalman_process,
                                    y,
                                    Γy,
-                                   inverting_forward_map,
                                    iteration,
                                    nothing,
                                    resampler,
                                    Xᵢ,
-                                   nothing)
+                                   forward_map_output)
 
-    # Rebuild eki with the summary and forward map (and potentially
-    # resampled parameters) for iteration 0:
-    forward_map_output, summary = forward_map_and_summary(eki′)
+    if isnothing(forward_map_output) # execute forward map to generate initial summary and forward_map_output
+        @info "Executing forward map while building EnsembleKalmanInversion..."
+        start_time = time_ns()
+        forward_map_output = resampling_forward_map!(eki′, Xᵢ)
+        elapsed_time = (time_ns() - start_time) * 1e-9
+        @info "    ... done ($(prettytime(elapsed_time)))."
+    end
 
+    summary = IterationSummary(eki′, Xᵢ, forward_map_output)
     iteration_summaries = OffsetArray([summary], -1)
 
     eki = EnsembleKalmanInversion(inverse_problem,
                                   eki′.ensemble_kalman_process,
                                   eki′.mapped_observations,
                                   eki′.noise_covariance,
-                                  eki′.inverting_forward_map,
                                   iteration,
                                   iteration_summaries,
                                   eki′.resampler,
@@ -203,7 +204,6 @@ function IterationSummary(eki, X, forward_map_output=nothing)
 end
 
 function Base.show(io::IO, is::IterationSummary)
-
     max_error, imax = findmax(is.mean_square_errors)
     min_error, imin = findmin(is.mean_square_errors)
 
@@ -242,53 +242,10 @@ particle_str(particle, error, parameters) =
     string(param_str.(values(parameters))...) *
     @sprintf("error = %.6e", error)
 
-"""
-    sample(eki, θ, G, Nsample)
-
-Generate `Nsample` new particles sampled from a multivariate Normal distribution parameterized 
-by the ensemble mean and covariance computed based on the `Nθ` × `Nensemble` ensemble 
-array `θ`, under the condition that all `Nsample` particles produce successful forward map
-outputs (don't include `NaNs`).
-
-`G` (`size(G) =  Noutput × Nensemble`) is the forward map output produced by `θ`.
-
-Returns `Nθ × Nsample` parameter `Array` and `Noutput × Nsample` forward map output `Array`.
-"""
-function sample(eki, θ, G, Nsample)
-    Nθ, Nensemble = size(θ)
-    Noutput = size(G, 1)
-
-    Nfound = 0
-    found_X = zeros(Nθ, 0)
-    found_G = zeros(Noutput, 0)
-    existing_sample_distribution = eki.resampler.distribution(θ, G)
-
-    while Nfound < Nsample
-        @info "Re-sampling ensemble members (found $Nfound of $Nsample)..."
-
-        # Generate `Nensemble` new samples in unconstrained space.
-        # Note that eki.inverse_problem.simulation
-        # must run `Nensemble` particles no matter what.
-        X_sample = rand(existing_sample_distribution, Nensemble)
-        G_sample = eki.inverting_forward_map(X_sample)
-
-        nan_values = column_has_nan(G_sample)
-        success_columns = findall(.!column_has_nan(G_sample))
-        @info "    ... found $(length(success_columns)) successful particles."
-
-        found_X = cat(found_X, X_sample[:, success_columns], dims=2)
-        found_G = cat(found_G, G_sample[:, success_columns], dims=2)
-        Nfound = size(found_X, 2)
-    end
-
-    # Restrict found particles to requested size
-    return found_X[:, 1:Nsample], found_G[:, 1:Nsample]
-end
-
-function forward_map_and_summary(eki, X=eki.unconstrained_parameters)
-    G = eki.inverting_forward_map(X)             # (len(G), Nensemble)
+function resampling_forward_map!(eki, X=eki.unconstrained_parameters)
+    G = inverting_forward_map(eki.inverse_problem, X) # (len(G), Nensemble)
     resample!(eki.resampler, X, G, eki)
-    return G, IterationSummary(eki, X, G)
+    return G
 end
 
 """
@@ -308,13 +265,13 @@ function iterate!(eki::EnsembleKalmanInversion; iterations = 1, show_progress = 
     for _ in iterator
         # Ensemble update
         update_ensemble!(eki.ensemble_kalman_process, eki.forward_map_output)
-        X = get_u_final(eki.ensemble_kalman_process)
-        eki.unconstrained_parameters .= X
+        eki.unconstrained_parameters = get_u_final(eki.ensemble_kalman_process)
         eki.iteration += 1
 
         # Forward map
-        G, summary = forward_map_and_summary(eki) 
-        eki.forward_map_output .= G
+        G = resampling_forward_map!(eki) 
+        eki.forward_map_output = G
+        summary = IterationSummary(eki, eki.unconstrained_parameters, eki.forward_map_output)
         push!(eki.iteration_summaries, summary)
     end
 
@@ -330,17 +287,17 @@ end
 
 abstract type EnsembleDistribution end
 
-function ensemble_normal_distribution(θ)
-    μ = [mean(θ, dims=2)...]
-    Σ = cov(θ, dims=2)
+function ensemble_normal_distribution(X)
+    μ = [mean(X, dims=2)...]
+    Σ = cov(X, dims=2)
     return MvNormal(μ, Σ)
 end
 
 struct FullEnsembleDistribution <: EnsembleDistribution end
-(::FullEnsembleDistribution)(θ, G) = ensemble_normal_distribution(θ)
+(::FullEnsembleDistribution)(X, G) = ensemble_normal_distribution(X)
 
 struct SuccessfulEnsembleDistribution <: EnsembleDistribution end
-(::SuccessfulEnsembleDistribution)(θ, G) = ensemble_normal_distribution(θ[:, findall(.!column_has_nan(G))])
+(::SuccessfulEnsembleDistribution)(X, G) = ensemble_normal_distribution(X[:, findall(.!column_has_nan(G))])
 
 resample!(::Nothing, args...) = nothing
 
@@ -380,7 +337,6 @@ function resample!(resampler::Resampler, X, G, eki)
     nan_fraction = nan_count / size(X, 2)
 
     if nan_fraction > 0
-
         # Print a nice message
         particles = nan_count == 1 ? "particle" : "particles"
 
@@ -420,8 +376,9 @@ function resample!(resampler::Resampler, X, G, eki)
             replace_columns = Colon()
         end
 
-        found_X, found_G = sample(eki, X, G, Nsample)
-        
+        found_X, found_G = find_successful_particles(eki, X, G, Nsample)
+
+        @info "Replacing columns $replace_columns..."
         view(X, :, replace_columns) .= found_X
         view(G, :, replace_columns) .= found_G
 
@@ -455,4 +412,49 @@ function resample!(resampler::Resampler, X, G, eki)
     return too_much_failure
 end
 
+"""
+    sample(eki, θ, G, Nsample)
+
+Generate `Nsample` new particles sampled from a multivariate Normal distribution parameterized 
+by the ensemble mean and covariance computed based on the `Nθ` × `Nensemble` ensemble 
+array `θ`, under the condition that all `Nsample` particles produce successful forward map
+outputs (don't include `NaNs`).
+
+`G` (`size(G) =  Noutput × Nensemble`) is the forward map output produced by `θ`.
+
+Returns `Nθ × Nsample` parameter `Array` and `Noutput × Nsample` forward map output `Array`.
+"""
+function find_successful_particles(eki, X, G, Nsample)
+    Nθ, Nensemble = size(X)
+    Noutput = size(G, 1)
+
+    Nfound = 0
+    found_X = zeros(Nθ, 0)
+    found_G = zeros(Noutput, 0)
+    existing_sample_distribution = eki.resampler.distribution(X, G)
+
+    while Nfound < Nsample
+        @info "Searching for successful particles (found $Nfound of $Nsample)..."
+
+        # Generate `Nensemble` new samples in unconstrained space.
+        # Note that eki.inverse_problem.simulation
+        # must run `Nensemble` particles no matter what.
+        X_sample = rand(existing_sample_distribution, Nensemble)
+
+        G_sample = inverting_forward_map(eki.inverse_problem, X_sample)
+
+        nan_values = column_has_nan(G_sample)
+        success_columns = findall(.!column_has_nan(G_sample))
+        @info "    ... found $(length(success_columns)) successful particles."
+
+        found_X = cat(found_X, X_sample[:, success_columns], dims=2)
+        found_G = cat(found_G, G_sample[:, success_columns], dims=2)
+        Nfound = size(found_X, 2)
+    end
+
+    # Restrict found particles to requested size
+    return found_X[:, 1:Nsample], found_G[:, 1:Nsample]
+end
+
 end # module
+
