@@ -333,12 +333,12 @@ end
 ##### Initializing simulations
 #####
 
-function initialize_forward_run!(simulation, observations, time_series_collector, time_index=1)
+function initialize_forward_run!(simulation, observations, time_series_collector, initialize_simulation!)
 
     reset!(simulation)
 
     times = observation_times(observations)
-    initial_time = times[time_index]
+    initial_time = times[1]
     simulation.model.clock.time = initial_time
 
     collected_fields = time_series_collector.collected_fields
@@ -365,7 +365,9 @@ function initialize_forward_run!(simulation, observations, time_series_collector
     simulation.callbacks[:data_collector] = Callback(time_series_collector, SpecifiedTimes(times...))
     simulation.stop_time = times[end]
 
-    set!(simulation.model, observations, time_index)
+    set!(simulation.model, observations, 1)
+
+    initialize_simulation!(simulation)
 
     return nothing
 end
