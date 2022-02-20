@@ -333,18 +333,21 @@ end
 ##### Initializing simulations
 #####
 
-function initialize_forward_run!(simulation, observations, time_series_collector, time_index=1)
+function initialize_forward_run!(simulation, observations, time_series_collector, initialize_simulation!)
 
     reset!(simulation)
 
     times = observation_times(observations)
-    initial_time = times[time_index]
+    initial_time = times[1]
     simulation.model.clock.time = initial_time
 
     collected_fields = time_series_collector.collected_fields
     arch = architecture(time_series_collector.grid)
 
     # Clear potential NaNs from timestepper data.
+    # Particularly important for Adams-Bashforth timestepping scheme.
+    # Oceananigans ≤ v0.71 initializes the Adams-Bashforth scheme with an Euler step by *multiplying* the tendency
+    # at time-step n-1 by 0. Because 0 * NaN = NaN, this fails when the tendency at n-1 contains NaNs.
     timestepper = simulation.model.timestepper 
     for field in tuple(timestepper.Gⁿ..., timestepper.G⁻...)
         if !isnothing(field)
@@ -362,7 +365,9 @@ function initialize_forward_run!(simulation, observations, time_series_collector
     simulation.callbacks[:data_collector] = Callback(time_series_collector, SpecifiedTimes(times...))
     simulation.stop_time = times[end]
 
-    set!(simulation.model, observations, time_index)
+    set!(simulation.model, observations, 1)
+
+    initialize_simulation!(simulation)
 
     return nothing
 end

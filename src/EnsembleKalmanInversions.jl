@@ -12,7 +12,6 @@ using ProgressBars
 using Random
 using Printf
 using LinearAlgebra
-using Suppressor: @suppress
 using Statistics
 using Distributions
 using EnsembleKalmanProcesses.EnsembleKalmanProcessModule
@@ -54,7 +53,12 @@ function construct_noise_covariance(noise_covariance::Number, y)
 end
     
 """
-    EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampler=Resampler())
+    EnsembleKalmanInversion(inverse_problem;
+                            noise_covariance = 1e-2,
+                            resampler = Resampler(),
+                            unconstrained_parameters = nothing,
+                            forward_map_output = nothing,
+                            process = Inversion())
 
 Return an object that interfaces with
 [EnsembleKalmanProcesses.jl](https://github.com/CliMA/EnsembleKalmanProcesses.jl)
