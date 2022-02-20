@@ -273,6 +273,7 @@ transpose_model_output(time_series_collector, observations) =
 
 transpose_model_output(collector_grid::YZSliceGrid, time_series_collector, observations) =
     SyntheticObservations(time_series_collector.field_time_serieses,
+                          observations.forward_map_names,
                           collector_grid,
                           time_series_collector.times,
                           nothing,

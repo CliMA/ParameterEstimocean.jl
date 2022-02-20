@@ -7,6 +7,9 @@ using Oceananigans.Units
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SliceEnsembleSize
 using Oceananigans.TurbulenceClosures: FluxTapering
 using LinearAlgebra, CairoMakie, DataDeps, JLD2
+
+using Oceananigans.Architectures: arch_array
+
 # using ElectronDisplay
 
 architecture = GPU()
@@ -32,6 +35,7 @@ close(file)
 
 
 field_names = (:b, :c, :u, :v)
+forward_map_names = (:b, :c)
 
 using OceanTurbulenceParameterEstimation.Transformations: Transformation
 
@@ -41,24 +45,25 @@ transformation = (b = ZScore(),
 
 transformation = ZScore()
 
-space_transformation = SpaceIndices(x=:, y=2:2:Ny-1, z=2:2:Nz-1)
+space_transformation = SpaceIndices(x=:, y=2:4:Ny-1, z=20:2:Nz-1)
 
 transformation = (b = Transformation(space = space_transformation, normalization=ZScore()),
                   c = Transformation(space = space_transformation, normalization=ZScore()),
                   u = Transformation(space = space_transformation, normalization=ZScore()),
                   v = Transformation(space = space_transformation, normalization=RescaledZScore(1e-1)))
 
-# transformation = ZScore()
+transformation = ZScore()
 
 times = [40days-12hours, 40days]
 
-observations = SyntheticObservations(filepath; transformation, times, field_names)
+observations = SyntheticObservations(filepath; transformation, times, field_names, forward_map_names)
 
 #####
 ##### Simulation
 #####
 
-Nensemble = 10
+Nensemble = 3
+
 slice_ensemble_size = SliceEnsembleSize(size=(Ny, Nz), ensemble=Nensemble)
 
 ensemble_grid = RectilinearGrid(architecture,
@@ -76,14 +81,12 @@ close(file)
 
 gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(slope_limiter = FluxTapering(1e-2))
 
-using Oceananigans.Architectures: arch_array
-
 gm_closure_ensemble = arch_array(architecture, [deepcopy(gent_mcwilliams_diffusivity) for _ = 1:Nensemble])
 
 closure_ensemble = (gm_closure_ensemble, closures[1], closures[2])
 
-# @show "no convective adjustment"
-# closure_ensemble = (gm_closure_ensemble, closures[1])
+@show "no convective adjustment"
+closure_ensemble = (gm_closure_ensemble, closures[1])
 
 ensemble_model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
                                              tracers = (:b, :c),
@@ -105,10 +108,10 @@ free_parameters = FreeParameters(priors)
 calibration = InverseProblem(observations, simulation, free_parameters)
 
 eki = EnsembleKalmanInversion(calibration;
-                              noise_covariance = 1e-1,
+                              noise_covariance = 1e-3,
                               resampler = Resampler(acceptable_failure_fraction=1.0))
 
-iterate!(eki; iterations = 3)
+iterate!(eki; iterations = 2)
 
 
 # Last, we visualize few metrics regarding how the EKI calibration went about.
