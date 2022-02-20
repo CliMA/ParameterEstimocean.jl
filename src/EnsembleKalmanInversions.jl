@@ -15,7 +15,11 @@ using LinearAlgebra
 using Suppressor: @suppress
 using Statistics
 using Distributions
-using EnsembleKalmanProcesses.EnsembleKalmanProcessModule
+using EnsembleKalmanProcesses:
+    get_u_final,
+    EnsembleKalmanProcess
+
+import EnsembleKalmanProcesses: update_ensemble!
 
 using ..Parameters: unconstrained_prior, transform_to_constrained, inverse_covariance_transform
 using ..InverseProblems: Nensemble, observation_map, forward_map, tupify_parameters
@@ -97,7 +101,7 @@ Arguments
 """
 function EnsembleKalmanInversion(inverse_problem;
                                  noise_covariance = 1e-2,
-                                 resampler = Resampler(),
+                                 resampler = nothing,
                                  unconstrained_parameters = nothing,
                                  forward_map_output = nothing,
                                  process = Inversion())
@@ -122,11 +126,10 @@ function EnsembleKalmanInversion(inverse_problem;
     y = dropdims(observation_map(inverse_problem), dims=2) # length(forward_map_output) column vector
     Γy = construct_noise_covariance(noise_covariance, y)
     Xᵢ = unconstrained_parameters
-    ensemble_kalman_process = EnsembleKalmanProcess(Xᵢ, y, Γy, process)
     iteration = 0
 
     eki′ = EnsembleKalmanInversion(inverse_problem,
-                                   ensemble_kalman_process,
+                                   process,
                                    y,
                                    Γy,
                                    iteration,
@@ -242,10 +245,61 @@ particle_str(particle, error, parameters) =
     string(param_str.(values(parameters))...) *
     @sprintf("error = %.6e", error)
 
+include("resampling.jl")
+
 function resampling_forward_map!(eki, X=eki.unconstrained_parameters)
     G = inverting_forward_map(eki.inverse_problem, X) # (len(G), Nensemble)
     resample!(eki.resampler, X, G, eki)
     return G
+end
+
+function step_parameters(X, G, y, Γy, process; step_size=1)
+    ekp = EnsembleKalmanProcess(X, y, Γy, process)
+    update_ensemble!(ekp, G, Δt_new=step_size)
+    return get_u_final(ekp)
+end
+
+function step_parameters(eki::EnsembleKalmanInversion, convergence_rate)
+    process = eki.ensemble_kalman_process
+
+    y = eki.mapped_observations
+    Γy = eki.noise_covariance
+
+    Xⁿ = eki.unconstrained_parameters
+    G = eki.forward_map_output
+
+    Xⁿ⁺¹ = similar(Xⁿ)
+
+    nan_values = column_has_nan(G)
+    failed_columns = findall(nan_values) # indices of columns (particles) with `NaN`s
+    succesful_columns = findall(.!nan_values)
+    some_failures = length(failed_columns) > 0
+
+    successful_G = G[:, succcesful_columns]
+    successful_Xⁿ = Xⁿ[:, succesful_columns]
+
+    # Step forward with unity step size
+    succesful_Xⁿ⁺¹ = step_parameters(successful_Xⁿ, successful_Gⁿ, y, Γy, process; step_size=1)
+
+    if !isnothing(convergence_rate) # recalculate step_size
+        # The "volume" of the particle ensemble
+        Vⁿ = det(cov(successful_Xⁿ))
+        Vⁿ⁺¹ = det(cov(successful_Xⁿ⁺¹))
+
+        # Scale step-size so that the _new_ volume is `convergence_rate` smaller than Vⁿ
+        step_size = Vⁿ / Vⁿ⁺¹ * convergence_rate
+        succesful_Xⁿ⁺¹ = step_parameters(successful_Xⁿ, successful_Gⁿ, y, Γy, process; step_size)
+    end
+
+    Xⁿ⁺¹[:, succesful_columns] .= succesful_Xⁿ⁺¹
+
+    if some_failures # resample failed particles with new ensemble distribution
+        new_X_distribution = ensemble_normal_distribution(candidate_Xⁿ⁺¹) 
+        sampled_Xⁿ⁺¹ = rand(new_X_distribution, nan_count)
+        Xⁿ⁺¹[:, failed_columns] .= sampled_Xⁿ⁺¹
+    end
+
+    return Xⁿ⁺¹
 end
 
 """
@@ -258,14 +312,15 @@ Return
 
 - `best_parameters`: the ensemble mean of all parameter values after the last iteration.
 """
-function iterate!(eki::EnsembleKalmanInversion; iterations = 1, show_progress = true)
+function iterate!(eki::EnsembleKalmanInversion;
+                  iterations = 1,
+                  convergence_rate = nothing,
+                  show_progress = true)
 
     iterator = show_progress ? ProgressBar(1:iterations) : 1:iterations
 
     for _ in iterator
-        # Ensemble update
-        update_ensemble!(eki.ensemble_kalman_process, eki.forward_map_output)
-        eki.unconstrained_parameters = get_u_final(eki.ensemble_kalman_process)
+        eki.unconstrained_parameters = step_parameters(eki, convergence_rate)
         eki.iteration += 1
 
         # Forward map
@@ -279,181 +334,6 @@ function iterate!(eki::EnsembleKalmanInversion; iterations = 1, show_progress = 
     best_parameters = eki.iteration_summaries[end].ensemble_mean
 
     return best_parameters
-end
-
-#####
-##### Resampling
-#####
-
-abstract type EnsembleDistribution end
-
-function ensemble_normal_distribution(X)
-    μ = [mean(X, dims=2)...]
-    Σ = cov(X, dims=2)
-    return MvNormal(μ, Σ)
-end
-
-struct FullEnsembleDistribution <: EnsembleDistribution end
-(::FullEnsembleDistribution)(X, G) = ensemble_normal_distribution(X)
-
-struct SuccessfulEnsembleDistribution <: EnsembleDistribution end
-(::SuccessfulEnsembleDistribution)(X, G) = ensemble_normal_distribution(X[:, findall(.!column_has_nan(G))])
-
-resample!(::Nothing, args...) = nothing
-
-struct Resampler{D}
-    only_failed_particles :: Bool
-    acceptable_failure_fraction :: Float64
-    distribution :: D
-end
-
-function Resampler(; only_failed_particles = true,
-                     acceptable_failure_fraction = 0.0,
-                     distribution = FullEnsembleDistribution())
-
-    return Resampler(only_failed_particles, acceptable_failure_fraction, distribution)
-end
-
-""" Return a BitVector indicating which particles are NaN."""
-column_has_nan(G) = vec(mapslices(any, isnan.(G); dims=1))
-
-function failed_particle_str(θ, k, error=nothing)
-    first = string(@sprintf(" particle % 3d: ", k), param_str.(values(θ[k]))...)
-    error_str = isnothing(error) ? "" : @sprintf(" error = %.6e", error)
-    return string(first, error_str, '\n')
-end
-
-"""
-    resample!(resampler::Resampler, θ, G, eki)
-    
-Resamples the parameters `θ` of the `eki` process based on the number of `NaN` values
-inside the forward map output `G`.
-"""
-function resample!(resampler::Resampler, X, G, eki)
-    # `Nensemble` vector of bits indicating, for each ensemble member, whether the forward map contained `NaN`s
-    nan_values = column_has_nan(G)
-    nan_columns = findall(nan_values) # indices of columns (particles) with `NaN`s
-    nan_count = length(nan_columns)
-    nan_fraction = nan_count / size(X, 2)
-
-    if nan_fraction > 0
-        # Print a nice message
-        particles = nan_count == 1 ? "particle" : "particles"
-
-        priors = eki.inverse_problem.free_parameters.priors
-        θ = transform_to_constrained(priors, X)
-        failed_parameters_message = string("               ",  param_str.(keys(priors))..., '\n',
-                                           (failed_particle_str(θ, k) for k in nan_columns)...)
-
-        @warn("""
-              The forward map for $nan_count $particles ($(100nan_fraction)%) included NaNs.
-              The failed particles are:
-              $failed_parameters_message
-              """)
-    end
-
-    too_much_failure = false
-
-    if nan_fraction > resampler.acceptable_failure_fraction
-        error("The forward map for $nan_count particles ($(100nan_fraction)%) included NaNs. Consider \n" *
-              "    1. Increasing `Resampler.acceptable_failure_fraction` for \n" *
-              "         EnsembleKalmanInversion.resampler::Resampler \n" * 
-              "    2. Reducing the time-step for `InverseProblem.simulation`, \n" *
-              "    3. Evolving `InverseProblem.simulation` for less time \n" *
-              "    4. Narrowing `FreeParameters` priors.")
-
-        too_much_failure = true
-    
-    elseif nan_count > 0 || !(resampler.only_failed_particles)
-        # We are resampling!
-
-        if resampler.only_failed_particles
-            Nsample = nan_count
-            replace_columns = nan_columns
-
-        else # resample everything
-            Nsample = size(G, 2)
-            replace_columns = Colon()
-        end
-
-        found_X, found_G = find_successful_particles(eki, X, G, Nsample)
-
-        @info "Replacing columns $replace_columns..."
-        view(X, :, replace_columns) .= found_X
-        view(G, :, replace_columns) .= found_G
-
-        new_process = EnsembleKalmanProcess(X,
-                                            eki.mapped_observations,
-                                            eki.noise_covariance,
-                                            eki.ensemble_kalman_process.process)
-
-        eki.ensemble_kalman_process = new_process
-
-        # Sanity...
-        if resampler.only_failed_particles # print a helpful message about the failure replacements
-            Nobs, Nensemble = size(G)
-            y = eki.mapped_observations
-            errors = [mapreduce((x, y) -> (x - y)^2, +, y, view(G, :, k)) / Nobs for k in nan_columns]
-
-            priors = eki.inverse_problem.free_parameters.priors
-            new_θ = transform_to_constrained(priors, X)
-
-            particle_strings = [failed_particle_str(new_θ, k, errors[i]) for (i, k) in enumerate(nan_columns)]
-            failed_parameters_message = string("               ",  param_str.(keys(priors))..., '\n',
-                                               particle_strings...)
-
-            @info """
-            The replacements for failed particles are
-            $failed_parameters_message
-            """
-        end
-    end
-
-    return too_much_failure
-end
-
-"""
-    sample(eki, θ, G, Nsample)
-
-Generate `Nsample` new particles sampled from a multivariate Normal distribution parameterized 
-by the ensemble mean and covariance computed based on the `Nθ` × `Nensemble` ensemble 
-array `θ`, under the condition that all `Nsample` particles produce successful forward map
-outputs (don't include `NaNs`).
-
-`G` (`size(G) =  Noutput × Nensemble`) is the forward map output produced by `θ`.
-
-Returns `Nθ × Nsample` parameter `Array` and `Noutput × Nsample` forward map output `Array`.
-"""
-function find_successful_particles(eki, X, G, Nsample)
-    Nθ, Nensemble = size(X)
-    Noutput = size(G, 1)
-
-    Nfound = 0
-    found_X = zeros(Nθ, 0)
-    found_G = zeros(Noutput, 0)
-    existing_sample_distribution = eki.resampler.distribution(X, G)
-
-    while Nfound < Nsample
-        @info "Searching for successful particles (found $Nfound of $Nsample)..."
-
-        # Generate `Nensemble` new samples in unconstrained space.
-        # Note that eki.inverse_problem.simulation
-        # must run `Nensemble` particles no matter what.
-        X_sample = rand(existing_sample_distribution, Nensemble)
-
-        G_sample = inverting_forward_map(eki.inverse_problem, X_sample)
-
-        nan_values = column_has_nan(G_sample)
-        success_columns = findall(.!column_has_nan(G_sample))
-        @info "    ... found $(length(success_columns)) successful particles."
-
-        found_X = cat(found_X, X_sample[:, success_columns], dims=2)
-        found_G = cat(found_G, G_sample[:, success_columns], dims=2)
-        Nfound = size(found_X, 2)
-    end
-
-    # Restrict found particles to requested size
-    return found_X[:, 1:Nsample], found_G[:, 1:Nsample]
 end
 
 end # module
