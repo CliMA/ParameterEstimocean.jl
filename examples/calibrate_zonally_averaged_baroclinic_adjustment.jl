@@ -54,6 +54,9 @@ transformation = (b = Transformation(space = space_transformation, normalization
 
 transformation = ZScore()
 
+transformation = (b = Transformation(space = space_transformation, normalization=ZScore()),
+                  c = Transformation(space = space_transformation, normalization=ZScore()))
+
 times = [40days-12hours, 40days]
 
 observations = SyntheticObservations(filepath; transformation, times, field_names, forward_map_names)
@@ -105,7 +108,13 @@ priors = (
 
 free_parameters = FreeParameters(priors)
 
-calibration = InverseProblem(observations, simulation, free_parameters)
+using OceanTurbulenceParameterEstimation.Observations: FieldTimeSeriesCollector
+
+simulation_fields = fields(simulation.model)
+collected_fields = NamedTuple(name => simulation_fields[name] for name in OceanTurbulenceParameterEstimation.Observations.forward_map_names(observations))
+time_series_collector = FieldTimeSeriesCollector(collected_fields, observation_times(observations), architecture=CPU())
+
+calibration = InverseProblem(observations, simulation, free_parameters; time_series_collector)
 
 eki = EnsembleKalmanInversion(calibration;
                               noise_covariance = 1e-3,
