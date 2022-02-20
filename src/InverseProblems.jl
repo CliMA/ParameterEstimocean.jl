@@ -226,7 +226,7 @@ Transforms, normalizes, and concatenates data for field time series in `observat
 function transform_time_series(::ConcatenatedOutputMap, observation::SyntheticObservations)
     data_vector = []
 
-    for field_name in keys(observation.field_time_serieses)
+    for field_name in forward_map_names(observation)
         # Transform time series data observation-specified `transformation`
         field_time_series = observation.field_time_serieses[field_name]
         transformation = observation.transformation[field_name]
@@ -305,7 +305,7 @@ function transpose_model_output(collector_grid::SingleColumnGrid, time_series_co
         observation = observations[j]
         time_serieses = OrderedDict{Any, Any}()
 
-        for name in keys(observation.field_time_serieses)
+        for name in forward_map_names(observation)
             loc = LX, LY, LZ = location(observation.field_time_serieses[name])
             topo = topology(grid)
 
@@ -377,7 +377,7 @@ function observation_map_variance_across_time(map::ConcatenatedOutputMap, observ
     Nx, Ny, Nz = size(observation.grid)
     Nt = length(first(observation.transformation).time)
 
-    Nfields = length(keys(observation.field_time_serieses))
+    Nfields = length(forward_map_names(observation))
 
     y = transform_time_series(map, observation)
     @assert length(y) == Nx * Ny * Nz * Nt * Nfields # otherwise we're headed for trouble...
