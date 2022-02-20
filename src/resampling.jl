@@ -1,6 +1,29 @@
+resample!(::Nothing, args...) = nothing
+
 #####
 ##### Resampling
 #####
+
+struct Resampler{D}
+    only_failed_particles :: Bool
+    acceptable_failure_fraction :: Float64
+    resample_failure_fraction :: Float64
+    distribution :: D
+    verbose :: Bool
+end
+
+function Resampler(; only_failed_particles = true,
+                     acceptable_failure_fraction = 0.0,
+                     resample_failure_fraction = 0,
+                     verbose = false,
+                     distribution = FullEnsembleDistribution())
+
+    return Resampler(only_failed_particles,
+                     acceptable_failure_fraction,
+                     resample_failure_fraction,
+                     distribution,
+                     verbose)
+end
 
 abstract type EnsembleDistribution end
 
@@ -15,21 +38,6 @@ struct FullEnsembleDistribution <: EnsembleDistribution end
 
 struct SuccessfulEnsembleDistribution <: EnsembleDistribution end
 (::SuccessfulEnsembleDistribution)(X, G) = ensemble_normal_distribution(X[:, findall(.!column_has_nan(G))])
-
-resample!(::Nothing, args...) = nothing
-
-struct Resampler{D}
-    only_failed_particles :: Bool
-    acceptable_failure_fraction :: Float64
-    distribution :: D
-end
-
-function Resampler(; only_failed_particles = true,
-                     acceptable_failure_fraction = 0.0,
-                     distribution = FullEnsembleDistribution())
-
-    return Resampler(only_failed_particles, acceptable_failure_fraction, distribution)
-end
 
 """ Return a BitVector indicating which particles are NaN."""
 column_has_nan(G) = vec(mapslices(any, isnan.(G); dims=1))
@@ -69,8 +77,6 @@ function resample!(resampler::Resampler, X, G, eki)
               """)
     end
 
-    too_much_failure = false
-
     if nan_fraction > resampler.acceptable_failure_fraction
         error("The forward map for $nan_count particles ($(100nan_fraction)%) included NaNs. Consider \n" *
               "    1. Increasing `Resampler.acceptable_failure_fraction` for \n" *
@@ -79,9 +85,7 @@ function resample!(resampler::Resampler, X, G, eki)
               "    3. Evolving `InverseProblem.simulation` for less time \n" *
               "    4. Narrowing `FreeParameters` priors.")
 
-        too_much_failure = true
-    
-    elseif nan_count > 0 || !(resampler.only_failed_particles)
+    elseif nan_fraction >= resampler.resample_failure_fraction || !(resampler.only_failed_particles)
         # We are resampling!
 
         if resampler.only_failed_particles
@@ -99,15 +103,8 @@ function resample!(resampler::Resampler, X, G, eki)
         view(X, :, replace_columns) .= found_X
         view(G, :, replace_columns) .= found_G
 
-        new_process = EnsembleKalmanProcess(X,
-                                            eki.mapped_observations,
-                                            eki.noise_covariance,
-                                            eki.ensemble_kalman_process.process)
-
-        eki.ensemble_kalman_process = new_process
-
         # Sanity...
-        if resampler.only_failed_particles # print a helpful message about the failure replacements
+        if resampler.verbose && resampler.only_failed_particles # print a helpful message about the failure replacements
             Nobs, Nensemble = size(G)
             y = eki.mapped_observations
             errors = [mapreduce((x, y) -> (x - y)^2, +, y, view(G, :, k)) / Nobs for k in nan_columns]
@@ -126,11 +123,11 @@ function resample!(resampler::Resampler, X, G, eki)
         end
     end
 
-    return too_much_failure
+    return nothing
 end
 
 """
-    sample(eki, θ, G, Nsample)
+     find_successful_particles(eki, X, G, Nsample)
 
 Generate `Nsample` new particles sampled from a multivariate Normal distribution parameterized 
 by the ensemble mean and covariance computed based on the `Nθ` × `Nensemble` ensemble 
