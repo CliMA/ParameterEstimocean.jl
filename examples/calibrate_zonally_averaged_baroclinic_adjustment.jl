@@ -12,7 +12,7 @@ using Oceananigans.Architectures: arch_array
 
 # using ElectronDisplay
 
-architecture = GPU()
+architecture = CPU()
 
 # filedir = @__DIR__
 # filename = "baroclinic_adjustment_double_Lx_zonal_average.jld2"
@@ -65,7 +65,7 @@ observations = SyntheticObservations(filepath; transformation, times, field_name
 ##### Simulation
 #####
 
-Nensemble = 3
+Nensemble = 50
 
 slice_ensemble_size = SliceEnsembleSize(size=(Ny, Nz), ensemble=Nensemble)
 
@@ -117,16 +117,16 @@ time_series_collector = FieldTimeSeriesCollector(collected_fields, observation_t
 calibration = InverseProblem(observations, simulation, free_parameters; time_series_collector)
 
 eki = EnsembleKalmanInversion(calibration;
-                              noise_covariance = 1e-3,
+                              noise_covariance = 5e-3,
                               resampler = Resampler(acceptable_failure_fraction=1.0))
 
-iterate!(eki; iterations = 2)
+iterate!(eki; iterations = 10)
 
 
 # Last, we visualize few metrics regarding how the EKI calibration went about.
 
 y = observation_map(calibration)
-
+#=
 θ̅(iteration) = [eki.iteration_summaries[iteration].ensemble_mean...]
 varθ(iteration) = eki.iteration_summaries[iteration].ensemble_var
 
@@ -134,7 +134,7 @@ weight_distances = [norm(θ̅(iter)) for iter in 1:eki.iteration]
 output_distances = [norm(forward_map(calibration, θ̅(iter))[:, 1] - y) for iter in 1:eki.iteration]
 ensemble_variances = [varθ(iter) for iter in 1:eki.iteration]
 
-#=
+
 f = Figure()
 lines(f[1, 1], 1:eki.iteration, weight_distances, color = :red, linewidth = 2,
       axis = (title = "Parameter norm",
@@ -180,7 +180,7 @@ axright = Axis(f[2, 2])
 scatters = []
 labels = String[]
 
-for iter in [0, 1, 2, 3]
+for iter in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     ## Make parameter matrix
     parameters = eki.iteration_summaries[iter].parameters
     Nensemble = length(parameters)
@@ -208,7 +208,7 @@ hidedecorations!(axright, grid = false)
 xlims!(axright, 0, 0.025)
 ylims!(axtop, 0, 0.025)
 
-save("distributions_bca.png", f); nothing #hide 
-save("distributions_bca.svg", f); nothing #hide 
+save("distributions_bca_2.png", f); nothing #hide 
+save("distributions_bca_2.svg", f); nothing #hide 
 
 # ![](distributions_channel.svg)
