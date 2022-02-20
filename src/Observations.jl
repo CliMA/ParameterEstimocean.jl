@@ -9,7 +9,7 @@ using Oceananigans: fields
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
 using Oceananigans.Grids: pop_flat_elements, topology, halo_size, on_architecture
-using Oceananigans.TimeSteppers: update_state!
+using Oceananigans.TimeSteppers: update_state!, reset!
 using Oceananigans.Fields
 using Oceananigans.Utils: SpecifiedTimes, prettytime
 using Oceananigans.Architectures
@@ -308,7 +308,12 @@ function (collector::FieldTimeSeriesCollector)(simulation)
     end
 
     current_time = simulation.model.clock.time
-    time_index = findfirst(t -> t >= current_time, collector.times)
+    time_index = findfirst(t -> t ≈ current_time, collector.times)
+    if isnothing(time_index)
+        @warn string("Current time ", prettytime(current_time), " not found in
+                     time collector times ", prettytime.(collector.times))
+        return nothing
+    end
 
     for field_name in keys(collector.collected_fields)
         field_time_series = collector.field_time_serieses[field_name]
@@ -328,25 +333,39 @@ end
 ##### Initializing simulations
 #####
 
-function initialize_simulation!(simulation, observations, time_series_collector, time_index=1)
-    set!(simulation.model, observations, time_index)
+function initialize_forward_run!(simulation, observations, time_series_collector, time_index=1)
+
+    reset!(simulation)
 
     times = observation_times(observations)
     initial_time = times[time_index]
     simulation.model.clock.time = initial_time
-    simulation.model.clock.iteration = 0
-    simulation.model.timestepper.previous_Δt = Inf
-    simulation.initialized = false
 
+    collected_fields = time_series_collector.collected_fields
+    arch = architecture(time_series_collector.grid)
+
+    # Clear potential NaNs from timestepper data.
+    # Particularly important for Adams-Bashforth timestepping scheme.
+    # Oceananigans ≤ v0.71 initializes the Adams-Bashforth scheme with an Euler step by *multiplying* the tendency
+    # at time-step n-1 by 0. Because 0 * NaN = NaN, this fails when the tendency at n-1 contains NaNs.
+    timestepper = simulation.model.timestepper 
+    for field in tuple(timestepper.Gⁿ..., timestepper.G⁻...)
+        if !isnothing(field)
+            parent(field) .= 0
+        end
+    end
+    
     # Zero out time series data
     for time_series in time_series_collector.field_time_serieses
         parent(time_series) .= 0
     end
 
-    simulation.callbacks[:data_collector] = Callback(time_series_collector, SpecifiedTimes(times...))
     :nan_checker ∈ keys(simulation.callbacks) && pop!(simulation.callbacks, :nan_checker)
-
+    :data_collector ∈ keys(simulation.callbacks) && pop!(simulation.callbacks, :data_collector)
+    simulation.callbacks[:data_collector] = Callback(time_series_collector, SpecifiedTimes(times...))
     simulation.stop_time = times[end]
+
+    set!(simulation.model, observations, time_index)
 
     return nothing
 end

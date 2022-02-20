@@ -12,6 +12,7 @@ using OceanTurbulenceParameterEstimation
 using OceanTurbulenceParameterEstimation.EnsembleKalmanInversions: iterate!
 using OceanTurbulenceParameterEstimation.EnsembleKalmanInversions: FullEnsembleDistribution, Resampler
 using OceanTurbulenceParameterEstimation.EnsembleKalmanInversions: resample!, column_has_nan
+using OceanTurbulenceParameterEstimation.InverseProblems: inverting_forward_map
 
 data_path = "convective_adjustment_test.jld2"
 Nensemble = 3
@@ -111,7 +112,7 @@ architecture = CPU()
             θ3 = deepcopy(θ[:, 3])
 
             # Fake a forward map output with NaNs
-            G = eki.inverting_forward_map(θ)
+            G = inverting_forward_map(eki.inverse_problem, θ)
             view(G, :, 2) .= NaN
             @test any(isnan.(G)) == true
 
@@ -130,7 +131,7 @@ architecture = CPU()
             @test θ[:, 3] == θ3
 
             # Test that model fields get overwritten without NaN
-            G = eki.inverting_forward_map(θ)
+            G = inverting_forward_map(eki.inverse_problem, θ)
 
             # Particle 2
             view(G, :, 2) .= NaN
@@ -169,7 +170,7 @@ architecture = CPU()
             θ3 = deepcopy(θ[:, 3])
 
             # Fake a forward map output with NaNs
-            G = eki.inverting_forward_map(θ)
+            G = inverting_forward_map(eki.inverse_problem, θ)
             Gcopy = deepcopy(G)
 
             resample!(resampler, θ, G, eki)
@@ -192,7 +193,7 @@ architecture = CPU()
             θ3 = deepcopy(θ[:, 3])
 
             # Fake a forward map output with NaNs
-            G = eki.inverting_forward_map(θ)
+            G = inverting_forward_map(eki.inverse_problem, θ)
             view(G, :, 1) .= NaN
             view(G, :, 2) .= NaN
 
