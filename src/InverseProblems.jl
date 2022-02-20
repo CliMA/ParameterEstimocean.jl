@@ -20,7 +20,7 @@ using ..Observations:
     initialize_forward_run!,
     FieldTimeSeriesCollector,
     observation_times,
-    observation_names
+    forward_map_names
 
 using Oceananigans: run!, fields, FieldTimeSeries, CPU
 using Oceananigans.Architectures: architecture
@@ -67,7 +67,7 @@ function InverseProblem(observations,
 
     if isnothing(time_series_collector) # attempt to construct automagically
         simulation_fields = fields(simulation.model)
-        collected_fields = NamedTuple(name => simulation_fields[name] for name in observation_names(observations))
+        collected_fields = NamedTuple(name => simulation_fields[name] for name in forward_map_names(observations))
         time_series_collector = FieldTimeSeriesCollector(collected_fields, observation_times(observations))
     end
 
