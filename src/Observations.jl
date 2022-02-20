@@ -36,6 +36,7 @@ end
 """
     SyntheticObservations(path;
                           field_names,
+                          forward_map_names = field_names,
                           transformation = Transformation()),
                           times = nothing,
                           field_time_serieses = nothing,
@@ -53,6 +54,10 @@ function SyntheticObservations(path=nothing;
                                regrid_size = nothing)
 
     field_names = tupleit(field_names)
+    forward_map_names = tupleit(forward_map_names)
+
+    all(n ∈ field_names for n in forward_map_names) ||
+        throw(ArgumentError("All of the forward map names $forward_map_names must be in field names $field_names"))
 
     if isnothing(field_time_serieses)
         raw_time_serieses = NamedTuple(name => FieldTimeSeries(path, string(name); times) for name in field_names)
@@ -106,11 +111,11 @@ function SyntheticObservations(path=nothing;
         metadata = nothing
     end
 
-    transformation = field_name_pairs(transformation, field_names, "transformation")
+    transformation = field_name_pairs(transformation, forward_map_names, "transformation")
     transformation = Dict(name => compute_transformation(transformation[name], field_time_serieses[name])
-                         for name in keys(field_time_serieses))
+                          for name in forward_map_names)
 
-    return SyntheticObservations(field_time_serieses, forward_map_fields,
+    return SyntheticObservations(field_time_serieses, forward_map_names,
                                  grid, times, path, metadata, transformation)
 end
 
