@@ -13,8 +13,8 @@ struct Resampler{D}
 end
 
 function Resampler(; only_failed_particles = true,
-                     acceptable_failure_fraction = 0.0,
-                     resample_failure_fraction = 0,
+                     acceptable_failure_fraction = 0.8,
+                     resample_failure_fraction = 0.2,
                      verbose = false,
                      distribution = FullEnsembleDistribution())
 
