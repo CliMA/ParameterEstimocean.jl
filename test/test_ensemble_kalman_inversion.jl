@@ -193,7 +193,7 @@ architecture = CPU()
             θ3 = deepcopy(θ[:, 3])
 
             # Fake a forward map output with NaNs
-            G = inverting_forward_map(eki, θ)
+            G = inverting_forward_map(eki.inverse_problem, θ)
             view(G, :, 1) .= NaN
             view(G, :, 2) .= NaN
 
