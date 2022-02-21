@@ -20,7 +20,7 @@ using OceanTurbulenceParameterEstimation
 
 using Oceananigans
 using Oceananigans.Units
-using Oceananigans.TurbulenceClosures: FluxTapering
+using Oceananigans.TurbulenceClosures: FluxTapering, Vertical, Horizontal
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SliceEnsembleSize
 using Distributions
 using Printf
