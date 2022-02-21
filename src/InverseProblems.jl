@@ -323,6 +323,7 @@ function transpose_model_output(collector_grid::SingleColumnGrid, time_series_co
         time_serieses = NamedTuple(name => time_series for (name, time_series) in time_serieses)
 
         batch_output = SyntheticObservations(time_serieses,
+                                             observation.forward_map_names,   
                                              grid,
                                              times,
                                              nothing,
