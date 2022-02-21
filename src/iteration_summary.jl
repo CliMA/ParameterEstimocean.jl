@@ -42,9 +42,18 @@ function IterationSummary(eki, X, forward_map_output=nothing)
                             eki.iteration)
 end
 
+function finitefind(a, val, find)
+    finite_a = deepcopy(a)
+    finite_a[.!isfinite.(a)] .= val
+    return find(finite_a)
+end
+
+finitefindmin(a) = finitefind(a, Inf, findmin)
+finitefindmax(a) = finitefind(a, -Inf, findmax)
+
 function Base.show(io::IO, is::IterationSummary)
-    max_error, imax = findmax(is.mean_square_errors)
-    min_error, imin = findmin(is.mean_square_errors)
+    max_error, imax = finitefindmax(is.mean_square_errors)
+    min_error, imin = finitefindmin(is.mean_square_errors)
 
     names = keys(is.ensemble_mean)
     parameter_matrix = [is.parameters[k][name] for name in names, k = 1:length(is.parameters)]
