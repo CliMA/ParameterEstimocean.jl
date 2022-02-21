@@ -20,7 +20,7 @@ using ..Observations:
     initialize_forward_run!,
     FieldTimeSeriesCollector,
     observation_times,
-    observation_names
+    forward_map_names
 
 using Oceananigans: run!, fields, FieldTimeSeries, CPU
 using Oceananigans.Architectures: architecture
@@ -67,7 +67,7 @@ function InverseProblem(observations,
 
     if isnothing(time_series_collector) # attempt to construct automagically
         simulation_fields = fields(simulation.model)
-        collected_fields = NamedTuple(name => simulation_fields[name] for name in observation_names(observations))
+        collected_fields = NamedTuple(name => simulation_fields[name] for name in forward_map_names(observations))
         time_series_collector = FieldTimeSeriesCollector(collected_fields, observation_times(observations))
     end
 
@@ -226,7 +226,7 @@ Transforms, normalizes, and concatenates data for field time series in `observat
 function transform_time_series(::ConcatenatedOutputMap, observation::SyntheticObservations)
     data_vector = []
 
-    for field_name in keys(observation.field_time_serieses)
+    for field_name in forward_map_names(observation)
         # Transform time series data observation-specified `transformation`
         field_time_series = observation.field_time_serieses[field_name]
         transformation = observation.transformation[field_name]
@@ -273,6 +273,7 @@ transpose_model_output(time_series_collector, observations) =
 
 transpose_model_output(collector_grid::YZSliceGrid, time_series_collector, observations) =
     SyntheticObservations(time_series_collector.field_time_serieses,
+                          observations.forward_map_names,
                           collector_grid,
                           time_series_collector.times,
                           nothing,
@@ -305,7 +306,7 @@ function transpose_model_output(collector_grid::SingleColumnGrid, time_series_co
         observation = observations[j]
         time_serieses = OrderedDict{Any, Any}()
 
-        for name in keys(observation.field_time_serieses)
+        for name in forward_map_names(observation)
             loc = LX, LY, LZ = location(observation.field_time_serieses[name])
             topo = topology(grid)
 
@@ -322,6 +323,7 @@ function transpose_model_output(collector_grid::SingleColumnGrid, time_series_co
         time_serieses = NamedTuple(name => time_series for (name, time_series) in time_serieses)
 
         batch_output = SyntheticObservations(time_serieses,
+                                             observation.forward_map_names,   
                                              grid,
                                              times,
                                              nothing,
@@ -377,7 +379,7 @@ function observation_map_variance_across_time(map::ConcatenatedOutputMap, observ
     Nx, Ny, Nz = size(observation.grid)
     Nt = length(first(observation.transformation).time)
 
-    Nfields = length(keys(observation.field_time_serieses))
+    Nfields = length(forward_map_names(observation))
 
     y = transform_time_series(map, observation)
     @assert length(y) == Nx * Ny * Nz * Nt * Nfields # otherwise we're headed for trouble...
