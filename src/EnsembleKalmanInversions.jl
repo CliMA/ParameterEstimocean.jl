@@ -202,8 +202,7 @@ function iterate!(eki::EnsembleKalmanInversion;
         eki.iteration += 1
 
         # Forward map
-        G = resampling_forward_map!(eki) 
-        eki.forward_map_output = G
+        eki.forward_map_output = resampling_forward_map!(eki)
         summary = IterationSummary(eki, eki.unconstrained_parameters, eki.forward_map_output)
         push!(eki.iteration_summaries, summary)
     end
@@ -265,33 +264,31 @@ end
 ##### Adaptive parameter stepping
 #####
 
-function volume_ratio(Xⁿ, Xⁿ⁺¹)
-    Vⁿ = det(cov(Xⁿ, dims=2))
+function volume_ratio(Xⁿ⁺¹, Xⁿ)
     Vⁿ⁺¹ = det(cov(Xⁿ⁺¹, dims=2))
+    Vⁿ   = det(cov(Xⁿ,   dims=2))
     return Vⁿ⁺¹ / Vⁿ
 end
 
 function adaptive_step_parameters(convergence_rate, Xⁿ, Gⁿ, y, Γy, process)
     # Test step forward
-    successful_Xⁿ⁺¹ = step_parameters(Xⁿ, Gⁿ, y, Γy, process; step_size=1)
+    step_size = 1
+    Xⁿ⁺¹ = step_parameters(Xⁿ, Gⁿ, y, Γy, process; step_size)
+    r = volume_ratio(Xⁿ⁺¹, Xⁿ)
 
-    # Recalculate step_size
-    r = volume_ratio(Xⁿ, Xⁿ⁺¹)
-    step_size = r / convergence_rate
-
-    # Search
-    attempts = 1
-    while r < convergence_rate && attempts < 10
-        # Scale step-size so that the _new_ volume is `convergence_rate` smaller than Vⁿ
-        step_size *= 0.8 # sqrt(r / convergence_rate)
+    # "Accelerated" fixed point iteration to adjust step_size
+    p = 1.1
+    iter = 1
+    while !isapprox(r, convergence_rate, atol=0.03, rtol=0.1) && iter < 10
+        step_size *= (r / convergence_rate)^p
         Xⁿ⁺¹ = step_parameters(Xⁿ, Gⁿ, y, Γy, process; step_size)
-        r = volume_ratio(Xⁿ, Xⁿ⁺¹)
-        attempts += 1
+        r = volume_ratio(Xⁿ⁺¹, Xⁿ)
+        iter += 1
     end
 
     @info "Particles stepped adaptively with convergence rate $r (target $convergence_rate)"
 
-    return Xⁿ
+    return Xⁿ⁺¹
 end
 
 end # module
