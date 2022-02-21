@@ -56,7 +56,8 @@ save_interval = 0.25days  # save observation every so often
 force_generate_observations = false
 nothing # hide
 
-anisotropic_diffusivity = AnisotropicDiffusivity(κh=100, κz=1e-2)
+horizontal_diffusivity = ScalarDiffusivity(κ=100, isotropy=Horizontal())
+vertical_diffusivity = ScalarDiffusivity(κ=1e-2, isotropy=Vertical())
 
 # The isopycnal skew-symmetric diffusivity closure.
 gerdes_koberle_willebrand_tapering = FluxTapering(1e-2)
@@ -74,7 +75,7 @@ if force_generate_observations || !(isfile(data_path))
                            z = (-Lz, 0),
                            halo = (3, 3))
 
-    closures = (gent_mcwilliams_diffusivity, anisotropic_diffusivity)
+    closures = (gent_mcwilliams_diffusivity, horizontal_diffusivity, vertical_diffusivity)
     
     model = HydrostaticFreeSurfaceModel(grid = grid,
                                         tracers = (:b, :c),
