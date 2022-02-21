@@ -185,6 +185,11 @@ function forward_map(ip, parameters; suppress=true)
     # with model data.
     forward_run!(ip, parameters; suppress)
 
+    # Verify that data was collected properly
+    all(ip.time_series_collector.times .≈ ip.time_series_collector.collection_times) ||
+        error("FieldTimeSeriesCollector.collection_times does not match FieldTimeSeriesCollector.times. \n" *
+              "Field time series data may not have been properly collected")
+
     # Transform the model data according to `ip.output_map` into
     # the array format expected by EnsembleKalmanProcesses.jl
     # The result has `size(output) = (output_size, ensemble_capacity)`,

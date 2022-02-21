@@ -269,11 +269,12 @@ end
 ##### FieldTimeSeriesCollector for collecting data while a simulation runs
 #####
 
-struct FieldTimeSeriesCollector{G, D, F, T}
+struct FieldTimeSeriesCollector{G, D, F}
     grid :: G
+    times :: Vector{Float64}
     field_time_serieses :: D
     collected_fields :: F
-    times :: T
+    collection_times :: Vector{Float64}
 end
 
 """
@@ -299,7 +300,9 @@ function FieldTimeSeriesCollector(collected_fields, times;
     # Convert to NamedTuple
     field_time_serieses = NamedTuple(name => field_time_serieses[name] for name in keys(collected_fields))
 
-    return FieldTimeSeriesCollector(grid, field_time_serieses, collected_fields, times)
+    collection_times = similar(times)
+
+    return FieldTimeSeriesCollector(grid, times, field_time_serieses, collected_fields, collection_times)
 end
 
 function (collector::FieldTimeSeriesCollector)(simulation)
@@ -326,15 +329,20 @@ function (collector::FieldTimeSeriesCollector)(simulation)
         end
     end
 
+    # We _have_ collected data
+    collector.collection_times[time_index] = current_time
+
     return nothing
 end
 
 #####
 ##### Initializing simulations
 #####
+
 nothingfunction(simulation) = nothing
 
-function initialize_forward_run!(simulation, observations, time_series_collector, initialize_simulation! = nothingfunction)
+function initialize_forward_run!(simulation, observations,
+                                 time_series_collector, initialize_simulation! = nothingfunction)
 
     reset!(simulation)
 
@@ -356,10 +364,12 @@ function initialize_forward_run!(simulation, observations, time_series_collector
         end
     end
     
-    # Zero out time series data
+    # Initialize FieldTimeSeriesCollector
+    time_series_collector.collection_times .= 0
     for time_series in time_series_collector.field_time_serieses
         parent(time_series) .= 0
     end
+
 
     :nan_checker ∈ keys(simulation.callbacks) && pop!(simulation.callbacks, :nan_checker)
     :data_collector ∈ keys(simulation.callbacks) && pop!(simulation.callbacks, :data_collector)
