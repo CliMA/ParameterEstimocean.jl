@@ -1,8 +1,8 @@
-resample!(::Nothing, args...) = nothing
-
 #####
 ##### Resampling
 #####
+
+resample!(::Nothing, args...) = nothing
 
 struct Resampler{D}
     only_failed_particles :: Bool
