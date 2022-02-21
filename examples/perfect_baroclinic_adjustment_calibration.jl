@@ -233,7 +233,7 @@ mean(G, dims=2) ≈ y
 
 # Next, we construct an `EnsembleKalmanInversion` (EKI) object,
 
-eki = EnsembleKalmanInversion(calibration; convergence_rate = 0.7)
+eki = EnsembleKalmanInversion(calibration; convergence_rate = 0.5)
 
 # and perform few iterations to see if we can converge to the true parameter values.
 
@@ -326,8 +326,8 @@ xlims!(axmain, 350, 1350)
 xlims!(axtop, 350, 1350)
 ylims!(axmain, 650, 1750)
 ylims!(axright, 650, 1750)
-xlims!(axright, 0, 0.025)
-ylims!(axtop, 0, 0.025)
+xlims!(axright, 0, 0.02)
+ylims!(axtop, 0, 0.02)
 
 save("distributions_baroclinic_adjustment.svg", f); nothing #hide 
 

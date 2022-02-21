@@ -46,7 +46,7 @@ Base.show(io::IO, eki::EnsembleKalmanInversion) =
               "├── ensemble_kalman_process: ", summary(eki.ensemble_kalman_process), '\n',
               "├── mapped_observations: ", summary(eki.mapped_observations), '\n',
               "├── noise_covariance: ", summary(eki.noise_covariance), '\n',
-              "├── convergence_rate: ", summary(eki.convergence_rate), '\n',
+              "├── convergence_rate: $(eki.convergence_rate)", '\n',
               "├── iteration: $(eki.iteration)", '\n',
               "├── resampler: $(summary(eki.resampler))",
               "├── unconstrained_parameters: $(summary(eki.unconstrained_parameters))", '\n',
