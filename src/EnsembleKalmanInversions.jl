@@ -63,7 +63,7 @@ end
 """
     EnsembleKalmanInversion(inverse_problem;
                             noise_covariance = 1,
-                            convergence_rate = 0.5,
+                            convergence_rate = 0.8,
                             resampler = Resampler(),
                             unconstrained_parameters = nothing,
                             forward_map_output = nothing,
