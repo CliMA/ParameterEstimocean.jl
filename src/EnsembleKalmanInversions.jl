@@ -273,10 +273,10 @@ end
 
 function adaptive_step_parameters(convergence_rate, Xⁿ, Gⁿ, y, Γy, process)
     # Test step forward
-    successful_Xⁿ⁺¹ = step_parameters(successful_Xⁿ, successful_Gⁿ, y, Γy, process; step_size=1)
+    successful_Xⁿ⁺¹ = step_parameters(Xⁿ, Gⁿ, y, Γy, process; step_size=1)
 
     # Recalculate step_size
-    r = volume_ratio(successful_Xⁿ, successful_Xⁿ⁺¹)
+    r = volume_ratio(Xⁿ, Xⁿ⁺¹)
     step_size = r / convergence_rate
 
     # Search
@@ -285,7 +285,7 @@ function adaptive_step_parameters(convergence_rate, Xⁿ, Gⁿ, y, Γy, process)
         # Scale step-size so that the _new_ volume is `convergence_rate` smaller than Vⁿ
         step_size *= 0.8 # sqrt(r / convergence_rate)
         Xⁿ⁺¹ = step_parameters(Xⁿ, Gⁿ, y, Γy, process; step_size)
-        r = volume_ratio(successful_Xⁿ, successful_Xⁿ⁺¹)
+        r = volume_ratio(Xⁿ, Xⁿ⁺¹)
         attempts += 1
     end
 
