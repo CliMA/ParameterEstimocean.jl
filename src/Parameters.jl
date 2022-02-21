@@ -4,7 +4,7 @@ export FreeParameters, lognormal, ScaledLogitNormal
 
 using Oceananigans.Architectures: CPU, arch_array, architecture
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
-using Oceananigans.TurbulenceClosures: AbstractTimeDiscretization, ExplicitTimeDiscretization
+using Oceananigans.TurbulenceClosures: AbstractTimeDiscretization, Explicit
 
 using Printf
 using Distributions
@@ -445,7 +445,7 @@ Closure(ClosureSubModel(12, 2), 3)
 """
 closure_with_parameters(closure, parameters) = construct_object(dict_properties(closure), parameters)
 
-closure_with_parameters(closure::AbstractTurbulenceClosure{ExplicitTimeDiscretization}, parameters) =
+closure_with_parameters(closure::AbstractTurbulenceClosure{Explicit}, parameters) =
     construct_object(dict_properties(closure), parameters, type_parameter=nothing)
 
 closure_with_parameters(closure::AbstractTurbulenceClosure{TD}, parameters) where {TD <: AbstractTimeDiscretization} =
