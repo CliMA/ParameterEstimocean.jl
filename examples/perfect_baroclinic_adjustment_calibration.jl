@@ -156,7 +156,7 @@ slice_ensemble_size = SliceEnsembleSize(size=(Ny, Nz), ensemble=ensemble_size)
                                       halo=(3, 3))
 
 gm_ensemble = [deepcopy(gent_mcwilliams_diffusivity) for i = 1:ensemble_size] 
-closures = (gm_ensemble, anisotropic_diffusivity)
+closures = (gm_ensemble, horizontal_diffusivity, vertical_diffusivity)
 
 @show ensemble_model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
                                                    tracers = (:b, :c),
