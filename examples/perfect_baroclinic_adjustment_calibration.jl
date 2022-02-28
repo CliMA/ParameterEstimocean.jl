@@ -56,8 +56,8 @@ save_interval = 0.25days  # save observation every so often
 force_generate_observations = false
 nothing # hide
 
-horizontal_diffusivity = ScalarDiffusivity(κ=100, isotropy=Horizontal())
-vertical_diffusivity = ScalarDiffusivity(κ=1e-2, isotropy=Vertical())
+horizontal_diffusivity = HorizontalScalarDiffusivity(κ=100)
+vertical_diffusivity = VerticalScalarDiffusivity(κ=1e-2)
 
 # The isopycnal skew-symmetric diffusivity closure.
 gerdes_koberle_willebrand_tapering = FluxTapering(1e-2)
