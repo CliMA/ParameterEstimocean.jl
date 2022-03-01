@@ -37,7 +37,7 @@ nothing # hide
 
 # We gather the "true" parameters in a named tuple ``θ_*``:
 
-θ★ = (κ_skew = κ_skew, κ_symmetric = κ_symmetric)
+θ★ = (; κ_skew, κ_symmetric)
 
 # The experiment name and where the synthetic observations will be saved.
 experiment_name = "baroclinic_adjustment"
@@ -113,9 +113,9 @@ if force_generate_observations || !(isfile(data_path))
     cᵢ(x, y, z) = exp(-y^2 / 2Δc_y^2) * exp(-(z + Lz/2)^2 / (2Δc_z^2))
 
     set!(model, b=bᵢ, c=cᵢ)
-    
+
     simulation = Simulation(model, Δt=Δt, stop_time=stop_time)
-    
+
     simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
                                                           schedule = TimeInterval(save_interval),
                                                           prefix = experiment_name,

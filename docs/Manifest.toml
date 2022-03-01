@@ -893,7 +893,9 @@ version = "0.4.0"
 
 [[Oceananigans]]
 deps = ["Adapt", "CUDA", "CUDAKernels", "Crayons", "CubedSphere", "Dates", "DocStringExtensions", "FFTW", "Glob", "IncompleteLU", "InteractiveUtils", "IterativeSolvers", "JLD2", "KernelAbstractions", "LinearAlgebra", "Logging", "MPI", "NCDatasets", "OffsetArrays", "OrderedCollections", "PencilFFTs", "Pkg", "Printf", "Random", "Rotations", "SafeTestsets", "SeawaterPolynomials", "SparseArrays", "Statistics", "StructArrays", "Tullio"]
-git-tree-sha1 = "a0f4e9f4dfe2626ec76748f713b1a931f1fda149"
+git-tree-sha1 = "dc22cce4a0645420cca327e40c795a77f0876c92"
+repo-rev = "ncc/fix-bug-otpe"
+repo-url = "https://github.com/CliMA/Oceananigans.jl.git"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
 version = "0.71.4"
 
