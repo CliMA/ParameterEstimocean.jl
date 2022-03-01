@@ -234,7 +234,7 @@ mean(G, dims=2) ≈ y
 
 # Next, we construct an `EnsembleKalmanInversion` (EKI) object,
 
-eki = EnsembleKalmanInversion(calibration; convergence_rate = 0.5)
+eki = EnsembleKalmanInversion(calibration; convergence_rate = 0.4)
 
 # and perform few iterations to see if we can converge to the true parameter values.
 
