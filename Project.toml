@@ -24,7 +24,7 @@ Suppressor = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
 [compat]
 DataDeps = "0.7"
 Distributions = "0.25"
-EnsembleKalmanProcesses = "0.3"
+EnsembleKalmanProcesses = "0.3, 0.4"
 FileIO = "1"
 JLD2 = "0.4"
 Oceananigans = "^0.71"
