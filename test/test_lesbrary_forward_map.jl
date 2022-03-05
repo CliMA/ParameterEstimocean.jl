@@ -25,7 +25,7 @@ using OceanTurbulenceParameterEstimation.Parameters: unconstrained_prior, transf
         Qᵇ = simulation.model.tracers.b.boundary_conditions.top.condition
         N² = simulation.model.tracers.b.boundary_conditions.bottom.condition
 
-        simulation.Δt = 10.0
+        simulation.Δt = 5.0
 
         Qᵘ .= observations.metadata.parameters.momentum_flux
         Qᵇ .= observations.metadata.parameters.buoyancy_flux
@@ -68,7 +68,7 @@ using OceanTurbulenceParameterEstimation.Parameters: unconstrained_prior, transf
         Qᵇ = simulation.model.tracers.b.boundary_conditions.top.condition
         N² = simulation.model.tracers.b.boundary_conditions.bottom.condition
 
-        simulation.Δt = 10.0
+        simulation.5 = 10.0
 
         Qᵘ .= observations.metadata.parameters.momentum_flux
         Qᵇ .= observations.metadata.parameters.buoyancy_flux
