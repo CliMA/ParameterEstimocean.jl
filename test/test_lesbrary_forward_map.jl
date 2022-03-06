@@ -25,7 +25,7 @@ using OceanTurbulenceParameterEstimation.Parameters: unconstrained_prior, transf
         Qᵇ = simulation.model.tracers.b.boundary_conditions.top.condition
         N² = simulation.model.tracers.b.boundary_conditions.bottom.condition
 
-        simulation.Δt = 5.0
+        simulation.Δt = 10.0
 
         Qᵘ .= observations.metadata.parameters.momentum_flux
         Qᵇ .= observations.metadata.parameters.buoyancy_flux
@@ -55,8 +55,7 @@ using OceanTurbulenceParameterEstimation.Parameters: unconstrained_prior, transf
         transformation = (b=ZScore(), u=ZScore(), v=ZScore(), e=RescaledZScore(0.1)) 
         observations = SyntheticObservations(data_path; field_names, times, transformation)
 
-        mixing_length = MixingLength(Cᴬc=0.0, Cᴬu=0.0, Cᴬe=0.0, Cᴷcʳ=0.0, Cᴷuʳ=0.0, Cᴷeʳ=0.0)
-        catke = CATKEVerticalDiffusivity(; mixing_length)
+        catke = CATKEVerticalDiffusivity()
 
         simulation = ensemble_column_model_simulation(observations;
                                                       Nensemble = 10,
@@ -68,18 +67,15 @@ using OceanTurbulenceParameterEstimation.Parameters: unconstrained_prior, transf
         Qᵇ = simulation.model.tracers.b.boundary_conditions.top.condition
         N² = simulation.model.tracers.b.boundary_conditions.bottom.condition
 
-        simulation.5 = 10.0
+        simulation.Δt = 10.0
 
         Qᵘ .= observations.metadata.parameters.momentum_flux
         Qᵇ .= observations.metadata.parameters.buoyancy_flux
         N² .= observations.metadata.parameters.N²_deep
 
-        priors = (Cᴰ   = lognormal(mean=2.0, std=0.2),
-                  Cᵂu★ = lognormal(mean=0.4, std=0.1),
-                  Cᴸᵇ  = lognormal(mean=0.1, std=0.05),
-                  Cᴷu⁻ = ScaledLogitNormal(bounds=(0, 0.1)),
-                  Cᴷc⁻ = ScaledLogitNormal(bounds=(0, 1.0)),
-                  Cᴷe⁻ = ScaledLogitNormal(bounds=(0, 0.5)))
+        Cᴰ_default = catke.Cᴰ
+
+        priors = (; Cᴰ = lognormal(mean=Cᴰ_default, std=Cᴰ_default/100))
 
         free_parameters = FreeParameters(priors)
         calibration = InverseProblem(observations, simulation, free_parameters)
@@ -127,5 +123,3 @@ using OceanTurbulenceParameterEstimation.Parameters: unconstrained_prior, transf
         @test all(G[:, 4] == G[:, i] for i = 5:Nensemble)
     end
 end
-
-
