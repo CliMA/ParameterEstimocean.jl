@@ -28,9 +28,9 @@ uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
 
 [[ArrayInterface]]
 deps = ["Compat", "IfElse", "LinearAlgebra", "Requires", "SparseArrays", "Static"]
-git-tree-sha1 = "745233d77146ad221629590b6d82fe7f1ddb478f"
+git-tree-sha1 = "9f8186bc19cd1c129d367cb667215517cc03e144"
 uuid = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
-version = "4.0.3"
+version = "5.0.1"
 
 [[Artifacts]]
 uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
@@ -221,9 +221,9 @@ version = "0.1.8"
 
 [[FFTW]]
 deps = ["AbstractFFTs", "FFTW_jll", "LinearAlgebra", "MKL_jll", "Preferences", "Reexport"]
-git-tree-sha1 = "463cb335fa22c4ebacfd1faba5fde14edb80d96c"
+git-tree-sha1 = "505876577b5481e50d089c1c68899dfb6faebc62"
 uuid = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
-version = "1.4.5"
+version = "1.4.6"
 
 [[FFTW_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -358,15 +358,15 @@ version = "0.8.1"
 
 [[LLVM]]
 deps = ["CEnum", "LLVMExtra_jll", "Libdl", "Printf", "Unicode"]
-git-tree-sha1 = "761c362ede582d358026e22d08695231dd25242e"
+git-tree-sha1 = "302e6cfb8d83ba7a9658d7d51725620fa9db8702"
 uuid = "929cbde3-209d-540e-8aea-75f648917ca0"
-version = "4.8.0"
+version = "4.9.0"
 
 [[LLVMExtra_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "67cc5406b15bd04ff72a45f628bec61d36078908"
+deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl", "Pkg"]
+git-tree-sha1 = "5558ad3c8972d602451efe9d81c78ec14ef4f5ef"
 uuid = "dad2f222-ce93-54a1-a47d-0025e8a3acab"
-version = "0.0.13+3"
+version = "0.0.14+2"
 
 [[LazyArtifacts]]
 deps = ["Artifacts", "Pkg"]
@@ -406,9 +406,9 @@ uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
 [[MKL_jll]]
 deps = ["Artifacts", "IntelOpenMP_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "Pkg"]
-git-tree-sha1 = "5455aef09b40e5020e1520f551fa3135040d4ed0"
+git-tree-sha1 = "e595b205efd49508358f7dc670a940c790204629"
 uuid = "856f044c-d86e-5d09-b602-aeab76dc8ba7"
-version = "2021.1.1+2"
+version = "2022.0.0+0"
 
 [[MPI]]
 deps = ["Distributed", "DocStringExtensions", "Libdl", "MPICH_jll", "MicrosoftMPI_jll", "OpenMPI_jll", "Pkg", "Random", "Requires", "Serialization", "Sockets"]
@@ -494,11 +494,9 @@ uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
 
 [[Oceananigans]]
 deps = ["Adapt", "CUDA", "CUDAKernels", "Crayons", "CubedSphere", "Dates", "DocStringExtensions", "FFTW", "Glob", "IncompleteLU", "InteractiveUtils", "IterativeSolvers", "JLD2", "KernelAbstractions", "LinearAlgebra", "Logging", "MPI", "NCDatasets", "OffsetArrays", "OrderedCollections", "PencilFFTs", "Pkg", "Printf", "Random", "Rotations", "SafeTestsets", "SeawaterPolynomials", "SparseArrays", "Statistics", "StructArrays", "Tullio"]
-git-tree-sha1 = "dc22cce4a0645420cca327e40c795a77f0876c92"
-repo-rev = "ncc/fix-bug-otpe"
-repo-url = "https://github.com/CliMA/Oceananigans.jl.git"
+git-tree-sha1 = "8ac9fda46261f580b43cd3fdb681eda37fbc31ca"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
-version = "0.71.4"
+version = "0.71.6"
 
 [[OffsetArrays]]
 deps = ["Adapt"]
@@ -557,9 +555,9 @@ version = "2.2.2"
 
 [[PencilArrays]]
 deps = ["ArrayInterface", "JSON3", "LinearAlgebra", "MPI", "OffsetArrays", "Random", "Reexport", "Requires", "StaticArrays", "StaticPermutations", "Strided", "TimerOutputs", "VersionParsing"]
-git-tree-sha1 = "387fed6314fcd0b3ad868bf8076c89ad3ea38bb9"
+git-tree-sha1 = "743e865b818da62667f585f8450ea4bcae004989"
 uuid = "0e08944d-e94e-41b1-9406-dcf66b6a9d2e"
-version = "0.15.2"
+version = "0.15.3"
 
 [[PencilFFTs]]
 deps = ["AbstractFFTs", "FFTW", "LinearAlgebra", "MPI", "PencilArrays", "Reexport", "TimerOutputs"]
@@ -606,10 +604,10 @@ deps = ["Serialization"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [[Random123]]
-deps = ["Libdl", "Random", "RandomNumbers"]
-git-tree-sha1 = "0e8b146557ad1c6deb1367655e052276690e71a3"
+deps = ["Random", "RandomNumbers"]
+git-tree-sha1 = "afeacaecf4ed1649555a19cb2cad3c141bbc9474"
 uuid = "74087812-796a-5b5d-8853-05524746bad3"
-version = "1.4.2"
+version = "1.5.0"
 
 [[RandomNumbers]]
 deps = ["Random", "Requires"]
@@ -711,15 +709,15 @@ version = "1.8.4"
 
 [[Static]]
 deps = ["IfElse"]
-git-tree-sha1 = "00b725fffc9a7e9aac8850e4ed75b4c1acbe8cd2"
+git-tree-sha1 = "87e9954dfa33fd145694e42337bdd3d5b07021a6"
 uuid = "aedffcd0-7271-4cad-89d0-dc628f76c6d3"
-version = "0.5.5"
+version = "0.6.0"
 
 [[StaticArrays]]
 deps = ["LinearAlgebra", "Random", "Statistics"]
-git-tree-sha1 = "6354dfaf95d398a1a70e0b28238321d5d17b2530"
+git-tree-sha1 = "74fb527333e72ada2dd9ef77d98e4991fb185f04"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "1.4.0"
+version = "1.4.1"
 
 [[StaticPermutations]]
 git-tree-sha1 = "193c3daa18ff3e55c1dae66acb6a762c4a3bdb0b"
