@@ -94,16 +94,28 @@ using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
         @test uvb_observations.transformation[:b].normalization.scale === 0.1
 
         # Regridding
-        coarsened_observations = SyntheticObservations(data_path, field_names=(:u, :v, :b), regrid_size=(1, 1, Int(Nz/2)))
-        refined_observations = SyntheticObservations(data_path, field_names=(:u, :v, :b), regrid_size=(1, 1, 2Nz))
+        coarse_grid = RectilinearGrid(size=Int(Nz/2), z=(-Lz, 0), topology=(Flat, Flat, Bounded))
+        fine_grid = RectilinearGrid(size=2Nz, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
 
-        @test size(coarsened_observations.grid) === (1, 1, Int(Nz/2))
-        @test size(refined_observations.grid) === (1, 1, 2Nz)
+        for regrid in [(1, 1, Int(Nz/2)), coarse_grid]
+            coarsened_observations = SyntheticObservations(data_path, field_names=(:u, :v, :b); regrid)
+            @test size(coarsened_observations.grid) === (1, 1, Int(Nz/2))
+        end
+
+        for regrid in [(1, 1, 2Nz), fine_grid]
+            refined_observations = SyntheticObservations(data_path, field_names=(:u, :v, :b); regrid)
+            @test size(refined_observations.grid) === (1, 1, 2Nz)
+        end
 
         # Test regridding LESbrary observations
         data_path = datadep"two_day_suite_2m/free_convection_instantaneous_statistics.jld2";
         for Nz in (8, 16, 32, 64, 128, 256, 512)
-            observations = SyntheticObservations(data_path; field_names=(:u, :v, :b), regrid_size=(1, 1, Nz))
+            observations = SyntheticObservations(data_path; field_names=(:u, :v, :b), regrid=(1, 1, Nz))
+            @test size(observations.grid) === (1, 1, Nz)
+
+            raw_obs = SyntheticObservations(data_path; field_names=(:u, :v, :b))
+            regrid = RectilinearGrid(size=Nz, z=(-raw_obs.grid.Lz, 0), topology=(Flat, Flat, Bounded))
+            observations = SyntheticObservations(data_path; field_names=(:u, :v, :b); regrid)
             @test size(observations.grid) === (1, 1, Nz)
         end
     end
