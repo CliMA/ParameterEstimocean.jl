@@ -115,7 +115,7 @@ using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
 
             raw_obs = SyntheticObservations(data_path; field_names=(:u, :v, :b))
             regrid = RectilinearGrid(size=Nz, z=(-raw_obs.grid.Lz, 0), topology=(Flat, Flat, Bounded))
-            observations = SyntheticObservations(data_path; field_names=(:u, :v, :b); regrid)
+            observations = SyntheticObservations(data_path; field_names=(:u, :v, :b), regrid)
             @test size(observations.grid) === (1, 1, Nz)
         end
     end
