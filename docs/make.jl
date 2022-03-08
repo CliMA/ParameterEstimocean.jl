@@ -20,19 +20,19 @@ ENV["DATADEPS_ALWAYS_ACCEPT"] = "true"
 const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
 const OUTPUT_DIR   = joinpath(@__DIR__, "src/literated")
 
-examples = [
+to_be_literated = [
   "intro_to_observations.jl",
   "intro_to_inverse_problems.jl",
   "exploring_priors.jl",
   "perfect_convective_adjustment_calibration.jl",
-  "perfect_catke_calibration.jl",
+  # "perfect_catke_calibration.jl",
   "lesbrary_catke_calibration.jl",
   "perfect_baroclinic_adjustment_calibration.jl"
 ]
 
-for example in examples
-    example_filepath = joinpath(EXAMPLES_DIR, example)
-    Literate.markdown(example_filepath, OUTPUT_DIR; flavor = Literate.DocumenterFlavor())
+for file in to_be_literated
+    filepath = joinpath(EXAMPLES_DIR, file)
+    Literate.markdown(filepath, OUTPUT_DIR; flavor = Literate.DocumenterFlavor())
 end
 
 #####
@@ -52,13 +52,14 @@ format = Documenter.HTML(
 pages = [
     "Home" => "index.md",
     "Installation Instructions" => "installation_instructions.md",
-    
+
+    "Intro to observations" => "literated/intro_to_observations.md",
+    "Intro to inverse problems" => "literated/intro_to_inverse_problems.md",
+    "Exploring Prior distributions" => "literated/exploring_priors.md",
+
     "Examples" => [ 
-        "literated/intro_to_observations.md",
-        "literated/intro_to_inverse_problems.md",
-        "literated/exploring_priors.md",
         "literated/perfect_convective_adjustment_calibration.md",
-        "literated/perfect_catke_calibration.md",
+        # "literated/perfect_catke_calibration.md",
         "literated/lesbrary_catke_calibration.md",
         "literated/perfect_baroclinic_adjustment_calibration.md"
         ],

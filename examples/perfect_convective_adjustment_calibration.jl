@@ -65,7 +65,7 @@ calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
 # algorithm refer to
 # [EnsembleKalmanProcesses.jl documentation](https://clima.github.io/EnsembleKalmanProcesses.jl/stable/ensemble_kalman_inversion/).
 
-eki = EnsembleKalmanInversion(calibration; noise_covariance = 1e-2)
+eki = EnsembleKalmanInversion(calibration; convergence_rate = 0.5)
 
 # and perform few iterations to see if we can converge to the true parameter values.
 

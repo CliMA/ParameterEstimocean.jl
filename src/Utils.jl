@@ -16,4 +16,28 @@ function field_name_pairs(nt::Union{NamedTuple, Dict}, field_names, nt_name="")
     return nt
 end
 
+function prettyvector(v::AbstractVector, bookends=3)
+    separator = " … "
+    N = length(v)
+
+    if N < 2bookends + 4
+        content = string.(v) .* ", "
+        content[end] = content[end][1:end-2]
+        return string("[", content..., "]")
+    else
+        separator = " … "
+        beginning = [string(v[i]) for i=1:bookends]
+        ending = [string(v[end+1-i]) for i=1:bookends]
+
+        for i = 1:bookends-1
+            beginning[i] *= ", "
+            ending[i] *= ", "
+        end
+
+        N = length(v)
+
+        return string("[", beginning..., separator, ending..., "] ($N elements)")
+    end
+end
+
 end # module

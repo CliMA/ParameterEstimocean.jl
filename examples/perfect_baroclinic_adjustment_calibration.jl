@@ -37,7 +37,7 @@ nothing # hide
 
 # We gather the "true" parameters in a named tuple ``θ_*``:
 
-θ★ = (κ_skew = κ_skew, κ_symmetric = κ_symmetric)
+θ★ = (; κ_skew, κ_symmetric)
 
 # The experiment name and where the synthetic observations will be saved.
 experiment_name = "baroclinic_adjustment"
@@ -56,7 +56,8 @@ save_interval = 0.25days  # save observation every so often
 force_generate_observations = false
 nothing # hide
 
-anisotropic_diffusivity = AnisotropicDiffusivity(κh=100, κz=1e-2)
+horizontal_diffusivity = HorizontalScalarDiffusivity(κ=100)
+vertical_diffusivity = VerticalScalarDiffusivity(κ=1e-2)
 
 # The isopycnal skew-symmetric diffusivity closure.
 gerdes_koberle_willebrand_tapering = FluxTapering(1e-2)
@@ -74,7 +75,7 @@ if force_generate_observations || !(isfile(data_path))
                            z = (-Lz, 0),
                            halo = (3, 3))
 
-    closures = (gent_mcwilliams_diffusivity, anisotropic_diffusivity)
+    closures = (gent_mcwilliams_diffusivity, horizontal_diffusivity, vertical_diffusivity)
     
     model = HydrostaticFreeSurfaceModel(grid = grid,
                                         tracers = (:b, :c),
@@ -112,9 +113,9 @@ if force_generate_observations || !(isfile(data_path))
     cᵢ(x, y, z) = exp(-y^2 / 2Δc_y^2) * exp(-(z + Lz/2)^2 / (2Δc_z^2))
 
     set!(model, b=bᵢ, c=cᵢ)
-    
+
     simulation = Simulation(model, Δt=Δt, stop_time=stop_time)
-    
+
     simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
                                                           schedule = TimeInterval(save_interval),
                                                           prefix = experiment_name,
@@ -155,7 +156,7 @@ slice_ensemble_size = SliceEnsembleSize(size=(Ny, Nz), ensemble=ensemble_size)
                                       halo=(3, 3))
 
 gm_ensemble = [deepcopy(gent_mcwilliams_diffusivity) for i = 1:ensemble_size] 
-closures = (gm_ensemble, anisotropic_diffusivity)
+closures = (gm_ensemble, horizontal_diffusivity, vertical_diffusivity)
 
 @show ensemble_model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
                                                    tracers = (:b, :c),
@@ -233,7 +234,7 @@ mean(G, dims=2) ≈ y
 
 # Next, we construct an `EnsembleKalmanInversion` (EKI) object,
 
-eki = EnsembleKalmanInversion(calibration; noise_covariance = 1e-2)
+eki = EnsembleKalmanInversion(calibration; convergence_rate = 0.4)
 
 # and perform few iterations to see if we can converge to the true parameter values.
 
@@ -326,8 +327,8 @@ xlims!(axmain, 350, 1350)
 xlims!(axtop, 350, 1350)
 ylims!(axmain, 650, 1750)
 ylims!(axright, 650, 1750)
-xlims!(axright, 0, 0.025)
-ylims!(axtop, 0, 0.025)
+xlims!(axright, 0, 0.015)
+ylims!(axtop, 0, 0.015)
 
 save("distributions_baroclinic_adjustment.svg", f); nothing #hide 
 

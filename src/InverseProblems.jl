@@ -1,21 +1,26 @@
 module InverseProblems
 
-using OrderedCollections
+export
+    InverseProblem,
+    forward_map,
+    forward_run!,
+    observation_map,
+    observation_map_variance_across_time,
+    ConcatenatedOutputMap
+
+using OffsetArrays, Statistics, OrderedCollections
 using Suppressor: @suppress
 
 using ..Transformations: transform_field_time_series
+using ..Parameters: new_closure_ensemble, transform_to_constrained
 
 using ..Observations:
     AbstractObservation,
     SyntheticObservations,
-    initialize_simulation!,
+    initialize_forward_run!,
     FieldTimeSeriesCollector,
     observation_times,
-    observation_names
-
-using ..Parameters: new_closure_ensemble
-
-using OffsetArrays, Statistics
+    forward_map_names
 
 using Oceananigans: run!, fields, FieldTimeSeries, CPU
 using Oceananigans.Architectures: architecture
@@ -33,20 +38,23 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: SingleColumnGrid, YZSlic
 ##### InverseProblems
 #####
 
-struct InverseProblem{F, O, S, T, P}
+struct InverseProblem{F, O, S, T, P, I}
     observations :: O
     simulation :: S
     time_series_collector :: T
     free_parameters :: P
     output_map :: F
+    initialize_simulation :: I
 end
+
+nothingfunction(simulation) = nothing
 
 """
     InverseProblem(observations,
-                        simulation,
-                        free_parameters;
-                        output_map = ConcatenatedOutputMap(),
-                        time_series_collector = nothing)
+                   simulation,
+                   free_parameters;
+                   output_map = ConcatenatedOutputMap(),
+                   time_series_collector = nothing)
 
 Return an `InverseProblem`.
 """
@@ -54,22 +62,26 @@ function InverseProblem(observations,
                         simulation,
                         free_parameters;
                         output_map = ConcatenatedOutputMap(),
-                        time_series_collector = nothing)
+                        time_series_collector = nothing,
+                        initialize_simulation = nothingfunction)
 
     if isnothing(time_series_collector) # attempt to construct automagically
         simulation_fields = fields(simulation.model)
-        collected_fields = NamedTuple(name => simulation_fields[name] for name in observation_names(observations))
+        collected_fields = NamedTuple(name => simulation_fields[name] for name in forward_map_names(observations))
         time_series_collector = FieldTimeSeriesCollector(collected_fields, observation_times(observations))
     end
 
-    return InverseProblem(observations, simulation, time_series_collector, free_parameters, output_map)
+    return InverseProblem(observations, simulation, time_series_collector, free_parameters, output_map, initialize_simulation)
 end
+
+Base.summary(ip::InverseProblem) =
+    string("InverseProblem{", summary(ip.output_map), "} with free parameters ", ip.free_parameters.names)
 
 function Base.show(io::IO, ip::InverseProblem)
     sim_str = "Simulation on $(summary(ip.simulation.model.grid)) with Δt=$(ip.simulation.Δt)"
     out_map_str = summary(ip.output_map)
 
-    print(io, "InverseProblem{$out_map_str}", '\n',
+    print(io, summary(ip), '\n',
         "├── observations: $(summary(ip.observations))", '\n',
         "├── simulation: $sim_str", '\n',
         "├── free_parameters: $(summary(ip.free_parameters))", '\n',
@@ -129,7 +141,11 @@ Nobservations(grid::TwoDimensionalEnsembleGrid) = 1
 Nensemble(grid::Union{OneDimensionalEnsembleGrid, TwoDimensionalEnsembleGrid}) = grid.Nx
 Nensemble(ip::InverseProblem) = Nensemble(ip.simulation.model.grid)
 
-""" Transform and return `ip.observations` appropriate for `ip.output_map`. """
+"""
+    observation_map(ip::InverseProblem)
+
+Transform and return `ip.observations` appropriately for `ip.output_map`.
+"""
 observation_map(ip::InverseProblem) = transform_time_series(ip.output_map, ip.observations)
 
 """
@@ -138,7 +154,7 @@ observation_map(ip::InverseProblem) = transform_time_series(ip.output_map, ip.ob
 Initialize `ip.simulation` with `parameters` and run it forward. Output is stored
 in `ip.time_series_collector`.
 """
-function forward_run!(ip::InverseProblem, parameters)
+function forward_run!(ip::InverseProblem, parameters; suppress=false)
     observations = ip.observations
     simulation = ip.simulation
     closures = simulation.model.closure
@@ -146,9 +162,13 @@ function forward_run!(ip::InverseProblem, parameters)
     θ = expand_parameters(ip, parameters)
     simulation.model.closure = new_closure_ensemble(closures, θ, architecture(simulation.model.grid))
 
-    initialize_simulation!(simulation, observations, ip.time_series_collector)
+    initialize_forward_run!(simulation, observations, ip.time_series_collector, ip.initialize_simulation)
 
-    @suppress run!(simulation)
+    if suppress
+        @suppress run!(simulation)
+    else
+        run!(simulation)
+    end
     
     return nothing
 end
@@ -159,11 +179,16 @@ end
 Run `ip.simulation` forward with `parameters` and return the data,
 transformed into an array format expected by `EnsembleKalmanProcesses.jl`.
 """
-function forward_map(ip, parameters)
+function forward_map(ip, parameters; suppress=true)
 
     # Run the simulation forward and populate the time series collector
     # with model data.
-    forward_run!(ip, parameters)
+    forward_run!(ip, parameters; suppress)
+
+    # Verify that data was collected properly
+    all(ip.time_series_collector.times .≈ ip.time_series_collector.collection_times) ||
+        error("FieldTimeSeriesCollector.collection_times does not match FieldTimeSeriesCollector.times. \n" *
+              "Field time series data may not have been properly collected")
 
     # Transform the model data according to `ip.output_map` into
     # the array format expected by EnsembleKalmanProcesses.jl
@@ -177,6 +202,17 @@ function forward_map(ip, parameters)
 end
 
 (ip::InverseProblem)(θ) = forward_map(ip, θ)
+
+"""
+    inverting_forward_map(ip::InverseProblem, X)
+
+Transform unconstrained parameters `X` into constrained,
+physical-space parameters `θ` and execute `forward_map(ip, θ)`.
+"""
+function inverting_forward_map(ip::InverseProblem, X)
+    θ = transform_to_constrained(ip.free_parameters.priors, X)
+    return forward_map(ip, θ)
+end
 
 #####
 ##### ConcatenatedOutputMap
@@ -195,7 +231,7 @@ Transforms, normalizes, and concatenates data for field time series in `observat
 function transform_time_series(::ConcatenatedOutputMap, observation::SyntheticObservations)
     data_vector = []
 
-    for field_name in keys(observation.field_time_serieses)
+    for field_name in forward_map_names(observation)
         # Transform time series data observation-specified `transformation`
         field_time_series = observation.field_time_serieses[field_name]
         transformation = observation.transformation[field_name]
@@ -242,6 +278,7 @@ transpose_model_output(time_series_collector, observations) =
 
 transpose_model_output(collector_grid::YZSliceGrid, time_series_collector, observations) =
     SyntheticObservations(time_series_collector.field_time_serieses,
+                          observations.forward_map_names,
                           collector_grid,
                           time_series_collector.times,
                           nothing,
@@ -274,7 +311,7 @@ function transpose_model_output(collector_grid::SingleColumnGrid, time_series_co
         observation = observations[j]
         time_serieses = OrderedDict{Any, Any}()
 
-        for name in keys(observation.field_time_serieses)
+        for name in forward_map_names(observation)
             loc = LX, LY, LZ = location(observation.field_time_serieses[name])
             topo = topology(grid)
 
@@ -291,6 +328,7 @@ function transpose_model_output(collector_grid::SingleColumnGrid, time_series_co
         time_serieses = NamedTuple(name => time_series for (name, time_series) in time_serieses)
 
         batch_output = SyntheticObservations(time_serieses,
+                                             observation.forward_map_names,   
                                              grid,
                                              times,
                                              nothing,
@@ -336,16 +374,17 @@ end
 """
     observation_map_variance_across_time(map::ConcatenatedOutputMap, observation::SyntheticObservations)
 
-Return an (Nx, Ny*Nz*Nfields, Ny*Nz*Nfields) array storing the covariance of each element of the observation 
-map measured across time, for each ensemble member, where `Nx` is the ensemble size, `Ny` is the batch size, 
-`Nz` is the number of grid elements in the vertical, and `Nfields` is the number of fields in `observation`.
+Return an array of size `(Nensemble, Ny * Nz * Nfields, Ny * Nz * Nfields)` that stores the covariance of
+each element of the observation map measured across time, for each ensemble member, where `Nensemble` is
+the ensemble size, `Ny` is either the number of grid elements in `y` or the batch size, `Nz` is the number
+of grid elements in the vertical, and `Nfields` is the number of fields in `observation`.
 """
 function observation_map_variance_across_time(map::ConcatenatedOutputMap, observation::SyntheticObservations)
     # These aren't right because every field can have a different transformation, so...
     Nx, Ny, Nz = size(observation.grid)
     Nt = length(first(observation.transformation).time)
 
-    Nfields = length(keys(observation.field_time_serieses))
+    Nfields = length(forward_map_names(observation))
 
     y = transform_time_series(map, observation)
     @assert length(y) == Nx * Ny * Nz * Nt * Nfields # otherwise we're headed for trouble...
@@ -371,4 +410,3 @@ observation_map_variance_across_time(map::ConcatenatedOutputMap, observations::V
 observation_map_variance_across_time(ip::InverseProblem) = observation_map_variance_across_time(ip.output_map, ip.observations)
 
 end # module
-

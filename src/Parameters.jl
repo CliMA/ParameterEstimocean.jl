@@ -1,5 +1,7 @@
 module Parameters
 
+export FreeParameters, lognormal, ScaledLogitNormal
+
 using Oceananigans.Architectures: CPU, arch_array, architecture
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
 using Oceananigans.TurbulenceClosures: AbstractTimeDiscretization, ExplicitTimeDiscretization
@@ -325,46 +327,119 @@ Base.length(p::FreeParameters) = length(p.names)
 
 const ParameterValue = Union{Number, AbstractArray}
 
-dict_properties(d::ParameterValue) = d
+"""
+    construct_object(specification_dict, parameters; name=nothing, type_parameter=nothing)
+    
+    construct_object(d::ParameterValue, parameters; name=nothing)
 
-function dict_properties(d)
-    p = Dict{Symbol, Any}(n => dict_properties(getproperty(d, n)) for n in propertynames(d))
-    p[:type] = typeof(d).name.wrapper
+Return a composite type object whose properties are prescribed by the `specification_dict`
+dictionary. All parameter values are given the values in `specification_dict` *unless* they
+are included as a parameter name-value pair in the named tuple `parameters`, in which case
+the value in `parameters` is asigned.
+
+The `construct_object` is recursively called upon every property that is included in `specification_dict`
+until a property with a numerical value is reached. The object's constructor name must be
+included in `specification_dict` under key `:type`.
+
+Example
+=======
+
+```jldoctest; filter = [r".*Dict{Symbol.*", r".*:type       => Closure.*", r".*:c          => 3.*", r".*:subclosure => Dict{Symbol.*"]
+julia> using OceanTurbulenceParameterEstimation.Parameters: construct_object, dict_properties, closure_with_parameters
+
+julia> struct Closure; subclosure; c end
+
+julia> struct ClosureSubModel; a; b end
+
+julia> sub_closure = ClosureSubModel(1, 2)
+ClosureSubModel(1, 2)
+
+julia> closure = Closure(sub_closure, 3)
+Closure(ClosureSubModel(1, 2), 3)
+
+julia> specification_dict = dict_properties(closure)
+Dict{Symbol, Any} with 3 entries:
+  :type       => Closure
+  :c          => 3
+  :subclosure => Dict{Symbol, Any}(:a=>1, :b=>2, :type=>ClosureSubModel)
+
+julia> new_closure = construct_object(specification_dict, (a=2.1,))
+Closure(ClosureSubModel(2.1, 2), 3)
+  
+julia> another_new_closure = construct_object(specification_dict, (b=π, c=2π))
+Closure(ClosureSubModel(1, π), 6.283185307179586)
+```
+
+"""
+construct_object(d::ParameterValue, parameters; name=nothing) =
+    name ∈ keys(parameters) ? getproperty(parameters, name) : d
+
+function construct_object(specification_dict, parameters;
+                          name=nothing, type_parameter=nothing)
+
+    type = Constructor = specification_dict[:type]
+    kwargs_vector = [construct_object(specification_dict[name], parameters; name)
+                        for name in fieldnames(type) if name != :type]
+
+    return isnothing(type_parameter) ? Constructor(kwargs_vector...) : 
+                                       Constructor{type_parameter}(kwargs_vector...)
+end
+
+"""
+    dict_properties(object)
+
+Return a dictionary with all properties of an `object` and their values, including the 
+`object`'s type name. If any of the `object`'s properties is not a numerical value but
+instead a composite type, then `dict_properties` is called recursively on that `object`'s
+property returning a dictionary with all properties of that composite type. Recursion
+ends when properties of type `ParameterValue` are found.
+"""
+function dict_properties(object)
+    p = Dict{Symbol, Any}(n => dict_properties(getproperty(object, n)) for n in propertynames(object))
+    p[:type] = typeof(object).name.wrapper
+
     return p
 end
 
-construct_object(d::ParameterValue, parameters; name=nothing) = name ∈ keys(parameters) ? getproperty(parameters, name) : d
-
-function construct_object(specification_dict, parameters; name=nothing, type_parameter=nothing)
-    type = Constructor = specification_dict[:type]
-    kwargs_vector = [construct_object(specification_dict[name], parameters; name) for name in fieldnames(type) if name != :type]
-    return isnothing(type_parameter) ? Constructor(kwargs_vector...) : Constructor{type_parameter}(kwargs_vector...)
-end
+dict_properties(object::ParameterValue) = object
 
 """
     closure_with_parameters(closure, parameters)
 
 Return a new object where for each (`parameter_name`, `parameter_value`) pair 
-in `parameters`, the value corresponding to the key in `object` that matches
+in `parameters`, the value corresponding to the key in `closure` that matches
 `parameter_name` is replaced with `parameter_value`.
 
 Example
 =======
 
-```jldoctest
-julia> using OceanTurbulenceParameterEstimation.Parameters: closure_with_parameters
+Create a placeholder `Closure` type that includes a parameter `c` and a sub-closure
+with two parameters: `a` and `b`. Then construct a closure with values `a, b, c = 1, 2, 3`.
+
+```jldoctest closure_with_parameters
+julia> struct Closure; subclosure; c end
 
 julia> struct ClosureSubModel; a; b end
 
-julia> struct Closure; test; c end
+julia> sub_closure = ClosureSubModel(1, 2)
+ClosureSubModel(1, 2)
 
-julia> closure = Closure(ClosureSubModel(1, 2), 3)
+julia> closure = Closure(sub_closure, 3)
 Closure(ClosureSubModel(1, 2), 3)
+```
 
-julia> parameters = (a = 12, d = 7)
+Providing `closure_with_parameters` with a named tuple of parameter names and values,
+and a recursive search in all types and subtypes within `closure` is done and whenever
+a parameter is found whose name exists in the named tuple we provided, its value is 
+then replaced with the value provided.
+
+```jldoctest closure_with_parameters
+julia> new_parameters = (a = 12, d = 7)
 (a = 12, d = 7)
 
-julia> closure_with_parameters(closure, parameters)
+julia> using OceanTurbulenceParameterEstimation.Parameters: closure_with_parameters
+
+julia> closure_with_parameters(closure, new_parameters)
 Closure(ClosureSubModel(12, 2), 3)
 ```
 """
@@ -406,14 +481,13 @@ function update_closure_ensemble_member!(closure_tuple::Tuple, p_ensemble, param
 end
 
 """
-    new_closure_ensemble(closures, θ, arch)
+    new_closure_ensemble(closures, θ, arch=CPU())
 
-Return a new set of `closures` in which all closures that have
-free parameters are updated. Closures with free parameters are
-expected as `Arrays` of `TurbulenceClosures`, and this allows
-`new_closure_ensemble` to go through all closures in `closures`
-and only update the parameters for the any closure that is of
-type `AbstractArray`.
+Return a new set of `closures` in which all closures that have free parameters are updated.
+Closures with free parameters are expected as `AbstractArray` of `TurbulenceClosures`, and
+this allows `new_closure_ensemble` to go through all closures in `closures` and only update
+the parameters for the any closure that is of type `AbstractArray`. The `arch`itecture
+(`CPU()` or `GPU()`) defines whethere `Array` or `CuArray` is returned.
 """
 function new_closure_ensemble(closures::AbstractArray, θ, arch)
     cpu_closures = arch_array(CPU(), closures)
@@ -426,6 +500,7 @@ function new_closure_ensemble(closures::AbstractArray, θ, arch)
 end
 new_closure_ensemble(closures::Tuple, θ, arch) = 
     Tuple(new_closure_ensemble(closure, θ, arch) for closure in closures)
+
 new_closure_ensemble(closure, θ, arch) = closure
 
 end # module

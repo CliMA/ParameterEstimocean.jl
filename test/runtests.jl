@@ -8,7 +8,10 @@ include("test_forward_map.jl")
 include("test_lesbrary_forward_map.jl")
 include("test_ensemble_column_models.jl")
 include("test_ensemble_kalman_inversion.jl")
+include("test_utils.jl")
 
 @testset "Doctests" begin
+    using OceanTurbulenceParameterEstimation, Distributions
+
     doctest(OceanTurbulenceParameterEstimation)
 end

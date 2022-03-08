@@ -1,5 +1,7 @@
 module EnsembleSimulations
 
+export ensemble_column_model_simulation
+
 using DataDeps
 
 using ..Observations: SyntheticObservations, tupleit
@@ -62,4 +64,3 @@ function ensemble_column_model_simulation(observations;
 end
 
 end # module
-
