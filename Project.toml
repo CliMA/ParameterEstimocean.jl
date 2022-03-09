@@ -1,4 +1,4 @@
-name = "OceanTurbulenceParameterEstimation"
+name = "OceanLearning"
 uuid = "eca81dc5-87a6-4430-aec8-c76695404a43"
 license = "MIT"
 authors = ["Adeline Hillier <adelineh2000@gmail.com>", "Gregory L. Wagner <wagner.greg@gmail.com>", "Navid C. Constantinou <navidcy@gmail.com>", "and co-contributors"]

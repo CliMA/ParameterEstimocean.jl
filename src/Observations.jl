@@ -18,8 +18,8 @@ using JLD2
 
 import Oceananigans.Fields: set!
 
-using OceanTurbulenceParameterEstimation.Utils: field_name_pairs
-using OceanTurbulenceParameterEstimation.Transformations: Transformation, compute_transformation
+using OceanLearning.Utils: field_name_pairs
+using OceanLearning.Transformations: Transformation, compute_transformation
 
 abstract type AbstractObservation end
 

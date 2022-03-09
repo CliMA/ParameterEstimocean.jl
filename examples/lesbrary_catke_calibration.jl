@@ -4,12 +4,12 @@
 
 # ```julia
 # using Pkg
-# pkg"add OceanTurbulenceParameterEstimation, Oceananigans, CairoMakie"
+# pkg"add OceanLearning, Oceananigans, CairoMakie"
 # ```
 
 using Oceananigans
 using Oceananigans.Units
-using OceanTurbulenceParameterEstimation
+using OceanLearning
 using LinearAlgebra, CairoMakie, DataDeps
 
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities:
@@ -17,7 +17,7 @@ using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities:
 
 # # Using LESbrary data
 #
-# `OceanTurbulenceParameterEstimation.jl` provides paths to synthetic observations
+# `OceanLearning.jl` provides paths to synthetic observations
 # derived from high-fidelity large eddy simulations. In this example, we illustrate
 # calibration of a turbulence parameterization to one of these simulations:
 

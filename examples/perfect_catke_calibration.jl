@@ -4,12 +4,12 @@
 
 # ```julia
 # using Pkg
-# pkg"add OceanTurbulenceParameterEstimation, Oceananigans, Distributions, CairoMakie"
+# pkg"add OceanLearning, Oceananigans, Distributions, CairoMakie"
 # ```
 
-using OceanTurbulenceParameterEstimation, LinearAlgebra, CairoMakie
+using OceanLearning, LinearAlgebra, CairoMakie
 
-using OceanTurbulenceParameterEstimation.Transformations: Transformation
+using OceanLearning.Transformations: Transformation
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity, MixingLength, SurfaceTKEFlux
 
 # # Perfect observations of CATKE-driven mixing
@@ -23,7 +23,7 @@ using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalD
 # to generate the observations.
 
 ## Load utilities
-examples_path = joinpath(pathof(OceanTurbulenceParameterEstimation), "..", "..", "examples")
+examples_path = joinpath(pathof(OceanLearning), "..", "..", "examples")
 include(joinpath(examples_path, "intro_to_inverse_problems.jl"))
 
 mixing_length = MixingLength(Cᴬu  = 0.0,

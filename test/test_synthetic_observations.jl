@@ -1,6 +1,6 @@
 using Test
 using DataDeps
-using OceanTurbulenceParameterEstimation
+using OceanLearning
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize

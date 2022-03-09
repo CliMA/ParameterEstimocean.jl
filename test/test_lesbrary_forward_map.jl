@@ -2,13 +2,13 @@ using Test
 using LinearAlgebra
 using Distributions
 using DataDeps
-using OceanTurbulenceParameterEstimation
+using OceanLearning
 
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity, MixingLength
 
-using OceanTurbulenceParameterEstimation.Parameters: unconstrained_prior, transform_to_constrained
+using OceanLearning.Parameters: unconstrained_prior, transform_to_constrained
 
 @testset "Forward map evaluation with LESbrary observations" begin
     @testset "Convective-adjustment-based ensemble simulations" begin
