@@ -1,6 +1,6 @@
 # # Specifying and fine-tuning prior distributions
 #
-# This example shows how to specify priors in `OceanTurbulenceParameterEstimation`
+# This example shows how to specify priors in `OceanLearning`
 # and illustrates some of their properties.
 #
 # ## Install dependencies
@@ -9,12 +9,12 @@
 
 # ```julia
 # using Pkg
-# pkg"add OceanTurbulenceParameterEstimation, Oceananigans, Distributions, CairoMakie"
+# pkg"add OceanLearning, Oceananigans, Distributions, CairoMakie"
 # ```
 #
 # Then we import packages
 
-using OceanTurbulenceParameterEstimation
+using OceanLearning
 using CairoMakie
 using Distributions
 
@@ -31,7 +31,7 @@ using Distributions
 #
 # # Prior flavors
 #
-# `OceanTurbulenceParameterEstimation` supports three types of prior
+# `OceanLearning` supports three types of prior
 # distributions. The normal prior distribution is provided by `Distributions.jl`,
 
 normal_prior = Normal(0.1, 0.1)

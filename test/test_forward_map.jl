@@ -1,15 +1,15 @@
 using Test
 using LinearAlgebra
 using Distributions
-using OceanTurbulenceParameterEstimation
+using OceanLearning
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Grids: halo_size
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
 
-using OceanTurbulenceParameterEstimation.Observations: FieldTimeSeriesCollector, initialize_forward_run!, observation_times
-using OceanTurbulenceParameterEstimation.InverseProblems: transpose_model_output, forward_run!, drop_y_dimension
+using OceanLearning.Observations: FieldTimeSeriesCollector, initialize_forward_run!, observation_times
+using OceanLearning.InverseProblems: transpose_model_output, forward_run!, drop_y_dimension
 
 @testset "Unit tests for forward_map" begin
     # Test drop_y_dimension

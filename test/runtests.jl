@@ -11,7 +11,7 @@ include("test_ensemble_kalman_inversion.jl")
 include("test_utils.jl")
 
 @testset "Doctests" begin
-    using OceanTurbulenceParameterEstimation, Distributions
+    using OceanLearning, Distributions
 
-    doctest(OceanTurbulenceParameterEstimation)
+    doctest(OceanLearning)
 end

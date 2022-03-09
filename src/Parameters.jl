@@ -276,7 +276,7 @@ Example
 =======
 
 ```jldoctest
-julia> using Distributions, OceanTurbulenceParameterEstimation
+julia> using Distributions, OceanLearning
 
 julia> priors = (ν = Normal(1e-4, 1e-5), κ = Normal(1e-3, 1e-5))
 (ν = Normal{Float64}(μ=0.0001, σ=1.0e-5), κ = Normal{Float64}(μ=0.001, σ=1.0e-5))
@@ -345,7 +345,7 @@ Example
 =======
 
 ```jldoctest; filter = [r".*Dict{Symbol.*", r".*:type       => Closure.*", r".*:c          => 3.*", r".*:subclosure => Dict{Symbol.*"]
-julia> using OceanTurbulenceParameterEstimation.Parameters: construct_object, dict_properties, closure_with_parameters
+julia> using OceanLearning.Parameters: construct_object, dict_properties, closure_with_parameters
 
 julia> struct Closure; subclosure; c end
 
@@ -437,7 +437,7 @@ then replaced with the value provided.
 julia> new_parameters = (a = 12, d = 7)
 (a = 12, d = 7)
 
-julia> using OceanTurbulenceParameterEstimation.Parameters: closure_with_parameters
+julia> using OceanLearning.Parameters: closure_with_parameters
 
 julia> closure_with_parameters(closure, new_parameters)
 Closure(ClosureSubModel(12, 2), 3)

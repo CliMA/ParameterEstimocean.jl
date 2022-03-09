@@ -4,11 +4,11 @@
 
 # ```julia
 # using Pkg
-# pkg"add OceanTurbulenceParameterEstimation, Oceananigans, Distributions, CairoMakie"
+# pkg"add OceanLearning, Oceananigans, Distributions, CairoMakie"
 # ```
 
-using OceanTurbulenceParameterEstimation
-using OceanTurbulenceParameterEstimation.Observations: FieldTimeSeriesCollector
+using OceanLearning
+using OceanLearning.Observations: FieldTimeSeriesCollector
 
 using Oceananigans
 using Oceananigans.Units

@@ -11,12 +11,12 @@
 
 # ```julia
 # using Pkg
-# pkg"add OceanTurbulenceParameterEstimation, Oceananigans, Distributions, CairoMakie"
+# pkg"add OceanLearning, Oceananigans, Distributions, CairoMakie"
 # ```
 
 # First we load few things
 
-using OceanTurbulenceParameterEstimation
+using OceanLearning
 
 using Oceananigans
 using Oceananigans.Architectures: arch_array
@@ -30,7 +30,7 @@ using JLD2
 
 # We reuse some utilities from a previous example to build observations:
 
-examples_path = joinpath(pathof(OceanTurbulenceParameterEstimation), "..", "..", "examples")
+examples_path = joinpath(pathof(OceanLearning), "..", "..", "examples")
 include(joinpath(examples_path, "intro_to_observations.jl"))
 data_path = generate_synthetic_observations()
 observations = SyntheticObservations(data_path, field_names=:b, transformation=ZScore())
@@ -137,7 +137,7 @@ free_parameters = FreeParameters(priors)
 # We visualize our prior distributions by plotting a huge number
 # of samples:
 
-using OceanTurbulenceParameterEstimation.Parameters: unconstrained_prior, transform_to_constrained
+using OceanLearning.Parameters: unconstrained_prior, transform_to_constrained
 
 Nsamples = 50000000
 
