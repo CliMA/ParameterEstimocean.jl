@@ -1,4 +1,4 @@
-module OceanTurbulenceParameterEstimation
+module OceanLearning
 
 export
     SyntheticObservations,
