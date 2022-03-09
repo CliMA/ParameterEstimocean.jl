@@ -1,4 +1,4 @@
-# OceanTurbulenceParameterEstimation.jl
+# OceanLearning.jl
 
 A Julia package that leverages [Oceananigans.jl](http://github.com/CliMA/Oceananigans.jl/) and [EnsembleKalmanProcesses.jl](https://github.com/CliMA/EnsembleKalmanProcesses.jl) to calibrate ocean turbulence parametrizations.
 
