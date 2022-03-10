@@ -70,7 +70,6 @@ end
                                                                 schedule = IterationInterval(round(Int, stop_iteration / 10)),
                                                                 prefix = experiment_name,
                                                                 array_type = Array{Float64},
-                                                                field_slicer = nothing,
                                                                 force = true)
 
     run!(truth_simulation)

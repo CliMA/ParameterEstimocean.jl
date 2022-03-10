@@ -120,7 +120,6 @@ if force_generate_observations || !(isfile(data_path))
                                                           schedule = TimeInterval(save_interval),
                                                           prefix = experiment_name,
                                                           array_type = Array{Float64},
-                                                          field_slicer = nothing,
                                                           force = true)
 
     run!(simulation)
