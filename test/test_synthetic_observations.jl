@@ -107,6 +107,7 @@ using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
         end
 
         # Test regridding LESbrary observations
+        #= Skip until new LESbrary data is produced with Oceananigans v0.72 or later
         data_path = datadep"two_day_suite_2m/free_convection_instantaneous_statistics.jld2";
         for Nz in (8, 16, 32, 64, 128, 256, 512)
             observations = SyntheticObservations(data_path; field_names=(:u, :v, :b), regrid=(1, 1, Nz))
@@ -117,6 +118,7 @@ using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
             observations = SyntheticObservations(data_path; field_names=(:u, :v, :b), regrid)
             @test size(observations.grid) === (1, 1, Nz)
         end
+        =#
     end
 
     @testset "SyntheticObservations display" begin
