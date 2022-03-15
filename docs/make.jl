@@ -26,7 +26,7 @@ to_be_literated = [
   "exploring_priors.jl",
   "perfect_convective_adjustment_calibration.jl",
   # "perfect_catke_calibration.jl",
-  "lesbrary_catke_calibration.jl",
+  # "lesbrary_catke_calibration.jl",
   "perfect_baroclinic_adjustment_calibration.jl"
 ]
 
@@ -60,7 +60,7 @@ pages = [
     "Examples" => [ 
         "literated/perfect_convective_adjustment_calibration.md",
         # "literated/perfect_catke_calibration.md",
-        "literated/lesbrary_catke_calibration.md",
+        # "literated/lesbrary_catke_calibration.md",
         "literated/perfect_baroclinic_adjustment_calibration.md"
         ],
     
