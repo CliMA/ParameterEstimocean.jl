@@ -17,17 +17,17 @@
 
 # ```julia
 # using Pkg
-# pkg"add OceanTurbulenceParameterEstimation, Oceananigans, Distributions, CairoMakie"
+# pkg"add OceanLearning, Oceananigans, Distributions, CairoMakie"
 # ```
 
-using OceanTurbulenceParameterEstimation, LinearAlgebra, CairoMakie
+using OceanLearning, LinearAlgebra, CairoMakie
 
 # We reuse some some code from a previous example to generate observations,
-examples_path = joinpath(pathof(OceanTurbulenceParameterEstimation), "..", "..", "examples")
+examples_path = joinpath(pathof(OceanLearning), "..", "..", "examples")
 include(joinpath(examples_path, "intro_to_inverse_problems.jl"))
 
 data_path = generate_synthetic_observations()
-observations = SyntheticObservations(data_path, field_names=:b, normalization=ZScore())
+observations = SyntheticObservations(data_path, field_names=:b, transformation=ZScore())
 
 # and an ensemble_simulation,
 
@@ -65,9 +65,7 @@ calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
 # algorithm refer to
 # [EnsembleKalmanProcesses.jl documentation](https://clima.github.io/EnsembleKalmanProcesses.jl/stable/ensemble_kalman_inversion/).
 
-noise_variance = observation_map_variance_across_time(calibration)[1, :, 1] .+ 1e-5
-
-eki = EnsembleKalmanInversion(calibration; noise_covariance = Matrix(Diagonal(noise_variance)))
+eki = EnsembleKalmanInversion(calibration; convergence_rate = 0.5)
 
 # and perform few iterations to see if we can converge to the true parameter values.
 

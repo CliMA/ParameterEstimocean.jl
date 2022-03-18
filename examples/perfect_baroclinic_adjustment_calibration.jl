@@ -11,12 +11,13 @@
 
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, Distributions, CairoMakie, OceanTurbulenceParameterEstimation"
+# pkg"add Oceananigans, Distributions, CairoMakie, OceanLearning"
 # ```
 
 # First we load few things
 
-using OceanTurbulenceParameterEstimation
+using OceanLearning
+
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.TurbulenceClosures: FluxTapering
@@ -36,7 +37,7 @@ nothing # hide
 
 # We gather the "true" parameters in a named tuple ``θ_*``:
 
-θ★ = (κ_skew = κ_skew, κ_symmetric = κ_symmetric)
+θ★ = (; κ_skew, κ_symmetric)
 
 # The experiment name and where the synthetic observations will be saved.
 experiment_name = "baroclinic_adjustment"
@@ -52,8 +53,11 @@ Nz = 16                   # grid points in the vertical
 stop_time = 1days         # length of run
 save_interval = 0.25days  # save observation every so often
 
-generate_observations = true
+force_generate_observations = false
 nothing # hide
+
+horizontal_diffusivity = HorizontalScalarDiffusivity(κ=100)
+vertical_diffusivity = VerticalScalarDiffusivity(κ=1e-2)
 
 # The isopycnal skew-symmetric diffusivity closure.
 gerdes_koberle_willebrand_tapering = FluxTapering(1e-2)
@@ -63,19 +67,21 @@ gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = κ_ske
 
 # ## Generate synthetic observations
 
-if generate_observations || !(isfile(data_path))
+if force_generate_observations || !(isfile(data_path))
     grid = RectilinearGrid(architecture,
                            topology = (Flat, Bounded, Bounded), 
                            size = (Ny, Nz), 
                            y = (-Ly/2, Ly/2),
                            z = (-Lz, 0),
                            halo = (3, 3))
+
+    closures = (gent_mcwilliams_diffusivity, horizontal_diffusivity, vertical_diffusivity)
     
     model = HydrostaticFreeSurfaceModel(grid = grid,
                                         tracers = (:b, :c),
                                         buoyancy = BuoyancyTracer(),
                                         coriolis = BetaPlane(latitude=-45),
-                                        closure = gent_mcwilliams_diffusivity,
+                                        closure = closures,
                                         free_surface = ImplicitFreeSurface())
     
     @info "Built $model."
@@ -107,9 +113,9 @@ if generate_observations || !(isfile(data_path))
     cᵢ(x, y, z) = exp(-y^2 / 2Δc_y^2) * exp(-(z + Lz/2)^2 / (2Δc_z^2))
 
     set!(model, b=bᵢ, c=cᵢ)
-    
+
     simulation = Simulation(model, Δt=Δt, stop_time=stop_time)
-    
+
     simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
                                                           schedule = TimeInterval(save_interval),
                                                           prefix = experiment_name,
@@ -122,7 +128,16 @@ end
 
 # ## Load truth data as observations
 
-observations = SyntheticObservations(data_path, field_names=(:b, :c), normalization=ZScore())
+# We use here the `Transformation` functionality to slice up the observation data a bit.
+# In particular, we choose to exclude the 3 grid points on either side of the `y` dimension,
+# and 3 grid points from the bottom of the domain. Also, we only use the last 3 snapshots of
+# the observations.
+#
+# We use `SpaceIndices` and `TimeIndices` to denote which space-time indices we would like to
+# keep in observations.
+
+transformation = Transformation(space=SpaceIndices(y=4:Ny-3, z=4:Nz), time=TimeIndices(3:5), normalization=ZScore())
+observations = SyntheticObservations(data_path; field_names=(:b, :c), transformation)
 
 # ## Calibration with Ensemble Kalman Inversion
 
@@ -132,6 +147,7 @@ observations = SyntheticObservations(data_path, field_names=(:b, :c), normalizat
 ensemble_size = 20
 
 slice_ensemble_size = SliceEnsembleSize(size=(Ny, Nz), ensemble=ensemble_size)
+
 @show ensemble_grid = RectilinearGrid(architecture,
                                       size=slice_ensemble_size,
                                       topology = (Flat, Bounded, Bounded),
@@ -139,13 +155,14 @@ slice_ensemble_size = SliceEnsembleSize(size=(Ny, Nz), ensemble=ensemble_size)
                                       z = (-Lz, 0),
                                       halo=(3, 3))
 
-closure_ensemble = [deepcopy(gent_mcwilliams_diffusivity) for i = 1:ensemble_size] 
+gm_ensemble = [deepcopy(gent_mcwilliams_diffusivity) for i = 1:ensemble_size] 
+closures = (gm_ensemble, horizontal_diffusivity, vertical_diffusivity)
 
 @show ensemble_model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
                                                    tracers = (:b, :c),
                                                    buoyancy = BuoyancyTracer(),
                                                    coriolis = BetaPlane(latitude=-45),
-                                                   closure = closure_ensemble,
+                                                   closure = closures,
                                                    free_surface = ImplicitFreeSurface())
 
 # and then we create an ensemble simulation: 
@@ -168,7 +185,7 @@ free_parameters = FreeParameters(priors)
 # To visualize the prior distributions we randomly sample out values from then and plot the p.d.f.
 
 using CairoMakie
-using OceanTurbulenceParameterEstimation.Parameters: unconstrained_prior, transform_to_constrained
+using OceanLearning.Parameters: unconstrained_prior, transform_to_constrained
 
 samples(prior) = [transform_to_constrained(prior, x) for x in rand(unconstrained_prior(prior), 10000000)]
 
@@ -198,19 +215,26 @@ calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
 # members with the true parameter values. We then confirm that the output of the `forward_map` matches
 # the observations to machine precision.
 
-G = forward_map(calibration, [θ★])
+G = forward_map(calibration, θ★)
 y = observation_map(calibration)
 nothing #hide
 
-# The `forward_map` output `x` is a two-dimensional matrix whose first dimension is the size of the state space
-# (here, ``2 N_y N_z``; the 2 comes from the two tracers we used as observations) and whose second dimension is
-# the `ensemble_size`. In the case above, all columns of `x` are identical.
+# The `forward_map` output `G` is a two-dimensional matrix whose first dimension is the size of the state
+# space. Here, after the transformation we applied to the observations, we have that the state space size
+# is `` 2 \times (N_y - 6) \times (N_z - 3) \times 3``; the 2 comes from the two tracers we used as observations
+# and the 3 comes from only using the last three snapshots of the observations. The second dimension of
+# the `forward_map` output is the `ensemble_size`.
+
+@show size(G) == (2 * (Ny-6) * (Nz-3) * 3, ensemble_size)
+
+# Since above we computed `G` using the true parameters ``θ_*``, all columns of the forward map output should
+# be the same as the observations:
 
 mean(G, dims=2) ≈ y
 
 # Next, we construct an `EnsembleKalmanInversion` (EKI) object,
 
-eki = EnsembleKalmanInversion(calibration; noise_covariance = 1e-2)
+eki = EnsembleKalmanInversion(calibration; convergence_rate = 0.4)
 
 # and perform few iterations to see if we can converge to the true parameter values.
 
@@ -303,8 +327,8 @@ xlims!(axmain, 350, 1350)
 xlims!(axtop, 350, 1350)
 ylims!(axmain, 650, 1750)
 ylims!(axright, 650, 1750)
-xlims!(axright, 0, 0.025)
-ylims!(axtop, 0, 0.025)
+xlims!(axright, 0, 0.015)
+ylims!(axtop, 0, 0.015)
 
 save("distributions_baroclinic_adjustment.svg", f); nothing #hide 
 

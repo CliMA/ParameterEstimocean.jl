@@ -1,15 +1,15 @@
 using Test
 using LinearAlgebra
 using Distributions
-using OceanTurbulenceParameterEstimation
+using OceanLearning
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Grids: halo_size
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
 
-using OceanTurbulenceParameterEstimation.Observations: FieldTimeSeriesCollector, initialize_simulation!, observation_times
-using OceanTurbulenceParameterEstimation.InverseProblems: transpose_model_output, forward_run!, drop_y_dimension
+using OceanLearning.Observations: FieldTimeSeriesCollector, initialize_forward_run!, observation_times
+using OceanLearning.InverseProblems: transpose_model_output, forward_run!, drop_y_dimension
 
 @testset "Unit tests for forward_map" begin
     # Test drop_y_dimension
@@ -46,7 +46,8 @@ end
         buoyancy = BuoyancyTracer(),
         coriolis = FPlane(f=1e-4),
         boundary_conditions = (u = FieldBoundaryConditions(top = FluxBoundaryCondition(-1e-4)),
-                               b = FieldBoundaryConditions(top = FluxBoundaryCondition(1e-7), bottom = GradientBoundaryCondition(N²)))
+                               b = FieldBoundaryConditions(top = FluxBoundaryCondition(1e-7),
+                                                           bottom = GradientBoundaryCondition(N²)))
     )
 
     function build_simulation(size=Nz)
@@ -75,7 +76,8 @@ end
     run!(truth_simulation)
 
     data_path = experiment_name * ".jld2"
-    observations = SyntheticObservations(data_path, field_names=(:u, :b), normalization=(u=RescaledZScore(0.1), b=ZScore()))
+    observations = SyntheticObservations(data_path, field_names = (:u, :b),
+                                         transformation = (u=RescaledZScore(0.1), b=ZScore()))
     
     #####
     ##### Make model data
@@ -87,8 +89,8 @@ end
         collected_fields = (u = test_simulation.model.velocities.u, b = test_simulation.model.tracers.b)
         time_series_collector = FieldTimeSeriesCollector(collected_fields, observation_times(observations))
 
-        # Test initialize_simulation!
-        @info "  Testing initialize_simulation!..."
+        # Test initialize_forward_run!
+        @info "  Testing initialize_forward_run!..."
         random_initial_condition(x, y, z) = rand()
 
         for field in fields(test_simulation.model)
@@ -103,7 +105,7 @@ end
         @test !all(test_b .== 0)
 
         test_simulation.stop_iteration = Inf
-        initialize_simulation!(test_simulation, observations, time_series_collector)
+        initialize_forward_run!(test_simulation, observations, time_series_collector)
 
         @test all(test_v .== 0)
 
@@ -173,7 +175,7 @@ end
         test_simulation = build_simulation(column_ensemble_size)
         collected_fields = (u = test_simulation.model.velocities.u, b = test_simulation.model.tracers.b)
         time_series_collector = FieldTimeSeriesCollector(collected_fields, observation_times(observations))
-        initialize_simulation!(test_simulation, observations, time_series_collector)
+        initialize_forward_run!(test_simulation, observations, time_series_collector)
         run!(test_simulation)
         output = transpose_model_output(time_series_collector, observations)
 
@@ -197,7 +199,7 @@ end
         test_simulation = build_simulation(column_ensemble_size)
         collected_fields = (u = test_simulation.model.velocities.u, b = test_simulation.model.tracers.b)
         time_series_collector = FieldTimeSeriesCollector(collected_fields, observation_times(observations))
-        initialize_simulation!(test_simulation, observations_batch, time_series_collector)
+        initialize_forward_run!(test_simulation, observations_batch, time_series_collector)
         run!(test_simulation)
         output = transpose_model_output(time_series_collector, observations_batch)
 

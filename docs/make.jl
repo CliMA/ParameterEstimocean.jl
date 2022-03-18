@@ -1,11 +1,11 @@
-pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..")) # add OceanTurbulenceParameterEstimation to environment stack
+pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..")) # add OceanLearning to environment stack
 
 using
   Documenter,
   Literate,
   CairoMakie,  # so that Literate.jl does not capture precompilation output or warnings
   Distributions,
-  OceanTurbulenceParameterEstimation
+  OceanLearning
 
 # Gotta set this environment variable when using the GR run-time on CI machines.
 # This happens when examples, e.g., use Plots.jl to make plots and movies.
@@ -20,18 +20,19 @@ ENV["DATADEPS_ALWAYS_ACCEPT"] = "true"
 const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
 const OUTPUT_DIR   = joinpath(@__DIR__, "src/literated")
 
-examples = [
+to_be_literated = [
   "intro_to_observations.jl",
   "intro_to_inverse_problems.jl",
+  "exploring_priors.jl",
   "perfect_convective_adjustment_calibration.jl",
-  "perfect_catke_calibration.jl",
+  # "perfect_catke_calibration.jl",
   "lesbrary_catke_calibration.jl",
   "perfect_baroclinic_adjustment_calibration.jl"
 ]
 
-for example in examples
-    example_filepath = joinpath(EXAMPLES_DIR, example)
-    Literate.markdown(example_filepath, OUTPUT_DIR; flavor = Literate.DocumenterFlavor())
+for file in to_be_literated
+    filepath = joinpath(EXAMPLES_DIR, file)
+    Literate.markdown(filepath, OUTPUT_DIR; flavor = Literate.DocumenterFlavor())
 end
 
 #####
@@ -45,18 +46,20 @@ Timer(t -> println(" "), 0, interval=240)
 format = Documenter.HTML(
   collapselevel = 2,
      prettyurls = get(ENV, "CI", nothing) == "true",
-      canonical = "https://clima.github.io/OceanTurbulenceParameterEstimation/dev/",
+      canonical = "https://clima.github.io/OceanLearning/dev/",
 )
 
 pages = [
     "Home" => "index.md",
     "Installation Instructions" => "installation_instructions.md",
-    
+
+    "Intro to observations" => "literated/intro_to_observations.md",
+    "Intro to inverse problems" => "literated/intro_to_inverse_problems.md",
+    "Exploring Prior distributions" => "literated/exploring_priors.md",
+
     "Examples" => [ 
-        "literated/intro_to_observations.md",
-        "literated/intro_to_inverse_problems.md",
         "literated/perfect_convective_adjustment_calibration.md",
-        "literated/perfect_catke_calibration.md",
+        # "literated/perfect_catke_calibration.md",
         "literated/lesbrary_catke_calibration.md",
         "literated/perfect_baroclinic_adjustment_calibration.md"
         ],
@@ -70,8 +73,8 @@ pages = [
 ]
 
 makedocs(
-   sitename = "OceanTurbulenceParameterEstimation.jl",
-    modules = [OceanTurbulenceParameterEstimation],
+   sitename = "OceanLearning.jl",
+    modules = [OceanLearning],
      format = format,
       pages = pages,
     doctest = true,
@@ -80,7 +83,7 @@ makedocs(
   checkdocs = :exports
 )
 
-deploydocs(        repo = "github.com/CliMA/OceanTurbulenceParameterEstimation.jl",
+deploydocs(        repo = "github.com/CliMA/OceanLearning.jl",
                versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
               forcepush = true,
               devbranch = "main",

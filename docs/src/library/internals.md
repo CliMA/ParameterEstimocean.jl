@@ -1,35 +1,54 @@
 # Private types and functions
 
-Documentation for `OceanTurbulenceParameterEstimation.jl`'s internal interface.
+Documentation for `OceanLearning.jl`'s internal interface.
 
-## OceanTurbulenceParameterEstimation
+## OceanLearning
 
 ```@autodocs
-Modules = [OceanTurbulenceParameterEstimation]
+Modules = [OceanLearning]
 Public = false
-Pages   = ["OceanTurbulenceParameterEstimation.jl"]
+Pages   = ["OceanLearning.jl"]
+```
+
+## Transformations
+
+```@autodocs
+Modules = [OceanLearning.Transformations]
+Public = false
+Pages   = ["Transformations.jl"]
 ```
 
 ## Observations
 
 ```@autodocs
-Modules = [OceanTurbulenceParameterEstimation.Observations]
+Modules = [OceanLearning.Observations]
 Public = false
-Pages   = ["Observations.jl"]
+```
+
+## Ensemble Simulations
+
+```@autodocs
+Modules = [OceanLearning.EnsembleSimulations]
+Public = false
 ```
 
 ## Parameters
 
 ```@autodocs
-Modules = [OceanTurbulenceParameterEstimation.Parameters]
+Modules = [OceanLearning.Parameters]
 Public = false
-Pages   = ["Parameters.jl"]
+```
+
+## Inverse Problems
+
+```@autodocs
+Modules = [OceanLearning.InverseProblems]
+Public = false
 ```
 
 ## EnsembleKalmanInversions
 
 ```@autodocs
-Modules = [OceanTurbulenceParameterEstimation.EnsembleKalmanInversions]
+Modules = [OceanLearning.EnsembleKalmanInversions]
 Public = false
-Pages   = ["EnsembleKalmanInversions.jl"]
 ```

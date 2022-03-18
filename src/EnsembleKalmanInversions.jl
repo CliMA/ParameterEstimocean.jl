@@ -1,75 +1,85 @@
 module EnsembleKalmanInversions
 
+export
+    iterate!,
+    EnsembleKalmanInversion,
+    Resampler,
+    FullEnsembleDistribution,
+    SuccessfulEnsembleDistribution
+
 using OffsetArrays
 using ProgressBars
 using Random
 using Printf
 using LinearAlgebra
-using Suppressor: @suppress
 using Statistics
 using Distributions
-using EnsembleKalmanProcesses.EnsembleKalmanProcessModule
-using EnsembleKalmanProcesses.ParameterDistributionStorage
-
-using EnsembleKalmanProcesses.EnsembleKalmanProcessModule: sample_distribution
+using EnsembleKalmanProcesses:
+    get_u_final,
+    Inversion,
+    Sampler,
+    update_ensemble!,
+    EnsembleKalmanProcess
 
 using ..Parameters: unconstrained_prior, transform_to_constrained, inverse_covariance_transform
 using ..InverseProblems: Nensemble, observation_map, forward_map, tupify_parameters
+using ..InverseProblems: inverting_forward_map
 
-mutable struct EnsembleKalmanInversion{I, P, E, M, O, F, S, R, G}
+using Oceananigans.Utils: prettytime
+
+mutable struct EnsembleKalmanInversion{E, I, M, O, S, R, X, G, C}
     inverse_problem :: I
-    parameter_distribution :: P
     ensemble_kalman_process :: E
     mapped_observations :: M
     noise_covariance :: O
-    inverting_forward_map :: F
     iteration :: Int
     iteration_summaries :: S
     resampler :: R
+    unconstrained_parameters :: X
     forward_map_output :: G
+    convergence_rate :: C
 end
 
 Base.show(io::IO, eki::EnsembleKalmanInversion) =
     print(io, "EnsembleKalmanInversion", '\n',
-              "├── inverse_problem: ", typeof(eki.inverse_problem).name.wrapper, '\n',
-              "├── parameter_distribution: ", typeof(eki.parameter_distribution).name.wrapper, '\n',
-              "├── ensemble_kalman_process: ", typeof(eki.ensemble_kalman_process), '\n',
+              "├── inverse_problem: ", summary(eki.inverse_problem), '\n',
+              "├── ensemble_kalman_process: ", summary(eki.ensemble_kalman_process), '\n',
               "├── mapped_observations: ", summary(eki.mapped_observations), '\n',
               "├── noise_covariance: ", summary(eki.noise_covariance), '\n',
-              "├── inverting_forward_map: ", typeof(eki.inverting_forward_map).name.wrapper, '\n',
+              "├── convergence_rate: $(eki.convergence_rate)", '\n',
               "├── iteration: $(eki.iteration)", '\n',
-              "└── resampler: $(typeof(eki.resampler))")
+              "├── resampler: $(summary(eki.resampler))",
+              "├── unconstrained_parameters: $(summary(eki.unconstrained_parameters))", '\n',
+              "└── forward_map_output: $(summary(eki.forward_map_output))")
 
 construct_noise_covariance(noise_covariance::AbstractMatrix, y) = noise_covariance
 
 function construct_noise_covariance(noise_covariance::Number, y)
+    η = convert(eltype(y), noise_covariance)
     Nobs = length(y)
-    return Matrix(noise_covariance * I, Nobs, Nobs)
+    return Matrix(η * I, Nobs, Nobs)
 end
-    
-"""
-    EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampler=Resampler())
 
-Return an object that interfaces with
-[EnsembleKalmanProcesses.jl](https://github.com/CliMA/EnsembleKalmanProcesses.jl)
-and uses Ensemble Kalman Inversion to iteratively "solve" the inverse problem:
+"""
+    EnsembleKalmanInversion(inverse_problem;
+                            noise_covariance = 1,
+                            convergence_rate = 0.7,
+                            resampler = Resampler(),
+                            unconstrained_parameters = nothing,
+                            forward_map_output = nothing,
+                            process = Inversion())
+
+Return an object that finds local minima of the inverse problem:
 
 ```math
 y = G(θ) + η,
 ```
 
-for the parameters ``θ``, where ``y`` is a "normalized" vector of observations,
-``G(θ)`` is a forward map that predicts the observations, and ``η ∼ N(0, Γ_y)`` is zero-mean
-random noise with covariance matrix ``Γ_y`` representing uncertainty in the observations.
+for the parameters ``θ``, where ``y`` is a vector of observations (often normalized),
+``G(θ)`` is a forward map that predicts the observations, and ``η ∼ 𝒩(0, Γ_y)`` is zero-mean
+random noise with a `noise_covariance` matrix ``Γ_y`` representing uncertainty in the observations.
 
-By "solve", we mean that the iteration finds the parameter values ``θ`` that minimizes the
-distance between ``y`` and ``G(θ)``.
-
-The "forward map output" `G` can have many interpretations. The specific statistics that `G` computes
-have to be selected for each use case to provide a concise summary of the complex model solution that
-contains the values that we would most like to match to the corresponding truth values `y`. For example,
-in the context of an ocean-surface boundary layer parametrization, this summary could be a vector of 
-concatenated `u`, `v`, `b`, `e` profiles at all or some time steps of the CATKE solution.
+The "forward map output" `G` is model output mapped to the space of `inverse_problem.observations`.
 
 (For more details on the Ensemble Kalman Inversion algorithm refer to the
 [EnsembleKalmanProcesses.jl Documentation](https://clima.github.io/EnsembleKalmanProcesses.jl/stable/ensemble_kalman_inversion/).)
@@ -77,247 +87,113 @@ concatenated `u`, `v`, `b`, `e` profiles at all or some time steps of the CATKE 
 Arguments
 =========
 
-- `inverse_problem :: InverseProblem`: Represents an inverse problem representing the comparison between
-                                       synthetic observations generated by
-                                       [Oceananigans.jl](https://clima.github.io/OceananigansDocumentation/stable/)
-                                       and model predictions, also generated by Oceananigans.jl.
+- `inverse_problem` (`InverseProblem`): Represents an inverse problem representing the comparison between
+                                        synthetic observations generated by
+                                        [Oceananigans.jl](https://clima.github.io/OceananigansDocumentation/stable/)
+                                        and model predictions, also generated by Oceananigans.jl.
 
-- `noise_covariance` (`AbstractMatrix` or `Number`): normalized covariance representing observational
-                                                     uncertainty. If `noise_covariance isa Number` then
-                                                     it's converted to an identity matrix scaled by
-                                                     `noise_covariance`.
+- `noise_covariance` (`Number` or `AbstractMatrix`): Covariance matrix representing observational uncertainty.
+                                                     `noise_covariance::Number` is converted to a scaled identity matrix.
+
+- `convergence_rate` (`Number`): The convergence rate for the EKI adaptive time stepping. Default value 0.7.
+                                 If provided with `nothing` the EKI iterations are done with a fixed "time step".
+                                 If a numerical value is given is 0.7 which implies that the parameter spread 
+                                 covariance is decreased to 70% of the parameter spread covariance at the previous
+                                 EKI iteration.
 
 - `resampler`: controls particle resampling procedure. See `Resampler`.
+
+- `process`: The Ensemble Kalman process. Default: `Inversion().
 """
-function EnsembleKalmanInversion(inverse_problem; noise_covariance=1e-2, resampler=Resampler())
+function EnsembleKalmanInversion(inverse_problem;
+                                 noise_covariance = 1,
+                                 convergence_rate = 0.7,
+                                 resampler = Resampler(),
+                                 unconstrained_parameters = nothing,
+                                 forward_map_output = nothing,
+                                 process = Inversion())
 
-    free_parameters = inverse_problem.free_parameters
-    priors = free_parameters.priors
+    if process isa Sampler && !isnothing(convergence_rate)
+        @warn "Process is $process; ignoring keyword argument convergence_rate=$convergence_rate."
+        convergence_rate = nothing
+    end
 
-    transformed_priors = [Parameterized(unconstrained_prior(Π)) for Π in priors]
-    no_constraints = [[no_constraint()] for _ in transformed_priors]
+    if isnothing(unconstrained_parameters)
+        isnothing(forward_map_output) ||
+            throw(ArgumentError("Cannot provide forward_map_output without unconstrained_parameters."))
 
-    parameter_distribution = ParameterDistribution(transformed_priors,
-                                                   no_constraints,
-                                                   collect(string.(free_parameters.names)))
+        free_parameters = inverse_problem.free_parameters
+        priors = free_parameters.priors
+        Nθ = length(priors)
+        Nens = Nensemble(inverse_problem)
 
-    initial_ensemble = sample_distribution(parameter_distribution, Nensemble(inverse_problem))
+        # Generate an initial sample of parameters
+        unconstrained_priors = NamedTuple(name => unconstrained_prior(priors[name])
+                                          for name in free_parameters.names)
+
+        unconstrained_parameters = [rand(unconstrained_priors[i]) for i=1:Nθ, k=1:Nens]
+    end
 
     # Build EKP-friendly observations "y" and the covariance matrix of observational uncertainty "Γy"
     y = dropdims(observation_map(inverse_problem), dims=2) # length(forward_map_output) column vector
-    Γy = construct_noise_covariance(noise_covariance, y)
-
-    # The closure G(θ) maps (Nθ, Nensemble) array to (Noutput, Nensemble)
-    function inverting_forward_map(X::AbstractMatrix)
-        Nensemble = size(X, 2)
-
-        # Compute inverse transform from unconstrained (transformed) space to
-        # constrained (physical) space
-        θ = [transform_to_constrained(priors, X[:, k]) for k = 1:Nensemble]
-
-        return forward_map(inverse_problem, θ)
-    end
-
-    ensemble_kalman_process = EnsembleKalmanProcess(initial_ensemble, y, Γy, Inversion())
-
-    eki′ = EnsembleKalmanInversion(inverse_problem,
-                                   parameter_distribution,
-                                   ensemble_kalman_process,
-                                   y,
-                                   Γy,
-                                   inverting_forward_map,
-                                   0,
-                                   nothing,
-                                   resampler,
-                                   nothing)
-
-    # Rebuild eki with the summary and forward map (and potentially
-    # resampled parameters) for iteration 0:
-    G, summary = forward_map_and_summary(eki′)
-
-    iteration_summaries = OffsetArray([summary], -1)
+    Γy = construct_noise_covariance(noise_covariance, y) # noise_covariance * UniformScaling(1.0)
+    Xᵢ = unconstrained_parameters
     iteration = 0
 
-    eki = EnsembleKalmanInversion(eki′.inverse_problem,
-                                  eki′.parameter_distribution,
+    eki′ = EnsembleKalmanInversion(inverse_problem,
+                                   process,
+                                   y,
+                                   Γy,
+                                   iteration,
+                                   nothing,
+                                   resampler,
+                                   Xᵢ,
+                                   forward_map_output,
+                                   convergence_rate)
+
+    if isnothing(forward_map_output) # execute forward map to generate initial summary and forward_map_output
+        @info "Executing forward map while building EnsembleKalmanInversion..."
+        start_time = time_ns()
+        forward_map_output = resampling_forward_map!(eki′, Xᵢ)
+        elapsed_time = (time_ns() - start_time) * 1e-9
+        @info "    ... done ($(prettytime(elapsed_time)))."
+    end
+
+    summary = IterationSummary(eki′, Xᵢ, forward_map_output)
+    iteration_summaries = OffsetArray([summary], -1)
+
+    eki = EnsembleKalmanInversion(inverse_problem,
                                   eki′.ensemble_kalman_process,
                                   eki′.mapped_observations,
                                   eki′.noise_covariance,
-                                  eki′.inverting_forward_map,
                                   iteration,
                                   iteration_summaries,
                                   eki′.resampler,
-                                  G)
+                                  eki′.unconstrained_parameters,
+                                  forward_map_output,
+                                  eki′.convergence_rate)
 
     return eki
 end
 
-"""
-    Φ(eki, θ, G)
+include("iteration_summary.jl")
+include("resampling.jl")
 
-Return a tuple `(Φ1, Φ2)` of terms in the EKI regularized objective function, where
-Φ = (1/2)*(Φ1 + Φ2). Φ1 measures output misfit `|| Γy^(-¹/₂) * (y .- G(θ)) ||²` and 
-Φ2 measures prior misfit `|| Γθ^(-¹/₂) * (θ .- μθ) ||²`, where `y` is the observation 
-map, `G(θ)` is the forward map, `Γy` is the observation noise covariance, `Γθ` is 
-the prior covariance, and `μθ` represents the prior means. Note that `Γ^(-1/2) = 
-inv(sqrt(Γ))`. 
-"""
-function Φ(eki, θ::AbstractVector, G::AbstractVector)
-    y = eki.mapped_observations
-    Γy = eki.noise_covariance
-    distributions = getproperty.(eki.parameter_distribution.distributions, :distribution)
-    μθ = getproperty.(distributions, :μ)
-    Γθ = diagm( getproperty.(distributions, :σ).^2 )
+#####
+##### Iterating
+#####
 
-    # Φ1 = || Γy^(-¹/₂) * (y .- G) ||²
-    Φ1 = norm(inv(sqrt(Γy)) * (y .- G))^2
-    # Φ2 = || Γθ^(-¹/₂) * (θ .- μθ) ||² 
-    Φ2 = norm(inv(sqrt(Γθ)) * (θ .- μθ))^2
-    return (Φ1, Φ2)
+function resampling_forward_map!(eki, X=eki.unconstrained_parameters)
+    G = inverting_forward_map(eki.inverse_problem, X) # (len(G), Nensemble)
+    resample!(eki.resampler, X, G, eki)
+    return G
 end
 
 """
-    struct IterationSummary{P, M, C, V, E}
-
-Container with information about each iteration of the Ensemble Kalman Process.
-"""
-struct IterationSummary{P, M, C, V, E, O}
-    parameters :: P     # constrained
-    ensemble_mean :: M  # constrained
-    ensemble_cov :: C   # constrained
-    ensemble_var :: V
-    mean_square_errors :: E
-    objective_values :: O
-end
-
-"""
-    IterationSummary(eki, parameters, forward_map_output=nothing)
-
-Return the summary for ensemble Kalman inversion `eki` with free `parameters` and
-`forward_map_output`.
-"""
-function IterationSummary(eki, parameters, forward_map_output=nothing)
-    original_priors = eki.inverse_problem.free_parameters.priors
-
-    ensemble_mean = mean(parameters, dims=2)
-    constrained_ensemble_mean = transform_to_constrained.(values(original_priors), ensemble_mean)
-    constrained_ensemble_mean = tupify_parameters(eki.inverse_problem, constrained_ensemble_mean)
-
-    ensemble_covariance = cov(parameters, dims=2)
-    constrained_ensemble_covariance = inverse_covariance_transform(values(original_priors), parameters, ensemble_covariance)
-    constrained_ensemble_variance = tupify_parameters(eki.inverse_problem, diag(constrained_ensemble_covariance))
-
-    constrained_parameters = transform_to_constrained.(values(original_priors), parameters)
-
-    constrained_parameters = [tupify_parameters(eki.inverse_problem, constrained_parameters[:, i])
-                              for i = 1:size(constrained_parameters, 2)]
-
-    if !isnothing(forward_map_output)
-        Nobservations, Nensemble = size(forward_map_output)
-        mean_square_errors = [
-            mapreduce((x, y) -> (x - y)^2, +, eki.mapped_observations, view(forward_map_output, :, m)) / Nobservations
-            for m = 1:Nensemble
-        ]
-    else
-        mean_square_errors = nothing
-    end
-
-    # Vector of (Φ1, Φ2) pairs, one for each ensemble member at the current iteration
-    objective_values = [Φ(eki, parameters[:, j], forward_map_output[:, j]) for j in 1:size(forward_map_output, 2)]
-
-    return IterationSummary(constrained_parameters,
-                            constrained_ensemble_mean,
-                            constrained_ensemble_covariance,
-                            constrained_ensemble_variance,
-                            mean_square_errors,
-                            objective_values)
-end
-
-function Base.show(io::IO, is::IterationSummary)
-
-    max_error, imax = findmax(is.mean_square_errors)
-    min_error, imin = findmin(is.mean_square_errors)
-
-    print(io, "IterationSummary(ensemble = ", length(is.mean_square_errors), ")", '\n',
-              "                      ", param_str.(keys(is.ensemble_mean))..., '\n',
-              "       ensemble_mean: ", param_str.(values(is.ensemble_mean))..., '\n',
-              "   ensemble_variance: ", param_str.(values(is.ensemble_var))..., '\n',
-              particle_str("best", is.mean_square_errors[imin], is.parameters[imin]), '\n',
-              particle_str("worst", is.mean_square_errors[imax], is.parameters[imax]))
-
-    return nothing
-end
-
-quick_summary(iter, is) = println("Iter $iter ", is.ensemble_mean)
-
-function param_str(p::Symbol)
-    p_str = string(p)
-    length(p_str) > 9 && (p_str = p_str[1:9])
-    return @sprintf("% 10s | ", p_str)
-end
-
-param_str(p::Number) = @sprintf("% -1.3e | ", p)
-
-particle_str(particle, error, parameters) =
-    @sprintf("% 11s particle: ", particle) *
-    string(param_str.(values(parameters))...) *
-    @sprintf("error = %.6e", error)
-
-"""
-    sample(eki, θ, G, Nsample)
-
-Generate `Nsample` new particles sampled from a multivariate Normal distribution parameterized 
-by the ensemble mean and covariance computed based on the `Nθ` × `Nensemble` ensemble 
-array `θ`, under the condition that all `Nsample` particles produce successful forward map
-outputs (don't include `NaNs`).
-
-`G` (size(G) =  Noutput × Nensemble`) is the forward map output produced by `θ`.
-
-Returns `Nθ × Nsample` parameter `Array` and `Noutput × Nsample` forward map output `Array`.
-"""
-function sample(eki, θ, G, Nsample)
-    Nθ, Nensemble = size(θ)
-    Noutput = size(G, 1)
-
-    Nfound = 0
-    found_X = zeros(Nθ, 0)
-    found_G = zeros(Noutput, 0)
-    existing_sample_distribution = eki.resampler.distribution(θ, G)
-    @show existing_sample_distribution
-
-    while Nfound < Nsample
-        @info "Re-sampling ensemble members (found $Nfound of $Nsample)..."
-
-        # Generate `Nensemble` new samples in unconstrained space.
-        # Note that eki.inverse_problem.simulation
-        # must run `Nensemble` particles no matter what.
-        X_sample = rand(existing_sample_distribution, Nensemble)
-        @show typeof(X_sample) size(X_sample)
-        G_sample = eki.inverting_forward_map(X_sample)
-
-        nan_values = column_has_nan(G_sample)
-        success_columns = findall(.!column_has_nan(G_sample))
-        @info "    ... found $(length(success_columns)) successful particles."
-
-        found_X = cat(found_X, X_sample[:, success_columns], dims=2)
-        found_G = cat(found_G, G_sample[:, success_columns], dims=2)
-        Nfound = size(found_X, 2)
-    end
-
-    # Restrict found particles to requested size
-    return found_X[:, 1:Nsample], found_G[:, 1:Nsample]
-end
-
-function forward_map_and_summary(eki)
-    θ = get_u_final(eki.ensemble_kalman_process) # (Nθ, Nensemble) array
-    G = eki.inverting_forward_map(θ)             # (len(G), Nensemble)
-    resample!(eki.resampler, θ, G, eki)
-    
-    return G, IterationSummary(eki, θ, G)
-end
-
-"""
-    iterate!(eki::EnsembleKalmanInversion; iterations = 1, show_progress = true)
+    iterate!(eki::EnsembleKalmanInversion;
+             iterations = 1,
+             convergence_rate = eki.convergence_rate,
+             show_progress = true)
 
 Iterate the ensemble Kalman inversion problem `eki` forward by `iterations`.
 
@@ -326,16 +202,21 @@ Return
 
 - `best_parameters`: the ensemble mean of all parameter values after the last iteration.
 """
-function iterate!(eki::EnsembleKalmanInversion; iterations = 1, show_progress = true)
+function iterate!(eki::EnsembleKalmanInversion;
+                  iterations = 1,
+                  convergence_rate = eki.convergence_rate,
+                  show_progress = true)
 
     iterator = show_progress ? ProgressBar(1:iterations) : 1:iterations
 
     for _ in iterator
-        update_ensemble!(eki.ensemble_kalman_process, eki.forward_map_output)
-        G, summary = forward_map_and_summary(eki) 
-        push!(eki.iteration_summaries, summary)
-        eki.forward_map_output .= G
+        eki.unconstrained_parameters = step_parameters(eki, convergence_rate)
         eki.iteration += 1
+
+        # Forward map
+        eki.forward_map_output = resampling_forward_map!(eki)
+        summary = IterationSummary(eki, eki.unconstrained_parameters, eki.forward_map_output)
+        push!(eki.iteration_summaries, summary)
     end
 
     # Return ensemble mean (best guess for optimal parameters)
@@ -345,101 +226,81 @@ function iterate!(eki::EnsembleKalmanInversion; iterations = 1, show_progress = 
 end
 
 #####
-##### Resampling
+##### Stepping and adaptive stepping
 #####
 
-abstract type EnsembleDistribution end
-
-function ensemble_normal_distribution(θ)
-    μ = [mean(θ, dims=2)...]
-    Σ = cov(θ, dims=2)
-    return MvNormal(μ, Σ)
+function step_parameters(X, G, y, Γy, process; step_size=1.0)
+    ekp = EnsembleKalmanProcess(X, y, Γy, process; Δt=step_size)
+    update_ensemble!(ekp, G)
+    return get_u_final(ekp)
 end
 
-struct FullEnsembleDistribution <: EnsembleDistribution end
-(::FullEnsembleDistribution)(θ, G) = ensemble_normal_distribution(θ)
+# it's not adaptive
+adaptive_step_parameters(::Nothing, Xⁿ, Gⁿ, y, Γy, process) = step_parameters(X, G, y, Γy, process)
 
-struct SuccessfulEnsembleDistribution <: EnsembleDistribution end
-(::SuccessfulEnsembleDistribution)(θ, G) = ensemble_normal_distribution(θ[:, findall(.!column_has_nan(G))])
+function step_parameters(eki::EnsembleKalmanInversion, convergence_rate)
+    process = eki.ensemble_kalman_process
+    y = eki.mapped_observations
+    Γy = eki.noise_covariance
+    Gⁿ = eki.forward_map_output
+    Xⁿ = eki.unconstrained_parameters
+    Xⁿ⁺¹ = similar(Xⁿ)
 
-resample!(::Nothing, args...) = nothing
+    # Handle failed particles
+    nan_values = column_has_nan(Gⁿ)
+    failed_columns = findall(nan_values) # indices of columns (particles) with `NaN`s
+    successful_columns = findall(.!nan_values)
+    some_failures = length(failed_columns) > 0
 
-struct Resampler{D}
-    only_failed_particles :: Bool
-    acceptable_failure_fraction :: Float64
-    distribution :: D
-end
+    some_failures && @warn string(length(failed_columns), " particles failed. ",
+                                  "Performing ensemble update with statistics from ",
+                                  length(successful_columns), " successful particles.")
 
-function Resampler(; only_failed_particles = true,
-                     acceptable_failure_fraction = 0.0,
-                     distribution = FullEnsembleDistribution())
-
-    return Resampler(only_failed_particles, acceptable_failure_fraction, distribution)
-end
-
-""" Return a BitVector indicating which particles are NaN."""
-column_has_nan(G) = vec(mapslices(any, isnan.(G); dims=1))
-
-"""
-    resample!(resampler::Resampler, θ, G, eki)
+    successful_Gⁿ = Gⁿ[:, successful_columns]
+    successful_Xⁿ = Xⁿ[:, successful_columns]
     
-Resamples the parameters `θ` of the `eki` process based on the number of `NaN` values
-inside the forward map output `G`.
-"""
-function resample!(resampler::Resampler, θ, G, eki)
-    # `Nensemble` vector of bits indicating, for each ensemble member, whether the forward map contained `NaN`s
-    nan_values = column_has_nan(G)
-    nan_columns = findall(nan_values) # indices of columns (particles) with `NaN`s
-    nan_count = length(nan_columns)
-    nan_fraction = nan_count / size(θ, 2)
+    # Construct new parameters
+    successful_Xⁿ⁺¹ = adaptive_step_parameters(convergence_rate, successful_Xⁿ, successful_Gⁿ, y, Γy, process)
+    Xⁿ⁺¹[:, successful_columns] .= successful_Xⁿ⁺¹
 
-    if nan_fraction > 0
-        particles = nan_count == 1 ? "particle" : "particles"
-        failed_columns = nan_count == 1 ? "particle is $nan_columns" : "particles are $nan_columns"
-        @warn("""
-              The forward map for $nan_count $particles ($(100nan_fraction)%) included NaNs.
-              The failed $failed_columns.
-              """)
+    if some_failures # resample failed particles with new ensemble distribution
+        new_X_distribution = ensemble_normal_distribution(successful_Xⁿ⁺¹) 
+        sampled_Xⁿ⁺¹ = rand(new_X_distribution, length(failed_columns))
+        Xⁿ⁺¹[:, failed_columns] .= sampled_Xⁿ⁺¹
     end
 
-    too_much_failure = false
+    return Xⁿ⁺¹
+end
 
-    if nan_fraction > resampler.acceptable_failure_fraction
-        error("The forward map for $nan_count particles ($(100nan_fraction)%) included NaNs. Consider \n" *
-              "    1. Increasing `Resampler.acceptable_failure_fraction` for \n" *
-              "         EnsembleKalmanInversion.resampler::Resampler \n" * 
-              "    2. Reducing the time-step for `InverseProblem.simulation`, \n" *
-              "    3. Evolving `InverseProblem.simulation` for less time \n" *
-              "    4. Narrowing `FreeParameters` priors.")
+#####
+##### Adaptive parameter stepping
+#####
 
-        too_much_failure = true
-    
-    elseif nan_count > 0 || !(resampler.only_failed_particles)
-        # We are resampling!
+function volume_ratio(Xⁿ⁺¹, Xⁿ)
+    Vⁿ⁺¹ = det(cov(Xⁿ⁺¹, dims=2))
+    Vⁿ   = det(cov(Xⁿ,   dims=2))
+    return Vⁿ⁺¹ / Vⁿ
+end
 
-        if resampler.only_failed_particles
-            Nsample = nan_count
-            replace_columns = nan_columns
+function adaptive_step_parameters(convergence_rate, Xⁿ, Gⁿ, y, Γy, process)
+    # Test step forward
+    step_size = 1
+    Xⁿ⁺¹ = step_parameters(Xⁿ, Gⁿ, y, Γy, process; step_size)
+    r = volume_ratio(Xⁿ⁺¹, Xⁿ)
 
-        else # resample everything
-            Nsample = size(G, 2)
-            replace_columns = Colon()
-        end
-
-        found_θ, found_G = sample(eki, θ, G, Nsample)
-        
-        view(θ, :, replace_columns) .= found_θ
-        view(G, :, replace_columns) .= found_G
-
-        new_process = EnsembleKalmanProcess(θ,
-                                            eki.mapped_observations,
-                                            eki.noise_covariance,
-                                            eki.ensemble_kalman_process.process)
-
-        eki.ensemble_kalman_process = new_process
+    # "Accelerated" fixed point iteration to adjust step_size
+    p = 1.1
+    iter = 1
+    while !isapprox(r, convergence_rate, atol=0.03, rtol=0.1) && iter < 10
+        step_size *= (r / convergence_rate)^p
+        Xⁿ⁺¹ = step_parameters(Xⁿ, Gⁿ, y, Γy, process; step_size)
+        r = volume_ratio(Xⁿ⁺¹, Xⁿ)
+        iter += 1
     end
 
-    return too_much_failure
+    @info "Particles stepped adaptively with convergence rate $r (target $convergence_rate)"
+
+    return Xⁿ⁺¹
 end
 
 end # module

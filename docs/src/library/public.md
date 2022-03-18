@@ -1,37 +1,54 @@
 # Public Documentation
 
-Documentation for `OceanTurbulenceParameterEstimation.jl`'s public interface.
+Documentation for `OceanLearning.jl`'s public interface.
 
 See the Internals section of the manual for internal package docs covering all submodules.
 
-## OceanTurbulenceParameterEstimation
+## OceanLearning
 
 ```@autodocs
-Modules = [OceanTurbulenceParameterEstimation]
+Modules = [OceanLearning]
 Private = false
-Pages   = ["OceanTurbulenceParameterEstimation.jl"]
+```
+
+## Transformations
+
+```@autodocs
+Modules = [OceanLearning.Transformations]
+Private = false
 ```
 
 ## Observations
 
 ```@autodocs
-Modules = [OceanTurbulenceParameterEstimation.Observations]
+Modules = [OceanLearning.Observations]
 Private = false
-Pages   = ["Observations.jl"]
+```
+
+## Ensemble Simulations
+
+```@autodocs
+Modules = [OceanLearning.EnsembleSimulations]
+Private = false
 ```
 
 ## Parameters
 
 ```@autodocs
-Modules = [OceanTurbulenceParameterEstimation.Parameters]
+Modules = [OceanLearning.Parameters]
 Private = false
-Pages   = ["Parameters.jl"]
+```
+
+## Inverse Problems
+
+```@autodocs
+Modules = [OceanLearning.InverseProblems]
+Private = false
 ```
 
 ## EnsembleKalmanInversions
 
 ```@autodocs
-Modules = [OceanTurbulenceParameterEstimation.EnsembleKalmanInversions]
+Modules = [OceanLearning.EnsembleKalmanInversions]
 Private = false
-Pages   = ["EnsembleKalmanInversions.jl"]
 ```

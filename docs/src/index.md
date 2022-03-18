@@ -1,5 +1,5 @@
-# OceanTurbulenceParameterEstimation.jl Documentation
+# OceanLearning.jl Documentation
 
 ## Overview
 
-OceanTurbulenceParameterEstimation provides a framework to calibrate turbulence closure parametrizations for ocean models.
+OceanLearning provides a framework to calibrate turbulence closure parametrizations for ocean models.
