@@ -1,10 +1,38 @@
-struct IterationSummary{P, M, C, V, E}
+struct IterationSummary{P, M, C, V, E, O}
     parameters :: P     # constrained
     ensemble_mean :: M  # constrained
     ensemble_cov :: C   # constrained
     ensemble_var :: V
     mean_square_errors :: E
+    objective_values :: O
     iteration :: Int
+end
+
+"""
+    eki_objective(eki, θ, G)
+
+Given forward map `G` and *unconstrained* parameters `θ`, return a 
+tuple `(Φ1, Φ2)` of terms in the EKI regularized objective function, where
+Φ = (1/2)*(Φ1 + Φ2). Φ1 measures output misfit `|| Γy^(-¹/₂) * (y .- G(θ)) ||²` and 
+Φ2 measures prior misfit `|| Γθ^(-¹/₂) * (θ .- μθ) ||²`, where `y` is the observation 
+map, `G(θ)` is the forward map, `Γy` is the observation noise covariance, `Γθ` is 
+the prior covariance, and `μθ` represents the prior means. Note that `Γ^(-1/2) = 
+inv(sqrt(Γ))`. 
+"""
+function eki_objective(eki, θ::AbstractVector, G::AbstractVector)
+    y = eki.mapped_observations
+    Γy = eki.noise_covariance
+
+    fp = eki.inverse_problem.free_parameters
+    unconstrained_priors = [unconstrained_prior(fp.priors[name]) for name in fp.names]
+    μθ = getproperty.(unconstrained_priors, :μ)
+    Γθ = diagm( getproperty.(unconstrained_priors, :σ).^2 )
+
+    # Φ1 = || Γy^(-¹/₂) * (y .- G) ||²
+    Φ1 = norm(inv(sqrt(Γy)) * (y .- G))^2
+    # Φ2 = || Γθ^(-¹/₂) * (θ .- μθ) ||² 
+    Φ2 = norm(inv(sqrt(Γθ)) * (θ .- μθ))^2
+    return (Φ1, Φ2)
 end
 
 """
@@ -25,20 +53,24 @@ function IterationSummary(eki, X, forward_map_output=nothing)
 
     constrained_parameters = transform_to_constrained(priors, X)
 
+    G = forward_map_output
     if !isnothing(forward_map_output)
         Nobs, Nens= size(forward_map_output)
         y = eki.mapped_observations
-        G = forward_map_output
         mean_square_errors = [mapreduce((x, y) -> (x - y)^2, +, y, view(G, :, k)) / Nobs for k = 1:Nens]
     else
         mean_square_errors = nothing
     end
+
+    # Vector of (Φ1, Φ2) pairs, one for each ensemble member at the current iteration
+    objective_values = [eki_objective(eki, X[:, j], G[:, j]) for j in 1:size(G, 2)]
 
     return IterationSummary(constrained_parameters,
                             constrained_ensemble_mean,
                             constrained_ensemble_covariance,
                             constrained_ensemble_variance,
                             mean_square_errors,
+                            objective_values,
                             eki.iteration)
 end
 
@@ -89,4 +121,3 @@ particle_str(particle, error, parameters) =
     @sprintf("% 11s particle: ", particle) *
     string(param_str.(values(parameters))...) *
     @sprintf("error = %.6e", error)
-

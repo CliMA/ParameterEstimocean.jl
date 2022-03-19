@@ -1,6 +1,6 @@
 using LaTeXStrings
 
-import OceanTurbulenceParameterEstimation.Parameters: closure_with_parameters
+import OceanLearning.Parameters: closure_with_parameters
 
 parameter_guide = Dict(:Cᴰ => (name = "Dissipation parameter (TKE equation)", latex = L"C^D",
           default = 2.9079, bounds = (0.0, 10.0)), :Cᴸᵇ => (name = "Mixing length parameter", latex = L"C^{\ell}_b",

@@ -1,13 +1,14 @@
 # Calibrate convective adjustment closure parameters to LESbrary 2-day "free_convection" simulation
 
 using OceanBoundaryLayerParameterizations
-using OceanTurbulenceParameterEstimation
+using OceanLearning
+using OceanLearning.Transformations: Transformation
 using LinearAlgebra, CairoMakie, DataDeps
 using Oceananigans
 using Oceananigans.Units
 
 architecture = CPU()
-ensemble_size = 20
+Nensemble = 30
 description = ""
 Δt = 10.0
 
@@ -18,26 +19,14 @@ description = ""
 data_path = datadep"two_day_suite_4m/free_convection_instantaneous_statistics.jld2" # Nz = 64
 data_path_highres = datadep"two_day_suite_2m/free_convection_instantaneous_statistics.jld2" # Nz = 128
 
-normalization = (b = ZScore(),) 
-
-# observation, observation_highres = SyntheticObservations.([data_path, data_path_highres]; 
-#                                     field_names=(:b,), 
-#                                     times=[3hours, 24hours, 36hours, 48hours], 
-#                                     normalization, 
-#                                     regrid_size=(1, 1, 32)
-#                                     )
+transformation = (b = Transformation(normalization=ZScore()),)
 
 observation, observation_highres = SyntheticObservations.([data_path, data_path_highres]; 
                                     field_names=(:b,), 
-                                    times=[3hours, 12hours, 36hours, 24hours], 
-                                    normalization, 
-                                    regrid_size=(1, 1, 64)
+                                    times=[3hours, 12hours, 48hours], 
+                                    transformation, 
+                                    regrid=(1, 1, 32)
                                     )
-
-# observation = SyntheticObservations(data_path; 
-#                                     field_names=(:b,), 
-#                                     times=[2hours, 12hours, 24hours], 
-#                                     normalization)
 
 observations = [observation]
 output_map = ConcatenatedOutputMap()
@@ -61,14 +50,22 @@ save("obs_map.pdf", f)
 ### Build Inverse Problem
 ###
 
-priors = (convective_κz = ScaledLogitNormal(bounds=(0.1, 1.0)),
-          background_κz = ScaledLogitNormal(bounds=(0.0, 10e-4)))
+priors = (convective_κz = ScaledLogitNormal(bounds=(0.1, 2.1)),
+          background_κz = ScaledLogitNormal(bounds=(0.0, 2.5e-3)))
 free_parameters = FreeParameters(priors)
 
 closure = ConvectiveAdjustmentVerticalDiffusivity()
 
-simulation = lesbrary_ensemble_simulation(observations; ensemble_size, architecture, closure, Δt)
+simulation = lesbrary_ensemble_simulation(observations; Nensemble, architecture, closure, Δt)
 calibration = InverseProblem(observations, simulation, free_parameters; output_map = output_map)
+
+function build_inverse_problem(Nensemble)
+    simulation = lesbrary_ensemble_simulation(observations; Nensemble, architecture, closure, Δt)
+    calibration = InverseProblem(observations, simulation, free_parameters; output_map)
+    return calibration
+end
+
+calibration = build_inverse_problem(Nensemble)
 
 ###
 ### Run EKI
@@ -83,7 +80,7 @@ iterate!(eki; iterations = iterations)
 ### Summary Plots
 ###
 
-directory = "calibrate_convadj_to_lesbrary/$(iterations)_iters_$(ensemble_size)_particles_$(description)/$(noise_cov_name)/"
+directory = "calibrate_convadj_to_lesbrary/$(iterations)_iters_$(Nensemble)_particles_$(description)/$(noise_cov_name)/"
 isdir(directory) || mkpath(directory)
 
 plot_parameter_convergence!(eki, directory)
@@ -103,16 +100,20 @@ visualize!(calibration, test;
     filename = "test.pdf"
 )
 
-
 ###
 ### Visualize loss landscape
 ###
 
 name = "Loss landscape"
 
+# pvalues = Dict(
+#     :convective_κz => collect(0.1:0.05:2.0),
+#     :background_κz => collect(0.5e-4:0.5e-4:1e-3),
+# )
+
 pvalues = Dict(
-    :convective_κz => collect(0.05:0.05:1.0),
-    :background_κz => collect(0.5e-4:0.5e-4:10e-4),
+    :convective_κz => collect(0.1:0.05:2.1),
+    :background_κz => collect(0.5e-4:1e-4:2.5e-3),
 )
 
 p1 = pvalues[:convective_κz]
@@ -126,14 +127,6 @@ xc = params[1, :]
 yc = params[2, :]
 
 # build an `InverseProblem` that can accommodate `ni*nj` ensemble members
-# big_simulation = lesbrary_ensemble_simulation(observations; ensemble_size=ni*nj, architecture, closure, Δt)
-# big_calibration = InverseProblem(observations, big_simulation, free_parameters; output_map=output_map)
-
-function build_inverse_problem(ensemble_size)
-    big_simulation = lesbrary_ensemble_simulation(observations; ensemble_size=ni*nj, architecture, closure, Δt)
-    big_calibration = InverseProblem(observations, big_simulation, free_parameters; output_map=output_map)
-    return big_calibration
-end
 big_calibration = build_inverse_problem(ni*nj)
 
 y = observation_map(big_calibration)
@@ -142,8 +135,8 @@ using FileIO
 
 file = "calibrate_convadj_to_lesbrary/loss_landscape_$(description).jld2"
 
-@time G = forward_map(big_calibration, params)
-# G = load(file)["G"]
+# @time G = forward_map(big_calibration, params)
+G = load(file)["G"]
 
 θglobalmin = NamedTuple((:convective_κz => 0.275, :background_κz => 0.000275))
 visualize!(calibration, θglobalmin;
@@ -152,8 +145,8 @@ visualize!(calibration, θglobalmin;
     filename = "realizations_θglobalmin.pdf"
 )
 
-using OceanTurbulenceParameterEstimation.EnsembleKalmanInversions: Φ
-Φs = [Φ(eki, params[:,j], G[:,j]) for j in 1:size(G, 2)]
+using OceanLearning.EnsembleKalmanInversions: eki_objective
+Φs = [eki_objective(eki, params[:,j], G[:,j]) for j in 1:size(G, 2)]
 
 save(file, Dict("G" => G,
                 noise_cov_name*"/Φ2" => getindex.(Φs, 2),
@@ -206,10 +199,14 @@ function plot_contour(eki, xc, yc, zc, name, directory; zlabel = "MSE loss")
             title = "Loss Landscape",
             xlabel = "convective_κz",
             ylabel = "background_κz",
-            zlabel = zlabel
+            zlabel = zlabel,
+            shading = true,
+            shininess = 32.0,
+            transparency = true
         )
 
-        CairoMakie.surface!(ax1, xc, yc, zc, colorscheme = :thermal)
+        # CairoMakie.surface!(ax1, xc, yc, zc, colorscheme = :thermal)
+        CairoMakie.surface!(ax1, xc, yc, zc)
 
         save(joinpath(directory, "loss_landscape_$(name).pdf"), f)
     end

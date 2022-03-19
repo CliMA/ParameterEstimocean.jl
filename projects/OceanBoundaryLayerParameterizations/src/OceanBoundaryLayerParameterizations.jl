@@ -2,7 +2,7 @@ module OceanBoundaryLayerParameterizations
 
 pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..", "..", ".."))
 
-using OceanTurbulenceParameterEstimation
+using OceanLearning
 
 export
     # lesbrary.jl
@@ -15,6 +15,8 @@ export
     CATKEParametersRiIndependent,
     CATKEParametersRiDependentConvectiveAdjustment,
     CATKEParametersRiIndependentConvectiveAdjustment,
+    named_tuple_map,
+    bounds,
 
     # eki_visuals.jl
     plot_parameter_convergence!,

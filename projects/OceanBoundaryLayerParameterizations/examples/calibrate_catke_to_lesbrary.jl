@@ -10,51 +10,68 @@ using Oceananigans
 using LinearAlgebra, Distributions, JLD2, DataDeps
 using Oceananigans.Units
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
-using OceanTurbulenceParameterEstimation
 using OceanBoundaryLayerParameterizations
+using OceanLearning
+using OceanLearning.Parameters: closure_with_parameters
 
-two_day_suite = TwoDaySuite()
-four_day_suite = FourDaySuite()
-six_day_suite = SixDaySuite()
+Nz = 32
+Nensemble = 20
+architecture = CPU()
+Δt = 10.0
+
+two_day_suite = TwoDaySuite(; Nz)
+four_day_suite = FourDaySuite(; Nz)
+six_day_suite = SixDaySuite(; Nz)
 
 #####
 ##### Set up ensemble model
 #####
 
-observations = TwoDaySuite(lesbrary_directory;)
+observations = two_day_suite
 
 parameter_set = CATKEParametersRiDependent
 closure = closure_with_parameters(CATKEVerticalDiffusivity(Float64;), parameter_set.settings)
-
-ensemble_model = OneDimensionalEnsembleModel(observations;
-    architecture = GPU(),
-    ensemble_size = 20,
-    closure = closure
-)
-
-ensemble_simulation = Simulation(ensemble_model; Δt = 10seconds, stop_time = 2days)
 
 #####
 ##### Build free parameters
 #####
 
 build_prior(name) = ScaledLogitNormal(bounds=bounds(name).*0.5)
-free_parameters = FreeParameters(named_tuple_map(names(parameter_set), build_prior))
+free_parameters = FreeParameters(named_tuple_map(parameter_set.names, build_prior))
 
 #####
 ##### Build the Inverse Problem
 #####
 
-# Specify an output map that tracks 3 uniformly spaced time steps, ignoring the initial condition
 track_times = Int.(floor.(range(1, stop = length(observations[1].times), length = 3)))
-calibration = InverseProblem(observations, ensemble_simulation, free_parameters; output_map = ConcatenatedOutputMap(track_times))
+output_map = ConcatenatedOutputMap(track_times)
+
+function build_inverse_problem(Nensemble)
+    simulation = lesbrary_ensemble_simulation(observations; Nensemble, architecture, closure, Δt)
+    calibration = InverseProblem(observations, simulation, free_parameters; output_map)
+    return calibration
+end
+
+calibration = build_inverse_problem(Nensemble)
+
+
+y = observation_map(calibration);
+θ = named_tuple_map(parameter_set.names, default)
+G = forward_map(calibration, [θ])
+zc = [mapslices(norm, G .- y, dims = 1)...]
+
+y = observation_map(calibration);
+θ = 
+G = forward_map(calibration, [θ])
+zc = [mapslices(norm, G .- y, dims = 2)...]
 
 # #####
 # ##### Calibrate
 # #####
 
-iterations = 5
-eki = EnsembleKalmanInversion(calibration; noise_covariance = 1e-2)
+iterations = 2
+eki = EnsembleKalmanInversion(calibration; noise_covariance = 1e-2,
+                                        resampler = Resampler(acceptable_failure_fraction=0.5, only_failed_particles=true))
 params = iterate!(eki; iterations = iterations)
 
 directory = "calibrate_catke_to_lesbrary/"
