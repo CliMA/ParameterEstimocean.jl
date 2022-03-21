@@ -1,4 +1,4 @@
-module OceanLearning
+module ParameterEstimocean
 
 export
     SyntheticObservations,

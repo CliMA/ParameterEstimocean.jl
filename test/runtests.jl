@@ -11,7 +11,7 @@ include("test_ensemble_kalman_inversion.jl")
 include("test_utils.jl")
 
 @testset "Doctests" begin
-    using OceanLearning, Distributions
+    using ParameterEstimocean, Distributions
 
-    doctest(OceanLearning)
+    doctest(ParameterEstimocean)
 end

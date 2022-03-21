@@ -1,5 +1,5 @@
-# OceanLearning.jl Documentation
+# ParameterEstimocean.jl Documentation
 
 ## Overview
 
-OceanLearning provides a framework to calibrate turbulence closure parametrizations for ocean models.
+ParameterEstimocean provides a framework to calibrate turbulence closure parametrizations for ocean models.

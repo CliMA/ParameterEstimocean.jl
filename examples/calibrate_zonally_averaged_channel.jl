@@ -4,11 +4,11 @@
 
 # ```julia
 # using Pkg
-# pkg"add OceanLearning, Oceananigans, Distributions, CairoMakie"
+# pkg"add ParameterEstimocean, Oceananigans, Distributions, CairoMakie"
 # ```
 
-using OceanLearning
-using OceanLearning.Observations: FieldTimeSeriesCollector
+using ParameterEstimocean
+using ParameterEstimocean.Observations: FieldTimeSeriesCollector
 
 using Oceananigans
 using Oceananigans.Units

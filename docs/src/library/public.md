@@ -1,54 +1,54 @@
 # Public Documentation
 
-Documentation for `OceanLearning.jl`'s public interface.
+Documentation for `ParameterEstimocean.jl`'s public interface.
 
 See the Internals section of the manual for internal package docs covering all submodules.
 
-## OceanLearning
+## ParameterEstimocean
 
 ```@autodocs
-Modules = [OceanLearning]
+Modules = [ParameterEstimocean]
 Private = false
 ```
 
 ## Transformations
 
 ```@autodocs
-Modules = [OceanLearning.Transformations]
+Modules = [ParameterEstimocean.Transformations]
 Private = false
 ```
 
 ## Observations
 
 ```@autodocs
-Modules = [OceanLearning.Observations]
+Modules = [ParameterEstimocean.Observations]
 Private = false
 ```
 
 ## Ensemble Simulations
 
 ```@autodocs
-Modules = [OceanLearning.EnsembleSimulations]
+Modules = [ParameterEstimocean.EnsembleSimulations]
 Private = false
 ```
 
 ## Parameters
 
 ```@autodocs
-Modules = [OceanLearning.Parameters]
+Modules = [ParameterEstimocean.Parameters]
 Private = false
 ```
 
 ## Inverse Problems
 
 ```@autodocs
-Modules = [OceanLearning.InverseProblems]
+Modules = [ParameterEstimocean.InverseProblems]
 Private = false
 ```
 
 ## EnsembleKalmanInversions
 
 ```@autodocs
-Modules = [OceanLearning.EnsembleKalmanInversions]
+Modules = [ParameterEstimocean.EnsembleKalmanInversions]
 Private = false
 ```

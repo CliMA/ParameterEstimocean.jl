@@ -1,6 +1,6 @@
 using Test
 using DataDeps
-using OceanLearning
+using ParameterEstimocean
 
 always_accept = get(ENV, "DATADEPS_ALWAYS_ACCEPT", false)
 ENV["DATADEPS_ALWAYS_ACCEPT"] = true

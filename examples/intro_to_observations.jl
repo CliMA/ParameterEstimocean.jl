@@ -9,12 +9,12 @@
 
 # ```julia
 # using Pkg
-# pkg"add OceanLearning, Oceananigans, CairoMakie"
+# pkg"add ParameterEstimocean, Oceananigans, CairoMakie"
 # ```
 
 # First we load few things
 
-using OceanLearning
+using ParameterEstimocean
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
