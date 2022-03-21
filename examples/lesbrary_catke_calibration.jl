@@ -27,9 +27,9 @@ field_names = (:b, :u, :v, :e)
 
 ## Use a special transformation that emphasizes buoyancy and de-emphasizes TKE
 transformation = (b = ZScore(),
-                 u = ZScore(), 
-                 v = ZScore(), 
-                 e = RescaledZScore(0.1)) 
+                  u = ZScore(), 
+                  v = ZScore(), 
+                  e = RescaledZScore(0.1)) 
 
 observations = SyntheticObservations(data_path; field_names, times, transformation)
 
@@ -122,13 +122,9 @@ free_parameters = FreeParameters(priors)
 
 calibration = InverseProblem(observations, simulation, free_parameters)
 
-# Next, we calibrate, using a relatively large noise to reflect our
-# uncertainty about how close the observations and model can really get,
+# Next, we calibrate,
 
-eki = EnsembleKalmanInversion(calibration;
-                              noise_covariance = 1e-2,
-                              resampler = Resampler(acceptable_failure_fraction=0.1))
-
+eki = EnsembleKalmanInversion(calibration; convergence_rate = 0.7)
 iterate!(eki; iterations = 5)
 
 # # Results
