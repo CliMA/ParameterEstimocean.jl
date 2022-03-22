@@ -65,9 +65,9 @@ y = observation_map(calibration);
 G = forward_map(calibration, [θ])
 zc = [mapslices(norm, G .- y, dims = 2)...]
 
-# #####
-# ##### Calibrate
-# #####
+#####
+##### Calibrate
+#####
 
 iterations = 2
 eki = EnsembleKalmanInversion(calibration; noise_covariance = 1e-2,

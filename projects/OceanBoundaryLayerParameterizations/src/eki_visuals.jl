@@ -52,7 +52,7 @@ function plot_pairwise_ensembles!(eki, directory, true_parameters=nothing)
             axmain = Axis(f[2, 1], xlabel = string(pname1), ylabel = string(pname2))
             axright = Axis(f[2, 2])
             scatters = []
-            for iteration in [0, 1, 2, N_iter]
+            for iteration in [0, 1, N_iter]
                 ensemble = eki.iteration_summaries[iteration].parameters
                 ensemble = [[particle[pname1], particle[pname2]] for particle in ensemble]
                 ensemble = transpose(hcat(ensemble...)) # N_ensemble x 2
@@ -71,7 +71,7 @@ function plot_pairwise_ensembles!(eki, directory, true_parameters=nothing)
             rowsize!(f.layout, 1, Fixed(200))
             rowsize!(f.layout, 2, Fixed(300))
             Legend(f[1, 2], scatters,
-                ["Initial ensemble", "Iteration 1", "Iteration 2", "Iteration $N_iter"],
+                ["Initial ensemble", "Iteration 1", "Iteration $N_iter"],
                 position = :lb)
             hidedecorations!(axtop, grid = false)
             hidedecorations!(axright, grid = false)

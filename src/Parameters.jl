@@ -219,11 +219,6 @@ transform_to_unconstrained(Π::LogNormal, Y) = log(Y^(1 / abs(Π.μ))) # log(Y) 
 transform_to_unconstrained(Π::ScaledLogitNormal, Y) =
     scaled_logit_normal_to_normal(Π.lower_bound, Π.upper_bound, Y)
 
-# Convenience vectorized version
-transform_to_unconstrained(priors::NamedTuple, Y::AbstractVector) =
-    NamedTuple(name => transform_to_unconstrained(priors[name], Y[i])
-                for (i, name) in enumerate(keys(priors)))
-
 """
     transform_to_constrained(Π, X)
 

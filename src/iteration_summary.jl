@@ -1,3 +1,5 @@
+using ..Parameters: transform_to_unconstrained
+
 struct IterationSummary{P, M, C, V, E, O}
     parameters :: P     # constrained
     ensemble_mean :: M  # constrained
@@ -11,23 +13,33 @@ end
 """
     eki_objective(eki, θ, G)
 
-Given forward map `G` and *unconstrained* parameters `θ`, return a 
-tuple `(Φ1, Φ2)` of terms in the EKI regularized objective function, where
-Φ = (1/2)*(Φ1 + Φ2). Φ1 measures output misfit `|| Γy^(-¹/₂) * (y .- G(θ)) ||²` and 
+Given forward map `G` and parameters `θ`, return a tuple `(Φ1, Φ2)` 
+of terms in the EKI regularized objective function, where
+
+    Φ = (1/2)*(Φ1 + Φ2)
+
+Φ1 measures output misfit `|| Γy^(-¹/₂) * (y .- G(θ)) ||²` and 
 Φ2 measures prior misfit `|| Γθ^(-¹/₂) * (θ .- μθ) ||²`, where `y` is the observation 
 map, `G(θ)` is the forward map, `Γy` is the observation noise covariance, `Γθ` is 
 the prior covariance, and `μθ` represents the prior means. Note that `Γ^(-1/2) = 
-inv(sqrt(Γ))`. 
+inv(sqrt(Γ))`. The keyword argument `constrained` is `true` if the input `θ`
+represents constrained parameters.
 """
-function eki_objective(eki, θ::AbstractVector, G::AbstractVector)
+function eki_objective(eki, θ::AbstractVector, G::AbstractVector; constrained = false)
     y = eki.mapped_observations
     Γy = eki.noise_covariance
 
     fp = eki.inverse_problem.free_parameters
-    unconstrained_priors = [unconstrained_prior(fp.priors[name]) for name in fp.names]
+    priors = fp.priors
+    unconstrained_priors = [unconstrained_prior(priors[name]) for name in fp.names]
     μθ = getproperty.(unconstrained_priors, :μ)
     Γθ = diagm( getproperty.(unconstrained_priors, :σ).^2 )
 
+    if constrained
+        θ = [transform_to_unconstrained(priors[name], θ[i])
+                for (i, name) in enumerate(keys(priors))]
+    end
+    
     # Φ1 = || Γy^(-¹/₂) * (y .- G) ||²
     Φ1 = norm(inv(sqrt(Γy)) * (y .- G))^2
     # Φ2 = || Γθ^(-¹/₂) * (θ .- μθ) ||² 
