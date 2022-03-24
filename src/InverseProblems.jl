@@ -43,7 +43,7 @@ import ..Transformations: normalize!
 output_map_type(fp) = output_map_str(fp)
 
 """
-    ConcatenatedOutputMap()
+    struct ConcatenatedOutputMap end 
 
 Forward map transformation of simulation output to the concatenated
 vectors of the simulation output.
@@ -53,7 +53,7 @@ struct ConcatenatedOutputMap end
 output_map_str(::ConcatenatedOutputMap) = "ConcatenatedOutputMap"
 
 """
-    ConcatenatedVectorNormMap()
+    struct ConcatenatedVectorNormMap()
 
 Forward map transformation of simulation output to a scalar by
 taking a naive `norm` of the difference between concatenated vectors of the
@@ -170,7 +170,7 @@ Nobservations(grid::TwoDimensionalEnsembleGrid) = 1
 Nensemble(grid::Union{OneDimensionalEnsembleGrid, TwoDimensionalEnsembleGrid}) = grid.Nx
 Nensemble(ip::InverseProblem) = Nensemble(ip.simulation.model.grid)
 
-""" 
+"""
     observation_map(ip::InverseProblem)
 
 Transform and return `ip.observations` appropriate for `ip.output_map`. 
@@ -297,8 +297,8 @@ function transform_forward_map_output(map::ConcatenatedOutputMap,
 end
 
 function transform_output(output_map::ConcatenatedVectorNormMap,
-    observations::Union{SyntheticObservations, Vector{<:SyntheticObservations}},
-    time_series_collector)
+                          observations::Union{SyntheticObservations, Vector{<:SyntheticObservations}},
+                          time_series_collector)
 
     concat_map = ConcatenatedOutputMap()
     fwd_map = transform_output(concat_map, observations, time_series_collector)
