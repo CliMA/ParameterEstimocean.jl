@@ -40,11 +40,11 @@ function eki_objective(eki, θ::AbstractVector, G::AbstractVector; constrained =
                 for (i, name) in enumerate(keys(priors))]
     end
     
-    # Φ1 = || Γy^(-¹/₂) * (y .- G) ||²
-    Φ1 = norm(inv(sqrt(Γy)) * (y .- G))^2
-    # Φ2 = || Γθ^(-¹/₂) * (θ .- μθ) ||² 
-    Φ2 = norm(inv(sqrt(Γθ)) * (θ .- μθ))^2
-    return (Φ1, Φ2)
+    # Φ₁ = || Γy^(-½) * (y - G) ||²
+    Φ₁ = norm(inv(sqrt(Γy)) * (y .- G))^2
+    # Φ₂ = || Γθ^(-½) * (θ - μθ) ||² 
+    Φ₂ = norm(inv(sqrt(Γθ)) * (θ .- μθ))^2
+    return (Φ₁, Φ₂)
 end
 
 """
