@@ -170,7 +170,7 @@ Nobservations(grid::TwoDimensionalEnsembleGrid) = 1
 Nensemble(grid::Union{OneDimensionalEnsembleGrid, TwoDimensionalEnsembleGrid}) = grid.Nx
 Nensemble(ip::InverseProblem) = Nensemble(ip.simulation.model.grid)
 
-""" 
+"""
     observation_map(ip::InverseProblem)
 
 Transform and return `ip.observations` appropriate for `ip.output_map`. 
