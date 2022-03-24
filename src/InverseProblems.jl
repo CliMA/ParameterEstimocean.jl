@@ -43,7 +43,7 @@ import ..Transformations: normalize!
 output_map_type(fp) = output_map_str(fp)
 
 """
-    ConcatenatedOutputMap()
+    struct ConcatenatedOutputMap end 
 
 Forward map transformation of simulation output to the concatenated
 vectors of the simulation output.
