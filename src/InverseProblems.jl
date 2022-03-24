@@ -53,7 +53,7 @@ struct ConcatenatedOutputMap end
 output_map_str(::ConcatenatedOutputMap) = "ConcatenatedOutputMap"
 
 """
-    ConcatenatedVectorNormMap()
+    struct ConcatenatedVectorNormMap()
 
 Forward map transformation of simulation output to a scalar by
 taking a naive `norm` of the difference between concatenated vectors of the
