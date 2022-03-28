@@ -1,7 +1,7 @@
 # Calibration of Gent-McWilliams to a baroclinic adjustment problem
 pushfirst!(LOAD_PATH, joinpath(@__DIR__, ".."))
 
-using OceanLearning
+using ParameterEstimocean
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SliceEnsembleSize
@@ -37,7 +37,7 @@ close(file)
 field_names = (:b, :c, :u, :v)
 forward_map_names = (:b, :c)
 
-using OceanLearning.Transformations: Transformation
+using ParameterEstimocean.Transformations: Transformation
 
 transformation = (b = ZScore(),
                   c = ZScore(),
@@ -108,10 +108,10 @@ priors = (
 
 free_parameters = FreeParameters(priors)
 
-using OceanLearning.Observations: FieldTimeSeriesCollector
+using ParameterEstimocean.Observations: FieldTimeSeriesCollector
 
 simulation_fields = fields(simulation.model)
-collected_fields = NamedTuple(name => simulation_fields[name] for name in OceanLearning.Observations.forward_map_names(observations))
+collected_fields = NamedTuple(name => simulation_fields[name] for name in ParameterEstimocean.Observations.forward_map_names(observations))
 time_series_collector = FieldTimeSeriesCollector(collected_fields, observation_times(observations), architecture=CPU())
 
 calibration = InverseProblem(observations, simulation, free_parameters; time_series_collector)

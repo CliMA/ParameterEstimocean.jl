@@ -8,11 +8,11 @@ using Oceananigans.Units
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 using Oceananigans: fields
 
-using OceanLearning
-using OceanLearning.EnsembleKalmanInversions: iterate!
-using OceanLearning.EnsembleKalmanInversions: FullEnsembleDistribution, Resampler
-using OceanLearning.EnsembleKalmanInversions: resample!, column_has_nan
-using OceanLearning.InverseProblems: inverting_forward_map
+using ParameterEstimocean
+using ParameterEstimocean.EnsembleKalmanInversions: iterate!
+using ParameterEstimocean.EnsembleKalmanInversions: FullEnsembleDistribution, Resampler
+using ParameterEstimocean.EnsembleKalmanInversions: resample!, column_has_nan
+using ParameterEstimocean.InverseProblems: inverting_forward_map
 
 data_path = "convective_adjustment_test.jld2"
 Nensemble = 3

@@ -1,19 +1,19 @@
 # Private types and functions
 
-Documentation for `OceanLearning.jl`'s internal interface.
+Documentation for `ParameterEstimocean.jl`'s internal interface.
 
-## OceanLearning
+## ParameterEstimocean
 
 ```@autodocs
-Modules = [OceanLearning]
+Modules = [ParameterEstimocean]
 Public = false
-Pages   = ["OceanLearning.jl"]
+Pages   = ["ParameterEstimocean.jl"]
 ```
 
 ## Transformations
 
 ```@autodocs
-Modules = [OceanLearning.Transformations]
+Modules = [ParameterEstimocean.Transformations]
 Public = false
 Pages   = ["Transformations.jl"]
 ```
@@ -21,34 +21,34 @@ Pages   = ["Transformations.jl"]
 ## Observations
 
 ```@autodocs
-Modules = [OceanLearning.Observations]
+Modules = [ParameterEstimocean.Observations]
 Public = false
 ```
 
 ## Ensemble Simulations
 
 ```@autodocs
-Modules = [OceanLearning.EnsembleSimulations]
+Modules = [ParameterEstimocean.EnsembleSimulations]
 Public = false
 ```
 
 ## Parameters
 
 ```@autodocs
-Modules = [OceanLearning.Parameters]
+Modules = [ParameterEstimocean.Parameters]
 Public = false
 ```
 
 ## Inverse Problems
 
 ```@autodocs
-Modules = [OceanLearning.InverseProblems]
+Modules = [ParameterEstimocean.InverseProblems]
 Public = false
 ```
 
 ## EnsembleKalmanInversions
 
 ```@autodocs
-Modules = [OceanLearning.EnsembleKalmanInversions]
+Modules = [ParameterEstimocean.EnsembleKalmanInversions]
 Public = false
 ```

@@ -17,13 +17,13 @@
 
 # ```julia
 # using Pkg
-# pkg"add OceanLearning, Oceananigans, Distributions, CairoMakie"
+# pkg"add ParameterEstimocean, Oceananigans, Distributions, CairoMakie"
 # ```
 
-using OceanLearning, LinearAlgebra, CairoMakie
+using ParameterEstimocean, LinearAlgebra, CairoMakie
 
 # We reuse some some code from a previous example to generate observations,
-examples_path = joinpath(pathof(OceanLearning), "..", "..", "examples")
+examples_path = joinpath(pathof(ParameterEstimocean), "..", "..", "examples")
 include(joinpath(examples_path, "intro_to_inverse_problems.jl"))
 
 data_path = generate_synthetic_observations()
