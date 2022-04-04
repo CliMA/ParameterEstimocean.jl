@@ -27,9 +27,9 @@ field_names = (:b, :u, :v, :e)
 
 ## Use a special transformation that emphasizes buoyancy and de-emphasizes TKE
 transformation = (b = ZScore(),
-                 u = ZScore(), 
-                 v = ZScore(), 
-                 e = RescaledZScore(0.1)) 
+                  u = ZScore(), 
+                  v = ZScore(), 
+                  e = RescaledZScore(0.1)) 
 
 observations = SyntheticObservations(data_path; field_names, times, transformation)
 
@@ -51,10 +51,10 @@ end
 function plot_fields!(axs, b, u, v, e, label, color)
     z = znodes(Center, b.grid)
     ## Note unit conversions below, eg m s⁻² -> cm s⁻²:
-    lines!(axs[1], 1e2 * interior(b)[1, 1, :], z; color, label)
-    lines!(axs[2], 1e2 * interior(u)[1, 1, :], z; color, label)
-    lines!(axs[3], 1e2 * interior(v)[1, 1, :], z; color, label)
-    lines!(axs[4], 1e4 * interior(e)[1, 1, :], z; color, label)
+    lines!(axs[1], 1e2 * interior(b, 1, 1, :), z; color, label)
+    lines!(axs[2], 1e2 * interior(u, 1, 1, :), z; color, label)
+    lines!(axs[3], 1e2 * interior(v, 1, 1, :), z; color, label)
+    lines!(axs[4], 1e4 * interior(e, 1, 1, :), z; color, label)
     return nothing
 end
 
