@@ -1,5 +1,5 @@
 using Test
-using OceanLearning
+using ParameterEstimocean
 using Oceananigans
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity

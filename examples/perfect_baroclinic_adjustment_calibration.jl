@@ -11,12 +11,12 @@
 
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, Distributions, CairoMakie, OceanLearning"
+# pkg"add Oceananigans, Distributions, CairoMakie, ParameterEstimocean"
 # ```
 
 # First we load few things
 
-using OceanLearning
+using ParameterEstimocean
 
 using Oceananigans
 using Oceananigans.Units
@@ -185,7 +185,7 @@ free_parameters = FreeParameters(priors)
 # To visualize the prior distributions we randomly sample out values from then and plot the p.d.f.
 
 using CairoMakie
-using OceanLearning.Parameters: unconstrained_prior, transform_to_constrained
+using ParameterEstimocean.Parameters: unconstrained_prior, transform_to_constrained
 
 samples(prior) = [transform_to_constrained(prior, x) for x in rand(unconstrained_prior(prior), 10000000)]
 

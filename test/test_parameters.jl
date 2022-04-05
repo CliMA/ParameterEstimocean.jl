@@ -1,12 +1,12 @@
 using Test
-using OceanLearning
+using ParameterEstimocean
 using Oceananigans
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity, MixingLength, SurfaceTKEFlux
 using Suppressor: @suppress
 
-using OceanLearning.Parameters: closure_with_parameters, update_closure_ensemble_member!
+using ParameterEstimocean.Parameters: closure_with_parameters, update_closure_ensemble_member!
 
 const CAVD = ConvectiveAdjustmentVerticalDiffusivity
 const CATKE = CATKEVerticalDiffusivity

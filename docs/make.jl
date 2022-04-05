@@ -1,11 +1,11 @@
-pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..")) # add OceanLearning to environment stack
+pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..")) # add ParameterEstimocean to environment stack
 
 using
   Documenter,
   Literate,
   CairoMakie,  # so that Literate.jl does not capture precompilation output or warnings
   Distributions,
-  OceanLearning
+  ParameterEstimocean
 
 # Gotta set this environment variable when using the GR run-time on CI machines.
 # This happens when examples, e.g., use Plots.jl to make plots and movies.
@@ -46,7 +46,7 @@ Timer(t -> println(" "), 0, interval=240)
 format = Documenter.HTML(
   collapselevel = 2,
      prettyurls = get(ENV, "CI", nothing) == "true",
-      canonical = "https://clima.github.io/OceanLearning/dev/",
+      canonical = "https://clima.github.io/ParameterEstimocean/dev/",
 )
 
 pages = [
@@ -73,8 +73,8 @@ pages = [
 ]
 
 makedocs(
-   sitename = "OceanLearning.jl",
-    modules = [OceanLearning],
+   sitename = "ParameterEstimocean.jl",
+    modules = [ParameterEstimocean],
      format = format,
       pages = pages,
     doctest = true,
@@ -83,7 +83,7 @@ makedocs(
   checkdocs = :exports
 )
 
-deploydocs(        repo = "github.com/CliMA/OceanLearning.jl",
+deploydocs(        repo = "github.com/CliMA/ParameterEstimocean.jl",
                versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
               forcepush = true,
               devbranch = "main",
