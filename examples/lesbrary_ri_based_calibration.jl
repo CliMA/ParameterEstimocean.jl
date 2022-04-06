@@ -20,11 +20,11 @@ using Oceananigans.TurbulenceClosures: RiBasedVerticalDiffusivity
 # derived from high-fidelity large eddy simulations. In this example, we illustrate
 # calibration of a turbulence parameterization to one of these simulations:
 
-data_path = datadep"two_day_suite_4m/strong_wind_instantaneous_statistics.jld2"
-times = [2hours, 6hours, 12hours]
+data_path = datadep"two_day_suite_1m/strong_wind_instantaneous_statistics.jld2"
+times = [2hours, 12hours, 24hours]
 field_names = (:b, :u, :v)
 transformation = ZScore()
-regrid = RectilinearGrid(size=32, z=(-256, 0), topology=(Flat, Flat, Bounded))
+regrid = (1, 1, 32)
 
 observations = SyntheticObservations(data_path; field_names, times, transformation, regrid)
 
@@ -78,7 +78,7 @@ save("lesbrary_synthetic_observations.svg", fig); nothing # hide
 ri_based_closure = RiBasedVerticalDiffusivity()
 
 simulation = ensemble_column_model_simulation(observations;
-                                              Nensemble = 400,
+                                              Nensemble = 60,
                                               architecture = CPU(),
                                               tracers = (:b, :e),
                                               closure = ri_based_closure)
@@ -117,8 +117,8 @@ calibration = InverseProblem(observations, simulation, free_parameters)
 # Next, we calibrate, using a relatively large noise to reflect our
 # uncertainty about how close the observations and model can really get,
 
-eki = EnsembleKalmanInversion(calibration; convergence_rate=0.9)
-iterate!(eki; iterations = 20)
+eki = EnsembleKalmanInversion(calibration; convergence_rate=0.8)
+iterate!(eki; iterations = 10)
 
 @show eki.iteration_summaries[end]
 
