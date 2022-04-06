@@ -10,10 +10,9 @@
 using Oceananigans
 using Oceananigans.Units
 using ParameterEstimocean
-using LinearAlgebra, CairoMakie, DataDeps
+using LinearAlgebra, CairoMakie, DataDeps, Distributions
 
-using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities:
-    CATKEVerticalDiffusivity, MixingLength
+using Oceananigans.TurbulenceClosures: RiBasedVerticalDiffusivity
 
 # # Using LESbrary data
 #
@@ -23,15 +22,11 @@ using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities:
 
 data_path = datadep"two_day_suite_4m/strong_wind_instantaneous_statistics.jld2"
 times = [2hours, 6hours, 12hours]
-field_names = (:b, :u, :v, :e)
+field_names = (:b, :u, :v)
+transformation = ZScore()
+regrid = RectilinearGrid(size=32, z=(-256, 0), topology=(Flat, Flat, Bounded))
 
-## Use a special transformation that emphasizes buoyancy and de-emphasizes TKE
-transformation = (b = ZScore(),
-                  u = ZScore(), 
-                  v = ZScore(), 
-                  e = RescaledZScore(0.1)) 
-
-observations = SyntheticObservations(data_path; field_names, times, transformation)
+observations = SyntheticObservations(data_path; field_names, times, transformation, regrid)
 
 # Let's take a look at the observations. We define a few
 # plotting utilities along the way to use later in the example:
@@ -44,17 +39,15 @@ function make_figure_axes()
     ax_b = Axis(fig[1, 1], xlabel = "Buoyancy \n[cm s⁻²]", ylabel = "z [m]")
     ax_u = Axis(fig[1, 2], xlabel = "x-velocity, u \n[cm s⁻¹]")
     ax_v = Axis(fig[1, 3], xlabel = "y-velocity, v \n[cm s⁻¹]")
-    ax_e = Axis(fig[1, 4], xlabel = "Turbulent kinetic energy \n[cm² s⁻²]")
-    return fig, (ax_b, ax_u, ax_v, ax_e)
+    return fig, (ax_b, ax_u, ax_v)
 end
 
-function plot_fields!(axs, b, u, v, e, label, color)
+function plot_fields!(axs, b, u, v, label, color)
     z = znodes(Center, b.grid)
     ## Note unit conversions below, eg m s⁻² -> cm s⁻²:
     lines!(axs[1], 1e2 * interior(b, 1, 1, :), z; color, label)
     lines!(axs[2], 1e2 * interior(u, 1, 1, :), z; color, label)
     lines!(axs[3], 1e2 * interior(v, 1, 1, :), z; color, label)
-    lines!(axs[4], 1e4 * interior(e, 1, 1, :), z; color, label)
     return nothing
 end
 
@@ -82,14 +75,13 @@ save("lesbrary_synthetic_observations.svg", fig); nothing # hide
 # adjustment and with constant (rather than Richardson-number-dependent)
 # diffusivity parameters.
 
-catke_mixing_length = MixingLength(Cᴷcʳ=0.0, Cᴷuʳ=0.0, Cᴷeʳ=0.0)
-catke = CATKEVerticalDiffusivity(mixing_length=catke_mixing_length)
+ri_based_closure = RiBasedVerticalDiffusivity()
 
 simulation = ensemble_column_model_simulation(observations;
-                                              Nensemble = 30,
+                                              Nensemble = 400,
                                               architecture = CPU(),
                                               tracers = (:b, :e),
-                                              closure = catke)
+                                              closure = ri_based_closure)
 
 # The simulation is initialized with neutral boundary conditions
 # and a default time-step, which we modify for our particular problem:
@@ -98,7 +90,7 @@ Qᵘ = simulation.model.velocities.u.boundary_conditions.top.condition
 Qᵇ = simulation.model.tracers.b.boundary_conditions.top.condition
 N² = simulation.model.tracers.b.boundary_conditions.bottom.condition
 
-simulation.Δt = 10.0
+simulation.Δt = 20minutes
 
 Qᵘ .= observations.metadata.parameters.momentum_flux
 Qᵇ .= observations.metadata.parameters.buoyancy_flux
@@ -107,12 +99,12 @@ N² .= observations.metadata.parameters.N²_deep
 # We identify a subset of the CATKE parameters to calibrate by specifying
 # parameter names and prior distributions:
 
-priors = (Cᴰ   = lognormal(mean=0.02, std=0.005),
-          Cᵂu★ = lognormal(mean=1.5,  std=0.25),
-          Cᴸᵇ  = lognormal(mean=0.01, std=0.005),
-          Cᴷu⁻ = ScaledLogitNormal(bounds=(0, 4)),
-          Cᴷc⁻ = ScaledLogitNormal(bounds=(0, 1)),
-          Cᴷe⁻ = ScaledLogitNormal(bounds=(0, 3)))
+priors = (ν₀   = lognormal(mean=0.01, std=0.005),
+          κ₀   = lognormal(mean=0.1,  std=0.05),
+          Ri₀ν = Normal(-0.5, 1.0),
+          Ri₀κ = Normal(-0.5, 1.0),
+          Riᵟν = lognormal(mean=1.0,  std=0.5),
+          Riᵟκ = lognormal(mean=1.0,  std=0.5))
 
 free_parameters = FreeParameters(priors)
 
@@ -122,10 +114,13 @@ free_parameters = FreeParameters(priors)
 
 calibration = InverseProblem(observations, simulation, free_parameters)
 
-# Next, we calibrate, adaptively stepping forward with a fixed ensemble convergence rate:
+# Next, we calibrate, using a relatively large noise to reflect our
+# uncertainty about how close the observations and model can really get,
 
 eki = EnsembleKalmanInversion(calibration; convergence_rate=0.9)
-iterate!(eki; iterations = 10)
+iterate!(eki; iterations = 20)
+
+@show eki.iteration_summaries[end]
 
 # # Results
 #
