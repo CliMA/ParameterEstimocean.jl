@@ -20,13 +20,21 @@ using Oceananigans.TurbulenceClosures: RiBasedVerticalDiffusivity
 # derived from high-fidelity large eddy simulations. In this example, we illustrate
 # calibration of a turbulence parameterization to one of these simulations:
 
-data_path = datadep"two_day_suite_1m/strong_wind_instantaneous_statistics.jld2"
+cases = ["free_convection",
+         "strong_wind_weak_cooling",
+         "weak_wind_strong_cooling",
+         "strong_wind",
+         "strong_wind_no_rotation"]
+
+datapaths = [@datadep_str("two_day_suite_1m/$(case)_instantaneous_statistics.jld2") for case in cases]
+
 times = [2hours, 12hours, 24hours]
 field_names = (:b, :u, :v)
 transformation = ZScore()
 regrid = (1, 1, 32)
 
-observations = SyntheticObservations(data_path; field_names, times, transformation, regrid)
+observations = [SyntheticObservations(path; field_names, times, transformation, regrid)
+                for path in datapaths]
 
 # Let's take a look at the observations. We define a few
 # plotting utilities along the way to use later in the example:
@@ -34,20 +42,25 @@ observations = SyntheticObservations(data_path; field_names, times, transformati
 colorcycle = [:black, :red, :darkblue, :orange, :pink1, :seagreen, :magenta2]
 markercycle = [:rect, :utriangle, :star5, :circle, :cross, :+, :pentagon]
 
-function make_figure_axes()
-    fig = Figure(resolution=(1200, 400))
-    ax_b = Axis(fig[1, 1], xlabel = "Buoyancy \n[cm s⁻²]", ylabel = "z [m]")
-    ax_u = Axis(fig[1, 2], xlabel = "x-velocity, u \n[cm s⁻¹]")
-    ax_v = Axis(fig[1, 3], xlabel = "y-velocity, v \n[cm s⁻¹]")
-    return fig, (ax_b, ax_u, ax_v)
+function make_figure_axes(n=1)
+    fig = Figure(resolution=(1200, n*400))
+    axs = []
+    for i = 1:n
+        ax_b = Axis(fig[i, 1], xlabel = "Buoyancy \n[cm s⁻²]", ylabel = "z [m]")
+        ax_u = Axis(fig[i, 2], xlabel = "x-velocity, u \n[cm s⁻¹]")
+        ax_v = Axis(fig[i, 3], xlabel = "y-velocity, v \n[cm s⁻¹]")
+        push!(axs, (ax_b, ax_u, ax_v))
+    end
+    n == 1 && (axs = first(axs))
+    return fig, axs
 end
 
-function plot_fields!(axs, b, u, v, label, color)
-    z = znodes(Center, b.grid)
+function plot_fields!(axs, b, u, v, label, color, grid=first(observations).grid)
+    z = znodes(Center, grid)
     ## Note unit conversions below, eg m s⁻² -> cm s⁻²:
-    lines!(axs[1], 1e2 * interior(b, 1, 1, :), z; color, label)
-    lines!(axs[2], 1e2 * interior(u, 1, 1, :), z; color, label)
-    lines!(axs[3], 1e2 * interior(v, 1, 1, :), z; color, label)
+    lines!(axs[1], 1e2 * b, z; color, label)
+    lines!(axs[2], 1e2 * u, z; color, label)
+    lines!(axs[3], 1e2 * v, z; color, label)
     return nothing
 end
 
@@ -55,25 +68,20 @@ end
 
 fig, axs = make_figure_axes()
 
-for (i, t) in enumerate(times)
-    fields = map(name -> observations.field_time_serieses[name][i], field_names)
+for (i, obs) in enumerate(observations)
+    Nt = length(obs.times)
+    t = obs.times[end]
+    fields = map(name -> interior(obs.field_time_serieses[name][Nt], 1, 1, :), field_names)
     plot_fields!(axs, fields..., "t = " * prettytime(t), colorcycle[i])
 end
 
 [axislegend(ax, position=:rb, merge=true, fontsize=10) for ax in axs]
 
-save("lesbrary_synthetic_observations.svg", fig); nothing # hide
+save("multi_case_lesbrary_synthetic_observations.svg", fig); nothing # hide
 
-# ![](lesbrary_synthetic_observations.svg)
+# ![](multi_case_lesbrary_synthetic_observations.svg)
 
-# Behold, boundary layer turbulence!
-# 
 # # Calibration
-#
-# Next, we build a simulation of an ensemble of column models to calibrate
-# CATKE using Ensemble Kalman Inversion. We configure CATKE without convective
-# adjustment and with constant (rather than Richardson-number-dependent)
-# diffusivity parameters.
 
 ri_based_closure = RiBasedVerticalDiffusivity()
 
@@ -92,9 +100,11 @@ N² = simulation.model.tracers.b.boundary_conditions.bottom.condition
 
 simulation.Δt = 20minutes
 
-Qᵘ .= observations.metadata.parameters.momentum_flux
-Qᵇ .= observations.metadata.parameters.buoyancy_flux
-N² .= observations.metadata.parameters.N²_deep
+for (i, obs) in enumerate(observations)
+    view(Qᵘ, :, i) .= obs.metadata.parameters.momentum_flux
+    view(Qᵇ, :, i) .= obs.metadata.parameters.buoyancy_flux
+    view(N², :, i) .= obs.metadata.parameters.N²_deep
+end
 
 # We identify a subset of the CATKE parameters to calibrate by specifying
 # parameter names and prior distributions:
@@ -119,7 +129,6 @@ calibration = InverseProblem(observations, simulation, free_parameters)
 
 eki = EnsembleKalmanInversion(calibration; convergence_rate=0.8)
 iterate!(eki; iterations = 10)
-
 @show eki.iteration_summaries[end]
 
 # # Results
@@ -127,17 +136,23 @@ iterate!(eki; iterations = 10)
 # To analyze the reuslts, we build a new simulation with just one ensemble member
 # to evaluate pasome utilities for analyzing the results:
 
-Nt = length(observations.times)
+Nt = length(first(observations).times)
 Niter = length(eki.iteration_summaries) - 1
 modeled_time_serieses = calibration.time_series_collector.field_time_serieses 
-observed = map(name -> observations.field_time_serieses[name][Nt], field_names)
-modeled = map(name -> modeled_time_serieses[name][Nt], field_names)
+
+observed, modeled = [], []
+for (c, obs) in enumerate(observations)
+    push!(observed, map(name -> interior(obs.field_time_serieses[name][Nt], 1, 1, :), field_names))
+    push!(modeled,  map(name -> interior(  modeled_time_serieses[name][Nt], 1, c, :), field_names))
+end
 
 function compare_model_observations(model_label="modeled")
-    fig, axs = make_figure_axes()
-    plot_fields!(axs, observed..., "observed at t = " * prettytime(times[end]), :black)
-    plot_fields!(axs, modeled..., model_label, :blue)
-    [axislegend(ax, position=:rb, merge=true, fontsize=10) for ax in axs]
+    fig, axs = make_figure_axes(length(observations))
+    for (c, obs) in enumerate(observations)
+        plot_fields!(axs[c], observed[c]..., "observed at t = " * prettytime(times[end]), :black)
+        plot_fields!(axs[c], modeled[c]..., model_label, :blue)
+        [axislegend(ax, position=:rb, merge=true, fontsize=10) for ax in axs[c]]
+    end
     return fig
 end
 
@@ -147,9 +162,8 @@ initial_parameters = eki.iteration_summaries[0].ensemble_mean
 forward_run!(calibration, initial_parameters)
 fig = compare_model_observations("modeled after 0 iterations")
 
-save("model_observation_comparison_iteration_0.svg", fig); nothing # hide
-
-# ![](model_observation_comparison_iteration_0.svg)
+save("multi_case_model_observation_comparison_iteration_0.svg", fig); nothing # hide
+# ![](multi_case_model_observation_comparison_iteration_0.svg)
 
 # and the final ensemble mean, representing our "best" parameter set,
 
@@ -157,9 +171,8 @@ best_parameters = eki.iteration_summaries[end].ensemble_mean
 forward_run!(calibration, best_parameters)
 fig = compare_model_observations("modeled after $Niter iterations")
 
-save("model_observation_comparison_final_iteration.svg", fig); nothing # hide
-
-# ![](model_observation_comparison_final_iteration.svg)
+save("multi_case_model_observation_comparison_final_iteration.svg", fig); nothing # hide
+# ![](multi_case_model_observation_comparison_final_iteration.svg)
 
 # ## Parameter evolution
 #
