@@ -51,6 +51,7 @@ function SyntheticObservations(path=nothing;
                                transformation = Transformation(),
                                times = nothing,
                                field_time_serieses = nothing,
+                               architecture = CPU(),
                                regrid = nothing)
 
     field_names = tupleit(field_names)
@@ -60,7 +61,7 @@ function SyntheticObservations(path=nothing;
         throw(ArgumentError("All of the forward map names $forward_map_names must be in field names $field_names"))
 
     if isnothing(field_time_serieses)
-        raw_time_serieses = NamedTuple(name => FieldTimeSeries(path, string(name); times) for name in field_names)
+        raw_time_serieses = NamedTuple(name => FieldTimeSeries(path, string(name); times, architecture) for name in field_names)
     else
         raw_time_serieses = field_time_serieses
     end
