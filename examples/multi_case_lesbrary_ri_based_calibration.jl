@@ -106,7 +106,7 @@ for (i, obs) in enumerate(observations)
     view(N², :, i) .= obs.metadata.parameters.N²_deep
 end
 
-# We identify a subset of the CATKE parameters to calibrate by specifying
+# We identify a subset of the closure parameters to calibrate by specifying
 # parameter names and prior distributions:
 
 priors = (ν₀   = lognormal(mean=0.01, std=0.005),
