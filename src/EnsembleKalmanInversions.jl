@@ -37,7 +37,6 @@ mutable struct EnsembleKalmanInversion{E, I, M, O, S, R, X, G, C}
     resampler :: R
     unconstrained_parameters :: X
     forward_map_output :: G
-    convergence_rate :: C
 end
 
 Base.show(io::IO, eki::EnsembleKalmanInversion) =
@@ -46,7 +45,6 @@ Base.show(io::IO, eki::EnsembleKalmanInversion) =
               "├── ensemble_kalman_process: ", summary(eki.ensemble_kalman_process), '\n',
               "├── mapped_observations: ", summary(eki.mapped_observations), '\n',
               "├── noise_covariance: ", summary(eki.noise_covariance), '\n',
-              "├── convergence_rate: $(eki.convergence_rate)", '\n',
               "├── iteration: $(eki.iteration)", '\n',
               "├── resampler: $(summary(eki.resampler))",
               "├── unconstrained_parameters: $(summary(eki.unconstrained_parameters))", '\n',
@@ -63,7 +61,6 @@ end
 """
     EnsembleKalmanInversion(inverse_problem;
                             noise_covariance = 1,
-                            convergence_rate = 0.7,
                             resampler = Resampler(),
                             unconstrained_parameters = nothing,
                             forward_map_output = nothing,
@@ -95,28 +92,16 @@ Arguments
 - `noise_covariance` (`Number` or `AbstractMatrix`): Covariance matrix representing observational uncertainty.
                                                      `noise_covariance::Number` is converted to a scaled identity matrix.
 
-- `convergence_rate` (`Number`): The convergence rate for the EKI adaptive time stepping. Default value 0.7.
-                                 If provided with `nothing` the EKI iterations are done with a fixed "time step".
-                                 If a numerical value is given is 0.7 which implies that the parameter spread 
-                                 covariance is decreased to 70% of the parameter spread covariance at the previous
-                                 EKI iteration.
-
 - `resampler`: controls particle resampling procedure. See `Resampler`.
 
 - `process`: The Ensemble Kalman process. Default: `Inversion().
 """
 function EnsembleKalmanInversion(inverse_problem;
                                  noise_covariance = 1,
-                                 convergence_rate = 0.7,
                                  resampler = Resampler(),
                                  unconstrained_parameters = nothing,
                                  forward_map_output = nothing,
                                  process = Inversion())
-
-    if process isa Sampler && !isnothing(convergence_rate)
-        @warn "Process is $process; ignoring keyword argument convergence_rate=$convergence_rate."
-        convergence_rate = nothing
-    end
 
     if isnothing(unconstrained_parameters)
         isnothing(forward_map_output) ||
@@ -148,8 +133,7 @@ function EnsembleKalmanInversion(inverse_problem;
                                    nothing,
                                    resampler,
                                    Xᵢ,
-                                   forward_map_output,
-                                   convergence_rate)
+                                   forward_map_output)
 
     if isnothing(forward_map_output) # execute forward map to generate initial summary and forward_map_output
         @info "Executing forward map while building EnsembleKalmanInversion..."
@@ -170,8 +154,7 @@ function EnsembleKalmanInversion(inverse_problem;
                                   iteration_summaries,
                                   eki′.resampler,
                                   eki′.unconstrained_parameters,
-                                  forward_map_output,
-                                  eki′.convergence_rate)
+                                  forward_map_output)
 
     return eki
 end
@@ -192,7 +175,6 @@ end
 """
     iterate!(eki::EnsembleKalmanInversion;
              iterations = 1,
-             convergence_rate = eki.convergence_rate,
              show_progress = true)
 
 Iterate the ensemble Kalman inversion problem `eki` forward by `iterations`.
@@ -204,19 +186,18 @@ Return
 """
 function iterate!(eki::EnsembleKalmanInversion;
                   iterations = 1,
-                  convergence_rate = eki.convergence_rate,
                   show_progress = true,
-                  adaptive_step_parameters = adaptive_step_parameters)
+                  adaptive_step_parameters = nothing)
 
     iterator = show_progress ? ProgressBar(1:iterations) : 1:iterations
 
     for _ in iterator
-        eki.unconstrained_parameters = step_parameters(eki, convergence_rate, adaptive_step_parameters)
+        eki.unconstrained_parameters, step_size = step_parameters(eki, adaptive_step_parameters)
         eki.iteration += 1
 
         # Forward map
         eki.forward_map_output = resampling_forward_map!(eki)
-        summary = IterationSummary(eki, eki.unconstrained_parameters, eki.forward_map_output)
+        summary = IterationSummary(eki, eki.unconstrained_parameters, eki.forward_map_output, step_size)
         push!(eki.iteration_summaries, summary)
     end
 
@@ -230,16 +211,7 @@ end
 ##### Stepping and adaptive stepping
 #####
 
-function step_parameters(X, G, y, Γy, process; step_size=1.0)
-    ekp = EnsembleKalmanProcess(X, y, Γy, process; Δt=step_size)
-    update_ensemble!(ekp, G)
-    return get_u_final(ekp)
-end
-
-# it's not adaptive
-adaptive_step_parameters(::Nothing, Xⁿ, Gⁿ, y, Γy, process) = step_parameters(X, G, y, Γy, process)
-
-function step_parameters(eki::EnsembleKalmanInversion, convergence_rate, adaptive_step_parameters)
+function step_parameters(eki::EnsembleKalmanInversion, adaptive_step_parameters)
     process = eki.ensemble_kalman_process
     y = eki.mapped_observations
     Γy = eki.noise_covariance
@@ -261,7 +233,7 @@ function step_parameters(eki::EnsembleKalmanInversion, convergence_rate, adaptiv
     successful_Xⁿ = Xⁿ[:, successful_columns]
     
     # Construct new parameters
-    successful_Xⁿ⁺¹ = adaptive_step_parameters(convergence_rate, successful_Xⁿ, successful_Gⁿ, y, Γy, process)
+    successful_Xⁿ⁺¹, step_size = adaptive_step_parameters(successful_Xⁿ, successful_Gⁿ, y, Γy, last_step_size)
     Xⁿ⁺¹[:, successful_columns] .= successful_Xⁿ⁺¹
 
     if some_failures # resample failed particles with new ensemble distribution
@@ -270,38 +242,7 @@ function step_parameters(eki::EnsembleKalmanInversion, convergence_rate, adaptiv
         Xⁿ⁺¹[:, failed_columns] .= sampled_Xⁿ⁺¹
     end
 
-    return Xⁿ⁺¹
-end
-
-#####
-##### Adaptive parameter stepping
-#####
-
-function volume_ratio(Xⁿ⁺¹, Xⁿ)
-    Vⁿ⁺¹ = det(cov(Xⁿ⁺¹, dims=2))
-    Vⁿ   = det(cov(Xⁿ,   dims=2))
-    return Vⁿ⁺¹ / Vⁿ
-end
-
-function adaptive_step_parameters(convergence_rate, Xⁿ, Gⁿ, y, Γy, process)
-    # Test step forward
-    step_size = 1
-    Xⁿ⁺¹ = step_parameters(Xⁿ, Gⁿ, y, Γy, process; step_size)
-    r = volume_ratio(Xⁿ⁺¹, Xⁿ)
-
-    # "Accelerated" fixed point iteration to adjust step_size
-    p = 1.1
-    iter = 1
-    while !isapprox(r, convergence_rate, atol=0.03, rtol=0.1) && iter < 10
-        step_size *= (r / convergence_rate)^p
-        Xⁿ⁺¹ = step_parameters(Xⁿ, Gⁿ, y, Γy, process; step_size)
-        r = volume_ratio(Xⁿ⁺¹, Xⁿ)
-        iter += 1
-    end
-
-    @info "Particles stepped adaptively with convergence rate $r (target $convergence_rate)"
-
-    return Xⁿ⁺¹
+    return Xⁿ⁺¹, step_size
 end
 
 end # module

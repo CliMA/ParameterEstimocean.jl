@@ -1,6 +1,6 @@
 using ..Parameters: transform_to_unconstrained
 
-struct IterationSummary{P, M, C, V, E, O}
+struct IterationSummary{P, M, C, V, E, O, T}
     parameters :: P     # constrained
     ensemble_mean :: M  # constrained
     ensemble_cov :: C   # constrained
@@ -8,6 +8,7 @@ struct IterationSummary{P, M, C, V, E, O}
     mean_square_errors :: E
     objective_values :: O
     iteration :: Int
+    Δt :: T
 end
 
 """
@@ -53,7 +54,7 @@ end
 Return the summary for ensemble Kalman inversion `eki`
 with unconstrained parameters `X` and `forward_map_output`.
 """
-function IterationSummary(eki, X, forward_map_output=nothing)
+function IterationSummary(eki, X, forward_map_output=nothing, step_size=nothing)
     priors = eki.inverse_problem.free_parameters.priors
 
     ensemble_mean = mean(X, dims=2)[:] 
@@ -83,7 +84,8 @@ function IterationSummary(eki, X, forward_map_output=nothing)
                             constrained_ensemble_variance,
                             mean_square_errors,
                             objective_values,
-                            eki.iteration)
+                            eki.iteration,
+                            step_size)
 end
 
 function finitefind(a, val, find)
