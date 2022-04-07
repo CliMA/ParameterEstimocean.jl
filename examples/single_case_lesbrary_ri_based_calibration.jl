@@ -71,7 +71,7 @@ save("lesbrary_synthetic_observations.svg", fig); nothing # hide
 # # Calibration
 #
 # Next, we build a simulation of an ensemble of column models to calibrate
-# CATKE using Ensemble Kalman Inversion. We configure CATKE without convective
+# the closure using Ensemble Kalman Inversion. We configure the closure without convective
 # adjustment and with constant (rather than Richardson-number-dependent)
 # diffusivity parameters.
 
