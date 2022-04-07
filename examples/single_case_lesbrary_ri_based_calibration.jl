@@ -96,7 +96,7 @@ Qᵘ .= observations.metadata.parameters.momentum_flux
 Qᵇ .= observations.metadata.parameters.buoyancy_flux
 N² .= observations.metadata.parameters.N²_deep
 
-# We identify a subset of the CATKE parameters to calibrate by specifying
+# We identify a subset of the closure parameters to calibrate by specifying
 # parameter names and prior distributions:
 
 priors = (ν₀   = lognormal(mean=0.01, std=0.005),
