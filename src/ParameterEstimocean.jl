@@ -16,6 +16,7 @@ export
     observation_map_variance_across_time,
     ensemble_column_model_simulation,
     ConcatenatedOutputMap,
+    ConcatenatedVectorNormMap,
     eki,
     lognormal,
     ScaledLogitNormal,
@@ -23,8 +24,7 @@ export
     EnsembleKalmanInversion,
     Resampler,
     FullEnsembleDistribution,
-    SuccessfulEnsembleDistribution,
-    ConstrainedNormal
+    SuccessfulEnsembleDistribution
 
 include("Utils.jl")
 include("Transformations.jl")

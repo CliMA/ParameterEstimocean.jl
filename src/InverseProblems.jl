@@ -34,6 +34,35 @@ using Oceananigans.Grids: Flat, Bounded,
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SingleColumnGrid, YZSliceGrid, ColumnEnsembleSize
 
+import ..Transformations: normalize!
+
+#####
+##### Output maps (maps from simulation output to observation space)
+#####
+
+output_map_type(fp) = output_map_str(fp)
+
+"""
+    struct ConcatenatedOutputMap end 
+
+Forward map transformation of simulation output to the concatenated
+vectors of the simulation output.
+"""
+struct ConcatenatedOutputMap end
+    
+output_map_str(::ConcatenatedOutputMap) = "ConcatenatedOutputMap"
+
+"""
+    struct ConcatenatedVectorNormMap()
+
+Forward map transformation of simulation output to a scalar by
+taking a naive `norm` of the difference between concatenated vectors of the
+observations and simulation output.
+"""
+struct ConcatenatedVectorNormMap end 
+
+output_map_str(::ConcatenatedVectorNormMap) = "ConcatenatedVectorNormMap"
+
 #####
 ##### InverseProblems
 #####
@@ -144,9 +173,12 @@ Nensemble(ip::InverseProblem) = Nensemble(ip.simulation.model.grid)
 """
     observation_map(ip::InverseProblem)
 
-Transform and return `ip.observations` appropriately for `ip.output_map`.
+Transform and return `ip.observations` appropriate for `ip.output_map`. 
 """
-observation_map(ip::InverseProblem) = transform_time_series(ip.output_map, ip.observations)
+observation_map(ip::InverseProblem) = observation_map(ip.output_map, ip.observations)
+
+observation_map(map::ConcatenatedOutputMap, observations) = transform_time_series(map, observations)
+observation_map(map::ConcatenatedVectorNormMap, observations) = hcat(0.0)
 
 """
     forward_run!(ip, parameters)
@@ -218,11 +250,6 @@ end
 ##### ConcatenatedOutputMap
 #####
 
-# Need docstrings
-struct ConcatenatedOutputMap end
-
-observation_map(map::ConcatenatedOutputMap, observations) = transform_time_series(map, observations)
-
 """
     transform_time_series(::ConcatenatedOutputMap, observation::SyntheticObservations)
 
@@ -267,6 +294,18 @@ function transform_forward_map_output(map::ConcatenatedOutputMap,
     transposed_forward_map_output = transpose_model_output(time_series_collector, observations)
 
     return transform_time_series(map, transposed_forward_map_output)
+end
+
+function transform_output(output_map::ConcatenatedVectorNormMap,
+                          observations::Union{SyntheticObservations, Vector{<:SyntheticObservations}},
+                          time_series_collector)
+
+    concat_map = ConcatenatedOutputMap()
+    fwd_map = transform_output(concat_map, observations, time_series_collector)
+    obs_map = transform_time_series(concat_map, observations)
+
+    diffn = fwd_map .- obs_map
+    return sqrt.(mapslices(norm, diffn; dims = 1))
 end
 
 vectorize(observation) = [observation]

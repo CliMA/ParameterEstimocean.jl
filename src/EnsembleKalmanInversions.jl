@@ -205,12 +205,13 @@ Return
 function iterate!(eki::EnsembleKalmanInversion;
                   iterations = 1,
                   convergence_rate = eki.convergence_rate,
-                  show_progress = true)
+                  show_progress = true,
+                  adaptive_step_parameters = adaptive_step_parameters)
 
     iterator = show_progress ? ProgressBar(1:iterations) : 1:iterations
 
     for _ in iterator
-        eki.unconstrained_parameters = step_parameters(eki, convergence_rate)
+        eki.unconstrained_parameters = step_parameters(eki, convergence_rate, adaptive_step_parameters)
         eki.iteration += 1
 
         # Forward map
@@ -238,7 +239,7 @@ end
 # it's not adaptive
 adaptive_step_parameters(::Nothing, Xⁿ, Gⁿ, y, Γy, process) = step_parameters(X, G, y, Γy, process)
 
-function step_parameters(eki::EnsembleKalmanInversion, convergence_rate)
+function step_parameters(eki::EnsembleKalmanInversion, convergence_rate, adaptive_step_parameters)
     process = eki.ensemble_kalman_process
     y = eki.mapped_observations
     Γy = eki.noise_covariance
