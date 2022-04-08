@@ -356,10 +356,11 @@ function transpose_model_output(collector_grid::SingleColumnGrid, time_series_co
 
             field_time_series = time_series_collector.field_time_serieses[name]
 
+            indices = field_time_series.indices
             raw_data = parent(field_time_series.data)
             data = OffsetArray(view(raw_data, :, j:j, :, :), 0, 0, -Hz, 0)
 
-            time_series = FieldTimeSeries{LX, LY, LZ, InMemory}(data, grid, nothing, times)
+            time_series = FieldTimeSeries{LX, LY, LZ, InMemory}(data, grid, nothing, times, indices)
             time_serieses[name] = time_series
         end
 
