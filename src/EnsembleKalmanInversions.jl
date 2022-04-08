@@ -34,6 +34,7 @@ mutable struct EnsembleKalmanInversion{E, I, M, O, S, R, X, G, C}
     noise_covariance :: O
     iteration :: Int
     pseudotime :: Float64
+    pseudo_Δt :: Float64
     iteration_summaries :: S
     resampler :: R
     unconstrained_parameters :: X
@@ -141,6 +142,7 @@ function EnsembleKalmanInversion(inverse_problem;
     Xᵢ = unconstrained_parameters
     iteration = 0
     psuedotime = 0.0
+    psuedo_Δt = 0.0
 
     eki′ = EnsembleKalmanInversion(inverse_problem,
                                    process,
@@ -148,6 +150,7 @@ function EnsembleKalmanInversion(inverse_problem;
                                    Γy,
                                    iteration,
                                    pseudotime,
+                                   pseudo_Δt,
                                    nothing,
                                    resampler,
                                    Xᵢ,
@@ -171,6 +174,7 @@ function EnsembleKalmanInversion(inverse_problem;
                                   eki′.noise_covariance,
                                   iteration,
                                   pseudotime,
+                                  pseudo_Δt,
                                   iteration_summaries,
                                   eki′.resampler,
                                   eki′.unconstrained_parameters,
@@ -220,7 +224,7 @@ Return
 """
 function iterate!(eki::EnsembleKalmanInversion;
                   iterations = 1,
-                  pseudo_Δt = 1.0,
+                  pseudo_Δt = eki.pseudo_Δt,
                   convergence_rate = eki.convergence_rate,
                   show_progress = true,
                   adaptive_step_parameters = adaptive_step_parameters)
@@ -236,7 +240,8 @@ function iterate!(eki::EnsembleKalmanInversion;
                                                                     Δt=pseudo_Δt)
         # Update the pseudoclock
         eki.iteration += 1
-        eki.psueotime += adaptive_Δt
+        eki.pseudotime += adaptive_Δt
+        eki.pseudo_Δt = adaptive_Δt
 
         # Forward map
         eki.forward_map_output = resampling_forward_map!(eki)

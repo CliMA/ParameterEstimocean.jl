@@ -11,6 +11,7 @@ struct IterationSummary{P, M, C, V, E, O}
     objective_values :: O
     iteration :: Int
     pseudotime :: Float64
+    pseudo_Δt :: Float64
 end
 
 """
@@ -87,7 +88,8 @@ function IterationSummary(eki, X, forward_map_output=nothing)
                             mean_square_errors,
                             objective_values,
                             eki.iteration,
-                            eki.pseudotime)
+                            eki.pseudotime,
+                            eki.pseudo_Δt)
 end
 
 function finitefind(a, val, find)
@@ -121,8 +123,10 @@ function Base.show(io::IO, is::IterationSummary)
     return nothing
 end
 
-Base.summary(is::IterationSummary) = string("IterationSummary(iteration=", is.iteration,
-                                            ", pseudotime=", prettysummary(is.pseudotime), ") ",
+Base.summary(is::IterationSummary) = string("IterationSummary(",
+                                            "iteration=", is.iteration,
+                                            ", pseudotime=", prettysummary(is.pseudotime),
+                                            ", pseudo_Δt=", prettysummary(is.pseudo_Δt), ") ",
                                             "for ", length(is.parameters),
                                             " particles and ", length(keys(is.ensemble_mean)),
                                             " parameters"),
