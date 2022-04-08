@@ -264,6 +264,8 @@ end
 
 function step_parameters(eki::EnsembleKalmanInversion, pseudo_stepping; Δt=1.0)
     process = eki.ensemble_kalman_process
+    y = eki.mapped_observations
+    Γy = eki.noise_covariance
     Gⁿ = eki.forward_map_output
     Xⁿ = eki.unconstrained_parameters
     Xⁿ⁺¹ = similar(Xⁿ)
