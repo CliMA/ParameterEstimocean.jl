@@ -285,9 +285,7 @@ function step_parameters(eki::EnsembleKalmanInversion, pseudo_stepping; Δt=1.0)
     successful_Xⁿ⁺¹, Δt = adaptive_step_parameters(pseudo_stepping,
                                                    successful_Xⁿ,
                                                    successful_Gⁿ,
-                                                   y,
-                                                   Γy,
-                                                   process;
+                                                   eki;
                                                    Δt)
 
     Xⁿ⁺¹[:, successful_columns] .= successful_Xⁿ⁺¹
