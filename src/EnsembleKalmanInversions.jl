@@ -33,10 +33,13 @@ mutable struct EnsembleKalmanInversion{E, I, M, O, S, R, X, G, C}
     mapped_observations :: M
     noise_covariance :: O
     iteration :: Int
+    pseudotime :: Float64
+    pseudo_Δt :: Float64
     iteration_summaries :: S
     resampler :: R
     unconstrained_parameters :: X
     forward_map_output :: G
+    psuedo_stepping :: C
 end
 
 Base.show(io::IO, eki::EnsembleKalmanInversion) =
@@ -45,6 +48,7 @@ Base.show(io::IO, eki::EnsembleKalmanInversion) =
               "├── ensemble_kalman_process: ", summary(eki.ensemble_kalman_process), '\n',
               "├── mapped_observations: ", summary(eki.mapped_observations), '\n',
               "├── noise_covariance: ", summary(eki.noise_covariance), '\n',
+              "├── pseudo_stepping: $(eki.pseudo_stepping)", '\n',
               "├── iteration: $(eki.iteration)", '\n',
               "├── resampler: $(summary(eki.resampler))",
               "├── unconstrained_parameters: $(summary(eki.unconstrained_parameters))", '\n',
@@ -61,6 +65,7 @@ end
 """
     EnsembleKalmanInversion(inverse_problem;
                             noise_covariance = 1,
+                            pseudo_stepping = nothing,
                             resampler = Resampler(),
                             unconstrained_parameters = nothing,
                             forward_map_output = nothing,
@@ -92,16 +97,25 @@ Arguments
 - `noise_covariance` (`Number` or `AbstractMatrix`): Covariance matrix representing observational uncertainty.
                                                      `noise_covariance::Number` is converted to a scaled identity matrix.
 
+- `pseudo_stepping`: The pseudo time-stepping scheme for stepping EKI forward.
+
 - `resampler`: controls particle resampling procedure. See `Resampler`.
 
 - `process`: The Ensemble Kalman process. Default: `Inversion().
 """
 function EnsembleKalmanInversion(inverse_problem;
                                  noise_covariance = 1,
+                                 pseudo_stepping = nothing,
+                                 pseudo_Δt = 1.0,
                                  resampler = Resampler(),
                                  unconstrained_parameters = nothing,
                                  forward_map_output = nothing,
                                  process = Inversion())
+
+    if process isa Sampler && !isnothing(pseudo_stepping)
+        @warn "Process is $process; ignoring keyword argument pseudo_stepping=$pseudo_stepping."
+        pseudo_stepping = nothing
+    end
 
     if isnothing(unconstrained_parameters)
         isnothing(forward_map_output) ||
@@ -124,16 +138,21 @@ function EnsembleKalmanInversion(inverse_problem;
     Γy = construct_noise_covariance(noise_covariance, y) # noise_covariance * UniformScaling(1.0)
     Xᵢ = unconstrained_parameters
     iteration = 0
+    psuedotime = 0.0
+    psuedo_Δt = 0.0
 
     eki′ = EnsembleKalmanInversion(inverse_problem,
                                    process,
                                    y,
                                    Γy,
                                    iteration,
+                                   pseudotime,
+                                   pseudo_Δt,
                                    nothing,
                                    resampler,
                                    Xᵢ,
-                                   forward_map_output)
+                                   forward_map_output,
+                                   pseudo_stepping)
 
     if isnothing(forward_map_output) # execute forward map to generate initial summary and forward_map_output
         @info "Executing forward map while building EnsembleKalmanInversion..."
@@ -151,11 +170,14 @@ function EnsembleKalmanInversion(inverse_problem;
                                   eki′.mapped_observations,
                                   eki′.noise_covariance,
                                   iteration,
+                                  pseudotime,
+                                  pseudo_Δt,
                                   iteration_summaries,
                                   eki′.resampler,
                                   eki′.unconstrained_parameters,
-                                  forward_map_output)
-
+                                  forward_map_output,
+                                  eki′.pseudo_stepping)
+    
     return eki
 end
 
@@ -175,9 +197,22 @@ end
 """
     iterate!(eki::EnsembleKalmanInversion;
              iterations = 1,
+             pseudo_stepping = eki.pseudo_stepping,
              show_progress = true)
 
 Iterate the ensemble Kalman inversion problem `eki` forward by `iterations`.
+
+Keyword arguments
+=================
+
+* iterations (Int): Number of iterations to run (default: 1)
+
+* pseudo_stepping (Float64): Ensemble convergence rate for adaptive time-stepping.
+                              (Default: `eki.pseudo_stepping`)
+
+* psuedo_Δt (Float64): Pseudo time-step. When `convegence_rate` is specified,
+                       this is an initial guess for finding an adaptive time-step.
+                       (Default: 1.0)
 
 Return
 ======
@@ -186,14 +221,22 @@ Return
 """
 function iterate!(eki::EnsembleKalmanInversion;
                   iterations = 1,
-                  show_progress = true,
-                  adaptive_step_parameters = nothing)
+                  pseudo_Δt = eki.pseudo_Δt,
+                  pseudo_stepping = eki.pseudo_stepping,
+                  show_progress = true)
 
     iterator = show_progress ? ProgressBar(1:iterations) : 1:iterations
 
     for _ in iterator
-        eki.unconstrained_parameters, step_size = step_parameters(eki, adaptive_step_parameters)
+        # When stepping adaptively, `Δt` is an initial guess for the
+        # actual adaptive step that gets taken.
+        eki.unconstrained_parameters, adaptive_Δt = step_parameters(eki,
+                                                                    pseudo_stepping;
+                                                                    Δt=pseudo_Δt)
+        # Update the pseudoclock
         eki.iteration += 1
+        eki.pseudotime += adaptive_Δt
+        eki.pseudo_Δt = adaptive_Δt
 
         # Forward map
         eki.forward_map_output = resampling_forward_map!(eki)
@@ -211,7 +254,13 @@ end
 ##### Stepping and adaptive stepping
 #####
 
-function step_parameters(eki::EnsembleKalmanInversion, adaptive_step_parameters)
+function step_parameters(X, G, y, Γy, process; Δt=1.0)
+    ekp = EnsembleKalmanProcess(X, y, Γy, process; Δt)
+    update_ensemble!(ekp, G)
+    return get_u_final(ekp)
+end
+
+function step_parameters(eki::EnsembleKalmanInversion, pseudo_stepping; Δt=1.0)
     process = eki.ensemble_kalman_process
     Gⁿ = eki.forward_map_output
     Xⁿ = eki.unconstrained_parameters
@@ -231,7 +280,14 @@ function step_parameters(eki::EnsembleKalmanInversion, adaptive_step_parameters)
     successful_Xⁿ = Xⁿ[:, successful_columns]
     
     # Construct new parameters
-    successful_Xⁿ⁺¹, step_size = adaptive_step_parameters(successful_Xⁿ, successful_Gⁿ, eki)
+    successful_Xⁿ⁺¹, Δt = adaptive_step_parameters(pseudo_stepping,
+                                                   successful_Xⁿ,
+                                                   successful_Gⁿ,
+                                                   y,
+                                                   Γy,
+                                                   process;
+                                                   Δt)
+
     Xⁿ⁺¹[:, successful_columns] .= successful_Xⁿ⁺¹
 
     if some_failures # resample failed particles with new ensemble distribution
@@ -240,7 +296,7 @@ function step_parameters(eki::EnsembleKalmanInversion, adaptive_step_parameters)
         Xⁿ⁺¹[:, failed_columns] .= sampled_Xⁿ⁺¹
     end
 
-    return Xⁿ⁺¹, step_size
+    return Xⁿ⁺¹, Δt
 end
 
 end # module

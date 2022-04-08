@@ -1,6 +1,10 @@
 using ..Parameters: transform_to_unconstrained
 
 struct IterationSummary{P, M, C, V, E, O, T}
+
+using Oceananigans.Utils: prettysummary
+
+struct IterationSummary{P, M, C, V, E, O}
     parameters :: P     # constrained
     ensemble_mean :: M  # constrained
     ensemble_cov :: C   # constrained
@@ -8,7 +12,8 @@ struct IterationSummary{P, M, C, V, E, O, T}
     mean_square_errors :: E
     objective_values :: O
     iteration :: Int
-    Δt :: T
+    pseudotime :: Float64
+    pseudo_Δt :: Float64
 end
 
 """
@@ -54,7 +59,7 @@ end
 Return the summary for ensemble Kalman inversion `eki`
 with unconstrained parameters `X` and `forward_map_output`.
 """
-function IterationSummary(eki, X, forward_map_output=nothing, step_size=nothing)
+function IterationSummary(eki, X, forward_map_output=nothing)
     priors = eki.inverse_problem.free_parameters.priors
 
     ensemble_mean = mean(X, dims=2)[:] 
@@ -85,7 +90,8 @@ function IterationSummary(eki, X, forward_map_output=nothing, step_size=nothing)
                             mean_square_errors,
                             objective_values,
                             eki.iteration,
-                            step_size)
+                            eki.pseudotime,
+                            eki.pseudo_Δt)
 end
 
 function finitefind(a, val, find)
@@ -119,9 +125,13 @@ function Base.show(io::IO, is::IterationSummary)
     return nothing
 end
 
-Base.summary(is::IterationSummary) = string("IterationSummary for ", length(is.parameters),
+Base.summary(is::IterationSummary) = string("IterationSummary(",
+                                            "iteration=", is.iteration,
+                                            ", pseudotime=", prettysummary(is.pseudotime),
+                                            ", pseudo_Δt=", prettysummary(is.pseudo_Δt), ") ",
+                                            "for ", length(is.parameters),
                                             " particles and ", length(keys(is.ensemble_mean)),
-                                            " parameters at iteration ", is.iteration)
+                                            " parameters"),
 
 function param_str(p::Symbol)
     p_str = string(p)
