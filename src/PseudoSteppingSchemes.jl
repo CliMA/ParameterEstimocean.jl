@@ -1,6 +1,6 @@
 module PseudoSteppingSchemes
 
-import .EnsembleKalmanInversion: adaptive_step_parameters
+export adaptive_step_parameters
 
 # Default pseudo_stepping::Nothing --- it's not adaptive
 adaptive_step_parameters(::Nothing, Xⁿ, Gⁿ, y, Γy, process; Δt) = step_parameters(X, G, y, Γy, process; Δt), Δt
