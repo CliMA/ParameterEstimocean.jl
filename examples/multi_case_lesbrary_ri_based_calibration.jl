@@ -1,4 +1,4 @@
-# # CAKTE calibration with Ensemble Kalman Inversion using LESbrary data 
+# # Calibration of `RiBasedVerticalDiffusivity` to five LESbrary simulations
 
 # ## Install dependencies
 

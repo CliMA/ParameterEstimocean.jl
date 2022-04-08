@@ -41,6 +41,7 @@ using .Observations
 using .EnsembleSimulations
 using .Parameters
 using .InverseProblems
+using .PseudoSteppingSchemes
 using .EnsembleKalmanInversions
 
 #####

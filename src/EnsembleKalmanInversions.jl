@@ -27,7 +27,7 @@ using ..InverseProblems: inverting_forward_map
 
 using Oceananigans.Utils: prettytime
 
-import .PseudoSteppingSchemes: adaptive_step_parameters
+import ..PseudoSteppingSchemes: adaptive_step_parameters
 
 mutable struct EnsembleKalmanInversion{E, I, M, O, S, R, X, G, C}
     inverse_problem :: I
@@ -41,7 +41,7 @@ mutable struct EnsembleKalmanInversion{E, I, M, O, S, R, X, G, C}
     resampler :: R
     unconstrained_parameters :: X
     forward_map_output :: G
-    psuedo_stepping :: C
+    pseudo_stepping :: C
 end
 
 Base.show(io::IO, eki::EnsembleKalmanInversion) =
@@ -140,8 +140,8 @@ function EnsembleKalmanInversion(inverse_problem;
     Γy = construct_noise_covariance(noise_covariance, y) # noise_covariance * UniformScaling(1.0)
     Xᵢ = unconstrained_parameters
     iteration = 0
-    psuedotime = 0.0
-    psuedo_Δt = 0.0
+    pseudotime = 0.0
+    pseudo_Δt = 0.0
 
     eki′ = EnsembleKalmanInversion(inverse_problem,
                                    process,
@@ -212,7 +212,7 @@ Keyword arguments
 * pseudo_stepping (Float64): Ensemble convergence rate for adaptive time-stepping.
                               (Default: `eki.pseudo_stepping`)
 
-* psuedo_Δt (Float64): Pseudo time-step. When `convegence_rate` is specified,
+* pseudo_Δt (Float64): Pseudo time-step. When `convegence_rate` is specified,
                        this is an initial guess for finding an adaptive time-step.
                        (Default: 1.0)
 
@@ -264,6 +264,8 @@ end
 
 function step_parameters(eki::EnsembleKalmanInversion, pseudo_stepping; Δt=1.0)
     process = eki.ensemble_kalman_process
+    y = eki.mapped_observations
+    Γy = eki.noise_covariance
     Gⁿ = eki.forward_map_output
     Xⁿ = eki.unconstrained_parameters
     Xⁿ⁺¹ = similar(Xⁿ)
