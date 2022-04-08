@@ -27,7 +27,7 @@ using ..InverseProblems: inverting_forward_map
 
 using Oceananigans.Utils: prettytime
 
-import .PseudoSteppingSchemes: adaptive_step_parameters
+import ..PseudoSteppingSchemes: adaptive_step_parameters
 
 mutable struct EnsembleKalmanInversion{E, I, M, O, S, R, X, G, C}
     inverse_problem :: I
