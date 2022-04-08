@@ -213,8 +213,6 @@ end
 
 function step_parameters(eki::EnsembleKalmanInversion, adaptive_step_parameters)
     process = eki.ensemble_kalman_process
-    y = eki.mapped_observations
-    Γy = eki.noise_covariance
     Gⁿ = eki.forward_map_output
     Xⁿ = eki.unconstrained_parameters
     Xⁿ⁺¹ = similar(Xⁿ)
@@ -233,7 +231,7 @@ function step_parameters(eki::EnsembleKalmanInversion, adaptive_step_parameters)
     successful_Xⁿ = Xⁿ[:, successful_columns]
     
     # Construct new parameters
-    successful_Xⁿ⁺¹, step_size = adaptive_step_parameters(successful_Xⁿ, successful_Gⁿ, y, Γy, last_step_size)
+    successful_Xⁿ⁺¹, step_size = adaptive_step_parameters(successful_Xⁿ, successful_Gⁿ, eki)
     Xⁿ⁺¹[:, successful_columns] .= successful_Xⁿ⁺¹
 
     if some_failures # resample failed particles with new ensemble distribution
