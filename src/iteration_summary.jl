@@ -17,10 +17,10 @@ end
 Given forward map `G` and parameters `θ`, return a tuple `(Φ₁, Φ₂)` 
 of terms in the EKI regularized objective function, where
 
-    Φ = (1/2)*(Φ₁ + Φ₂)
+    Φ = Φ₁ + Φ₂
 
-Φ₁ measures output misfit `|| Γy^(-¹/₂) * (y .- G(θ)) ||²` and 
-Φ₂ measures prior misfit `|| Γθ^(-¹/₂) * (θ .- μθ) ||²`, where `y` is the observation 
+Φ₁ measures output misfit `(1/2)*|| Γy^(-¹/₂) * (y .- G(θ)) ||²` and 
+Φ₂ measures prior misfit `(1/2)*|| Γθ^(-¹/₂) * (θ .- μθ) ||²`, where `y` is the observation 
 map, `G(θ)` is the forward map, `Γy` is the observation noise covariance, `Γθ` is 
 the prior covariance, and `μθ` represents the prior means. Note that `Γ^(-1/2) = 
 inv(sqrt(Γ))`. The keyword argument `constrained` is `true` if the input `θ`
@@ -41,10 +41,10 @@ function eki_objective(eki, θ::AbstractVector, G::AbstractVector; constrained =
                 for (i, name) in enumerate(keys(priors))]
     end
     
-    # Φ₁ = || Γy^(-½) * (y - G) ||²
-    Φ₁ = norm(inv(sqrt(Γy)) * (y .- G))^2
-    # Φ₂ = || Γθ^(-½) * (θ - μθ) ||² 
-    Φ₂ = norm(inv(sqrt(Γθ)) * (θ .- μθ))^2
+    # Φ₁ = (1/2)*|| Γy^(-½) * (y - G) ||²
+    Φ₁ = (1/2) * norm(inv(sqrt(Γy)) * (y .- G))^2
+    # Φ₂ = (1/2)*|| Γθ^(-½) * (θ - μθ) ||² 
+    Φ₂ = (1/2) * norm(inv(sqrt(Γθ)) * (θ .- μθ))^2
     return (Φ₁, Φ₂)
 end
 
