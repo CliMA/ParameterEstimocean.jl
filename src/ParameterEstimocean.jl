@@ -32,6 +32,7 @@ include("Observations.jl")
 include("Parameters.jl")
 include("EnsembleSimulations.jl")
 include("InverseProblems.jl")
+include("PseudoSteppingSchemes.jl")
 include("EnsembleKalmanInversions.jl")
 
 using .Utils
