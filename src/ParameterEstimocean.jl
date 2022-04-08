@@ -54,8 +54,8 @@ function __init__()
     lesbrary_url = "https://github.com/CliMA/OceananigansArtifacts.jl/raw/glw/lesbrary2/LESbrary/idealized/"
 
     cases = ["free_convection",
-             "weak_wind_strong_cooling", 
-             "strong_wind_weak_cooling", 
+             "weak_wind_strong_cooling",
+             "strong_wind_weak_cooling",
              "strong_wind",
              "strong_wind_no_rotation"]
 

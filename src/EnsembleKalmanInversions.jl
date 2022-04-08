@@ -97,11 +97,7 @@ Arguments
 - `noise_covariance` (`Number` or `AbstractMatrix`): Covariance matrix representing observational uncertainty.
                                                      `noise_covariance::Number` is converted to a scaled identity matrix.
 
-- `pseudo_stepping` (`Number`): The convergence rate for the EKI adaptive time stepping. Default value 0.7.
-                                 If provided with `nothing` the EKI iterations are done with a fixed "time step".
-                                 If a numerical value is given is 0.7 which implies that the parameter spread 
-                                 covariance is decreased to 70% of the parameter spread covariance at the previous
-                                 EKI iteration.
+- `pseudo_stepping`: The pseudo time-stepping scheme for stepping EKI forward.
 
 - `resampler`: controls particle resampling procedure. See `Resampler`.
 
@@ -181,7 +177,7 @@ function EnsembleKalmanInversion(inverse_problem;
                                   eki′.unconstrained_parameters,
                                   forward_map_output,
                                   eki′.pseudo_stepping)
-
+    
     return eki
 end
 
@@ -227,8 +223,7 @@ function iterate!(eki::EnsembleKalmanInversion;
                   iterations = 1,
                   pseudo_Δt = eki.pseudo_Δt,
                   pseudo_stepping = eki.pseudo_stepping,
-                  show_progress = true,
-                  adaptive_step_parameters = adaptive_step_parameters)
+                  show_progress = true)
 
     iterator = show_progress ? ProgressBar(1:iterations) : 1:iterations
 
@@ -236,8 +231,7 @@ function iterate!(eki::EnsembleKalmanInversion;
         # When stepping adaptively, `Δt` is an initial guess for the
         # actual adaptive step that gets taken.
         eki.unconstrained_parameters, adaptive_Δt = step_parameters(eki,
-                                                                    pseudo_stepping,
-                                                                    adaptive_step_parameters;
+                                                                    pseudo_stepping;
                                                                     Δt=pseudo_Δt)
         # Update the pseudoclock
         eki.iteration += 1
@@ -246,7 +240,7 @@ function iterate!(eki::EnsembleKalmanInversion;
 
         # Forward map
         eki.forward_map_output = resampling_forward_map!(eki)
-        summary = IterationSummary(eki, eki.unconstrained_parameters, eki.forward_map_output)
+        summary = IterationSummary(eki, eki.unconstrained_parameters, eki.forward_map_output, step_size)
         push!(eki.iteration_summaries, summary)
     end
 
@@ -266,10 +260,8 @@ function step_parameters(X, G, y, Γy, process; Δt=1.0)
     return get_u_final(ekp)
 end
 
-function step_parameters(eki::EnsembleKalmanInversion, pseudo_stepping, adaptive_step_parameters; Δt=1.0)
+function step_parameters(eki::EnsembleKalmanInversion, pseudo_stepping; Δt=1.0)
     process = eki.ensemble_kalman_process
-    y = eki.mapped_observations
-    Γy = eki.noise_covariance
     Gⁿ = eki.forward_map_output
     Xⁿ = eki.unconstrained_parameters
     Xⁿ⁺¹ = similar(Xⁿ)
@@ -305,16 +297,6 @@ function step_parameters(eki::EnsembleKalmanInversion, pseudo_stepping, adaptive
     end
 
     return Xⁿ⁺¹, Δt
-end
-
-#####
-##### Adaptive parameter stepping
-#####
-
-function volume_ratio(Xⁿ⁺¹, Xⁿ)
-    Vⁿ⁺¹ = det(cov(Xⁿ⁺¹, dims=2))
-    Vⁿ   = det(cov(Xⁿ,   dims=2))
-    return Vⁿ⁺¹ / Vⁿ
 end
 
 end # module
