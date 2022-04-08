@@ -60,7 +60,7 @@ function generate_synthetic_observations(name = "convective_adjustment"; Nz = 32
                                                           schedule = TimeInterval(stop_time/3),
                                                           prefix = name,
                                                           array_type = Array{Float64},
-                                                          field_slicer = nothing,
+                                                          with_halos = true,
                                                           init = init_with_parameters,
                                                           force = true)
 
