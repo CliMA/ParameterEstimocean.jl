@@ -1,5 +1,7 @@
 using ..Parameters: transform_to_unconstrained
 
+using Oceananigans.Utils: prettysummary
+
 struct IterationSummary{P, M, C, V, E, O}
     parameters :: P     # constrained
     ensemble_mean :: M  # constrained
@@ -8,6 +10,7 @@ struct IterationSummary{P, M, C, V, E, O}
     mean_square_errors :: E
     objective_values :: O
     iteration :: Int
+    pseudotime :: Float64
 end
 
 """
@@ -83,7 +86,8 @@ function IterationSummary(eki, X, forward_map_output=nothing)
                             constrained_ensemble_variance,
                             mean_square_errors,
                             objective_values,
-                            eki.iteration)
+                            eki.iteration,
+                            eki.pseudotime)
 end
 
 function finitefind(a, val, find)
@@ -117,9 +121,11 @@ function Base.show(io::IO, is::IterationSummary)
     return nothing
 end
 
-Base.summary(is::IterationSummary) = string("IterationSummary for ", length(is.parameters),
+Base.summary(is::IterationSummary) = string("IterationSummary(iteration=", is.iteration,
+                                            ", pseudotime=", prettysummary(is.pseudotime), ") ",
+                                            "for ", length(is.parameters),
                                             " particles and ", length(keys(is.ensemble_mean)),
-                                            " parameters at iteration ", is.iteration)
+                                            " parameters"),
 
 function param_str(p::Symbol)
     p_str = string(p)
