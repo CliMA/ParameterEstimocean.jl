@@ -512,9 +512,9 @@ uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
 
 [[Oceananigans]]
 deps = ["Adapt", "CUDA", "CUDAKernels", "Crayons", "CubedSphere", "Dates", "DocStringExtensions", "FFTW", "Glob", "IncompleteLU", "InteractiveUtils", "IterativeSolvers", "JLD2", "KernelAbstractions", "LinearAlgebra", "Logging", "MPI", "NCDatasets", "OffsetArrays", "OrderedCollections", "PencilFFTs", "Pkg", "Printf", "Random", "Rotations", "SafeTestsets", "SeawaterPolynomials", "SparseArrays", "Statistics", "StructArrays", "Tullio"]
-git-tree-sha1 = "9e1d8599697c4fa5861188fa9d2bbbe376fccd07"
+git-tree-sha1 = "69a922509d8c0fb47a320ee945a5a339027ec85b"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
-version = "0.73.6"
+version = "0.73.7"
 
 [[OffsetArrays]]
 deps = ["Adapt"]
@@ -766,9 +766,9 @@ version = "0.33.16"
 
 [[StatsFuns]]
 deps = ["ChainRulesCore", "HypergeometricFunctions", "InverseFunctions", "IrrationalConstants", "LogExpFunctions", "Reexport", "Rmath", "SpecialFunctions"]
-git-tree-sha1 = "25405d7016a47cf2bd6cd91e66f4de437fd54a07"
+git-tree-sha1 = "72e6abd6fc9ef0fa62a159713c83b7637a14b2b8"
 uuid = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
-version = "0.9.16"
+version = "0.9.17"
 
 [[Strided]]
 deps = ["LinearAlgebra", "TupleTools"]
