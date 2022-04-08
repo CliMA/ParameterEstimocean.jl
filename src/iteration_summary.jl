@@ -1,7 +1,5 @@
 using ..Parameters: transform_to_unconstrained
 
-struct IterationSummary{P, M, C, V, E, O, T}
-
 using Oceananigans.Utils: prettysummary
 
 struct IterationSummary{P, M, C, V, E, O}
