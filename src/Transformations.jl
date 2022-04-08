@@ -208,6 +208,12 @@ function normalize!(data, normalization::ZScore)
     return nothing
 end
 
+function inverse_normalize!(data, normalization::ZScore)
+    μ, σ = normalization.μ, normalization.σ
+    @. (data * σ) + μ
+    return nothing
+end
+
 #####
 ##### Like ZScore, but maybe less important
 #####
