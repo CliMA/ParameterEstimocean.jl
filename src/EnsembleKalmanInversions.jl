@@ -261,7 +261,7 @@ function step_parameters(X, G, y, Γy, process; Δt=1.0)
 end
 
 # Default pseudo_stepping::Nothing --- it's not adaptive
-adaptive_step_parameters(::Nothing, Xⁿ, Gⁿ, y, Γy, process; Δt) = step_parameters(X, G, y, Γy, process; Δt), Δt
+adaptive_step_parameters(::Nothing, Xⁿ, Gⁿ, y, Γy, process; Δt) = step_parameters(Xⁿ, Gⁿ, y, Γy, process; Δt), Δt
 
 function step_parameters(eki::EnsembleKalmanInversion, pseudo_stepping; Δt=1.0)
     process = eki.ensemble_kalman_process
