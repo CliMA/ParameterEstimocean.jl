@@ -69,7 +69,7 @@ architecture = CPU()
 
         batch_str = string("(Nbatch = ", size(eki.inverse_problem.simulation.model.grid, 2), ")")
         @testset "EnsembleKalmanInversions construction and iteration tests $batch_str" begin
-            @info "  Testing EnsembleKalmanInversion construcation and basic iteration $batch_str..."
+            @info "  Testing EnsembleKalmanInversion construction and basic iteration $batch_str..."
 
             iterations = 5
             iterate!(eki; iterations = iterations, show_progress = false)
