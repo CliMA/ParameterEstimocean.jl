@@ -1,9 +1,7 @@
 module PseudoSteppingSchemes
 
-export adaptive_step_parameters
-
-# Default pseudo_stepping::Nothing --- it's not adaptive
-adaptive_step_parameters(::Nothing, Xⁿ, Gⁿ, y, Γy, process; Δt) = step_parameters(X, G, y, Γy, process; Δt), Δt
+using ..EnsembleKalmanInversions: step_parameters
+import ..EnsembleKalmanInversions: adaptive_step_parameters
 
 struct ConstantConvergence{T}
     convergence_ratio :: T
