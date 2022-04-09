@@ -32,8 +32,8 @@ include("Observations.jl")
 include("Parameters.jl")
 include("EnsembleSimulations.jl")
 include("InverseProblems.jl")
-include("PseudoSteppingSchemes.jl")
 include("EnsembleKalmanInversions.jl")
+include("PseudoSteppingSchemes.jl")
 
 using .Utils
 using .Transformations
@@ -41,8 +41,8 @@ using .Observations
 using .EnsembleSimulations
 using .Parameters
 using .InverseProblems
-using .PseudoSteppingSchemes
 using .EnsembleKalmanInversions
+using .PseudoSteppingSchemes
 
 #####
 ##### Data!

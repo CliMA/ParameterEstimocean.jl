@@ -2,8 +2,10 @@ module PseudoSteppingSchemes
 
 export adaptive_step_parameters
 
-
 using LineSearches
+using ..EnsembleKalmanInversions: step_parameters
+
+import ..EnsembleKalmanInversions: adaptive_step_parameters
 
 # Default pseudo_stepping::Nothing --- it's not adaptive
 adaptive_step_parameters(::Nothing, Xⁿ, Gⁿ, eki; Δt) = step_parameters(X, G, y, Γy, process; Δt)
