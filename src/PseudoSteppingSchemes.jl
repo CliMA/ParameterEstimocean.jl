@@ -9,6 +9,12 @@ struct ConstantConvergence{T}
     convergence_ratio :: T
 end
 
+function volume_ratio(Xⁿ⁺¹, Xⁿ)
+    Vⁿ⁺¹ = det(cov(Xⁿ⁺¹, dims=2))
+    Vⁿ   = det(cov(Xⁿ,   dims=2))
+    return Vⁿ⁺¹ / Vⁿ
+end
+
 function adaptive_step_parameters(pseudo_stepping::ConstantConvergence, Xⁿ, Gⁿ, y, Γy, process; Δt=1.0)
     convergence_ratio = pseudo_stepping.convergence_ratio
 
