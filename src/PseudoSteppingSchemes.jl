@@ -93,29 +93,29 @@ abstract type AbstractSteppingScheme end
 
 struct Constant{S} <: AbstractSteppingScheme
     step_size :: S
-
-    Constant(step_size=1.0) = new(step_size)
 end
+
+Constant(step_size=1.0) = Constant(step_size)
 
 struct Default{C} <: AbstractSteppingScheme 
     cov_threshold :: C
-
-    Default(cov_threshold=0.01) = new(cov_threshold)
 end
+
+Default(cov_threshold=0.01) = Default(cov_threshold)
 
 struct GPLineSearch{L, K} <: AbstractSteppingScheme
     learning_rate :: L
     gp_kernel  :: K
-
-    GPLineSearch(learning_rate=1e-4, gp_kernel=Matern52()) = new(learning_rate, gp_kernel)
 end
+
+GPLineSearch(learning_rate=1e-4, gp_kernel=Matern52()) = GPLineSearch(learning_rate, gp_kernel)
 
 struct Chada2021{I, B} <: AbstractSteppingScheme
     initial_step_size :: I
     β                 :: B
-
-    Chada2021(initial_step_size=1.0, β=0.0) = new(initial_step_size, β)
 end
+
+Chada2021(initial_step_size=1.0, β=0.0) = Chada2021(initial_step_size, β)
 
 """
     ConstantConvergence{T} <: AbstractSteppingScheme
