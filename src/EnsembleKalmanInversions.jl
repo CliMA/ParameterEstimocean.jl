@@ -135,11 +135,10 @@ function EnsembleKalmanInversion(inverse_problem;
 
     # Build EKP-friendly observations "y" and the covariance matrix of observational uncertainty "Γy"
     y = dropdims(observation_map(inverse_problem), dims=2) # length(forward_map_output) column vector
-    Γy = construct_noise_covariance(noise_covariance, y) # noise_covariance * UniformScaling(1.0)
+    Γy = construct_noise_covariance(noise_covariance, y)
     Xᵢ = unconstrained_parameters
     iteration = 0
     pseudotime = 0.0
-    pseudo_Δt = 0.0
 
     eki′ = EnsembleKalmanInversion(inverse_problem,
                                    process,
