@@ -139,7 +139,6 @@ function EnsembleKalmanInversion(inverse_problem;
     Xᵢ = unconstrained_parameters
     iteration = 0
     pseudotime = 0.0
-    pseudo_Δt = 0.0
 
     eki′ = EnsembleKalmanInversion(inverse_problem,
                                    process,
