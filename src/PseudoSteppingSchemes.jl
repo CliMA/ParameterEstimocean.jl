@@ -1,5 +1,7 @@
 module PseudoSteppingSchemes
 
+export ConstantConvergence
+
 using ..EnsembleKalmanInversions: step_parameters
 import ..EnsembleKalmanInversions: adaptive_step_parameters
 

@@ -24,7 +24,8 @@ export
     EnsembleKalmanInversion,
     Resampler,
     FullEnsembleDistribution,
-    SuccessfulEnsembleDistribution
+    SuccessfulEnsembleDistribution,
+    ConstantConvergence
 
 include("Utils.jl")
 include("Transformations.jl")
