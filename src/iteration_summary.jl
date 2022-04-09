@@ -129,7 +129,7 @@ Base.summary(is::IterationSummary) = string("IterationSummary(",
                                             ", pseudo_Δt=", prettysummary(is.pseudo_Δt), ") ",
                                             "for ", length(is.parameters),
                                             " particles and ", length(keys(is.ensemble_mean)),
-                                            " parameters"),
+                                            " parameters")
 
 function param_str(p::Symbol)
     p_str = string(p)
