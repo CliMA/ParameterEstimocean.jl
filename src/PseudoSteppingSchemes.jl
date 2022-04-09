@@ -2,26 +2,24 @@ module PseudoSteppingSchemes
 
 export adaptive_step_parameters
 
-using LineSearches
+using LineSearches, Statistics, LinearAlgebra, Distributions
 using ..EnsembleKalmanInversions: step_parameters
 
 import ..EnsembleKalmanInversions: adaptive_step_parameters
 
 # Default pseudo_stepping::Nothing --- it's not adaptive
-eki_update(pseudo_scheme, Xₙ, Gₙ, eki) = pseudo_scheme(pseudo_scheme, Xₙ, Gₙ, eki)
+eki_update(::Nothing, Xₙ, Gₙ, eki, Δtₙ) = eki_update(Constant(Δtₙ), Xₙ, Gₙ, eki)
 
-eki_update(::Nothing, Xₙ, Gₙ, eki) = eki_update(Constant(Δt), Xₙ, Gₙ, eki)
+eki_update(pseudo_scheme, Xₙ, Gₙ, eki, Δtₙ) = eki_update(pseudo_scheme, Xₙ, Gₙ, eki)
 
 function adaptive_step_parameters(pseudo_scheme, Xₙ, Gₙ, eki; Δt=1.0, 
                                     covariance_inflation = 1.0,
                                     momentum_parameter = 0.0)
 
     # X is [N_par × N_ens]
-    N_obs = size(Gₙ, 1) # N_obs
-
     X̅ = mean(Xₙ, dims=2) # [1 × N_ens]
 
-    Xₙ₊₁, Δtₙ = eki_update(pseudo_scheme, Xₙ, Gₙ, eki)
+    Xₙ₊₁, Δtₙ = eki_update(pseudo_scheme, Xₙ, Gₙ, eki, Δt)
 
     # Apply momentum Xₙ ← Xₙ + λ(Xₙ - Xₙ₋₁)
     @. Xₙ₊₁ = Xₙ₊₁ + momentum_parameter * (Xₙ₊₁ - Xₙ)
@@ -35,28 +33,31 @@ end
 
 function iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ=1.0)
 
+    N_obs, N_ens = size(Gₙ)
+
     y = eki.mapped_observations
     Γy = eki.noise_covariance
 
     # Scale noise Γy using Δt. 
-    Δt⁻¹Γy = Γy / step_size
-    ξₙ = rand(ekp.rng, MvNormal(zeros(N_obs), Γy_scaled), ekp.N_ens)
+    Δt⁻¹Γy = Γy / Δtₙ
 
-    y = ekp.obs_mean
+    ξₙ = rand(MvNormal(zeros(N_obs), Δt⁻¹Γy), N_ens)
 
     Cᶿᵍ = cov(Xₙ, Gₙ, dims = 2, corrected = false) # [N_par × N_obs]
     Cᵍᵍ = cov(Gₙ, Gₙ, dims = 2, corrected = false) # [N_obs × N_obs]
 
+    y_perturbed = y .+ ξₙ # [N_obs x N_ens]
+
     # EKI update: θ ← θ + Cᶿᵍ(Cᵍᵍ + h⁻¹Γy)⁻¹(y + ξₙ - g)
-    tmp = (Cᵍᵍ + Δt⁻¹Γy) \ (y + ξₙ - Gₙ) # [N_obs × N_ens]
-    Xₙ₊₁ = Xₙ + (Cᶿᵍ * tmp) # [N_par × N_ens]  
+    tmp = (Cᵍᵍ + Δt⁻¹Γy) \ (y_perturbed - Gₙ) # [N_obs × N_ens]
+    Xₙ₊₁ = Xₙ + (Cᶿᵍ * tmp) # [N_par × N_ens]
 
     return Xₙ₊₁
 end
 
 frobenius_norm(A) = sqrt(sum(A .^ 2))
 
-function kovachki_2018_update(Xₙ, Gₙ, eki; initial_step_size=1.0)
+function kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀=1.0)
 
     y = eki.mapped_observations
     Γy = eki.noise_covariance
@@ -74,7 +75,7 @@ function kovachki_2018_update(Xₙ, Gₙ, eki; initial_step_size=1.0)
     end
 
     # Calculate time step Δtₙ₋₁ = Δt₀ / (frobenius_norm(D(uₙ)) + ϵ)
-    Δtₙ = initial_step_size / (frobenius_norm(D) + 1e-10)
+    Δtₙ = Δt₀ / (frobenius_norm(D) + 1e-10)
 
     # Update uₙ₊₁ = uₙ - Δtₙ₋₁ D(uₙ) uₙ
     uₙ₊₁ = uₙ - Δtₙ * D * uₙ
@@ -146,7 +147,7 @@ end
 function eki_update(pseudo_scheme::Kovachki2018, Xₙ, Gₙ, eki)
 
     initial_step_size = pseudo_scheme.initial_step_size
-    Xₙ₊₁ = kovachki_2018_update(Xₙ, Gₙ, eki; initial_step_size=1.0)
+    Xₙ₊₁ = kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀=1.0)
 
     return Xₙ₊₁, Δtₙ
 end
@@ -177,11 +178,11 @@ function eki_update(pseudo_scheme::Default, Xₙ, Gₙ, eki)
         if det(cov_new) > pseudo_scheme.cov_threshold * det(cov_init)
             accept_stepsize = true
         else
-            Δt = Δt / 2
+            Δtₙ = Δtₙ / 2
         end
     end
 
-    Xₙ₊₁ = iglesias_2013_update(Xₙ, Gₙ, eki; Δt)
+    Xₙ₊₁ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
 
     return Xₙ₊₁, Δtₙ
 end
