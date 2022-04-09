@@ -239,7 +239,7 @@ function iterate!(eki::EnsembleKalmanInversion;
 
         # Forward map
         eki.forward_map_output = resampling_forward_map!(eki)
-        summary = IterationSummary(eki, eki.unconstrained_parameters, eki.forward_map_output, step_size)
+        summary = IterationSummary(eki, eki.unconstrained_parameters, eki.forward_map_output)
         push!(eki.iteration_summaries, summary)
     end
 
