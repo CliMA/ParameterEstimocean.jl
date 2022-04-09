@@ -232,8 +232,7 @@ function iterate!(eki::EnsembleKalmanInversion;
     for _ in iterator
         # When stepping adaptively, `Δt` is an initial guess for the
         # actual adaptive step that gets taken.
-        eki.unconstrained_parameters, adaptive_Δt = step_parameters(eki,
-                                                                    pseudo_stepping;
+        eki.unconstrained_parameters, adaptive_Δt = step_parameters(eki, pseudo_stepping;
                                                                     Δt=pseudo_Δt,
                                                                     covariance_inflation,
                                                                     momentum_parameter)
