@@ -8,24 +8,20 @@ using ..EnsembleKalmanInversions: step_parameters
 import ..EnsembleKalmanInversions: adaptive_step_parameters
 
 # Default pseudo_stepping::Nothing --- it's not adaptive
-adaptive_step_parameters(::Nothing, Xⁿ, Gⁿ, eki; Δt) = step_parameters(X, G, y, Γy, process; Δt)
+eki_update(pseudo_scheme, Xₙ, Gₙ, eki) = pseudo_scheme(pseudo_scheme, Xₙ, Gₙ, eki)
 
-eki_update(pseudo_scheme, Xₙ, G, eki) = pseudo_scheme(pseudo_scheme, Xₙ, G, eki)
+eki_update(::Nothing, Xₙ, Gₙ, eki) = eki_update(Constant(Δt), Xₙ, Gₙ, eki)
 
-eki_update(::Nothing, Xₙ, G, eki) = eki_update(X, G, y, Γy, process; Δt)
-
-function adaptive_step_parameters(pseudo_scheme, Xⁿ, Gⁿ, eki; Δt=1.0, 
+function adaptive_step_parameters(pseudo_scheme, Xₙ, Gₙ, eki; Δt=1.0, 
                                     covariance_inflation = 1.0,
-                                    momentum_parmeter = 0.0)
-
-    pseudo_scheme(Xₙ, G, eki)
+                                    momentum_parameter = 0.0)
 
     # X is [N_par × N_ens]
-    N_obs = size(G, 1) # N_obs
+    N_obs = size(Gₙ, 1) # N_obs
 
     X̅ = mean(Xₙ, dims=2) # [1 × N_ens]
 
-    Xₙ₊₁, Δtₙ = eki_update(pseudo_scheme, Xₙ, G, eki)
+    Xₙ₊₁, Δtₙ = eki_update(pseudo_scheme, Xₙ, Gₙ, eki)
 
     # Apply momentum Xₙ ← Xₙ + λ(Xₙ - Xₙ₋₁)
     @. Xₙ₊₁ = Xₙ₊₁ + momentum_parameter * (Xₙ₊₁ - Xₙ)
@@ -37,7 +33,7 @@ function adaptive_step_parameters(pseudo_scheme, Xⁿ, Gⁿ, eki; Δt=1.0,
 
 end
 
-function iglesias_2013_update(Xₙ, G, eki; step_size=1.0)
+function iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ=1.0)
 
     y = eki.mapped_observations
     Γy = eki.noise_covariance
@@ -48,11 +44,11 @@ function iglesias_2013_update(Xₙ, G, eki; step_size=1.0)
 
     y = ekp.obs_mean
 
-    Cᶿᵍ = cov(Xₙ, G, dims = 2, corrected = false) # [N_par × N_obs]
-    Cᵍᵍ = cov(G, G, dims = 2, corrected = false) # [N_obs × N_obs]
+    Cᶿᵍ = cov(Xₙ, Gₙ, dims = 2, corrected = false) # [N_par × N_obs]
+    Cᵍᵍ = cov(Gₙ, Gₙ, dims = 2, corrected = false) # [N_obs × N_obs]
 
     # EKI update: θ ← θ + Cᶿᵍ(Cᵍᵍ + h⁻¹Γy)⁻¹(y + ξₙ - g)
-    tmp = (Cᵍᵍ + Δt⁻¹Γy) \ (y + ξₙ - G) # [N_obs × N_ens]
+    tmp = (Cᵍᵍ + Δt⁻¹Γy) \ (y + ξₙ - Gₙ) # [N_obs × N_ens]
     Xₙ₊₁ = Xₙ + (Cᶿᵍ * tmp) # [N_par × N_ens]  
 
     return Xₙ₊₁
@@ -60,7 +56,7 @@ end
 
 frobenius_norm(A) = sqrt(sum(A .^ 2))
 
-function kovachki_2018_update(Xₙ, G, eki; initial_step_size=1.0)
+function kovachki_2018_update(Xₙ, Gₙ, eki; initial_step_size=1.0)
 
     y = eki.mapped_observations
     Γy = eki.noise_covariance
@@ -74,7 +70,7 @@ function kovachki_2018_update(Xₙ, G, eki; initial_step_size=1.0)
 
     # Fill transformation matrix (D(uₙ))ᵢⱼ = ⟨ G(u⁽ⁱ⁾) - g̅, Γy⁻¹(G(u⁽ʲ⁾) - y) ⟩
     for j = 1:N_ens, i = 1:N_ens
-        D[i, j] = dot(G[:, i] - g̅, Γy⁻¹ * (G[:, j] - y))
+        D[i, j] = dot(Gₙ[:, i] - g̅, Γy⁻¹ * (Gₙ[:, j] - y))
     end
 
     # Calculate time step Δtₙ₋₁ = Δt₀ / (frobenius_norm(D(uₙ)) + ϵ)
@@ -97,27 +93,27 @@ struct Constant{S} <: AbstractSteppingScheme
     step_size :: S
 end
 
-Constant(step_size=1.0) = Constant(step_size)
+Constant(; step_size=1.0) = Constant(step_size)
 
 struct Default{C} <: AbstractSteppingScheme 
     cov_threshold :: C
 end
 
-Default(cov_threshold=0.01) = Default(cov_threshold)
+Default(; cov_threshold=0.01) = Default(cov_threshold)
 
 struct GPLineSearch{L, K} <: AbstractSteppingScheme
     learning_rate :: L
     gp_kernel  :: K
 end
 
-GPLineSearch(learning_rate=1e-4, gp_kernel=Matern52()) = GPLineSearch(learning_rate, gp_kernel)
+GPLineSearch(; learning_rate=1e-4, gp_kernel=Matern52()) = GPLineSearch(learning_rate, gp_kernel)
 
 struct Chada2021{I, B} <: AbstractSteppingScheme
     initial_step_size :: I
     β                 :: B
 end
 
-Chada2021(initial_step_size=1.0, β=0.0) = Chada2021(initial_step_size, β)
+Chada2021(; initial_step_size=1.0, β=0.0) = Chada2021(initial_step_size, β)
 
 """
     ConstantConvergence{T} <: AbstractSteppingScheme
@@ -129,42 +125,42 @@ Chada2021(initial_step_size=1.0, β=0.0) = Chada2021(initial_step_size, β)
 """
 struct ConstantConvergence{T} <: AbstractSteppingScheme
     convergence_ratio :: T
-
-    ConstantConvergence(convergence_ratio=0.7) = new(convergence_ratio)
 end
+
+ConstantConvergence(; convergence_ratio=0.7) = ConstantConvergence(convergence_ratio)
 
 struct Kovachki2018{T} <: AbstractSteppingScheme
     initial_step_size :: T
-
-    Kovachki2018(initial_step_size=1.0) = new(initial_step_size)
 end
 
-function eki_update(pseudo_scheme::Constant, Xₙ, G, eki)
+Kovachki2018(; initial_step_size=1.0) = Kovachki2018(initial_step_size)
+
+function eki_update(pseudo_scheme::Constant, Xₙ, Gₙ, eki)
 
     Δtₙ = pseudo_scheme.step_size
-    Xₙ₊₁ = iglesias_2013_update(Xₙ, G, eki; Δtₙ)
+    Xₙ₊₁ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
 
     return Xₙ₊₁, Δtₙ
 end
 
-function eki_update(pseudo_scheme::Kovachki2018, Xₙ, G, eki)
+function eki_update(pseudo_scheme::Kovachki2018, Xₙ, Gₙ, eki)
 
     initial_step_size = pseudo_scheme.initial_step_size
-    Xₙ₊₁ = kovachki_2018_update(Xₙ, G, eki; initial_step_size=1.0)
+    Xₙ₊₁ = kovachki_2018_update(Xₙ, Gₙ, eki; initial_step_size=1.0)
 
     return Xₙ₊₁, Δtₙ
 end
 
-function eki_update(pseudo_scheme::Chada2021, Xₙ, G, eki)
+function eki_update(pseudo_scheme::Chada2021, Xₙ, Gₙ, eki)
 
     initial_step_size = pseudo_scheme.initial_step_size
     Δtₙ = (n ^ pseudo_scheme.β) * initial_step_size
-    Xₙ₊₁ = iglesias_2013_update(Xₙ, G, eki; Δtₙ)
+    Xₙ₊₁ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
 
     return Xₙ₊₁, Δtₙ
 end
 
-function eki_update(pseudo_scheme::Default, Xₙ, G, eki)
+function eki_update(pseudo_scheme::Default, Xₙ, Gₙ, eki)
 
     Δtₙ₋₁ = eki.iteration_summaries[end].Δt
 
@@ -175,7 +171,7 @@ function eki_update(pseudo_scheme::Default, Xₙ, G, eki)
 
     while !accept_stepsize
 
-        Xₙ₊₁ = iglesias_2013_update(Xₙ, G, eki; Δtₙ)
+        Xₙ₊₁ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
 
         cov_new = cov(Xₙ₊₁, dims = 2)
         if det(cov_new) > pseudo_scheme.cov_threshold * det(cov_init)
@@ -185,7 +181,7 @@ function eki_update(pseudo_scheme::Default, Xₙ, G, eki)
         end
     end
 
-    Xₙ₊₁ = iglesias_2013_update(Xₙ, G, eki; Δt)
+    Xₙ₊₁ = iglesias_2013_update(Xₙ, Gₙ, eki; Δt)
 
     return Xₙ₊₁, Δtₙ
 end
@@ -241,7 +237,7 @@ function trained_gp_predict_function(X, y)
     return predict
 end
 
-function eki_update(pseudo_scheme::GPLineSearch, Xₙ, G, eki)
+function eki_update(pseudo_scheme::GPLineSearch, Xₙ, Gₙ, eki)
     
     # ensemble covariance
     Cᶿᶿ = cov(Xₙ, dims = 2)
@@ -261,7 +257,7 @@ function eki_update(pseudo_scheme::GPLineSearch, Xₙ, G, eki)
     # θ̇ = - Cᶿᶿ ∇Φ(θ), where Φ is the EKI objective
     approx_∇Φ = - Cᶿᶿ \ Ẋ_backward
 
-    Xₙ₊₁_test = iglesias_2013_update(Xₙ, G, eki; 1.0)
+    Xₙ₊₁_test = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ=1.0)
 
     Ẋ_forward = Xₙ₊₁_test - Xₙ
 
@@ -319,13 +315,13 @@ function volume_ratio(Xⁿ⁺¹, Xⁿ)
     return Vⁿ⁺¹ / Vⁿ
 end
 
-function eki_update(pseudo_scheme::ConstantConvergence, Xₙ, G, eki)
+function eki_update(pseudo_scheme::ConstantConvergence, Xₙ, Gₙ, eki)
 
     conv_rate = pseudo_scheme.convergence_ratio
 
     # Test step forward
     Δtₙ = 1.0
-    Xⁿ⁺¹ = iglesias_2013_update(Xₙ, G, eki; Δtₙ)
+    Xⁿ⁺¹ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
     r = volume_ratio(Xⁿ⁺¹, Xⁿ)
 
     # "Accelerated" fixed point iteration to adjust step_size
@@ -333,7 +329,7 @@ function eki_update(pseudo_scheme::ConstantConvergence, Xₙ, G, eki)
     iter = 1
     while !isapprox(r, conv_rate, atol=0.03, rtol=0.1) && iter < 10
         Δtₙ *= (r / conv_rate)^p
-        Xⁿ⁺¹ = iglesias_2013_update(Xₙ, G, eki; Δtₙ)
+        Xⁿ⁺¹ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
         r = volume_ratio(Xⁿ⁺¹, Xⁿ)
         iter += 1
     end

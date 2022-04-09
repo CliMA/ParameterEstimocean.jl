@@ -223,7 +223,9 @@ function iterate!(eki::EnsembleKalmanInversion;
                   iterations = 1,
                   pseudo_Δt = eki.pseudo_Δt,
                   pseudo_stepping = eki.pseudo_stepping,
-                  show_progress = true)
+                  show_progress = true,
+                  covariance_inflation = 1.0,
+                  momentum_parameter = 0.0)
 
     iterator = show_progress ? ProgressBar(1:iterations) : 1:iterations
 
@@ -232,7 +234,9 @@ function iterate!(eki::EnsembleKalmanInversion;
         # actual adaptive step that gets taken.
         eki.unconstrained_parameters, adaptive_Δt = step_parameters(eki,
                                                                     pseudo_stepping;
-                                                                    Δt=pseudo_Δt)
+                                                                    Δt=pseudo_Δt,
+                                                                    covariance_inflation,
+                                                                    momentum_parameter)
         # Update the pseudoclock
         eki.iteration += 1
         eki.pseudotime += adaptive_Δt
@@ -240,7 +244,7 @@ function iterate!(eki::EnsembleKalmanInversion;
 
         # Forward map
         eki.forward_map_output = resampling_forward_map!(eki)
-        summary = IterationSummary(eki, eki.unconstrained_parameters, eki.forward_map_output, step_size)
+        summary = IterationSummary(eki, eki.unconstrained_parameters, eki.forward_map_output)
         push!(eki.iteration_summaries, summary)
     end
 
@@ -263,10 +267,8 @@ end
 # Default pseudo_stepping::Nothing --- it's not adaptive
 adaptive_step_parameters(::Nothing, Xⁿ, Gⁿ, y, Γy, process; Δt) = step_parameters(Xⁿ, Gⁿ, y, Γy, process; Δt), Δt
 
-function step_parameters(eki::EnsembleKalmanInversion, pseudo_stepping; Δt=1.0)
+function step_parameters(eki::EnsembleKalmanInversion, pseudo_stepping; Δt=1.0, covariance_inflation=1.0, momentum_parameter=0.0)
     process = eki.ensemble_kalman_process
-    y = eki.mapped_observations
-    Γy = eki.noise_covariance
     Gⁿ = eki.forward_map_output
     Xⁿ = eki.unconstrained_parameters
     Xⁿ⁺¹ = similar(Xⁿ)
@@ -289,7 +291,9 @@ function step_parameters(eki::EnsembleKalmanInversion, pseudo_stepping; Δt=1.0)
                                                    successful_Xⁿ,
                                                    successful_Gⁿ,
                                                    eki;
-                                                   Δt)
+                                                   Δt,
+                                                   covariance_inflation,
+                                                   momentum_parameter)
 
     Xⁿ⁺¹[:, successful_columns] .= successful_Xⁿ⁺¹
 
