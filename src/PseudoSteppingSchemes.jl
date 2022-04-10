@@ -4,6 +4,7 @@ export adaptive_step_parameters
 
 using LineSearches, Statistics, LinearAlgebra, Distributions
 using ..EnsembleKalmanInversions: step_parameters
+using ParameterEstimocean.Transformations: ZScore, normalize!
 
 import ..EnsembleKalmanInversions: adaptive_step_parameters
 
@@ -208,15 +209,12 @@ function ensemble_array(eki, iteration)
     return ensemble_array
 end
 
-using ParameterEstimocean.Transformations: ZScore, normalize!
-using Statistics
-
 function trained_gp_predict_function(X, y)
 
     N_param = size(X, 1)
 
     zscore = ZScore(mean(y), var(y))
-    ParameterEstimocean.Transformations.normalize!(y, zscore)
+    normalize!(y, zscore)
 
     # log- length scale kernel parameter
     ll = [0.0 for _ in N_param]
@@ -263,18 +261,16 @@ function eki_update(pseudo_scheme::GPLineSearch, Xₙ, Gₙ, eki)
 
     Ẋ_forward = Xₙ₊₁_test - Xₙ
 
-    ls = BackTracking(c_1 = learning_rate)
+    ls = BackTracking(c_1 = pseudo_scheme.learning_rate)
 
     # X is all samples generated thus far
     X = hcat([ensemble_array(eki, iter) for iter in 0:n]...) 
-    y = vcat([sum.(eki.iteration_summaries[iter].objective_values)]...)
+    y = vcat([sum.(eki.iteration_summaries[iter].objective_values) for iter in 0:n]...)
 
     not_nan_indices = findall(.!isnan.(y))
     X = X[:, not_nan_indices]
     y = y[not_nan_indices]
     
-    @show any.(x -> isnan(x), y)
-
     predict = trained_gp_predict_function(X, y)
 
     αs = []
