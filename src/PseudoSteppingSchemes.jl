@@ -7,6 +7,8 @@ using ..EnsembleKalmanInversions: step_parameters
 
 import ..EnsembleKalmanInversions: adaptive_step_parameters
 
+export Constant, Default, GPLineSearch, Chada2021, ConstantConvergence, Kovachki2018
+
 # Default pseudo_stepping::Nothing --- it's not adaptive
 eki_update(::Nothing, Xₙ, Gₙ, eki, Δtₙ) = eki_update(Constant(Δtₙ), Xₙ, Gₙ, eki)
 
@@ -102,12 +104,11 @@ end
 
 Default(; cov_threshold=0.01) = Default(cov_threshold)
 
-struct GPLineSearch{L, K} <: AbstractSteppingScheme
+struct GPLineSearch{L} <: AbstractSteppingScheme
     learning_rate :: L
-    gp_kernel  :: K
 end
 
-GPLineSearch(; learning_rate=1e-4, gp_kernel=Matern52()) = GPLineSearch(learning_rate, gp_kernel)
+GPLineSearch(; learning_rate=1e-4) = GPLineSearch(learning_rate)
 
 struct Chada2021{I, B} <: AbstractSteppingScheme
     initial_step_size :: I
@@ -163,7 +164,7 @@ end
 
 function eki_update(pseudo_scheme::Default, Xₙ, Gₙ, eki)
 
-    Δtₙ₋₁ = eki.iteration_summaries[end].Δt
+    Δtₙ₋₁ = eki.pseudo_Δt
 
     accept_stepsize = false
     Δtₙ = copy(Δtₙ₋₁)
@@ -194,7 +195,7 @@ Returns an `N_params x N_ensemble` array of parameter values for a given iterati
 """
 function ensemble_array(eki, iteration)
     ensemble = eki.iteration_summaries[iteration].parameters
-    param_names = keys(first(parameters))
+    param_names = keys(first(ensemble))
 
     N_params = length(param_names)
     N_ensemble = length(ensemble)
@@ -310,9 +311,9 @@ function eki_update(pseudo_scheme::GPLineSearch, Xₙ, Gₙ, eki)
 
 end
 
-function volume_ratio(Xⁿ⁺¹, Xⁿ)
-    Vⁿ⁺¹ = det(cov(Xⁿ⁺¹, dims=2))
-    Vⁿ   = det(cov(Xⁿ,   dims=2))
+function volume_ratio(Xₙ₊₁, Xₙ)
+    Vⁿ⁺¹ = det(cov(Xₙ₊₁, dims=2))
+    Vⁿ   = det(cov(Xₙ,   dims=2))
     return Vⁿ⁺¹ / Vⁿ
 end
 
@@ -322,22 +323,22 @@ function eki_update(pseudo_scheme::ConstantConvergence, Xₙ, Gₙ, eki)
 
     # Test step forward
     Δtₙ = 1.0
-    Xⁿ⁺¹ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
-    r = volume_ratio(Xⁿ⁺¹, Xⁿ)
+    Xₙ₊₁ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
+    r = volume_ratio(Xₙ₊₁, Xₙ)
 
     # "Accelerated" fixed point iteration to adjust step_size
     p = 1.1
     iter = 1
     while !isapprox(r, conv_rate, atol=0.03, rtol=0.1) && iter < 10
         Δtₙ *= (r / conv_rate)^p
-        Xⁿ⁺¹ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
-        r = volume_ratio(Xⁿ⁺¹, Xⁿ)
+        Xₙ₊₁ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
+        r = volume_ratio(Xₙ₊₁, Xₙ)
         iter += 1
     end
 
     @info "Particles stepped adaptively with convergence rate $r (target $conv_rate)"
 
-    return Xⁿ⁺¹, Δtₙ
+    return Xₙ₊₁, Δtₙ
 end
 
 end # module
