@@ -13,6 +13,7 @@ using ParameterEstimocean.EnsembleKalmanInversions: iterate!
 using ParameterEstimocean.EnsembleKalmanInversions: FullEnsembleDistribution, Resampler
 using ParameterEstimocean.EnsembleKalmanInversions: resample!, column_has_nan
 using ParameterEstimocean.InverseProblems: inverting_forward_map
+using ParameterEstimocean.PseudoSteppingSchemes
 
 data_path = "convective_adjustment_test.jld2"
 Nensemble = 3
@@ -93,6 +94,18 @@ architecture = CPU()
 
             @test length(eki.iteration_summaries) == iterations + 2
             @test eki.iteration == iterations + 1
+        end
+
+        #####
+        ##### Test PseudoSteppingSchemes
+        #####
+
+        @testset "PseudoSteppingSchemes tests" begin
+            @info "  Testing pseudo-stepping schemes with default hyperparameters"
+
+            for pseudo_stepping in [Constant, Default, GPLineSearch, Chada2021, ConstantConvergence, Kovachki2018]
+                iterate!(eki; iterations = 1, show_progress=false, pseudo_stepping = pseudo_stepping())
+            end
         end
 
         #####
