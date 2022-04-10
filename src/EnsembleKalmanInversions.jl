@@ -27,7 +27,7 @@ using ..InverseProblems: inverting_forward_map
 
 using Oceananigans.Utils: prettytime
 
-mutable struct EnsembleKalmanInversion{E, I, M, O, S, R, X, G, C}
+mutable struct EnsembleKalmanInversion{E, I, M, O, S, R, X, G, C, P}
     inverse_problem :: I
     ensemble_kalman_process :: E
     mapped_observations :: M
@@ -40,6 +40,7 @@ mutable struct EnsembleKalmanInversion{E, I, M, O, S, R, X, G, C}
     unconstrained_parameters :: X
     forward_map_output :: G
     pseudo_stepping :: C
+    precomputed_matrices :: P
 end
 
 Base.show(io::IO, eki::EnsembleKalmanInversion) =
@@ -140,6 +141,8 @@ function EnsembleKalmanInversion(inverse_problem;
     iteration = 0
     pseudotime = 0.0
 
+    precomputed_matrices = Dict(:inv_Γy => inv(Γy), :inv_sqrt_Γy => inv(sqrt(Γy)))
+
     eki′ = EnsembleKalmanInversion(inverse_problem,
                                    process,
                                    y,
@@ -151,7 +154,8 @@ function EnsembleKalmanInversion(inverse_problem;
                                    resampler,
                                    Xᵢ,
                                    forward_map_output,
-                                   pseudo_stepping)
+                                   pseudo_stepping,
+                                   precomputed_matrices)
 
     if isnothing(forward_map_output) # execute forward map to generate initial summary and forward_map_output
         @info "Executing forward map while building EnsembleKalmanInversion..."
@@ -175,7 +179,8 @@ function EnsembleKalmanInversion(inverse_problem;
                                   eki′.resampler,
                                   eki′.unconstrained_parameters,
                                   forward_map_output,
-                                  eki′.pseudo_stepping)
+                                  eki′.pseudo_stepping.
+                                  eki′.precomputed_matrices)
     
     return eki
 end
