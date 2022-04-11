@@ -1,6 +1,7 @@
 module PseudoSteppingSchemes
 
 using Statistics
+using LinearAlgebra
 
 export ConstantConvergence
 
