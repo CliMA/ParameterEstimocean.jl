@@ -29,7 +29,7 @@ the prior covariance, and `μθ` represents the prior means. Note that `Γ^(-1/2
 inv(sqrt(Γ))`. The keyword argument `constrained` is `true` if the input `θ`
 represents constrained parameters.
 """
-function eki_objective(eki, θ::AbstractVector, G::AbstractVector; constrained = false; inv_sqrt_Γθ = nothing)
+function eki_objective(eki, θ::AbstractVector, G::AbstractVector; constrained = false, inv_sqrt_Γθ = nothing)
     y = eki.mapped_observations
     Γy = eki.noise_covariance
     inv_sqrt_Γy = eki.precomputed_matrices[:inv_sqrt_Γy]
