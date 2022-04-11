@@ -67,7 +67,7 @@ function kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀=1.0)
     
     N_ens = size(Xₙ, 2)
     g̅ = mean(G, dims = 2)
-    Γy⁻¹ = inv(Γy)
+    Γy⁻¹ = eki.precomputed_matrices[:inv_Γy]
 
     # Compute flattened ensemble u = [θ⁽¹⁾, θ⁽²⁾, ..., θ⁽ᴶ⁾]
     uₙ = vcat([Xₙ[:,j] for j in 1:N_ens]...)

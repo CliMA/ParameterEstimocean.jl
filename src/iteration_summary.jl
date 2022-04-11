@@ -32,6 +32,7 @@ represents constrained parameters.
 function eki_objective(eki, θ::AbstractVector, G::AbstractVector; constrained = false)
     y = eki.mapped_observations
     Γy = eki.noise_covariance
+    inv_sqrt_Γy = eki.precomputed_matrices[:inv_sqrt_Γy]
 
     fp = eki.inverse_problem.free_parameters
     priors = fp.priors
@@ -43,9 +44,9 @@ function eki_objective(eki, θ::AbstractVector, G::AbstractVector; constrained =
         θ = [transform_to_unconstrained(priors[name], θ[i])
                 for (i, name) in enumerate(keys(priors))]
     end
-    
+
     # Φ₁ = (1/2)*|| Γy^(-½) * (y - G) ||²
-    Φ₁ = (1/2) * norm(inv(sqrt(Γy)) * (y .- G))^2
+    Φ₁ = (1/2) * norm(inv_sqrt_Γy * (y .- G))^2
     # Φ₂ = (1/2)*|| Γθ^(-½) * (θ - μθ) ||² 
     Φ₂ = (1/2) * norm(inv(sqrt(Γθ)) * (θ .- μθ))^2
     return (Φ₁, Φ₂)
