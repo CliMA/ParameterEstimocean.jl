@@ -1,4 +1,4 @@
-# # CAKTE calibration with Ensemble Kalman Inversion using LESbrary data 
+# # Calibration of `RiBasedVerticalDiffusivity` to five LESbrary simulations
 
 # ## Install dependencies
 
@@ -127,7 +127,7 @@ calibration = InverseProblem(observations, simulation, free_parameters)
 # Next, we calibrate, using a relatively large noise to reflect our
 # uncertainty about how close the observations and model can really get,
 
-eki = EnsembleKalmanInversion(calibration; convergence_rate=0.8)
+eki = EnsembleKalmanInversion(calibration; pseudo_stepping=ConstantConvergence(0.8))
 iterate!(eki; iterations = 10)
 @show eki.iteration_summaries[end]
 

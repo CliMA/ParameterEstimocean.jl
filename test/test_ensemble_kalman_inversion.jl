@@ -64,8 +64,8 @@ architecture = CPU()
     ##### Test EKI
     #####
 
-    for eki in [EnsembleKalmanInversion(calibration; noise_covariance=0.01),
-                EnsembleKalmanInversion(batched_calibration; noise_covariance=0.01)]
+    for eki in [EnsembleKalmanInversion(calibration; pseudo_stepping=ConstantConvergence(0.9)),
+                EnsembleKalmanInversion(batched_calibration; pseudo_stepping=ConstantConvergence(0.9))]
 
         batch_str = string("(Nbatch = ", size(eki.inverse_problem.simulation.model.grid, 2), ")")
         @testset "EnsembleKalmanInversions construction and iteration tests $batch_str" begin

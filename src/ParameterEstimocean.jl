@@ -24,7 +24,8 @@ export
     EnsembleKalmanInversion,
     Resampler,
     FullEnsembleDistribution,
-    SuccessfulEnsembleDistribution
+    SuccessfulEnsembleDistribution,
+    ConstantConvergence
 
 include("Utils.jl")
 include("Transformations.jl")
@@ -33,6 +34,7 @@ include("Parameters.jl")
 include("EnsembleSimulations.jl")
 include("InverseProblems.jl")
 include("EnsembleKalmanInversions.jl")
+include("PseudoSteppingSchemes.jl")
 
 using .Utils
 using .Transformations
@@ -41,6 +43,7 @@ using .EnsembleSimulations
 using .Parameters
 using .InverseProblems
 using .EnsembleKalmanInversions
+using .PseudoSteppingSchemes
 
 #####
 ##### Data!

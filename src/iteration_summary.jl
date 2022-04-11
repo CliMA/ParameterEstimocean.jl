@@ -1,5 +1,7 @@
 using ..Parameters: transform_to_unconstrained
 
+using Oceananigans.Utils: prettysummary
+
 struct IterationSummary{P, M, C, V, E, O}
     parameters :: P     # constrained
     ensemble_mean :: M  # constrained
@@ -8,6 +10,8 @@ struct IterationSummary{P, M, C, V, E, O}
     mean_square_errors :: E
     objective_values :: O
     iteration :: Int
+    pseudotime :: Float64
+    pseudo_Δt :: Float64
 end
 
 """
@@ -16,10 +20,10 @@ end
 Given forward map `G` and parameters `θ`, return a tuple `(Φ₁, Φ₂)` 
 of terms in the EKI regularized objective function, where
 
-    Φ = (1/2)*(Φ₁ + Φ₂)
+    Φ = Φ₁ + Φ₂
 
-Φ₁ measures output misfit `|| Γy^(-¹/₂) * (y .- G(θ)) ||²` and 
-Φ₂ measures prior misfit `|| Γθ^(-¹/₂) * (θ .- μθ) ||²`, where `y` is the observation 
+Φ₁ measures output misfit `(1/2)*|| Γy^(-¹/₂) * (y .- G(θ)) ||²` and 
+Φ₂ measures prior misfit `(1/2)*|| Γθ^(-¹/₂) * (θ .- μθ) ||²`, where `y` is the observation 
 map, `G(θ)` is the forward map, `Γy` is the observation noise covariance, `Γθ` is 
 the prior covariance, and `μθ` represents the prior means. Note that `Γ^(-1/2) = 
 inv(sqrt(Γ))`. The keyword argument `constrained` is `true` if the input `θ`
@@ -40,10 +44,10 @@ function eki_objective(eki, θ::AbstractVector, G::AbstractVector; constrained =
                 for (i, name) in enumerate(keys(priors))]
     end
     
-    # Φ₁ = || Γy^(-½) * (y - G) ||²
-    Φ₁ = norm(inv(sqrt(Γy)) * (y .- G))^2
-    # Φ₂ = || Γθ^(-½) * (θ - μθ) ||² 
-    Φ₂ = norm(inv(sqrt(Γθ)) * (θ .- μθ))^2
+    # Φ₁ = (1/2)*|| Γy^(-½) * (y - G) ||²
+    Φ₁ = (1/2) * norm(inv(sqrt(Γy)) * (y .- G))^2
+    # Φ₂ = (1/2)*|| Γθ^(-½) * (θ - μθ) ||² 
+    Φ₂ = (1/2) * norm(inv(sqrt(Γθ)) * (θ .- μθ))^2
     return (Φ₁, Φ₂)
 end
 
@@ -83,7 +87,9 @@ function IterationSummary(eki, X, forward_map_output=nothing)
                             constrained_ensemble_variance,
                             mean_square_errors,
                             objective_values,
-                            eki.iteration)
+                            eki.iteration,
+                            eki.pseudotime,
+                            eki.pseudo_Δt)
 end
 
 function finitefind(a, val, find)
@@ -117,9 +123,13 @@ function Base.show(io::IO, is::IterationSummary)
     return nothing
 end
 
-Base.summary(is::IterationSummary) = string("IterationSummary for ", length(is.parameters),
+Base.summary(is::IterationSummary) = string("IterationSummary(",
+                                            "iteration=", is.iteration,
+                                            ", pseudotime=", prettysummary(is.pseudotime),
+                                            ", pseudo_Δt=", prettysummary(is.pseudo_Δt), ") ",
+                                            "for ", length(is.parameters),
                                             " particles and ", length(keys(is.ensemble_mean)),
-                                            " parameters at iteration ", is.iteration)
+                                            " parameters")
 
 function param_str(p::Symbol)
     p_str = string(p)
