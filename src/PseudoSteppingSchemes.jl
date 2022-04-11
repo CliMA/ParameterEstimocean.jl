@@ -227,7 +227,7 @@ function trained_gp_predict_function(X, y; standardize_X=true)
 
     N_param = size(X, 1)
 
-    zscore_X = Zscore(mean(X, dims=2), var(X, dims=2))
+    zscore_X = ZScore(mean(X, dims=2), var(X, dims=2))
     standardize_X && normalize!(X, zscore_X)
 
     zscore_y = ZScore(mean(y), var(y))
