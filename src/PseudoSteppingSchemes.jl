@@ -209,15 +209,33 @@ function ensemble_array(eki, iteration)
     return ensemble_array
 end
 
-function trained_gp_predict_function(X, y)
+"""
+    trained_gp_predict_function(X, y; standardize_X=true)
+
+Return a trained Gaussian Process given inputs X and outputs y.
+# Arguments
+- `X` (AbstractArray): size `(N_param, N_train)` array of training points.
+- `y` (Vector): size `(N_train,)` array of training outputs.
+# Keyword Arguments
+- `standardize_X` (Bool): whether to standardize the inputs for GP training and prediction.
+# Returns
+- `predict` (Function): a function that maps size-`(N_param, N_test)` inputs to `(μ, Γgp)`, 
+where `μ` is an `(N_test,)` array of corresponding mean predictions and `Γgp` is the 
+prediction covariance matrix.
+"""
+function trained_gp_predict_function(X, y; standardize_X=true)
 
     N_param = size(X, 1)
 
-    zscore = ZScore(mean(y), var(y))
-    normalize!(y, zscore)
+    zscore_X = Zscore(mean(X, dims=2), var(X, dims=2))
+    standardize_X && normalize!(X, zscore_X)
+
+    zscore_y = ZScore(mean(y), var(y))
+    normalize!(y, zscore_y)
 
     # log- length scale kernel parameter
     ll = [0.0 for _ in N_param]
+
     # log- noise kernel parameter
     lσ = 0.0
 
@@ -229,8 +247,12 @@ function trained_gp_predict_function(X, y)
     optimize!(gp)
 
     function predict(X) 
+        X★ = copy(X)
+        standardize_X && normalize!(X★, zscore_X)
         μ, Γgp = predict_f(gp, X; full_cov=true)
-        inverse_normalize!(ŷ, zscore)
+        inverse_normalize!(μ, zscore_y)
+        # inverse standardization has element-wise effect on Γgp
+        Γgp .*= zscore_y.σ^2
         return μ, Γgp
     end
 
