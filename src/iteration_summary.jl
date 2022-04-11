@@ -29,7 +29,7 @@ the prior covariance, and `μθ` represents the prior means. Note that `Γ^(-1/2
 inv(sqrt(Γ))`. The keyword argument `constrained` is `true` if the input `θ`
 represents constrained parameters.
 """
-function eki_objective(eki, θ::AbstractVector, G::AbstractVector; constrained = false)
+function eki_objective(eki, θ::AbstractVector, G::AbstractVector; constrained = false; inv_sqrt_Γθ = nothing)
     y = eki.mapped_observations
     Γy = eki.noise_covariance
     inv_sqrt_Γy = eki.precomputed_matrices[:inv_sqrt_Γy]
@@ -38,7 +38,11 @@ function eki_objective(eki, θ::AbstractVector, G::AbstractVector; constrained =
     priors = fp.priors
     unconstrained_priors = [unconstrained_prior(priors[name]) for name in fp.names]
     μθ = getproperty.(unconstrained_priors, :μ)
-    Γθ = diagm( getproperty.(unconstrained_priors, :σ).^2 )
+
+    if isnothing(inv_sqrt_Γθ)
+        Γθ = diagm( getproperty.(unconstrained_priors, :σ).^2 )
+        inv_sqrt_Γθ = inv(sqrt(Γθ))
+    end
 
     if constrained
         θ = [transform_to_unconstrained(priors[name], θ[i])
@@ -48,7 +52,7 @@ function eki_objective(eki, θ::AbstractVector, G::AbstractVector; constrained =
     # Φ₁ = (1/2)*|| Γy^(-½) * (y - G) ||²
     Φ₁ = (1/2) * norm(inv_sqrt_Γy * (y .- G))^2
     # Φ₂ = (1/2)*|| Γθ^(-½) * (θ - μθ) ||² 
-    Φ₂ = (1/2) * norm(inv(sqrt(Γθ)) * (θ .- μθ))^2
+    Φ₂ = (1/2) * norm(inv_sqrt_Γθ * (θ .- μθ))^2
     return (Φ₁, Φ₂)
 end
 
@@ -59,7 +63,8 @@ Return the summary for ensemble Kalman inversion `eki`
 with unconstrained parameters `X` and `forward_map_output`.
 """
 function IterationSummary(eki, X, forward_map_output=nothing)
-    priors = eki.inverse_problem.free_parameters.priors
+    fp = eki.inverse_problem.free_parameters
+    priors = fp.priors
 
     ensemble_mean = mean(X, dims=2)[:] 
     constrained_ensemble_mean = transform_to_constrained(priors, ensemble_mean)
@@ -79,8 +84,13 @@ function IterationSummary(eki, X, forward_map_output=nothing)
         mean_square_errors = nothing
     end
 
+    # Pre-compute inv(sqrt(Γθ) to save redundant computations
+    unconstrained_priors = [unconstrained_prior(priors[name]) for name in fp.names]
+    Γθ = diagm( getproperty.(unconstrained_priors, :σ).^2 )
+    inv_sqrt_Γθ = inv(sqrt(Γθ))
+
     # Vector of (Φ₁, Φ₂) pairs, one for each ensemble member at the current iteration
-    objective_values = [eki_objective(eki, X[:, j], G[:, j]) for j in 1:size(G, 2)]
+    objective_values = [eki_objective(eki, X[:, j], G[:, j]; inv_sqrt_Γθ) for j in 1:size(G, 2)]
 
     return IterationSummary(constrained_parameters,
                             constrained_ensemble_mean,
