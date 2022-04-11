@@ -179,7 +179,7 @@ function EnsembleKalmanInversion(inverse_problem;
                                   eki′.resampler,
                                   eki′.unconstrained_parameters,
                                   forward_map_output,
-                                  eki′.pseudo_stepping.
+                                  eki′.pseudo_stepping,
                                   eki′.precomputed_matrices)
     
     return eki
