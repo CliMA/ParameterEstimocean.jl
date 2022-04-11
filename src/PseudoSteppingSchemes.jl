@@ -1,5 +1,7 @@
 module PseudoSteppingSchemes
 
+using Statistics
+
 export ConstantConvergence
 
 using ..EnsembleKalmanInversions: step_parameters
