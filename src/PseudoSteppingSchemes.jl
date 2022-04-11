@@ -229,9 +229,9 @@ function trained_gp_predict_function(X, y)
     optimize!(gp)
 
     function predict(X) 
-        ŷ = predict_f(gp, X)[1]
+        μ, Γgp = predict_f(gp, X; full_cov=true)
         inverse_normalize!(ŷ, zscore)
-        return ŷ
+        return μ, Γgp
     end
 
     return predict
@@ -285,7 +285,7 @@ function eki_update(pseudo_scheme::GPLineSearch, Xₙ, Gₙ, eki)
         # s .= - (1/N_ensemble) .* sum( [dot(G[:, k] - g̅, Γy⁻¹ * (Gʲ - y)) .* Xₙ[:, k] for k = 1:N_ensemble] )
         s = Ẋ_forward[:, j]
         
-        ϕ(α) = predict(xʲ .+ α .* s)
+        ϕ(α) = predict(xʲ .+ α .* s)[1]
 
         # gradient w.r.t. linesearch step size parameter α
         # (equivalent to directional derivative in the search direction, s)
