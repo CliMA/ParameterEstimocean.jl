@@ -27,7 +27,7 @@ of terms in the EKI regularized objective function, where
 map, `G(θ)` is the forward map, `Γy` is the observation noise covariance, `Γθ` is 
 the prior covariance, and `μθ` represents the prior means. Note that `Γ^(-1/2) = 
 inv(sqrt(Γ))`. The keyword argument `constrained` is `true` if the input `θ`
-represents constrained parameters.
+represents constrained parameters. Note that `Φ₂ = 0` if `eki.tikhonov` is false.
 """
 function eki_objective(eki, θ::AbstractVector, G::AbstractVector; constrained = false)
     y = eki.mapped_observations
@@ -44,7 +44,7 @@ function eki_objective(eki, θ::AbstractVector, G::AbstractVector; constrained =
     # Φ₁ = (1/2)*|| Γy^(-½) * (y - G) ||²
     Φ₁ = (1/2) * norm(inv_sqrt_Γy * (y .- G))^2
     # Φ₂ = (1/2)*|| Γθ^(-½) * (θ - μθ) ||² 
-    Φ₂ = (1/2) * norm(inv_sqrt_Γθ * (θ .- μθ))^2
+    Φ₂ = eki.tikhonov ? (1/2) * norm(inv_sqrt_Γθ * (θ .- μθ))^2 : 0
     return (Φ₁, Φ₂)
 end
 

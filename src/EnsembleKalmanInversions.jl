@@ -41,6 +41,7 @@ mutable struct EnsembleKalmanInversion{E, I, M, O, S, R, X, G, C, P}
     forward_map_output :: G
     pseudo_stepping :: C
     precomputed_arrays :: P
+    tikhonov :: T
 end
 
 Base.show(io::IO, eki::EnsembleKalmanInversion) =
@@ -103,6 +104,9 @@ Arguments
 - `resampler`: controls particle resampling procedure. See `Resampler`.
 
 - `process`: The Ensemble Kalman process. Default: `Inversion().
+
+- `tikhonov`: Whether to incorporate prior information in the EKI objective via Tikhonov regularization.
+    See Chada et al. "Tikhonov Regularization Within Ensemble Kalman Inversion." SIAM J. Numer. Anal. 2020.
 """
 function EnsembleKalmanInversion(inverse_problem;
                                  noise_covariance = 1,
@@ -111,7 +115,8 @@ function EnsembleKalmanInversion(inverse_problem;
                                  resampler = Resampler(),
                                  unconstrained_parameters = nothing,
                                  forward_map_output = nothing,
-                                 process = Inversion())
+                                 process = Inversion(),
+                                 tikhonov = false)
 
     if process isa Sampler && !isnothing(pseudo_stepping)
         @warn "Process is $process; ignoring keyword argument pseudo_stepping=$pseudo_stepping."
@@ -149,8 +154,14 @@ function EnsembleKalmanInversion(inverse_problem;
 
     precomputed_arrays = Dict(:inv_Γy => inv(Γy), 
                               :inv_sqrt_Γy => inv(sqrt(Γy)),
+                              :Γθ => Γθ,
                               :inv_sqrt_Γθ => inv(sqrt(Γθ)),
                               :μθ => μθ)
+
+    Σ = cat(Γy, Γθ, dims=(1,2))
+    precomputed_augmented_arrays = Dict(:y_augmented => vcat(y, zeros(length(μθ))),
+                                        :Σ => Σ, 
+                                        :inv_Σ => inv(Σ))
 
     eki′ = EnsembleKalmanInversion(inverse_problem,
                                    process,
@@ -164,7 +175,8 @@ function EnsembleKalmanInversion(inverse_problem;
                                    Xᵢ,
                                    forward_map_output,
                                    pseudo_stepping,
-                                   precomputed_arrays)
+                                   precomputed_arrays,
+                                   tikhonov)
 
     if isnothing(forward_map_output) # execute forward map to generate initial summary and forward_map_output
         @info "Executing forward map while building EnsembleKalmanInversion..."
@@ -189,7 +201,8 @@ function EnsembleKalmanInversion(inverse_problem;
                                   eki′.unconstrained_parameters,
                                   forward_map_output,
                                   eki′.pseudo_stepping,
-                                  eki′.precomputed_arrays)
+                                  eki′.precomputed_arrays,
+                                  eki′.tikhonov)
     
     return eki
 end

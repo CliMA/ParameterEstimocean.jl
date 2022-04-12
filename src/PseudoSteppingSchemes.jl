@@ -15,12 +15,20 @@ eki_update(::Nothing, Xₙ, Gₙ, eki, Δtₙ) = eki_update(Constant(Δtₙ), X�
 
 eki_update(pseudo_scheme, Xₙ, Gₙ, eki, Δtₙ) = eki_update(pseudo_scheme, Xₙ, Gₙ, eki)
 
+observations(eki) = eki.tikhonov ? eki.precomputed_arrays[:y_augmented] : eki.mapped_observations
+noise_covariance(eki) = eki.tikhonov ? eki.precomputed_arrays[:Σ] : eki.noise_covariance
+inv_noise_covariance(eki) = eki.tikhonov ? eki.precomputed_arrays[:inv_Σ] : 
+                                           eki.precomputed_arrays[:ininv_Γyv_Σ]
+
 function adaptive_step_parameters(pseudo_scheme, Xₙ, Gₙ, eki; Δt=1.0, 
                                     covariance_inflation = 1.0,
                                     momentum_parameter = 0.0)
 
-    # X is [N_par × N_ens]
-    X̅ = mean(Xₙ, dims=2) # [1 × N_ens]
+    N_param, N_ens = size(Xₙ)
+    X̅ = mean(Xₙ, dims=2)
+
+    # Forward map augmentation for Tikhonov regularization 
+    eki.tikhonov && Gₙ = vcat(Gₙ, Xₙ)
 
     Xₙ₊₁, Δtₙ = eki_update(pseudo_scheme, Xₙ, Gₙ, eki, Δt)
 
@@ -31,15 +39,14 @@ function adaptive_step_parameters(pseudo_scheme, Xₙ, Gₙ, eki; Δt=1.0,
     @. Xₙ₊₁ = Xₙ₊₁ + (Xₙ₊₁ - X̅) * covariance_inflation
 
     return Xₙ₊₁, Δtₙ
-
 end
 
 function iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ=1.0)
 
     N_obs, N_ens = size(Gₙ)
 
-    y = eki.mapped_observations
-    Γy = eki.noise_covariance
+    y = observations(eki)
+    Γy = noise_covariance(eki)
 
     # Scale noise Γy using Δt. 
     Δt⁻¹Γy = Γy / Δtₙ
@@ -62,17 +69,15 @@ frobenius_norm(A) = sqrt(sum(A .^ 2))
 
 function kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀=1.0)
 
-    y = eki.mapped_observations
-    Γy = eki.noise_covariance
-    
+    y = observations(eki)
+    Γy = noise_covariance(eki)
+
     N_ens = size(Xₙ, 2)
     g̅ = mean(G, dims = 2)
-    Γy⁻¹ = eki.precomputed_arrays[:inv_Γy]
-
-    # Compute flattened ensemble u = [θ⁽¹⁾, θ⁽²⁾, ..., θ⁽ᴶ⁾]
-    uₙ = vcat([Xₙ[:,j] for j in 1:N_ens]...)
+    Γy⁻¹ = inv_noise_covariance(eki)
 
     # Fill transformation matrix (D(uₙ))ᵢⱼ = ⟨ G(u⁽ⁱ⁾) - g̅, Γy⁻¹(G(u⁽ʲ⁾) - y) ⟩
+    D = zeros(N_ens, N_ens)
     for j = 1:N_ens, i = 1:N_ens
         D[i, j] = dot(Gₙ[:, i] - g̅, Γy⁻¹ * (Gₙ[:, j] - y))
     end
@@ -80,9 +85,8 @@ function kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀=1.0)
     # Calculate time step Δtₙ₋₁ = Δt₀ / (frobenius_norm(D(uₙ)) + ϵ)
     Δtₙ = Δt₀ / (frobenius_norm(D) + 1e-10)
 
-    # Update uₙ₊₁ = uₙ - Δtₙ₋₁ D(uₙ) uₙ
-    uₙ₊₁ = uₙ - Δtₙ * D * uₙ
-    Xₙ₊₁ = reshape(uₙ₊₁, size(Xₙ))
+    # Update
+    Xₙ₊₁ = Xₙ - Δtₙ * Xₙ * D
 
     return Xₙ₊₁
 end
