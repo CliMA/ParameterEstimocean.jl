@@ -76,13 +76,8 @@ function IterationSummary(eki, X, forward_map_output=nothing)
         mean_square_errors = nothing
     end
 
-    # Pre-compute inv(sqrt(Γθ) to save redundant computations
-    unconstrained_priors = [unconstrained_prior(priors[name]) for name in fp.names]
-    Γθ = diagm( getproperty.(unconstrained_priors, :σ).^2 )
-    inv_sqrt_Γθ = inv(sqrt(Γθ))
-
     # Vector of (Φ₁, Φ₂) pairs, one for each ensemble member at the current iteration
-    objective_values = [eki_objective(eki, X[:, j], G[:, j]; inv_sqrt_Γθ) for j in 1:size(G, 2)]
+    objective_values = [eki_objective(eki, X[:, j], G[:, j]) for j in 1:size(G, 2)]
 
     return IterationSummary(constrained_parameters,
                             constrained_ensemble_mean,
