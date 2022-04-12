@@ -15,6 +15,12 @@ eki_update(::Nothing, Xₙ, Gₙ, eki, Δtₙ) = eki_update(Constant(Δtₙ), X�
 
 eki_update(pseudo_scheme, Xₙ, Gₙ, eki, Δtₙ) = eki_update(pseudo_scheme, Xₙ, Gₙ, eki)
 
+function noise_mean(eki)
+    μ_noise = zeros(length(eki.mapped_observations))
+    eki.tikhonov && μ_noise = vcat(μ_noise, eki.precomputed_arrays[:μθ])
+    return μ_noise
+end
+
 observations(eki) = eki.tikhonov ? eki.precomputed_arrays[:y_augmented] : eki.mapped_observations
 noise_covariance(eki) = eki.tikhonov ? eki.precomputed_arrays[:Σ] : eki.noise_covariance
 inv_noise_covariance(eki) = eki.tikhonov ? eki.precomputed_arrays[:inv_Σ] : 
@@ -47,16 +53,16 @@ function iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ=1.0)
 
     y = observations(eki)
     Γy = noise_covariance(eki)
+    μ_noise = noise_mean(eki)
 
     # Scale noise Γy using Δt. 
     Δt⁻¹Γy = Γy / Δtₙ
 
-    ξₙ = rand(MvNormal(zeros(N_obs), Δt⁻¹Γy), N_ens)
+    ξₙ = rand(MvNormal(μ_noise, Δt⁻¹Γy), N_ens)
+    y_perturbed = y .+ ξₙ # [N_obs x N_ens]
 
     Cᶿᵍ = cov(Xₙ, Gₙ, dims = 2, corrected = false) # [N_par × N_obs]
     Cᵍᵍ = cov(Gₙ, Gₙ, dims = 2, corrected = false) # [N_obs × N_obs]
-
-    y_perturbed = y .+ ξₙ # [N_obs x N_ens]
 
     # EKI update: θ ← θ + Cᶿᵍ(Cᵍᵍ + h⁻¹Γy)⁻¹(y + ξₙ - g)
     tmp = (Cᵍᵍ + Δt⁻¹Γy) \ (y_perturbed - Gₙ) # [N_obs × N_ens]
@@ -121,6 +127,8 @@ struct Chada2021{I, B} <: AbstractSteppingScheme
 end
 
 Chada2021(; initial_step_size=1.0, β=0.0) = Chada2021(initial_step_size, β)
+
+struct Iglesias2021 <: AbstractSteppingScheme end
 
 """
     ConstantConvergence{T} <: AbstractSteppingScheme
@@ -268,7 +276,7 @@ function eki_update(pseudo_scheme::GPLineSearch, Xₙ, Gₙ, eki)
     # ensemble covariance
     Cᶿᶿ = cov(Xₙ, dims = 2)
 
-    n = length(eki.iteration_summaries) - 1 # (initial state doesn't count)
+    n = eki.iteration
 
     Xₙ = ensemble_array(eki, n)
     Xₙ₋₁ = ensemble_array(eki, n-1)
@@ -359,6 +367,29 @@ function eki_update(pseudo_scheme::ConstantConvergence, Xₙ, Gₙ, eki)
     end
 
     @info "Particles stepped adaptively with convergence rate $r (target $conv_rate)"
+
+    return Xₙ₊₁, Δtₙ
+end
+
+"""
+    eki_update(pseudo_scheme::Iglesias2021, Xₙ, Gₙ, eki)
+
+Implements an EKI update with adaptive time steps based on Iglesias et al. "Adaptive 
+Regularization for Ensemble Kalman Inversion," Inverse Problems, 2021.
+"""
+function eki_update(pseudo_scheme::Iglesias2021, Xₙ, Gₙ, eki)
+
+    n = eki.iteration
+    M, J = size(Gₙ)
+
+    Φ = [sum(eki_objective(eki, Xₙ[:, j], G[:, j])) for j=1:J]
+    Φ_mean = mean(Φ)
+    Φ_var = var(Φ)
+
+    qₙ = maximum( (M/(2Φ_mean), sqrt(M/(2Φ_var))) )
+    tₙ = n == 1 ? 0 : sum(getproperty.(eki.iteration_summaries, :pseudo_Δt))
+    Δtₙ = minimum(qₙ, 1-tₙ)
+    Xₙ₊₁ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
 
     return Xₙ₊₁, Δtₙ
 end
