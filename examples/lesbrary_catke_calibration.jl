@@ -124,7 +124,7 @@ calibration = InverseProblem(observations, simulation, free_parameters)
 
 # Next, we calibrate, adaptively stepping forward with a fixed ensemble convergence rate:
 
-eki = EnsembleKalmanInversion(calibration; convergence_rate=0.9)
+eki = EnsembleKalmanInversion(calibration; pseudo_stepping=ConstantConvergence(0.9))
 iterate!(eki; iterations = 10)
 
 # # Results

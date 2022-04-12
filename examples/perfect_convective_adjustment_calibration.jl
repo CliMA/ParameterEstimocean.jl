@@ -65,7 +65,7 @@ calibration = InverseProblem(observations, ensemble_simulation, free_parameters)
 # algorithm refer to
 # [EnsembleKalmanProcesses.jl documentation](https://clima.github.io/EnsembleKalmanProcesses.jl/stable/ensemble_kalman_inversion/).
 
-eki = EnsembleKalmanInversion(calibration; convergence_rate = 0.5)
+eki = EnsembleKalmanInversion(calibration; pseudo_stepping = ConstantConvergence(0.5))
 
 # and perform few iterations to see if we can converge to the true parameter values.
 
@@ -112,15 +112,13 @@ save("summary_convective_adjustment_eki.svg", f); nothing #hide
 # And also we plot the the distributions of the various model ensembles for few EKI iterations to see
 # if and how well they converge to the true diffusivity values.
 
-f = Figure()
+fig = Figure()
 
-axtop = Axis(f[1, 1])
+axtop = Axis(fig[1, 1])
+axmain = Axis(fig[2, 1], xlabel = "convective_κz [m² s⁻¹]",
+                       ylabel = "background_κz [m² s⁻¹]")
 
-axmain = Axis(f[2, 1],
-              xlabel = "convective_κz [m² s⁻¹]",
-              ylabel = "background_κz [m² s⁻¹]")
-
-axright = Axis(f[2, 2])
+axright = Axis(fig[2, 2])
 scatters = []
 labels = String[]
 
@@ -144,12 +142,12 @@ vlines!(axtop, [θ★.convective_κz], color = :red)
 hlines!(axmain, [θ★.background_κz], color = :red)
 hlines!(axright, [θ★.background_κz], color = :red)
 
-colsize!(f.layout, 1, Fixed(300))
-colsize!(f.layout, 2, Fixed(200))
-rowsize!(f.layout, 1, Fixed(200))
-rowsize!(f.layout, 2, Fixed(300))
+colsize!(fig.layout, 1, Fixed(300))
+colsize!(fig.layout, 2, Fixed(200))
+rowsize!(fig.layout, 1, Fixed(200))
+rowsize!(fig.layout, 2, Fixed(300))
 
-Legend(f[1, 2], scatters, labels, position = :lb)
+Legend(fig[1, 2], scatters, labels, position = :lb)
 
 hidedecorations!(axtop, grid = false)
 hidedecorations!(axright, grid = false)
@@ -159,6 +157,7 @@ xlims!(axtop, -0.25, 3.2)
 ylims!(axmain, 5e-5, 35e-5)
 ylims!(axright, 5e-5, 35e-5)
 
-save("distributions_convective_adjustment_eki.svg", f); nothing #hide
+save("distributions_convective_adjustment_eki.svg", fig); nothing #hide
 
 # ![](distributions_convective_adjustment_eki.svg)
+
