@@ -143,13 +143,14 @@ function EnsembleKalmanInversion(inverse_problem;
 
     # Pre-compute Γθ^(-1/2) and μθ
     fp = eki.inverse_problem.free_parameters
-    Γθ = diagm([unconstrained_prior(fp.priors[name]).σ^2 for name in fp.names])
-    μθ = [unconstrained_prior(fp.priors[name]).μ for name in fp.names]
+    unconstr_priors = [unconstrained_prior(fp.priors[name]) for name in fp.names]
+    Γθ = diagm(getproperty.(unconstr_priors, :σ).^2)
+    μθ = getproperty.(unconstr_priors, :μ)
 
     precomputed_arrays = Dict(:inv_Γy => inv(Γy), 
-                                :inv_sqrt_Γy => inv(sqrt(Γy)),
-                                :inv_sqrt_Γθ => inv(sqrt(Γθ)),
-                                :μθ => μθ)
+                              :inv_sqrt_Γy => inv(sqrt(Γy)),
+                              :inv_sqrt_Γθ => inv(sqrt(Γθ)),
+                              :μθ => μθ)
 
     eki′ = EnsembleKalmanInversion(inverse_problem,
                                    process,
