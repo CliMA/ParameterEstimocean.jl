@@ -29,20 +29,12 @@ the prior covariance, and `μθ` represents the prior means. Note that `Γ^(-1/2
 inv(sqrt(Γ))`. The keyword argument `constrained` is `true` if the input `θ`
 represents constrained parameters.
 """
-function eki_objective(eki, θ::AbstractVector, G::AbstractVector; constrained = false, inv_sqrt_Γθ = nothing)
+function eki_objective(eki, θ::AbstractVector, G::AbstractVector; constrained = false)
     y = eki.mapped_observations
     Γy = eki.noise_covariance
-    inv_sqrt_Γy = eki.precomputed_matrices[:inv_sqrt_Γy]
-
-    fp = eki.inverse_problem.free_parameters
-    priors = fp.priors
-    unconstrained_priors = [unconstrained_prior(priors[name]) for name in fp.names]
-    μθ = getproperty.(unconstrained_priors, :μ)
-
-    if isnothing(inv_sqrt_Γθ)
-        Γθ = diagm( getproperty.(unconstrained_priors, :σ).^2 )
-        inv_sqrt_Γθ = inv(sqrt(Γθ))
-    end
+    inv_sqrt_Γy = eki.precomputed_arrays[:inv_sqrt_Γy]
+    inv_sqrt_Γθ = eki.precomputed_arrays[:inv_sqrt_Γθ]
+    μθ = eki.precomputed_arrays[:μθ]
 
     if constrained
         θ = [transform_to_unconstrained(priors[name], θ[i])

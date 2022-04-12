@@ -40,7 +40,7 @@ mutable struct EnsembleKalmanInversion{E, I, M, O, S, R, X, G, C, P}
     unconstrained_parameters :: X
     forward_map_output :: G
     pseudo_stepping :: C
-    precomputed_matrices :: P
+    precomputed_arrays :: P
 end
 
 Base.show(io::IO, eki::EnsembleKalmanInversion) =
@@ -141,7 +141,15 @@ function EnsembleKalmanInversion(inverse_problem;
     iteration = 0
     pseudotime = 0.0
 
-    precomputed_matrices = Dict(:inv_Γy => inv(Γy), :inv_sqrt_Γy => inv(sqrt(Γy)))
+    # Pre-compute Γθ^(-1/2) and μθ
+    fp = eki.inverse_problem.free_parameters
+    Γθ = diagm([unconstrained_prior(fp.priors[name]).σ^2 for name in fp.names])
+    μθ = [unconstrained_prior(fp.priors[name]).μ for name in fp.names]
+
+    precomputed_arrays = Dict(:inv_Γy => inv(Γy), 
+                                :inv_sqrt_Γy => inv(sqrt(Γy)),
+                                :inv_sqrt_Γθ => inv(sqrt(Γθ)),
+                                :μθ => μθ)
 
     eki′ = EnsembleKalmanInversion(inverse_problem,
                                    process,
@@ -155,7 +163,7 @@ function EnsembleKalmanInversion(inverse_problem;
                                    Xᵢ,
                                    forward_map_output,
                                    pseudo_stepping,
-                                   precomputed_matrices)
+                                   precomputed_arrays)
 
     if isnothing(forward_map_output) # execute forward map to generate initial summary and forward_map_output
         @info "Executing forward map while building EnsembleKalmanInversion..."
@@ -180,7 +188,7 @@ function EnsembleKalmanInversion(inverse_problem;
                                   eki′.unconstrained_parameters,
                                   forward_map_output,
                                   eki′.pseudo_stepping,
-                                  eki′.precomputed_matrices)
+                                  eki′.precomputed_arrays)
     
     return eki
 end
