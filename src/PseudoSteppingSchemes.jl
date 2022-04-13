@@ -8,7 +8,7 @@ using ParameterEstimocean.Transformations: ZScore, normalize!
 
 import ..EnsembleKalmanInversions: adaptive_step_parameters
 
-export Constant, Default, GPLineSearch, Chada2021, ConstantConvergence, Kovachki2018
+export Constant, Default, GPLineSearch, ConstantConvergence, Kovachki2018, Iglesias2021, Chada2021
 
 # Default pseudo_stepping::Nothing --- it's not adaptive
 eki_update(::Nothing, Xₙ, Gₙ, eki, Δtₙ) = eki_update(Constant(Δtₙ), Xₙ, Gₙ, eki)
@@ -17,7 +17,8 @@ eki_update(pseudo_scheme, Xₙ, Gₙ, eki, Δtₙ) = eki_update(pseudo_scheme, X
 
 function noise_mean(eki)
     μ_noise = zeros(length(eki.mapped_observations))
-    eki.tikhonov && μ_noise = vcat(μ_noise, eki.precomputed_arrays[:μθ])
+    μ_noise = eki.tikhonov ? μ_noise :
+                vcat(μ_noise, eki.precomputed_arrays[:μθ])
     return μ_noise
 end
 
@@ -34,8 +35,10 @@ function adaptive_step_parameters(pseudo_scheme, Xₙ, Gₙ, eki; Δt=1.0,
     X̅ = mean(Xₙ, dims=2)
 
     # Forward map augmentation for Tikhonov regularization 
-    eki.tikhonov && Gₙ = vcat(Gₙ, Xₙ)
-
+    if eki.tikhonov
+        Gₙ = vcat(Gₙ, Xₙ)
+    end
+    
     Xₙ₊₁, Δtₙ = eki_update(pseudo_scheme, Xₙ, Gₙ, eki, Δt)
 
     # Apply momentum Xₙ ← Xₙ + λ(Xₙ - Xₙ₋₁)

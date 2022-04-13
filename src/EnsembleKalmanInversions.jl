@@ -27,7 +27,7 @@ using ..InverseProblems: inverting_forward_map
 
 using Oceananigans.Utils: prettytime
 
-mutable struct EnsembleKalmanInversion{E, I, M, O, S, R, X, G, C, P}
+mutable struct EnsembleKalmanInversion{E, I, M, O, S, R, X, G, C, P, T}
     inverse_problem :: I
     ensemble_kalman_process :: E
     mapped_observations :: M
@@ -147,7 +147,7 @@ function EnsembleKalmanInversion(inverse_problem;
     pseudotime = 0.0
 
     # Pre-compute Γθ^(-1/2) and μθ
-    fp = eki.inverse_problem.free_parameters
+    fp = inverse_problem.free_parameters
     unconstr_priors = [unconstrained_prior(fp.priors[name]) for name in fp.names]
     Γθ = diagm(getproperty.(unconstr_priors, :σ).^2)
     μθ = getproperty.(unconstr_priors, :μ)
