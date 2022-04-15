@@ -2,7 +2,8 @@ using ..Parameters: transform_to_unconstrained
 
 using Oceananigans.Utils: prettysummary
 
-struct IterationSummary{P, M, C, V, E, O}
+struct IterationSummary{U, P, M, C, V, E, O}
+    parameters_unconstrained :: U
     parameters :: P     # constrained
     ensemble_mean :: M  # constrained
     ensemble_cov :: C   # constrained
@@ -36,6 +37,7 @@ function eki_objective(eki, θ::AbstractVector, G::AbstractVector; constrained =
     inv_sqrt_Γθ = eki.precomputed_arrays[:inv_sqrt_Γθ]
     μθ = eki.precomputed_arrays[:μθ]
 
+    priors = eki.inverse_problem.free_parameters.priors
     if constrained
         θ = [transform_to_unconstrained(priors[name], θ[i])
                 for (i, name) in enumerate(keys(priors))]
@@ -55,8 +57,7 @@ Return the summary for ensemble Kalman inversion `eki`
 with unconstrained parameters `X` and `forward_map_output`.
 """
 function IterationSummary(eki, X, forward_map_output=nothing)
-    fp = eki.inverse_problem.free_parameters
-    priors = fp.priors
+    priors = eki.inverse_problem.free_parameters.priors
 
     ensemble_mean = mean(X, dims=2)[:] 
     constrained_ensemble_mean = transform_to_constrained(priors, ensemble_mean)
@@ -79,7 +80,8 @@ function IterationSummary(eki, X, forward_map_output=nothing)
     # Vector of (Φ₁, Φ₂) pairs, one for each ensemble member at the current iteration
     objective_values = [eki_objective(eki, X[:, j], G[:, j]) for j in 1:size(G, 2)]
 
-    return IterationSummary(constrained_parameters,
+    return IterationSummary(X,
+                            constrained_parameters,
                             constrained_ensemble_mean,
                             constrained_ensemble_covariance,
                             constrained_ensemble_variance,
