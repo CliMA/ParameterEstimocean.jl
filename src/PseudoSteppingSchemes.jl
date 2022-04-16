@@ -2,11 +2,16 @@ module PseudoSteppingSchemes
 
 export adaptive_step_parameters
 
-using LineSearches, Statistics, LinearAlgebra, Distributions
-using ..EnsembleKalmanInversions: step_parameters
-using ParameterEstimocean.Transformations: ZScore, normalize!
+using LineSearches
+using Statistics
+using LinearAlgebra
+using Distributions
+using GaussianProcesses
 
-import ..EnsembleKalmanInversions: adaptive_step_parameters
+using ..EnsembleKalmanInversions: step_parameters
+using ParameterEstimocean.Transformations: ZScore, normalize!, inverse_normalize!
+
+import ..EnsembleKalmanInversions: adaptive_step_parameters, eki_objective
 
 export Constant, Default, GPLineSearch, ConstantConvergence, Kovachki2018, Iglesias2021, Chada2021
 
@@ -61,8 +66,6 @@ function iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ=1.0)
     # Scale noise Γy using Δt. 
     Δt⁻¹Γy = Γy / Δtₙ
 
-    @show Δtₙ
-
     ξₙ = rand(MvNormal(μ_noise, Δt⁻¹Γy), N_ens)
     y_perturbed = y .+ ξₙ # [N_obs x N_ens]
 
@@ -84,22 +87,22 @@ function kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀=1.0)
     Γy = obs_noise_covariance(eki)
 
     N_ens = size(Xₙ, 2)
-    g̅ = mean(G, dims = 2)
+    g̅ = mean(Gₙ, dims = 2)
     Γy⁻¹ = inv_obs_noise_covariance(eki)
 
-    # Fill transformation matrix (D(uₙ))ᵢⱼ = ⟨ G(u⁽ⁱ⁾) - g̅, Γy⁻¹(G(u⁽ʲ⁾) - y) ⟩
+    # Fill transformation matrix (D(uₙ))ᵢⱼ = ⟨ G(u⁽ʲ⁾) - g̅, Γy⁻¹(G(u⁽ⁱ⁾) - y) ⟩
     D = zeros(N_ens, N_ens)
     for j = 1:N_ens, i = 1:N_ens
-        D[i, j] = dot(Gₙ[:, i] - g̅, Γy⁻¹ * (Gₙ[:, j] - y))
+        D[i, j] = dot(Gₙ[:, j] - g̅, Γy⁻¹ * (Gₙ[:, i] - y))
     end
 
     # Calculate time step Δtₙ₋₁ = Δt₀ / (frobenius_norm(D(uₙ)) + ϵ)
     Δtₙ = Δt₀ / (frobenius_norm(D) + 1e-10)
 
     # Update
-    Xₙ₊₁ = Xₙ - Δtₙ * Xₙ * D
+    Xₙ₊₁ = Xₙ - (Δtₙ / N_ens) * Xₙ * D
 
-    return Xₙ₊₁
+    return Xₙ₊₁, Δtₙ
 end
 
 ###
@@ -120,11 +123,12 @@ end
 
 Default(; cov_threshold=0.01) = Default(cov_threshold)
 
-struct GPLineSearch{L} <: AbstractSteppingScheme
+struct GPLineSearch{L, I} <: AbstractSteppingScheme
     learning_rate :: L
+    initial_step_size :: I
 end
 
-GPLineSearch(; learning_rate=1e-4) = GPLineSearch(learning_rate)
+GPLineSearch(; learning_rate=1e-4, initial_step_size=1e-4) = GPLineSearch(learning_rate, initial_step_size)
 
 struct Chada2021{I, B} <: AbstractSteppingScheme
     initial_step_size :: I
@@ -166,7 +170,7 @@ end
 function eki_update(pseudo_scheme::Kovachki2018, Xₙ, Gₙ, eki)
 
     initial_step_size = pseudo_scheme.initial_step_size
-    Xₙ₊₁ = kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀=1.0)
+    Xₙ₊₁, Δtₙ = kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀=1.0)
 
     return Xₙ₊₁, Δtₙ
 end
@@ -183,9 +187,10 @@ end
 
 function eki_update(pseudo_scheme::Default, Xₙ, Gₙ, eki)
 
-    @assert size(Xₙ, 2) > 2 "A two-sample covariance matrix has rank one and is therefore singular. 
-                            Please increase the ensemble size to at least 3 or choose an AbstractSteppingScheme
-                            that does not rely on the determinant of the ensemble convariance matrix."
+    N_param, N_ensemble = size(Xₙ)
+    @assert N_ensemble > N_param "The number of parameters exceeds the ensemble size and so the ensemble covariance matrix
+                                  will be singular. Please increase the ensemble size to at least $N_param or choose an 
+                                  AbstractSteppingScheme that does not rely on inverting the ensemble convariance matrix."
 
     Δtₙ₋₁ = eki.pseudo_Δt
 
@@ -201,8 +206,6 @@ function eki_update(pseudo_scheme::Default, Xₙ, Gₙ, eki)
         Xₙ₊₁ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
 
         cov_new = cov(Xₙ₊₁, dims = 2)
-        @show Xₙ₊₁
-        @show det_cov_init, det(cov_new), det(cov_new)/det_cov_init
 
         if det(cov_new) > pseudo_scheme.cov_threshold * det_cov_init
             accept_stepsize = true
@@ -214,26 +217,6 @@ function eki_update(pseudo_scheme::Default, Xₙ, Gₙ, eki)
     Xₙ₊₁ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
 
     return Xₙ₊₁, Δtₙ
-end
-
-"""
-    collapse_ensemble(eki, iteration)
-
-Returns an `N_params x N_ensemble` array of parameter values for a given iteration `iteration`.
-"""
-function ensemble_array(eki, iteration)
-    ensemble = eki.iteration_summaries[iteration].parameters_unconstrained
-    param_names = keys(first(ensemble))
-
-    N_params = length(param_names)
-    N_ensemble = length(ensemble)
-
-    ensemble_array = zeros(N_params, N_ensemble)
-    for (i, param_name) in enumerate(param_names)
-        view(ensemble_array, i, :) .= getproperty.(ensemble, param_name)
-    end
-
-    return ensemble_array
 end
 
 """
@@ -261,7 +244,7 @@ function trained_gp_predict_function(X, y; standardize_X=true)
     normalize!(y, zscore_y)
 
     # log- length scale kernel parameter
-    ll = [0.0 for _ in N_param]
+    ll = [0.0 for _ in 1:N_param]
 
     # log- noise kernel parameter
     lσ = 0.0
@@ -274,28 +257,43 @@ function trained_gp_predict_function(X, y; standardize_X=true)
     optimize!(gp)
 
     function predict(X) 
-        X★ = copy(X)
+        X★ = X[:,:]
         standardize_X && normalize!(X★, zscore_X)
         μ, Γgp = predict_f(gp, X; full_cov=true)
         inverse_normalize!(μ, zscore_y)
         # inverse standardization has element-wise effect on Γgp
         Γgp .*= zscore_y.σ^2
+
+        @assert all(isfinite.(μ))
+        @assert all(isfinite.(Γgp))
+
+        if length(μ) == 1
+            return μ[1], Γgp[1]
+        end
         return μ, Γgp
     end
 
     return predict
 end
 
+ensemble_array(eki, iter) = eki.iteration_summaries[iter].parameters_unconstrained
+
 function eki_update(pseudo_scheme::GPLineSearch, Xₙ, Gₙ, eki)
     
-    @assert size(Xₙ, 2) > 2 "A two-sample covariance matrix has rank one and is therefore singular. 
-                            Please increase the ensemble size to at least 3 or choose an AbstractSteppingScheme
-                            that does not rely on inverting the ensemble convariance matrix."
+    N_param, N_ensemble = size(Xₙ)
+    @assert N_ensemble > N_param "The number of parameters exceeds the ensemble size and so the ensemble covariance matrix
+                                  will be singular. Please increase the ensemble size to at least $N_param or choose an 
+                                  AbstractSteppingScheme that does not rely on inverting the ensemble convariance matrix."
 
     # ensemble covariance
     Cᶿᶿ = cov(Xₙ, dims = 2)
 
     n = eki.iteration
+
+    if n == 0
+        Δtₙ = pseudo_scheme.initial_step_size
+       return iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ), Δtₙ
+    end
 
     Xₙ = ensemble_array(eki, n)
     Xₙ₋₁ = ensemble_array(eki, n-1)
@@ -323,7 +321,7 @@ function eki_update(pseudo_scheme::GPLineSearch, Xₙ, Gₙ, eki)
     not_nan_indices = findall(.!isnan.(y))
     X = X[:, not_nan_indices]
     y = y[not_nan_indices]
-    
+
     predict = trained_gp_predict_function(X, y)
 
     αs = []
@@ -331,7 +329,7 @@ function eki_update(pseudo_scheme::GPLineSearch, Xₙ, Gₙ, eki)
 
     for j = 1:N_ensemble
 
-        xʲ = Xₙ[:, j]
+        xʲ = Xₙ[:, j:j]
 
         # search direction looking forward
         # Gʲ = G[:, j]
@@ -354,7 +352,7 @@ function eki_update(pseudo_scheme::GPLineSearch, Xₙ, Gₙ, eki)
 
     Δtₙ = mean(αs)
 
-    Xₙ₊₁ = Xₙ + Δtₙ * s
+    Xₙ₊₁ = Xₙ + Δtₙ * Ẋ_forward
     
     return Xₙ₊₁, Δtₙ
 
@@ -368,9 +366,10 @@ end
 
 function eki_update(pseudo_scheme::ConstantConvergence, Xₙ, Gₙ, eki)
 
-    @assert size(Xₙ, 2) > 2 "A two-sample covariance matrix has rank one and is therefore singular. 
-                            Please increase the ensemble size to at least 3 or choose an AbstractSteppingScheme
-                            that does not rely on the determinant of the ensemble convariance matrix."
+    N_param, N_ensemble = size(Xₙ)
+    @assert N_ensemble > N_param "The number of parameters exceeds the ensemble size and so the ensemble covariance matrix
+                                  will be singular. Please increase the ensemble size to at least $N_param or choose an 
+                                  AbstractSteppingScheme that does not rely on inverting the ensemble convariance matrix."
 
     conv_rate = pseudo_scheme.convergence_ratio
 
@@ -378,9 +377,6 @@ function eki_update(pseudo_scheme::ConstantConvergence, Xₙ, Gₙ, eki)
     Δtₙ = 1.0
     Xₙ₊₁ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
     r = volume_ratio(Xₙ₊₁, Xₙ)
-
-    @show size(Xₙ, 2), Xₙ
-    @show det(cov(Xₙ₊₁, dims=2)), det(cov(Xₙ, dims=2)), r
 
     # "Accelerated" fixed point iteration to adjust step_size
     p = 1.1
@@ -408,13 +404,13 @@ function eki_update(pseudo_scheme::Iglesias2021, Xₙ, Gₙ, eki)
     n = eki.iteration
     M, J = size(Gₙ)
 
-    Φ = [sum(eki_objective(eki, Xₙ[:, j], G[:, j])) for j=1:J]
+    Φ = [sum(eki_objective(eki, Xₙ[:, j], Gₙ[:, j])) for j=1:J]
     Φ_mean = mean(Φ)
     Φ_var = var(Φ)
 
     qₙ = maximum( (M/(2Φ_mean), sqrt(M/(2Φ_var))) )
     tₙ = n == 0 ? 0 : sum(getproperty.(eki.iteration_summaries, :pseudo_Δt))
-    Δtₙ = minimum(qₙ, 1-tₙ)
+    Δtₙ = minimum([qₙ, 1-tₙ])
     Xₙ₊₁ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
 
     return Xₙ₊₁, Δtₙ
