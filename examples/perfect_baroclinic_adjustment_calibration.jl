@@ -118,10 +118,10 @@ if force_generate_observations || !(isfile(data_path))
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
                                                           schedule = TimeInterval(save_interval),
-                                                          prefix = experiment_name,
+                                                          filename = experiment_name,
                                                           array_type = Array{Float64},
                                                           with_halos = true,
-                                                          force = true)
+                                                          overwrite_existing = true)
 
     run!(simulation)
 end

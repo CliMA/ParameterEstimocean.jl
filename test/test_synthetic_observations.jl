@@ -52,9 +52,9 @@ using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
                                                           schedule = TimeInterval(save_interval),
-                                                          prefix = experiment_name,
+                                                          filename = data_path,
                                                           with_halos = true,
-                                                          force = true,
+                                                          overwrite_existing = true,
                                                           init = init_with_parameters)
 
     run!(simulation)
