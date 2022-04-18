@@ -164,6 +164,8 @@ function eki_update(pseudo_scheme::Constant, Xₙ, Gₙ, eki)
     Δtₙ = pseudo_scheme.step_size
     Xₙ₊₁ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
 
+    @info "Particles stepped with time step $Δtₙ"
+
     return Xₙ₊₁, Δtₙ
 end
 
@@ -171,6 +173,8 @@ function eki_update(pseudo_scheme::Kovachki2018, Xₙ, Gₙ, eki)
 
     initial_step_size = pseudo_scheme.initial_step_size
     Xₙ₊₁, Δtₙ = kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀=1.0)
+
+    @info "Particles stepped adaptively with time step $Δtₙ"
 
     return Xₙ₊₁, Δtₙ
 end
@@ -181,6 +185,8 @@ function eki_update(pseudo_scheme::Chada2021, Xₙ, Gₙ, eki)
     initial_step_size = pseudo_scheme.initial_step_size
     Δtₙ = ((n+1) ^ pseudo_scheme.β) * initial_step_size
     Xₙ₊₁ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
+
+    @info "Particles stepped adaptively with time step $Δtₙ"
 
     return Xₙ₊₁, Δtₙ
 end
@@ -215,6 +221,8 @@ function eki_update(pseudo_scheme::Default, Xₙ, Gₙ, eki)
     end
 
     Xₙ₊₁ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
+
+    @info "Particles stepped adaptively with time step $Δtₙ"
 
     return Xₙ₊₁, Δtₙ
 end
@@ -354,8 +362,9 @@ function eki_update(pseudo_scheme::GPLineSearch, Xₙ, Gₙ, eki)
 
     Xₙ₊₁ = Xₙ + Δtₙ * Ẋ_forward
     
-    return Xₙ₊₁, Δtₙ
+    @info "Particles stepped adaptively with time step $Δtₙ"
 
+    return Xₙ₊₁, Δtₙ
 end
 
 function volume_ratio(Xₙ₊₁, Xₙ)
@@ -404,14 +413,20 @@ function eki_update(pseudo_scheme::Iglesias2021, Xₙ, Gₙ, eki)
     n = eki.iteration
     M, J = size(Gₙ)
 
-    Φ = [sum(eki_objective(eki, Xₙ[:, j], Gₙ[:, j])) for j=1:J]
+    Φ = [sum(eki_objective(eki, Xₙ[:, j], Gₙ[:, j], augmented = eki.tikhonov)) for j=1:J]
     Φ_mean = mean(Φ)
     Φ_var = var(Φ)
 
+    @show M, Φ_mean
+
     qₙ = maximum( (M/(2Φ_mean), sqrt(M/(2Φ_var))) )
-    tₙ = n == 0 ? 0 : sum(getproperty.(eki.iteration_summaries, :pseudo_Δt))
+    tₙ = n == 0 ? 0.0 : sum(getproperty.(eki.iteration_summaries, :pseudo_Δt))
+    @show qₙ, tₙ
+
     Δtₙ = minimum([qₙ, 1-tₙ])
     Xₙ₊₁ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
+
+    @info "Particles stepped adaptively with time step $Δtₙ"
 
     return Xₙ₊₁, Δtₙ
 end
