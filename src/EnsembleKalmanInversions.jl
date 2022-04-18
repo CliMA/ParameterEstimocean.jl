@@ -161,7 +161,10 @@ function EnsembleKalmanInversion(inverse_problem;
     Σ = cat(Γy, Γθ, dims=(1,2))
     precomputed_augmented_arrays = Dict(:y_augmented => vcat(y, zeros(length(μθ))),
                                         :Σ => Σ, 
-                                        :inv_Σ => inv(Σ))
+                                        :inv_Σ => inv(Σ),
+                                        :inv_sqrt_Σ => inv(sqrt(Σ)))
+
+    precomputed_arrays = merge(precomputed_arrays, precomputed_augmented_arrays)
 
     eki′ = EnsembleKalmanInversion(inverse_problem,
                                    process,
@@ -195,7 +198,7 @@ function EnsembleKalmanInversion(inverse_problem;
                                   eki′.noise_covariance,
                                   iteration,
                                   pseudotime,
-                                  pseudo_Δt,
+                                  eki′.pseudo_Δt,
                                   iteration_summaries,
                                   eki′.resampler,
                                   eki′.unconstrained_parameters,
@@ -262,6 +265,19 @@ function iterate!(eki::EnsembleKalmanInversion;
                                                                     Δt=pseudo_Δt,
                                                                     covariance_inflation,
                                                                     momentum_parameter)
+
+        last_summary = eki.iteration_summaries[end]
+        last_summary = IterationSummary(last_summary.parameters_unconstrained,
+                                        last_summary.parameters,
+                                        last_summary.ensemble_mean,
+                                        last_summary.ensemble_cov,
+                                        last_summary.ensemble_var,
+                                        last_summary.mean_square_errors,
+                                        last_summary.objective_values,
+                                        last_summary.iteration,
+                                        last_summary.pseudotime,
+                                        adaptive_Δt)
+        
         # Update the pseudoclock
         eki.iteration += 1
         eki.pseudotime += adaptive_Δt
