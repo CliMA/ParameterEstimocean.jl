@@ -30,7 +30,7 @@ the prior covariance, and `μθ` represents the prior means. Note that `Γ^(-1/2
 inv(sqrt(Γ))`. The keyword argument `constrained` is `true` if the input `θ`
 represents constrained parameters. Note that `Φ₂ = 0` if `eki.tikhonov` is false.
 """
-function eki_objective(eki, θ::AbstractVector, G::AbstractVector; constrained = false)
+function eki_objective(eki, θ::AbstractVector, G::AbstractVector; constrained = false, augmented = false)
     y = eki.mapped_observations
     Γy = eki.noise_covariance
     inv_sqrt_Γy = eki.precomputed_arrays[:inv_sqrt_Γy]
@@ -41,6 +41,13 @@ function eki_objective(eki, θ::AbstractVector, G::AbstractVector; constrained =
     if constrained
         θ = [transform_to_unconstrained(priors[name], θ[i])
                 for (i, name) in enumerate(keys(priors))]
+    end
+
+    if augmented
+        y = eki.precomputed_arrays[:y_augmented]
+        inv_sqrt_Σ = eki.precomputed_arrays[:inv_sqrt_Σ]
+        Φ₁ = (1/2) * norm(inv_sqrt_Σ * (y .- G))^2
+        return (Φ₁, 0)
     end
 
     # Φ₁ = (1/2)*|| Γy^(-½) * (y - G) ||²
