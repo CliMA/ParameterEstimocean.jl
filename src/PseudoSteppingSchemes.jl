@@ -97,7 +97,7 @@ function kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀=1.0)
     # Fill transformation matrix (D(uₙ))ᵢⱼ = ⟨ G(u⁽ʲ⁾) - g̅, Γy⁻¹(G(u⁽ⁱ⁾) - y) ⟩
     D = zeros(N_ens, N_ens)
     for j = 1:N_ens, i = 1:N_ens
-        D[i, j] = dot(Gₙ[:, j] - g̅, Γy⁻¹ * (Gₙ[:, i] - y))
+        D[i, j] = dot(Gₙ[:, i] - g̅, Γy⁻¹ * (Gₙ[:, j] - y))
     end
 
     # Calculate time step Δtₙ₋₁ = Δt₀ / (frobenius_norm(D(uₙ)) + ϵ)
