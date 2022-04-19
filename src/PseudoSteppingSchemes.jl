@@ -218,7 +218,7 @@ function eki_update(pseudo_scheme::Kovachki2018InitialConvergenceThreshold, Xₙ
 
             Xₙ₊₁, Δtₙ = kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀, D)
             cov_new = cov(Xₙ₊₁, dims = 2)
-            if det(cov_new) < pseudo_scheme.cov_threshold * det_cov_init
+            if det(cov_new) < pseudo_scheme.initial_convergence_threshold * det_cov_init
                 accept_stepsize = true
             else
                 Δt₀ *= 2
