@@ -13,7 +13,7 @@ using ParameterEstimocean.Transformations: ZScore, normalize!, inverse_normalize
 
 import ..EnsembleKalmanInversions: adaptive_step_parameters, eki_objective
 
-export Constant, Default, GPLineSearch, ConstantConvergence, Kovachki2018, Iglesias2021, Chada2021
+export Constant, Default, GPLineSearch, ConstantConvergence, Kovachki2018, Kovachki2018InitialConvergenceThreshold, Iglesias2021, Chada2021
 
 # Default pseudo_stepping::Nothing --- it's not adaptive
 eki_update(::Nothing, Xₙ, Gₙ, eki, Δtₙ) = eki_update(Constant(Δtₙ), Xₙ, Gₙ, eki)
