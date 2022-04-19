@@ -253,7 +253,7 @@ function iterate!(eki::EnsembleKalmanInversion;
                   pseudo_Δt = eki.pseudo_Δt,
                   pseudo_stepping = eki.pseudo_stepping,
                   show_progress = true,
-                  covariance_inflation = 1.0,
+                  covariance_inflation = 0.0,
                   momentum_parameter = 0.0)
 
     iterator = show_progress ? ProgressBar(1:iterations) : 1:iterations
@@ -308,7 +308,7 @@ end
 # Default pseudo_stepping::Nothing --- it's not adaptive
 adaptive_step_parameters(::Nothing, Xⁿ, Gⁿ, y, Γy, process; Δt) = step_parameters(Xⁿ, Gⁿ, y, Γy, process; Δt), Δt
 
-function step_parameters(eki::EnsembleKalmanInversion, pseudo_stepping; Δt=1.0, covariance_inflation=1.0, momentum_parameter=0.0)
+function step_parameters(eki::EnsembleKalmanInversion, pseudo_stepping; Δt=1.0, covariance_inflation=0.0, momentum_parameter=0.0)
     process = eki.ensemble_kalman_process
     Gⁿ = eki.forward_map_output
     Xⁿ = eki.unconstrained_parameters
