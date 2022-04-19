@@ -209,7 +209,7 @@ function eki_update(pseudo_scheme::Kovachki2018InitialConvergenceThreshold, Xₙ
     if pseudo_scheme.initial_step_size == 0
 
         D = compute_D(Xₙ, Gₙ, eki)
-        cov_init = det(cov(Xₙ, dims = 2))
+        det_cov_init = det(cov(Xₙ, dims = 2))
 
         Δt₀ = 1.0
         accept_stepsize = false
@@ -448,6 +448,8 @@ function eki_update(pseudo_scheme::ConstantConvergence, Xₙ, Gₙ, eki)
     p = 1.1
     iter = 1
     while !isapprox(r, conv_rate, atol=0.03, rtol=0.1) && iter < 10
+
+        @show r (r / conv_rate)^p
         Δtₙ *= (r / conv_rate)^p
         Xₙ₊₁ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
         r = volume_ratio(Xₙ₊₁, Xₙ)
