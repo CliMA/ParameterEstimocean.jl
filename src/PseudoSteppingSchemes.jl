@@ -55,12 +55,6 @@ function adaptive_step_parameters(pseudo_scheme, Xₙ, Gₙ, eki; Δt=1.0,
     return Xₙ₊₁, Δtₙ
 end
 
-function step_parameters(X, G, y, Γy, process; Δt=1.0)
-    ekp = EnsembleKalmanProcess(X, y, Γy, process; Δt)
-    update_ensemble!(ekp, G)
-    return get_u_final(ekp), 1.0
-end
-
 function iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ=1.0, perturb_observation=false)
 
     N_obs, N_ens = size(Gₙ)
