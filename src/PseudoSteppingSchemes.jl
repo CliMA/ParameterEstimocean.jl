@@ -85,7 +85,7 @@ end
 
 frobenius_norm(A) = sqrt(sum(A .^ 2))
 
-function kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀=1.0)
+function compute_D(Xₙ, Gₙ, eki)
 
     y = observations(eki)
     Γy = obs_noise_covariance(eki)
@@ -100,6 +100,15 @@ function kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀=1.0)
         D[i, j] = dot(Gₙ[:, i] - g̅, Γy⁻¹ * (Gₙ[:, j] - y))
     end
 
+    return D
+end
+
+function kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀=1.0, D=nothing)
+
+    N_ens = size(Xₙ, 2)
+
+    D = isnothing(D) ? compute_D(Xₙ, Gₙ, eki) : D
+
     # Calculate time step Δtₙ₋₁ = Δt₀ / (frobenius_norm(D(uₙ)) + ϵ)
     Δtₙ = Δt₀ / (frobenius_norm(D) + 1e-10)
 
@@ -108,6 +117,7 @@ function kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀=1.0)
 
     return Xₙ₊₁, Δtₙ
 end
+
 
 ###
 ### Fixed and adaptive time stepping schemes
@@ -163,6 +173,14 @@ end
 
 Kovachki2018(; initial_step_size=1.0) = Kovachki2018(initial_step_size)
 
+mutable struct Kovachki2018InitialConvergenceThreshold{T, I} <: AbstractSteppingScheme
+    initial_convergence_threshold :: T
+    initial_step_size :: I
+end
+
+Kovachki2018InitialConvergenceThreshold(; initial_convergence_threshold=0.7) = 
+    Kovachki2018InitialConvergenceThreshold(initial_convergence_threshold, 0.0)
+
 function eki_update(pseudo_scheme::Constant, Xₙ, Gₙ, eki)
 
     Δtₙ = pseudo_scheme.step_size
@@ -176,11 +194,46 @@ end
 function eki_update(pseudo_scheme::Kovachki2018, Xₙ, Gₙ, eki)
 
     initial_step_size = pseudo_scheme.initial_step_size
-    Xₙ₊₁, Δtₙ = kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀=1.0)
+    Xₙ₊₁, Δtₙ = kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀=initial_step_size)
 
     @info "Particles stepped adaptively with time step $Δtₙ"
 
     return Xₙ₊₁, Δtₙ
+end
+
+function eki_update(pseudo_scheme::Kovachki2018InitialConvergenceThreshold, Xₙ, Gₙ, eki)
+
+    Δtₙ = 0
+    Xₙ₊₁ = similar(Xₙ)
+
+    if pseudo_scheme.initial_step_size == 0
+
+        D = compute_D(Xₙ, Gₙ, eki)
+        cov_init = det(cov(Xₙ, dims = 2))
+
+        Δt₀ = 1.0
+        accept_stepsize = false
+
+        while !accept_stepsize
+
+            Xₙ₊₁, Δtₙ = kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀, D)
+            cov_new = cov(Xₙ₊₁, dims = 2)
+            if det(cov_new) < pseudo_scheme.cov_threshold * det_cov_init
+                accept_stepsize = true
+            else
+                Δt₀ *= 2
+            end
+        end
+
+        pseudo_scheme.initial_step_size = Δt₀
+
+        @info "Particles stepped adaptively with time step $Δtₙ"
+
+        return Xₙ₊₁, Δtₙ
+    
+    else
+        return eki_update(Kovachki2018(initial_step_size = pseudo_scheme.initial_step_size), Xₙ, Gₙ, eki)
+    end
 end
 
 function eki_update(pseudo_scheme::Chada2021, Xₙ, Gₙ, eki)
