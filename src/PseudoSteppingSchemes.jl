@@ -33,7 +33,7 @@ inv_obs_noise_covariance(eki) = eki.tikhonov ? eki.precomputed_arrays[:inv_Σ] :
                                                eki.precomputed_arrays[:inv_Γy]
 
 function adaptive_step_parameters(pseudo_scheme, Xₙ, Gₙ, eki; Δt=1.0, 
-                                    covariance_inflation = 1.0,
+                                    covariance_inflation = 0.0,
                                     momentum_parameter = 0.0)
 
     N_param, N_ens = size(Xₙ)
@@ -53,6 +53,12 @@ function adaptive_step_parameters(pseudo_scheme, Xₙ, Gₙ, eki; Δt=1.0,
     @. Xₙ₊₁ = Xₙ₊₁ + (Xₙ₊₁ - X̅) * covariance_inflation
 
     return Xₙ₊₁, Δtₙ
+end
+
+function step_parameters(X, G, y, Γy, process; Δt=1.0)
+    ekp = EnsembleKalmanProcess(X, y, Γy, process; Δt)
+    update_ensemble!(ekp, G)
+    return get_u_final(ekp), 1.0
 end
 
 function iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ=1.0, perturb_observation=false)
