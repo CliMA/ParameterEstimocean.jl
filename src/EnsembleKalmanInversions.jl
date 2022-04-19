@@ -123,18 +123,18 @@ function EnsembleKalmanInversion(inverse_problem;
         pseudo_stepping = nothing
     end
 
+    free_parameters = inverse_problem.free_parameters
+    priors = free_parameters.priors
+    Nθ = length(priors)
+    Nens = Nensemble(inverse_problem)
+
+    # Generate an initial sample of parameters
+    unconstrained_priors = NamedTuple(name => unconstrained_prior(priors[name])
+                                      for name in free_parameters.names)
+
     if isnothing(unconstrained_parameters)
         isnothing(forward_map_output) ||
             throw(ArgumentError("Cannot provide forward_map_output without unconstrained_parameters."))
-
-        free_parameters = inverse_problem.free_parameters
-        priors = free_parameters.priors
-        Nθ = length(priors)
-        Nens = Nensemble(inverse_problem)
-
-        # Generate an initial sample of parameters
-        unconstrained_priors = NamedTuple(name => unconstrained_prior(priors[name])
-                                          for name in free_parameters.names)
 
         unconstrained_parameters = [rand(unconstrained_priors[i]) for i=1:Nθ, k=1:Nens]
     end
@@ -147,10 +147,9 @@ function EnsembleKalmanInversion(inverse_problem;
     pseudotime = 0.0
 
     # Pre-compute Γθ^(-1/2) and μθ
-    fp = inverse_problem.free_parameters
-    unconstr_priors = [unconstrained_prior(fp.priors[name]) for name in fp.names]
-    Γθ = diagm(getproperty.(unconstr_priors, :σ).^2)
-    μθ = getproperty.(unconstr_priors, :μ)
+    unconstrained_priors = collect(unconstrained_priors)
+    Γθ = diagm(getproperty.(unconstrained_priors, :σ).^2)
+    μθ = getproperty.(unconstrained_priors, :μ)
 
     precomputed_arrays = Dict(:inv_Γy => inv(Γy), 
                               :inv_sqrt_Γy => inv(sqrt(Γy)),
@@ -159,7 +158,8 @@ function EnsembleKalmanInversion(inverse_problem;
                               :μθ => μθ)
 
     Σ = cat(Γy, Γθ, dims=(1,2))
-    precomputed_augmented_arrays = Dict(:y_augmented => vcat(y, zeros(length(μθ))),
+    precomputed_augmented_arrays = Dict(:y_augmented => vcat(y, zeros(Nθ)),
+                                        :η_mean_augmented => vcat(zeros(length(y)), -μθ),
                                         :Σ => Σ, 
                                         :inv_Σ => inv(Σ),
                                         :inv_sqrt_Σ => inv(sqrt(Σ)))
@@ -267,17 +267,17 @@ function iterate!(eki::EnsembleKalmanInversion;
                                                                     momentum_parameter)
 
         last_summary = eki.iteration_summaries[end]
-        last_summary = IterationSummary(last_summary.parameters_unconstrained,
-                                        last_summary.parameters,
-                                        last_summary.ensemble_mean,
-                                        last_summary.ensemble_cov,
-                                        last_summary.ensemble_var,
-                                        last_summary.mean_square_errors,
-                                        last_summary.objective_values,
-                                        last_summary.iteration,
-                                        last_summary.pseudotime,
-                                        adaptive_Δt)
-        
+        eki.iteration_summaries[end] = IterationSummary(last_summary.parameters_unconstrained,
+                                                        last_summary.parameters,
+                                                        last_summary.ensemble_mean,
+                                                        last_summary.ensemble_cov,
+                                                        last_summary.ensemble_var,
+                                                        last_summary.mean_square_errors,
+                                                        last_summary.objective_values,
+                                                        last_summary.iteration,
+                                                        last_summary.pseudotime,
+                                                        adaptive_Δt)
+
         # Update the pseudoclock
         eki.iteration += 1
         eki.pseudotime += adaptive_Δt

@@ -55,7 +55,7 @@ function adaptive_step_parameters(pseudo_scheme, Xₙ, Gₙ, eki; Δt=1.0,
     return Xₙ₊₁, Δtₙ
 end
 
-function iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ=1.0)
+function iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ=1.0, perturb_observation=false)
 
     N_obs, N_ens = size(Gₙ)
 
@@ -66,8 +66,12 @@ function iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ=1.0)
     # Scale noise Γy using Δt. 
     Δt⁻¹Γy = Γy / Δtₙ
 
-    ξₙ = rand(MvNormal(μ_noise, Δt⁻¹Γy), N_ens)
-    y_perturbed = y .+ ξₙ # [N_obs x N_ens]
+    y_perturbed = zeros(length(y), N_ens)
+    y_perturbed .= y
+    if perturb_observation
+        ξₙ = rand(MvNormal(μ_noise, Δt⁻¹Γy), N_ens)
+        y_perturbed .+= ξₙ # [N_obs x N_ens]
+    end
 
     Cᶿᵍ = cov(Xₙ, Gₙ, dims = 2, corrected = false) # [N_par × N_obs]
     Cᵍᵍ = cov(Gₙ, Gₙ, dims = 2, corrected = false) # [N_obs × N_obs]
@@ -417,11 +421,8 @@ function eki_update(pseudo_scheme::Iglesias2021, Xₙ, Gₙ, eki)
     Φ_mean = mean(Φ)
     Φ_var = var(Φ)
 
-    @show M, Φ_mean
-
     qₙ = maximum( (M/(2Φ_mean), sqrt(M/(2Φ_var))) )
     tₙ = n == 0 ? 0.0 : sum(getproperty.(eki.iteration_summaries, :pseudo_Δt))
-    @show qₙ, tₙ
 
     Δtₙ = minimum([qₙ, 1-tₙ])
     Xₙ₊₁ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
