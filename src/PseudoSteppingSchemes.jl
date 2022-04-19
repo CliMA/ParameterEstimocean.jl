@@ -89,16 +89,11 @@ function compute_D(Xₙ, Gₙ, eki)
 
     y = observations(eki)
     Γy = obs_noise_covariance(eki)
-
-    N_ens = size(Xₙ, 2)
     g̅ = mean(Gₙ, dims = 2)
     Γy⁻¹ = inv_obs_noise_covariance(eki)
 
-    # Fill transformation matrix (D(uₙ))ᵢⱼ = ⟨ G(u⁽ʲ⁾) - g̅, Γy⁻¹(G(u⁽ⁱ⁾) - y) ⟩
-    D = zeros(N_ens, N_ens)
-    for j = 1:N_ens, i = 1:N_ens
-        D[i, j] = dot(Gₙ[:, i] - g̅, Γy⁻¹ * (Gₙ[:, j] - y))
-    end
+    # Transformation matrix (D(uₙ))ᵢⱼ = ⟨ G(u⁽ʲ⁾) - g̅, Γy⁻¹(G(u⁽ⁱ⁾) - y) ⟩
+    D = transpose(Gₙ .- g̅) * Γy⁻¹ * (Gₙ .- y)
 
     return D
 end
@@ -181,6 +176,12 @@ end
 Kovachki2018InitialConvergenceThreshold(; initial_convergence_threshold=0.7) = 
     Kovachki2018InitialConvergenceThreshold(initial_convergence_threshold, 0.0)
 
+"""
+    eki_update(pseudo_scheme::Constant, Xₙ, Gₙ, eki)
+
+Implements an EKI update with a fixed time step given by `pseudo_scheme.step_size`.
+"""
+
 function eki_update(pseudo_scheme::Constant, Xₙ, Gₙ, eki)
 
     Δtₙ = pseudo_scheme.step_size
@@ -191,6 +192,12 @@ function eki_update(pseudo_scheme::Constant, Xₙ, Gₙ, eki)
     return Xₙ₊₁, Δtₙ
 end
 
+"""
+    eki_update(pseudo_scheme::Kovachki2018, Xₙ, Gₙ, eki)
+
+Implements an EKI update with an adaptive time step estimated as suggested in Kovachki et al.
+"Ensemble Kalman Inversion: A Derivative-Free Technique For Machine Learning Tasks" (2018).
+"""
 function eki_update(pseudo_scheme::Kovachki2018, Xₙ, Gₙ, eki)
 
     initial_step_size = pseudo_scheme.initial_step_size
@@ -236,6 +243,12 @@ function eki_update(pseudo_scheme::Kovachki2018InitialConvergenceThreshold, Xₙ
     end
 end
 
+"""
+    eki_update(pseudo_scheme::Default, Xₙ, Gₙ, eki; initial_guess=nothing)
+
+Implements an EKI update with an adaptive time step estimated as suggested in Chada, Neil and Tong, Xin 
+"Convergence Acceleration of Ensemble Kalman Inversion in Nonlinear Settings," Math. Comp. 91 (2022).
+"""
 function eki_update(pseudo_scheme::Chada2021, Xₙ, Gₙ, eki)
 
     n = eki.iteration
@@ -248,14 +261,25 @@ function eki_update(pseudo_scheme::Chada2021, Xₙ, Gₙ, eki)
     return Xₙ₊₁, Δtₙ
 end
 
-function eki_update(pseudo_scheme::Default, Xₙ, Gₙ, eki)
+"""
+    eki_update(pseudo_scheme::Default, Xₙ, Gₙ, eki; initial_guess=nothing)
+
+Implements an EKI update with an adaptive time step estimated by finding the first step size
+in the sequence Δtₖ = Δtₙ₋₁(1/2)^k with k = {0,1,2,...} that satisfies 
+|cov(Xₙ₊₁)|/|cov(Xₙ)| > pseudo_scheme.cov_threshold, assuming the determinant ratio
+is a monotonically increasing function of k. If an `initial_guess` is provided,
+`Δtₙ₋₁` in the above sequence is replaced with `initial_guess`. If an `initial_guess`
+is not provided, the time step can only decrease or stay the same at future iterations
+with this time stepping scheme.
+"""
+function eki_update(pseudo_scheme::Default, Xₙ, Gₙ, eki; initial_guess=nothing, report=true)
 
     N_param, N_ensemble = size(Xₙ)
     @assert N_ensemble > N_param "The number of parameters exceeds the ensemble size and so the ensemble covariance matrix
                                   will be singular. Please increase the ensemble size to at least $N_param or choose an 
                                   AbstractSteppingScheme that does not rely on inverting the ensemble convariance matrix."
 
-    Δtₙ₋₁ = eki.pseudo_Δt
+    Δtₙ₋₁ = isnothing(initial_guess) ? eki.pseudo_Δt : initial_guess
 
     accept_stepsize = false
     Δtₙ = copy(Δtₙ₋₁)
@@ -279,7 +303,7 @@ function eki_update(pseudo_scheme::Default, Xₙ, Gₙ, eki)
 
     Xₙ₊₁ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
 
-    @info "Particles stepped adaptively with time step $Δtₙ"
+    report && @info "Particles stepped adaptively with time step $Δtₙ"
 
     return Xₙ₊₁, Δtₙ
 end
@@ -343,6 +367,14 @@ end
 
 ensemble_array(eki, iter) = eki.iteration_summaries[iter].parameters_unconstrained
 
+"""
+    eki_update(pseudo_scheme::GPLineSearch, Xₙ, Gₙ, eki)
+
+Implements an EKI update with an adaptive time step estimated by (1) generating a differentiable local approximation of
+the EKI objective using a Gaussian Process trained on all EKI samples generated thus far, with a Matern 5/2 kernel 
+optimized using BFGS, (2) applying backtracking line search from each particle in Xₙ to determine a step size 
+that satisfies the Armijo rule, (3) taking the average estimated step size across all particles.
+"""
 function eki_update(pseudo_scheme::GPLineSearch, Xₙ, Gₙ, eki)
     
     N_param, N_ensemble = size(Xₙ)
@@ -424,12 +456,13 @@ function eki_update(pseudo_scheme::GPLineSearch, Xₙ, Gₙ, eki)
     return Xₙ₊₁, Δtₙ
 end
 
-function volume_ratio(Xₙ₊₁, Xₙ)
-    Vⁿ⁺¹ = det(cov(Xₙ₊₁, dims=2))
-    Vⁿ   = det(cov(Xₙ,   dims=2))
-    return Vⁿ⁺¹ / Vⁿ
-end
+"""
+    eki_update(pseudo_scheme::ConstantConvergence, Xₙ, Gₙ, eki)
 
+Implements an EKI update with an adaptive time step estimated to encourage a prescribed
+rate of ensemble collapse as measured by the ratio of the ensemble 
+covariance matrix determinants at consecutive iterations.
+"""
 function eki_update(pseudo_scheme::ConstantConvergence, Xₙ, Gₙ, eki)
 
     N_param, N_ensemble = size(Xₙ)
@@ -439,20 +472,33 @@ function eki_update(pseudo_scheme::ConstantConvergence, Xₙ, Gₙ, eki)
 
     conv_rate = pseudo_scheme.convergence_ratio
 
+    # Start with Δtₙ = 1.0; `Δtₙ_first_guess` is the first time step in the sequence Δtₖ = (1/2)^k where k={0,1,2...}
+    # such that |cov(Xₙ₊₁)|/|cov(Xₙ)| > pseudo_scheme.convergence_ratio (assuming the determinant ratio
+    # is monotonically increasing as a function of k).
+    _, Δtₙ_first_guess = eki_update(Default(cov_threshold=pseudo_scheme.convergence_ratio), Xₙ, Gₙ, eki; initial_guess=1.0, report=false)
+
+    # `Δtₙ_first_guess` provides a reasonable initial guess for the time step. If we were to 
+    # start the fixed point iteration algorithm below with an initial guess of 1.0, the initial volume 
+    # volume ratio could be obsenely small, leading to an obscenely small initial Δtₙ, 
+    # sending the subsequent `r` values to ≈1.0. In such a situation the subsequently calculated Δtₙ 
+    # would remain tiny, never recovering the desired order of magnitude; `r` would remain ≈1.0.
+    # `Δtₙ_first_guess` starts us off in the right order of magnitude for the linear assumption 
+    # on `r` vs `Δtₙ` to be fruitful.
+    Δtₙ = Δtₙ_first_guess
+
+    det_cov_init = det(cov(Xₙ, dims = 2))
+
     # Test step forward
-    Δtₙ = 1.0
     Xₙ₊₁ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
-    r = volume_ratio(Xₙ₊₁, Xₙ)
+    r = det(cov(Xₙ₊₁, dims=2)) / det_cov_init
 
     # "Accelerated" fixed point iteration to adjust step_size
     p = 1.1
     iter = 1
     while !isapprox(r, conv_rate, atol=0.03, rtol=0.1) && iter < 10
-
-        @show r (r / conv_rate)^p
         Δtₙ *= (r / conv_rate)^p
         Xₙ₊₁ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
-        r = volume_ratio(Xₙ₊₁, Xₙ)
+        r = det(cov(Xₙ₊₁, dims=2)) / det_cov_init
         iter += 1
     end
 
@@ -464,7 +510,7 @@ end
 """
     eki_update(pseudo_scheme::Iglesias2021, Xₙ, Gₙ, eki)
 
-Implements an EKI update with adaptive time steps based on Iglesias et al. "Adaptive 
+Implements an EKI update with an adaptive time step based on Iglesias et al. "Adaptive 
 Regularization for Ensemble Kalman Inversion," Inverse Problems, 2021.
 """
 function eki_update(pseudo_scheme::Iglesias2021, Xₙ, Gₙ, eki)
