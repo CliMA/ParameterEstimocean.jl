@@ -46,7 +46,8 @@ function eki_objective(eki, θ::AbstractVector, G::AbstractVector; constrained =
     if augmented
         y = eki.precomputed_arrays[:y_augmented]
         inv_sqrt_Σ = eki.precomputed_arrays[:inv_sqrt_Σ]
-        Φ₁ = (1/2) * norm(inv_sqrt_Σ * (y .- G))^2
+        η_mean_augmented = eki.precomputed_arrays[:η_mean_augmented]
+        Φ₁ = (1/2) * norm(inv_sqrt_Σ * (y - G - η_mean_augmented))^2
         return (Φ₁, 0)
     end
 
