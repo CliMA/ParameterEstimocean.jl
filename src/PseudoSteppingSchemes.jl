@@ -451,18 +451,6 @@ function eki_update(pseudo_scheme::GPLineSearch, Xₙ, Gₙ, eki)
     αs = []
     αinitial = 1.0
 
-function my_MvNormal(μ, Γ)
-    @assert Hermitian(Γ) ≈ Γ
-    return MvNormal(μ, PDMat(cholesky(Γ; check=false)))
-end
-
-# Returns a PDMat with a soft check for whether the input is Hermitian.
-function soft_mvnormal(Γ)
-    @assert Hermitian(Γ) ≈ Γ
-    return cholesky(Hermitian(Γ); check=false)
-end
-
-
     for j = 1:N_ensemble
 
         xʲ = Xₙ[:, j:j]
