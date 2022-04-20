@@ -374,7 +374,7 @@ function trained_gp_predict_function(X, y; standardize_X=true, zscore_limit=noth
     function predict(X) 
         X★ = X[:,:]
         standardize_X && normalize!(X★, zscore_X)
-        μ, Γgp = predict_f(gp, X; full_cov=true)
+        μ, Γgp = predict_f(gp, X★; full_cov=true)
 
         inverse_normalize!(μ, zscore_y)
         # inverse standardization has element-wise effect on Γgp
