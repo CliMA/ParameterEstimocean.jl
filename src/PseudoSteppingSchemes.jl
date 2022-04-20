@@ -55,7 +55,7 @@ function adaptive_step_parameters(pseudo_scheme, Xₙ, Gₙ, eki; Δt=1.0,
     return Xₙ₊₁, Δtₙ
 end
 
-function iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ=1.0, perturb_observation=false)
+function iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ=1.0, perturb_observation=true)
 
     N_obs, N_ens = size(Gₙ)
 
@@ -69,7 +69,9 @@ function iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ=1.0, perturb_observation=f
     y_perturbed = zeros(length(y), N_ens)
     y_perturbed .= y
     if perturb_observation
-        ξₙ = rand(MvNormal(μ_noise, Δt⁻¹Γy), N_ens)
+        Δt⁻¹Γyᴴ = Hermitian(Δt⁻¹Γy)
+        @assert Δt⁻¹Γyᴴ ≈ ΣΔt⁻¹Γy
+        ξₙ = rand(MvNormal(μ_noise, Δt⁻¹Γyᴴ), N_ens)
         y_perturbed .+= ξₙ # [N_obs x N_ens]
     end
 
@@ -317,20 +319,44 @@ Return a trained Gaussian Process given inputs X and outputs y.
 - `y` (Vector): size `(N_train,)` array of training outputs.
 # Keyword Arguments
 - `standardize_X` (Bool): whether to standardize the inputs for GP training and prediction.
+- `zscore_limit` (Int): specifies the number of standard deviations outside of which 
+all output entries and their corresponding inputs should be removed from the training data
+in an initial filtering step.
 # Returns
 - `predict` (Function): a function that maps size-`(N_param, N_test)` inputs to `(μ, Γgp)`, 
 where `μ` is an `(N_test,)` array of corresponding mean predictions and `Γgp` is the 
 prediction covariance matrix.
 """
-function trained_gp_predict_function(X, y; standardize_X=true)
+function trained_gp_predict_function(X, y; standardize_X=true, zscore_limit=nothing)
 
-    N_param = size(X, 1)
+    X = copy(X)
+    y = copy(y)
 
-    zscore_X = ZScore(mean(X, dims=2), var(X, dims=2))
+    if !isnothing(zscore_limit)
+
+        y_temp = copy(y)
+        normalize!(y_temp, ZScore(mean(y_temp), std(y_temp)))
+        to_keep = findall(x -> (x > -zscore_limit && x < zscore_limit), y_temp)
+        y = y[to_keep]
+        X = X[:, to_keep]
+
+        n_pruned = length(y) - length(to_keep)
+
+        if n_pruned > 0
+            percent_pruned = n_pruned * 100 / length(y)
+
+            @info "Pruned $n_pruned GP training points ($percent_pruned%) corresponding to outputs 
+                beyond $zscore_limit standard deviations from the mean."
+        end
+    end
+
+    zscore_y = ZScore(mean(y), std(y))
+    normalize!(y, zscore_y)
+
+    zscore_X = ZScore(mean(X, dims=2), std(X, dims=2))
     standardize_X && normalize!(X, zscore_X)
 
-    zscore_y = ZScore(mean(y), var(y))
-    normalize!(y, zscore_y)
+    N_param = size(X, 1)
 
     # log- length scale kernel parameter
     ll = [0.0 for _ in 1:N_param]
@@ -349,6 +375,7 @@ function trained_gp_predict_function(X, y; standardize_X=true)
         X★ = X[:,:]
         standardize_X && normalize!(X★, zscore_X)
         μ, Γgp = predict_f(gp, X; full_cov=true)
+
         inverse_normalize!(μ, zscore_y)
         # inverse standardization has element-wise effect on Γgp
         Γgp .*= zscore_y.σ^2
@@ -419,10 +446,22 @@ function eki_update(pseudo_scheme::GPLineSearch, Xₙ, Gₙ, eki)
     X = X[:, not_nan_indices]
     y = y[not_nan_indices]
 
-    predict = trained_gp_predict_function(X, y)
+    predict = trained_gp_predict_function(X, y; zscore_limit=3)
 
     αs = []
     αinitial = 1.0
+
+function my_MvNormal(μ, Γ)
+    @assert Hermitian(Γ) ≈ Γ
+    return MvNormal(μ, PDMat(cholesky(Γ; check=false)))
+end
+
+# Returns a PDMat with a soft check for whether the input is Hermitian.
+function soft_mvnormal(Γ)
+    @assert Hermitian(Γ) ≈ Γ
+    return cholesky(Hermitian(Γ); check=false)
+end
+
 
     for j = 1:N_ensemble
 
@@ -444,9 +483,10 @@ function eki_update(pseudo_scheme::GPLineSearch, Xₙ, Gₙ, eki)
         # For general linesearch, arguments are (ϕ, dϕ, ϕdϕ, α0, ϕ0,dϕ0)
         α, _ = ls(ϕ, αinitial, ϕ_0, dϕ_0)
 
-        push!(αs, α)
+        isfinite(α) && push!(αs, α)
     end
 
+    @show αs
     Δtₙ = mean(αs)
 
     Xₙ₊₁ = Xₙ + Δtₙ * Ẋ_forward
