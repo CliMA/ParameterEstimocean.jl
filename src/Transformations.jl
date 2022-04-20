@@ -179,7 +179,7 @@ function ZScore(data)
 
     data = dropdims(data, dims=1)
     μ = mean(data)
-    σ = sqrt(cov(data; corrected=false))
+    σ = std(data; corrected=false)
 
     if σ == 0
         @warn "Your data has zero variance --- just sayin'! I'm setting ZScore σ = 1."
