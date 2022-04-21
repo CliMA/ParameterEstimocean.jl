@@ -210,7 +210,9 @@ end
 
 function inverse_normalize!(data, normalization::ZScore)
     μ, σ = normalization.μ, normalization.σ
-    @. (data * σ) + μ
+
+    # @show size(data), typeof(σ), size(μ), size((data .* σ) .+ μ)
+    @. data = (data * σ) + μ
     return nothing
 end
 

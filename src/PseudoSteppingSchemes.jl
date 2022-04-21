@@ -69,8 +69,8 @@ function iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ=1.0, perturb_observation=t
     y_perturbed = zeros(length(y), N_ens)
     y_perturbed .= y
     if perturb_observation
-        Δt⁻¹Γyᴴ = Hermitian(Δt⁻¹Γy)
-        @assert Δt⁻¹Γyᴴ ≈ ΣΔt⁻¹Γy
+        Δt⁻¹Γyᴴ = Matrix(Hermitian(Δt⁻¹Γy))
+        @assert Δt⁻¹Γyᴴ ≈ Δt⁻¹Γy
         ξₙ = rand(MvNormal(μ_noise, Δt⁻¹Γyᴴ), N_ens)
         y_perturbed .+= ξₙ # [N_obs x N_ens]
     end
@@ -446,7 +446,7 @@ function eki_update(pseudo_scheme::GPLineSearch, Xₙ, Gₙ, eki)
     X = X[:, not_nan_indices]
     y = y[not_nan_indices]
 
-    predict = trained_gp_predict_function(X, y; zscore_limit=3)
+    predict = trained_gp_predict_function(X, y; standardize_X=true, zscore_limit=3)
 
     αs = []
     αinitial = 1.0

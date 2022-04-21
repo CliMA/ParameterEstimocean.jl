@@ -30,7 +30,7 @@ abstract type EnsembleDistribution end
 function ensemble_normal_distribution(X)
     μ = [mean(X, dims=2)...]
     Σ = cov(X, dims=2)
-    Σᴴ = Hermitian(Σ)
+    Σᴴ = Matrix(Hermitian(Σ))
     @assert Σᴴ ≈ Σ 
     return MvNormal(μ, Σᴴ)
 end
