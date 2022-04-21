@@ -340,13 +340,13 @@ function trained_gp_predict_function(X, y; standardize_X=true, zscore_limit=noth
         y = y[to_keep]
         X = X[:, to_keep]
 
-        n_pruned = length(y) - length(to_keep)
+        n_pruned = length(y_temp) - length(to_keep)
 
         if n_pruned > 0
             percent_pruned = n_pruned * 100 / length(y)
 
             @info "Pruned $n_pruned GP training points ($percent_pruned%) corresponding to outputs 
-                beyond $zscore_limit standard deviations from the mean."
+                outside $zscore_limit standard deviations from the mean."
         end
     end
 
