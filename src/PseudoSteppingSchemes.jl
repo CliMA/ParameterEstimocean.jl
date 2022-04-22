@@ -343,7 +343,8 @@ function trained_gp_predict_function(X, y; standardize_X=true, zscore_limit=noth
         n_pruned = length(y_temp) - length(to_keep)
 
         if n_pruned > 0
-            percent_pruned = n_pruned * 100 / length(y)
+            percent_pruned = round((100n_pruned / length(y)); sigdigits=3)
+
 
             @info "Pruned $n_pruned GP training points ($percent_pruned%) corresponding to outputs 
                 outside $zscore_limit standard deviations from the mean."
@@ -359,12 +360,12 @@ function trained_gp_predict_function(X, y; standardize_X=true, zscore_limit=noth
     N_param = size(X, 1)
 
     # log- length scale kernel parameter
-    ll = [0.0 for _ in 1:N_param]
+    ll = zeros(N_param)
 
     # log- noise kernel parameter
     lσ = 0.0
 
-    kern = Matern(5/2, ll, lσ)
+    kern = SE(ll, lσ)
     mZero = MeanZero()
     gp = GP(X, y, mZero, kern, -2.0)
 
