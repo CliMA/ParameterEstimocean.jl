@@ -177,7 +177,7 @@ end
 
 # Calculate the prior in unconstrained space given a prior in constrained space
 unconstrained_prior(Π::LogNormal)         = Normal(Π.μ / abs(Π.μ), Π.σ / abs(Π.μ))
-unconstrained_prior(Π::Normal)            = Normal(Π.μ / Π.σ, 1)
+unconstrained_prior(Π::Normal)            = Normal(0, 1)
 unconstrained_prior(Π::ScaledLogitNormal) = Normal(Π.μ, Π.σ)
 
 """
