@@ -213,7 +213,7 @@ and the inverse trasnform is the natural logarithm ``f^{-1} ≡ \\log``,
 \\log(Y) = X ∼ 𝒩(μ, σ).
 ```
 """
-transform_to_unconstrained(Π::Normal,    Y) = Y / abs(Π.μ)
+transform_to_unconstrained(Π::Normal,    Y) = (Y - Π.σ) / abs(Π.μ)
 transform_to_unconstrained(Π::LogNormal, Y) = log(Y^(1 / abs(Π.μ))) # log(Y) / abs(Π.μ)
 
 transform_to_unconstrained(Π::ScaledLogitNormal, Y) =
@@ -226,7 +226,7 @@ Transform an "unconstrained", normally-distributed variate `X`
 to "constrained" (physical) space via the map associated with
 the distribution `Π` of `Y`.
 """
-transform_to_constrained(Π::Normal, X)    = X * abs(Π.μ)
+transform_to_constrained(Π::Normal, X)    = (X * abs(Π.μ)) + Π.σ
 transform_to_constrained(Π::LogNormal, X) = exp(X * abs(Π.μ))
 
 transform_to_constrained(Π::ScaledLogitNormal, X) =
