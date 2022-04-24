@@ -2,6 +2,8 @@
 
 A Julia package that leverages [Oceananigans.jl](http://github.com/CliMA/Oceananigans.jl/) and [EnsembleKalmanProcesses.jl](https://github.com/CliMA/EnsembleKalmanProcesses.jl) to calibrate ocean turbulence parametrizations.
 
+ParameterEstimocean.jl is developed by the [Climate Modeling Alliance](https://clima.caltech.edu) and heroic external collaborators.
+
 Continuous Integration: [![Build Status](https://github.com/CliMA/ParameterEstimocean.jl/workflows/CI/badge.svg)](https://github.com/CliMA/ParameterEstimocean.jl/actions?query=workflow%3ACI+branch%3Amaster)
 
 Code Coverage: [![codecov](https://codecov.io/gh/CliMA/ParameterEstimocean.jl/branch/main/graph/badge.svg?token=cPeTALmiPU)](https://codecov.io/gh/CliMA/ParameterEstimocean.jl)
