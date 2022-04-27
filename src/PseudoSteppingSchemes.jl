@@ -221,6 +221,7 @@ function eki_update(pseudo_scheme::Kovachki2018InitialConvergenceRatio, Xₙ, G�
         
         # First guess
         Δt₀ = 1.0
+        Xₙ₊₁, Δtₙ = kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀, D)
 
         # Coarse adjustment to find the right order of magnitude
         too_big = (det(cov(Xₙ₊₁, dims=2)) / det_cov_init) > target
@@ -239,9 +240,10 @@ function eki_update(pseudo_scheme::Kovachki2018InitialConvergenceRatio, Xₙ, G�
         # Fine-grained adjustment
         p = 1.1
         iter = 1
+        r = det(cov(Xₙ₊₁, dims=2)) / det_cov_init
         while !isapprox(r, target, atol=0.03, rtol=0.1) && iter < 10
             Δt₀ *= (r / target)^p
-            Xₙ₊₁ = kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀, D)
+            Xₙ₊₁, Δtₙ = kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀, D)
             r = det(cov(Xₙ₊₁, dims=2)) / det_cov_init
             iter += 1
         end
@@ -250,7 +252,7 @@ function eki_update(pseudo_scheme::Kovachki2018InitialConvergenceRatio, Xₙ, G�
 
         @info "Particles stepped adaptively with time step $Δt₀"
 
-        return Xₙ₊₁, Δt₀
+        return Xₙ₊₁, Δtₙ
     
     else
         return eki_update(Kovachki2018(initial_step_size = pseudo_scheme.initial_step_size), Xₙ, Gₙ, eki)
