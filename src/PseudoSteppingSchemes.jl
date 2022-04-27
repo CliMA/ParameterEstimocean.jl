@@ -218,13 +218,14 @@ function eki_update(pseudo_scheme::Kovachki2018InitialConvergenceRatio, Xₙ, G�
 
         D = compute_D(Xₙ, Gₙ, eki)
         det_cov_init = det(cov(Xₙ, dims = 2))
+        conv_ratio(Xₙ₊₁) = det(cov(Xₙ₊₁, dims = 2)) / det_cov_init
         
         # First guess
         Δt₀ = 1.0
         Xₙ₊₁, Δtₙ = kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀, D)
 
         # Coarse adjustment to find the right order of magnitude
-        too_big = (det(cov(Xₙ₊₁, dims=2)) / det_cov_init) > target
+        too_big = conv_ratio(Xₙ₊₁) > target
         i = too_big
         while i == too_big
             # Keep adjusting Δt₀ until the truth value of `i` flips
@@ -234,17 +235,18 @@ function eki_update(pseudo_scheme::Kovachki2018InitialConvergenceRatio, Xₙ, G�
                 Δt₀ /= 2
             end
             Xₙ₊₁, Δtₙ = kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀, D)
-            i = (det(cov(Xₙ₊₁, dims=2)) / det_cov_init) > target
+            i = conv_ratio(Xₙ₊₁) > target
+            @show i, Δt₀, conv_ratio(Xₙ₊₁)
         end
         
         # Fine-grained adjustment
         p = 1.1
         iter = 1
-        r = det(cov(Xₙ₊₁, dims=2)) / det_cov_init
+        r = conv_ratio(Xₙ₊₁)
         while !isapprox(r, target, atol=0.03, rtol=0.1) && iter < 10
             Δt₀ *= (r / target)^p
             Xₙ₊₁, Δtₙ = kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀, D)
-            r = det(cov(Xₙ₊₁, dims=2)) / det_cov_init
+            r = conv_ratio(Xₙ₊₁)
             iter += 1
         end
 
