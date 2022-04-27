@@ -13,10 +13,10 @@ using ParameterEstimocean.Transformations: ZScore, normalize!, inverse_normalize
 
 import ..EnsembleKalmanInversions: adaptive_step_parameters, eki_objective
 
-export Constant, Default, GPLineSearch, ConstantConvergence, Kovachki2018, Kovachki2018InitialConvergenceRatio, Iglesias2021, Chada2021
+export ConstantPseudoTimeStep, Default, GPLineSearch, ConstantConvergence, Kovachki2018, Kovachki2018InitialConvergenceRatio, Iglesias2021, Chada2021
 
 # Default pseudo_stepping::Nothing --- it's not adaptive
-eki_update(::Nothing, Xₙ, Gₙ, eki, Δtₙ) = eki_update(Constant(Δtₙ), Xₙ, Gₙ, eki)
+eki_update(::Nothing, Xₙ, Gₙ, eki, Δtₙ) = eki_update(ConstantPseudoTimeStep(Δtₙ), Xₙ, Gₙ, eki)
 
 eki_update(pseudo_scheme, Xₙ, Gₙ, eki, Δtₙ) = eki_update(pseudo_scheme, Xₙ, Gₙ, eki)
 
@@ -55,7 +55,7 @@ function adaptive_step_parameters(pseudo_scheme, Xₙ, Gₙ, eki; Δt=1.0,
     return Xₙ₊₁, Δtₙ
 end
 
-function iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ=1.0, perturb_observation=true)
+function iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ=1.0, perturb_observation=false)
 
     N_obs, N_ens = size(Gₙ)
 
@@ -122,11 +122,11 @@ end
 
 abstract type AbstractSteppingScheme end
 
-struct Constant{S} <: AbstractSteppingScheme
+struct ConstantPseudoTimeStep{S} <: AbstractSteppingScheme
     step_size :: S
 end
 
-Constant(; step_size=1.0) = Constant(step_size)
+ConstantPseudoTimeStep(; step_size=1.0) = ConstantPseudoTimeStep(step_size)
 
 struct Default{C} <: AbstractSteppingScheme 
     cov_threshold :: C
@@ -179,12 +179,12 @@ Kovachki2018InitialConvergenceRatio(; initial_convergence_ratio=0.7) =
     Kovachki2018InitialConvergenceRatio(initial_convergence_ratio, 0.0)
 
 """
-    eki_update(pseudo_scheme::Constant, Xₙ, Gₙ, eki)
+    eki_update(pseudo_scheme::ConstantPseudoTimeStep, Xₙ, Gₙ, eki)
 
 Implements an EKI update with a fixed time step given by `pseudo_scheme.step_size`.
 """
 
-function eki_update(pseudo_scheme::Constant, Xₙ, Gₙ, eki)
+function eki_update(pseudo_scheme::ConstantPseudoTimeStep, Xₙ, Gₙ, eki)
 
     Δtₙ = pseudo_scheme.step_size
     Xₙ₊₁ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)

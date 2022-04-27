@@ -103,7 +103,7 @@ architecture = CPU()
         @testset "PseudoSteppingSchemes tests" begin
             @info "  Testing pseudo-stepping schemes with default hyperparameters"
 
-            for pseudo_stepping in [Constant, Default, Chada2021, ConstantConvergence, Kovachki2018, Kovachki2018InitialConvergenceRatio]
+            for pseudo_stepping in [ConstantPseudoTimeStep, Default, Chada2021, ConstantConvergence, Kovachki2018, Kovachki2018InitialConvergenceRatio]
                 iterate!(eki; iterations = 1, show_progress=false, pseudo_stepping = pseudo_stepping())
             end
         end
