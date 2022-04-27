@@ -260,9 +260,18 @@ function eki_update(pseudo_scheme::Kovachki2018InitialConvergenceRatio, Xₙ, G�
         iter = 1
         while !isapprox(r, target, atol=0.03, rtol=0.1) && iter < 10
             @show r, target, Δt₀
-            Δt₀ *= (r / target)^p
-            Xₙ₊₁, Δtₙ = kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀, D)
-            r = conv_ratio(Xₙ₊₁)
+            Δt₀_test = Δt₀ * (r / target)^p
+            Xₙ₊₁, Δtₙ = kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀=Δt₀_test, D)
+            r_test = conv_ratio(Xₙ₊₁)
+
+            # Make sure the convergence ratio moved closer to the target; otherwise halt
+            # to prevent divergence.
+            if abs(r_test - target) > abs(r - target)
+                break
+            else
+                Δt₀ = Δt₀_test
+                r = r_test    
+            end
             iter += 1
         end
 
