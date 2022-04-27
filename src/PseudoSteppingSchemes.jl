@@ -225,17 +225,33 @@ function eki_update(pseudo_scheme::Kovachki2018InitialConvergenceRatio, Xₙ, G�
         Xₙ₊₁, Δtₙ = kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀, D)
 
         # Coarse adjustment to find the right order of magnitude
-        too_big = conv_ratio(Xₙ₊₁) > target
+        r = conv_ratio(Xₙ₊₁)
+        too_big = r > target
         i = too_big
-        while i == too_big
-            # Keep adjusting Δt₀ until the truth value of `i` flips
-            if i
-                Δt₀ *= 2
-            else
-                Δt₀ /= 2
+        first_guess(i, Δt₀) = i ? Δt₀*2 : Δt₀/2
+        second_guess(i, Δt₀) = first_guess(!i, Δt₀)
+
+        iter = 1
+        while i == too_big && iter < 10
+            # Keep adjusting Δt₀ until the truth value `i` flips
+
+            # The first guess assumes that the convergence ratio decreases with increasing time step
+            Δt₀_guess = first_guess(i, Δt₀)
+            Xₙ₊₁, Δtₙ = kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀_guess, D)
+            r_test = conv_ratio(Xₙ₊₁)
+
+            if (r_test > r) == i
+                # Convergence ratio didn't adjust in the direction we expected; try the other direction
+                Δt₀_guess = second_guess(i, Δt₀)
+                Xₙ₊₁, Δtₙ = kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀_guess, D)
+                r_test = conv_ratio(Xₙ₊₁)
             end
-            Xₙ₊₁, Δtₙ = kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀, D)
-            i = conv_ratio(Xₙ₊₁) > target
+    
+            Δt₀ = Δt₀_guess
+            r = r_test
+            i = r > target
+            iter += 1
+    
             @show i, Δt₀, conv_ratio(Xₙ₊₁)
         end
         
