@@ -13,7 +13,7 @@ using ParameterEstimocean.Transformations: ZScore, normalize!, inverse_normalize
 
 import ..EnsembleKalmanInversions: adaptive_step_parameters, eki_objective
 
-export Constant, Default, GPLineSearch, ConstantConvergence, Kovachki2018, Kovachki2018InitialConvergenceThreshold, Iglesias2021, Chada2021
+export Constant, Default, GPLineSearch, ConstantConvergence, Kovachki2018, Kovachki2018InitialConvergenceRatio, Iglesias2021, Chada2021
 
 # Default pseudo_stepping::Nothing --- it's not adaptive
 eki_update(::Nothing, Xₙ, Gₙ, eki, Δtₙ) = eki_update(Constant(Δtₙ), Xₙ, Gₙ, eki)
@@ -170,13 +170,13 @@ end
 
 Kovachki2018(; initial_step_size=1.0) = Kovachki2018(initial_step_size)
 
-mutable struct Kovachki2018InitialConvergenceThreshold{T, I} <: AbstractSteppingScheme
-    initial_convergence_threshold :: T
+mutable struct Kovachki2018InitialConvergenceRatio{T, I} <: AbstractSteppingScheme
+    initial_convergence_ratio :: T
     initial_step_size :: I
 end
 
-Kovachki2018InitialConvergenceThreshold(; initial_convergence_threshold=0.7) = 
-    Kovachki2018InitialConvergenceThreshold(initial_convergence_threshold, 0.0)
+Kovachki2018InitialConvergenceRatio(; initial_convergence_ratio=0.7) = 
+    Kovachki2018InitialConvergenceRatio(initial_convergence_ratio, 0.0)
 
 """
     eki_update(pseudo_scheme::Constant, Xₙ, Gₙ, eki)
@@ -210,35 +210,47 @@ function eki_update(pseudo_scheme::Kovachki2018, Xₙ, Gₙ, eki)
     return Xₙ₊₁, Δtₙ
 end
 
-function eki_update(pseudo_scheme::Kovachki2018InitialConvergenceThreshold, Xₙ, Gₙ, eki)
-
-    Δtₙ = 0
-    Xₙ₊₁ = similar(Xₙ)
+function eki_update(pseudo_scheme::Kovachki2018InitialConvergenceRatio, Xₙ, Gₙ, eki)
 
     if pseudo_scheme.initial_step_size == 0
 
+        target = pseudo_scheme.initial_convergence_ratio
+
         D = compute_D(Xₙ, Gₙ, eki)
         det_cov_init = det(cov(Xₙ, dims = 2))
-
+        
+        # First guess
         Δt₀ = 1.0
-        accept_stepsize = false
 
-        while !accept_stepsize
-
-            Xₙ₊₁, Δtₙ = kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀, D)
-            cov_new = cov(Xₙ₊₁, dims = 2)
-            if det(cov_new) < pseudo_scheme.initial_convergence_threshold * det_cov_init
-                accept_stepsize = true
-            else
+        # Coarse adjustment to find the right order of magnitude
+        too_big = (det(cov(Xₙ₊₁, dims=2)) / det_cov_init) > target
+        i = too_big
+        while i == too_big
+            # Keep adjusting Δt₀ until the truth value of `i` flips
+            if i
                 Δt₀ *= 2
+            else
+                Δt₀ /= 2
             end
+            Xₙ₊₁, Δtₙ = kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀, D)
+            i = (det(cov(Xₙ₊₁, dims=2)) / det_cov_init) > target
+        end
+        
+        # Fine-grained adjustment
+        p = 1.1
+        iter = 1
+        while !isapprox(r, target, atol=0.03, rtol=0.1) && iter < 10
+            Δt₀ *= (r / target)^p
+            Xₙ₊₁ = kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀, D)
+            r = det(cov(Xₙ₊₁, dims=2)) / det_cov_init
+            iter += 1
         end
 
         pseudo_scheme.initial_step_size = Δt₀
 
-        @info "Particles stepped adaptively with time step $Δtₙ"
+        @info "Particles stepped adaptively with time step $Δt₀"
 
-        return Xₙ₊₁, Δtₙ
+        return Xₙ₊₁, Δt₀
     
     else
         return eki_update(Kovachki2018(initial_step_size = pseudo_scheme.initial_step_size), Xₙ, Gₙ, eki)
@@ -399,7 +411,7 @@ ensemble_array(eki, iter) = eki.iteration_summaries[iter].parameters_unconstrain
     eki_update(pseudo_scheme::GPLineSearch, Xₙ, Gₙ, eki)
 
 Implements an EKI update with an adaptive time step estimated by (1) generating a differentiable local approximation of
-the EKI objective using a Gaussian Process trained on all EKI samples generated thus far, with a Matern 5/2 kernel 
+the EKI objective using a Gaussian Process trained on all EKI samples generated thus far, with a Squared Exponential kernel 
 optimized using BFGS, (2) applying backtracking line search from each particle in Xₙ to determine a step size 
 that satisfies the Armijo rule, (3) taking the average estimated step size across all particles.
 """
@@ -508,7 +520,7 @@ function eki_update(pseudo_scheme::ConstantConvergence, Xₙ, Gₙ, eki)
 
     # `Δtₙ_first_guess` provides a reasonable initial guess for the time step. If we were to 
     # start the fixed point iteration algorithm below with an initial guess of 1.0, the initial volume 
-    # volume ratio could be obsenely small, leading to an obscenely small initial Δtₙ, 
+    # volume ratio could be obscenely small, leading to an obscenely small initial Δtₙ, 
     # sending the subsequent `r` values to ≈1.0. In such a situation the subsequently calculated Δtₙ 
     # would remain tiny, never recovering the desired order of magnitude; `r` would remain ≈1.0.
     # `Δtₙ_first_guess` starts us off in the right order of magnitude for the linear assumption 
