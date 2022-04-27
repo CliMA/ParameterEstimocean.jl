@@ -258,8 +258,8 @@ function eki_update(pseudo_scheme::Kovachki2018InitialConvergenceRatio, Xₙ, G�
         # Fine-grained adjustment
         p = 1.1
         iter = 1
-        r = conv_ratio(Xₙ₊₁)
         while !isapprox(r, target, atol=0.03, rtol=0.1) && iter < 10
+            @show r, target, Δt₀
             Δt₀ *= (r / target)^p
             Xₙ₊₁, Δtₙ = kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀, D)
             r = conv_ratio(Xₙ₊₁)
