@@ -250,7 +250,7 @@ function eki_update(pseudo_scheme::Kovachki2018InitialConvergenceRatio, Xₙ, G�
 
         pseudo_scheme.initial_step_size = Δt₀
 
-        @info "Particles stepped adaptively with time step $Δt₀"
+        @info "Particles stepped adaptively with time step $Δtₙ and convergence ratio $r (target $target)."
 
         return Xₙ₊₁, Δtₙ
     
