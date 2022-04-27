@@ -237,13 +237,13 @@ function eki_update(pseudo_scheme::Kovachki2018InitialConvergenceRatio, Xₙ, G�
 
             # The first guess assumes that the convergence ratio decreases with increasing time step
             Δt₀_guess = first_guess(i, Δt₀)
-            Xₙ₊₁, Δtₙ = kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀_guess, D)
+            Xₙ₊₁, Δtₙ = kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀=Δt₀_guess, D)
             r_test = conv_ratio(Xₙ₊₁)
 
             if (r_test > r) == i
                 # Convergence ratio didn't adjust in the direction we expected; try the other direction
                 Δt₀_guess = second_guess(i, Δt₀)
-                Xₙ₊₁, Δtₙ = kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀_guess, D)
+                Xₙ₊₁, Δtₙ = kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀=Δt₀_guess, D)
                 r_test = conv_ratio(Xₙ₊₁)
             end
     
