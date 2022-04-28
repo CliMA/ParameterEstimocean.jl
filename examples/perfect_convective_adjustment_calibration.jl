@@ -5,7 +5,7 @@
 # with "true" parameters. The true parameters are then "rediscovered" by calibrating the model
 # to match the synthetic observations.
 #
-# We use the discrepency between observed and modeled buoyancy ``b`` to calibrate
+# We use the discrepancy between observed and modeled buoyancy ``b`` to calibrate
 # the convective adjustment model.
 # The calibration problem is solved by Ensemble Kalman Inversion.
 # For more information about Ensemble Kalman Inversion, see the
@@ -22,14 +22,14 @@
 
 using ParameterEstimocean, LinearAlgebra, CairoMakie
 
-# We reuse some some code from a previous example to generate observations,
+# We reuse some code from a previous example to generate observations,
 examples_path = joinpath(pathof(ParameterEstimocean), "..", "..", "examples")
 include(joinpath(examples_path, "intro_to_inverse_problems.jl"))
 
 data_path = generate_synthetic_observations()
 observations = SyntheticObservations(data_path, field_names=:b, transformation=ZScore())
 
-# and an ensemble_simulation,
+# and an ensemble simulation,
 
 ensemble_simulation, closure★ = build_ensemble_simulation(observations; Nensemble=50)
 
