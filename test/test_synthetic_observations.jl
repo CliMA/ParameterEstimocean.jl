@@ -54,7 +54,7 @@ using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
                                                           schedule = TimeInterval(save_interval),
                                                           filename = experiment_name,
                                                           with_halos = true,
-                                                          force = true,
+                                                          overwrite_existing = true,
                                                           init = init_with_parameters)
 
     run!(simulation)
