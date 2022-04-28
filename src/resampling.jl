@@ -49,9 +49,9 @@ function failed_particle_str(θ, k, error=nothing)
 end
 
 """
-    resample!(resampler::Resampler, θ, G, eki)
+    resample!(resampler::Resampler, X, G, eki)
     
-Resamples the parameters `θ` of the `eki` process based on the number of `NaN` values
+Resamples the parameters `X` of the `eki` process based on the number of `NaN` values
 inside the forward map output `G`.
 """
 function resample!(resampler::Resampler, X, G, eki)

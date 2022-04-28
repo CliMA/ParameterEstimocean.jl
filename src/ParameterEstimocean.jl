@@ -1,3 +1,7 @@
+"""
+Main module for `ParameterEstimocean.jl` -- a Julia software for parameter estimation
+for Oceananigans models using Ensemble Kalman Inversion.
+"""
 module ParameterEstimocean
 
 export
