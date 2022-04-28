@@ -68,10 +68,10 @@ end
     model = truth_simulation.model
     truth_simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
                                                                 schedule = IterationInterval(round(Int, stop_iteration / 10)),
-                                                                prefix = experiment_name,
+                                                                filename = experiment_name,
                                                                 array_type = Array{Float64},
                                                                 with_halos = true,
-                                                                force = true)
+                                                                overwrite_existing = true)
 
     run!(truth_simulation)
 
