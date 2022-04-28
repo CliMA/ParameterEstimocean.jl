@@ -1,9 +1,5 @@
 # Installation instructions
 
-You can install the latest version of ParameterEstimocean.jl via the built-in
-package manager (by pressing `]` in the Julia REPL command prompt) to add the package and also to 
-instantiate/build all the required dependencies
-
 To install, use Julia's  built-in package manager (accessed by pressing `]` in the Julia REPL command prompt) to add the package and also to instantiate/build all the required dependencies. To install the latest tagged version of the package, use
 
 ```julia
