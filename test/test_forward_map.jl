@@ -70,8 +70,7 @@ end
                                                                 schedule = IterationInterval(round(Int, stop_iteration / 10)),
                                                                 filename = experiment_name,
                                                                 array_type = Array{Float64},
-                                                                with_halos = true,
-                                                                force = true)
+                                                                with_halos = true)
 
     run!(truth_simulation)
 
