@@ -61,7 +61,8 @@ function generate_synthetic_observations(name = "convective_adjustment"; Nz = 32
                                                           filename = name,
                                                           array_type = Array{Float64},
                                                           with_halos = true,
-                                                          init = init_with_parameters)
+                                                          init = init_with_parameters,
+                                                          overwrite_existing = true)
 
     run!(simulation)
 

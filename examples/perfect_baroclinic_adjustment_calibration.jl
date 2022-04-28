@@ -120,7 +120,8 @@ if force_generate_observations || !(isfile(data_path))
                                                           schedule = TimeInterval(save_interval),
                                                           filename = experiment_name,
                                                           array_type = Array{Float64},
-                                                          with_halos = true)
+                                                          with_halos = true,
+                                                          overwrite_existing = true)
 
     run!(simulation)
 end
