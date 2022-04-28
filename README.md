@@ -30,7 +30,7 @@ install the version on the `#main` branch (or any other branch or commit), e.g.
 
 ```julia
 julia>]
-(v1.6) pkg> add ParameterEstimocean.jl#main
+(v1.6) pkg> add ParameterEstimocean#main
 (v1.6) pkg> instantiate
 ```
 
