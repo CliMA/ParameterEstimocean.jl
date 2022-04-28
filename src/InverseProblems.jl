@@ -43,7 +43,7 @@ import ..Transformations: normalize!
 output_map_type(fp) = output_map_str(fp)
 
 """
-    struct ConcatenatedOutputMap end 
+    struct ConcatenatedOutputMap
 
 Forward map transformation of simulation output to the concatenated
 vectors of the simulation output.
@@ -53,7 +53,7 @@ struct ConcatenatedOutputMap end
 output_map_str(::ConcatenatedOutputMap) = "ConcatenatedOutputMap"
 
 """
-    struct ConcatenatedVectorNormMap()
+    struct ConcatenatedVectorNormMap
 
 Forward map transformation of simulation output to a scalar by
 taking a naive `norm` of the difference between concatenated vectors of the
@@ -83,7 +83,8 @@ nothingfunction(simulation) = nothing
                    simulation,
                    free_parameters;
                    output_map = ConcatenatedOutputMap(),
-                   time_series_collector = nothing)
+                   time_series_collector = nothing,
+                   initialize_simulation = nothingfunction)
 
 Return an `InverseProblem`.
 """
@@ -123,9 +124,9 @@ tupify_parameters(ip, θ) = NamedTuple{ip.free_parameters.names}(Tuple(θ))
 tupify_parameters(ip, θ::Union{Dict, NamedTuple}) = NamedTuple(name => θ[name] for name in ip.free_parameters.names)
 
 """
-    expand_parameters(ip, θ)
+    expand_parameters(ip, θ::Vector)
 
-Convert `θ` to `Vector{<:NamedTuple}`, where the elements
+Convert parameters `θ` to `Vector{<:NamedTuple}`, where the elements
 correspond to `ip.free_parameters`.
 
 `θ` may represent an ensemble of parameter sets via:
@@ -325,7 +326,7 @@ transpose_model_output(collector_grid::YZSliceGrid, time_series_collector, obser
                           observations.transformation)
 
 """
-    transpose_model_output(time_series_collector, observations)
+    transpose_model_output(collector_grid, time_series_collector, observations)
 
 Transpose a `NamedTuple` of 4D `FieldTimeSeries` model output collected by `time_series_collector`
 into a Vector of `SyntheticObservations` for each member of the observation batch.

@@ -97,7 +97,7 @@ Base.rand(rng::AbstractRNG, d::ScaledLogitNormal) =
 unit_normal_std(mass) = 1 / (2 * √2 * erfinv(mass))
 
 """
-    ScaledLogitNormal([FT=Float64;] bounds=(0, 1), mass=0.5, interval=nothing)
+    ScaledLogitNormal([FT=Float64;] bounds=(0, 1), mass=0.5, interval=nothing, μ=nothing, σ=nothing)
 
 Return a `ScaledLogitNormal` distribution with compact support within `bounds`.
 
@@ -227,6 +227,7 @@ to "constrained" (physical) space via the map associated with
 the distribution `Π` of `Y`.
 """
 transform_to_constrained(Π::Normal, X)    = X * Π.σ + Π.μ
+
 transform_to_constrained(Π::LogNormal, X) = exp(X * abs(Π.μ))
 
 transform_to_constrained(Π::ScaledLogitNormal, X) =
@@ -248,7 +249,9 @@ function inverse_covariance_transform(Π, X, covariance)
 end
 
 covariance_transform_diagonal(::LogNormal, X) = exp(X)
+
 covariance_transform_diagonal(::Normal, X) = 1
+
 covariance_transform_diagonal(Π::ScaledLogitNormal, X) = - (Π.upper_bound - Π.lower_bound) * exp(X) / (1 + exp(X))^2
 
 #####
@@ -269,8 +272,8 @@ end
 """
     FreeParameters(priors; names = Symbol.(keys(priors)))
 
-Return named `FreeParameters` with priors.
-Free parameter `names` are inferred from the keys of `priors` if not provided.
+Return named `FreeParameters` with priors. Free parameter `names` are inferred from
+the keys of `priors` if not provided.
 
 Example
 =======
@@ -369,7 +372,6 @@ Closure(ClosureSubModel(2.1, 2), 3)
 julia> another_new_closure = construct_object(specification_dict, (b=π, c=2π))
 Closure(ClosureSubModel(1, π), 6.283185307179586)
 ```
-
 """
 construct_object(d::ParameterValue, parameters; name=nothing) =
     name ∈ keys(parameters) ? getproperty(parameters, name) : d

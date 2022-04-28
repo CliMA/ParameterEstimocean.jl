@@ -15,19 +15,24 @@ struct IterationSummary{P, M, C, V, E, O}
 end
 
 """
-    eki_objective(eki, θ, G)
+    eki_objective(eki, θ::AbstractVector, G::AbstractVector; constrained = false)
 
 Given forward map `G` and parameters `θ`, return a tuple `(Φ₁, Φ₂)` 
-of terms in the EKI regularized objective function, where
+of terms in the ensemble Kalman inversion (`eki`) regularized objective
+function, where,
 
-    Φ = Φ₁ + Φ₂
+```code
+Φ = Φ₁ + Φ₂
+```
 
-Φ₁ measures output misfit `(1/2)*|| Γy^(-¹/₂) * (y .- G(θ)) ||²` and 
-Φ₂ measures prior misfit `(1/2)*|| Γθ^(-¹/₂) * (θ .- μθ) ||²`, where `y` is the observation 
+`Φ₁` measures output misfit `½ || Γy^(-¹/₂) * (y .- G(θ)) ||²` and 
+`Φ₂` measures prior misfit `½ || Γθ^(-¹/₂) * (θ .- μθ) ||²`, where `y` is the observation 
 map, `G(θ)` is the forward map, `Γy` is the observation noise covariance, `Γθ` is 
-the prior covariance, and `μθ` represents the prior means. Note that `Γ^(-1/2) = 
-inv(sqrt(Γ))`. The keyword argument `constrained` is `true` if the input `θ`
-represents constrained parameters.
+the prior covariance, and `μθ` represents the prior means. Note that `Γ^(-¹/₂) = 
+inv(sqrt(Γ))`.
+
+When keyword argument `constrained` is provided with `true` then input `θ`
+is assumed to represent constrained parameters.
 """
 function eki_objective(eki, θ::AbstractVector, G::AbstractVector; constrained = false)
     y = eki.mapped_observations
@@ -54,7 +59,7 @@ end
 """
     IterationSummary(eki, X, forward_map_output=nothing)
 
-Return the summary for ensemble Kalman inversion `eki`
+Return the summary for ensemble Kalman inversion `eki` 
 with unconstrained parameters `X` and `forward_map_output`.
 """
 function IterationSummary(eki, X, forward_map_output=nothing)
