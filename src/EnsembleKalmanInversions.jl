@@ -205,14 +205,14 @@ Iterate the ensemble Kalman inversion problem `eki` forward by `iterations`.
 Keyword arguments
 =================
 
-* `iterations` (`Int`): Number of iterations to run (Default: 1)
-
-* `pseudo_stepping` (`Float64`): Ensemble convergence rate for adaptive time-stepping.
-                                 (Default: `eki.pseudo_stepping`)
+* `iterations` (`Int`): Number of iterations to run. (Default: 1)
 
 * `pseudo_Δt` (`Float64`): Pseudo time-step. When `convegence_rate` is specified,
                            this is an initial guess for finding an adaptive time-step.
-                           (Default: 1.0)
+                           (Default: `eki.pseudo_Δt`)
+
+* `pseudo_stepping` (`Float64`): Ensemble convergence rate for adaptive time-stepping.
+                                 (Default: `eki.pseudo_stepping`)
 
 * `show_progress` (`Boolean`): Whether to show a progress bar. (Default: `true`)
 
