@@ -58,11 +58,11 @@ function generate_synthetic_observations(name = "convective_adjustment"; Nz = 32
     
     simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
                                                           schedule = TimeInterval(stop_time/3),
-                                                          prefix = name,
+                                                          filename = name,
                                                           array_type = Array{Float64},
                                                           with_halos = true,
                                                           init = init_with_parameters,
-                                                          force = true)
+                                                          overwrite_existing = true)
 
     run!(simulation)
 
