@@ -413,7 +413,7 @@ function trained_gp_predict_function(X, y; standardize_X=true, zscore_limit=noth
     end
 
     mZero = MeanZero()
-    gp = GP(X, y, mZero, kern, -2.0)
+    gp = GP(X, y, mZero, kernel, -2.0)
 
     # Use LBFGS to optimize kernel parameters
     optimize!(gp)
