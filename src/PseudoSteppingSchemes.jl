@@ -107,14 +107,13 @@ function kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀=1.0, D=nothing)
     D = isnothing(D) ? compute_D(Xₙ, Gₙ, eki) : D
 
     # Calculate time step Δtₙ₋₁ = Δt₀ / (frobenius_norm(D(uₙ)) + ϵ)
-    Δtₙ = Δt₀ / (frobenius_norm(D) + 1e-10)
+    Δtₙ = Δt₀ / frobenius_norm(D)
 
     # Update
     Xₙ₊₁ = Xₙ - (Δtₙ / N_ens) * Xₙ * D
 
     return Xₙ₊₁, Δtₙ
 end
-
 
 ###
 ### Fixed and adaptive time stepping schemes
@@ -210,7 +209,7 @@ function eki_update(pseudo_scheme::Kovachki2018, Xₙ, Gₙ, eki)
     return Xₙ₊₁, Δtₙ
 end
 
-function eki_update(pseudo_scheme::Kovachki2018InitialConvergenceRatio, Xₙ, Gₙ, eki)
+function eki_update(pseudo_scheme::Kovachki2018InitialConvergenceRatio, Xₙ, Gₙ, eki; verbose=false)
 
     if pseudo_scheme.initial_step_size == 0
 
@@ -252,14 +251,15 @@ function eki_update(pseudo_scheme::Kovachki2018InitialConvergenceRatio, Xₙ, G�
             i = r > target
             iter += 1
     
-            @show i, Δt₀, conv_ratio(Xₙ₊₁)
+            verbose && @show i, Δt₀, conv_ratio(Xₙ₊₁)
         end
         
         # Fine-grained adjustment
         p = 1.1
         iter = 1
         while !isapprox(r, target, atol=0.03, rtol=0.1) && iter < 10
-            @show r, target, Δt₀
+
+            verbose && @show r, target, Δt₀
             Δt₀_test = Δt₀ * (r / target)^p
             Xₙ₊₁, Δtₙ = kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀=Δt₀_test, D)
             r_test = conv_ratio(Xₙ₊₁)
@@ -363,12 +363,13 @@ Return a trained Gaussian Process given inputs X and outputs y.
 - `zscore_limit` (Int): specifies the number of standard deviations outside of which 
 all output entries and their corresponding inputs should be removed from the training data
 in an initial filtering step.
+- `kernel` (GaussianProcesses.Kernel): kernel to be optimized and used in the GP.
 # Returns
 - `predict` (Function): a function that maps size-`(N_param, N_test)` inputs to `(μ, Γgp)`, 
 where `μ` is an `(N_test,)` array of corresponding mean predictions and `Γgp` is the 
 prediction covariance matrix.
 """
-function trained_gp_predict_function(X, y; standardize_X=true, zscore_limit=nothing)
+function trained_gp_predict_function(X, y; standardize_X=true, zscore_limit=nothing, kernel=nothing)
 
     X = copy(X)
     y = copy(y)
@@ -398,15 +399,19 @@ function trained_gp_predict_function(X, y; standardize_X=true, zscore_limit=noth
     zscore_X = ZScore(mean(X, dims=2), std(X, dims=2))
     standardize_X && normalize!(X, zscore_X)
 
-    N_param = size(X, 1)
+    if isnothing(kernel)
 
-    # log- length scale kernel parameter
-    ll = zeros(N_param)
+        N_param = size(X, 1)
 
-    # log- noise kernel parameter
-    lσ = 0.0
+        # log- length scale kernel parameter
+        ll = zeros(N_param)
+    
+        # log- noise kernel parameter
+        lσ = 0.0
+    
+        kernel = SE(ll, lσ)
+    end
 
-    kern = SE(ll, lσ)
     mZero = MeanZero()
     gp = GP(X, y, mZero, kern, -2.0)
 
