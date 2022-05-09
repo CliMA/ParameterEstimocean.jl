@@ -433,7 +433,6 @@ function observation_map_variance_across_time(map::ConcatenatedOutputMap, observ
     y = transpose(y) # (Nx, Ny*Nz*Nt*Nfields)
 
     # Transpose `Nfields` dimension
-    reshaped_y = reshape(y, Nx, Ny * Nz, Nt, Nfields) # (Nx, Ny*Nz, Nt, Nfields)
     permuted_y = permutedims(y, [1, 2, 4, 3])
     reshaped_permuted_y = reshape(permuted_y, Nx, Ny * Nz * Nfields, Nt)
 
