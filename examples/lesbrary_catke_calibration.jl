@@ -67,7 +67,7 @@ for (i, t) in enumerate(times)
     plot_fields!(axs, fields..., "t = " * prettytime(t), colorcycle[i])
 end
 
-[axislegend(ax, position=:rb, merge=true, fontsize=10) for ax in axs]
+[axislegend(ax, position=:rb, merge=true, labelsize=10) for ax in axs]
 
 save("lesbrary_synthetic_observations.svg", fig); nothing # hide
 
@@ -142,7 +142,7 @@ function compare_model_observations(model_label="modeled")
     fig, axs = make_figure_axes()
     plot_fields!(axs, observed..., "observed at t = " * prettytime(times[end]), :black)
     plot_fields!(axs, modeled..., model_label, :blue)
-    [axislegend(ax, position=:rb, merge=true, fontsize=10) for ax in axs]
+    [axislegend(ax, position=:rb, merge=true, labelsize=10) for ax in axs]
     return fig
 end
 
