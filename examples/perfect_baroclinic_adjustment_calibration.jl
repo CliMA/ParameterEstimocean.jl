@@ -197,7 +197,7 @@ ax = Axis(fig[1, 1], xlabel = "Diffusivities [m² s⁻¹]", ylabel = "PDF")
 densities = []
 push!(densities, density!(ax, samples_κ_skew))
 push!(densities, density!(ax, samples_κ_symmetric))
-Legend(fig[1, 2], densities, ["κ_skew", "κ_symmetric"], position = :lb)
+Legend(fig[1, 2], densities, ["κ_skew", "κ_symmetric"], valign = :bottom, halign = :left)
 
 save("visualize_prior_diffusivities_baroclinic_adjustment.svg", fig); nothing # hide 
 
@@ -272,7 +272,7 @@ for (i, pname) in enumerate(free_parameters.names)
     lines!(ax3, 1:eki.iteration, ev / ev[1], label = String(pname), linewidth = 2)
 end
 
-axislegend(ax3, position = :rt)
+axislegend(ax3, valign = :top, halign = :right)
 save("summary_baroclinic_adjustment.svg", f); nothing #hide 
 
 # ![](summary_baroclinic_adjustment.svg)
@@ -318,7 +318,7 @@ colsize!(f.layout, 2, Fixed(200))
 rowsize!(f.layout, 1, Fixed(200))
 rowsize!(f.layout, 2, Fixed(300))
 
-Legend(f[1, 2], scatters, labels, position = :lb)
+Legend(f[1, 2], scatters, labels, valign = :bottom, halign = :left)
 
 hidedecorations!(axtop, grid = false)
 hidedecorations!(axright, grid = false)

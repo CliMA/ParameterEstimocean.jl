@@ -103,7 +103,7 @@ for (i, pname) in enumerate(free_parameters.names)
     lines!(ax3, 0:eki.iteration, ev / ev[1], label = String(pname), linewidth = 2)
 end
 
-axislegend(ax3, position = :rt)
+axislegend(ax3, valign = :top, halign = :right)
 
 save("summary_convective_adjustment_eki.svg", f); nothing #hide
 
@@ -147,7 +147,7 @@ colsize!(fig.layout, 2, Fixed(200))
 rowsize!(fig.layout, 1, Fixed(200))
 rowsize!(fig.layout, 2, Fixed(300))
 
-Legend(fig[1, 2], scatters, labels, position = :lb)
+Legend(fig[1, 2], scatters, labels, valign = :bottom, halign = :left)
 
 hidedecorations!(axtop, grid = false)
 hidedecorations!(axright, grid = false)
