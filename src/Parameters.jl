@@ -264,16 +264,19 @@ covariance_transform_diagonal(Π::ScaledLogitNormal, X) = - (Π.upper_bound - Π
 A container for free parameters that includes the parameter names and their
 corresponding prior distributions.
 """
-struct FreeParameters{N, P}
-     names :: N
+struct FreeParameters{N, P, D}
+    names :: N
     priors :: P
+    dependent_parameters :: D
 end
 
 """
-    FreeParameters(priors; names = Symbol.(keys(priors)))
+    FreeParameters(priors; names = Symbol.(keys(priors)), dependent_parameters=NamedTuple())
 
 Return named `FreeParameters` with priors. Free parameter `names` are inferred from
-the keys of `priors` if not provided.
+the keys of `priors` if not provided. `dependent_parameters` is a NamedTuple whose
+keys are the names of "additional" parameters, and whose values are functions
+that return those parameters given a vector of free parameters in `names`.
 
 Example
 =======
@@ -292,9 +295,9 @@ FreeParameters with 2 parameters
     └── κ => Normal{Float64}(μ=0.001, σ=1.0e-5)
 ```
 """
-function FreeParameters(priors; names = Symbol.(keys(priors)))
+function FreeParameters(priors; names = Symbol.(keys(priors)), dependent_parameters=NamedTuple())
     priors = NamedTuple(name => priors[name] for name in names)
-    return FreeParameters(Tuple(names), priors)
+    return FreeParameters(Tuple(names), priors, dependent_parameters)
 end
 
 Base.summary(fp::FreeParameters) = "$(fp.names)"
@@ -323,6 +326,21 @@ function Base.show(io::IO, p::FreeParameters)
 end
 
 Base.length(p::FreeParameters) = length(p.names)
+
+function build_simulation_parameters(p::FreeParameters, free_θ)
+    if θ isa Dict # convert to NamedTuple with
+        free_θ = NamedTuple(name => free_θ[name] for name in p.names)
+    elseif !(θ isa NamedTuple) # mostly likely a Vector: convert to NamedTuple with
+        free_θ = NamedTuple{p.names}(Tuple(free_θ))
+    end
+
+    # Compute dependent parameters
+    dependent_names = keys(p.dependent_parameters) 
+    maps = values(p.dependent_parameters)
+    dependent_θ = NamedTuple(name => maps[name](free_θ) for name in dependent_names)
+
+    return merge(free_θ, dependent_θ)
+end
 
 #####
 ##### Setting parameters

@@ -12,7 +12,7 @@ using OffsetArrays, Statistics, OrderedCollections
 using Suppressor: @suppress
 
 using ..Transformations: transform_field_time_series
-using ..Parameters: new_closure_ensemble, transform_to_constrained
+using ..Parameters: new_closure_ensemble, transform_to_constrained, build_simulation_parameters
 
 using ..Observations:
     AbstractObservation,
@@ -109,9 +109,6 @@ function Base.show(io::IO, ip::InverseProblem)
     return nothing
 end
 
-tupify_parameters(ip, θ) = NamedTuple{ip.free_parameters.names}(Tuple(θ))
-tupify_parameters(ip, θ::Union{Dict, NamedTuple}) = NamedTuple(name => θ[name] for name in ip.free_parameters.names)
-
 """
     expand_parameters(ip, θ::Vector)
 
@@ -133,7 +130,7 @@ function expand_parameters(ip, θ::Vector)
     Nfewer = Nensemble(ip) - length(θ)
     Nfewer < 0 && throw(ArgumentError("There are $(-Nfewer) more parameter sets than ensemble members!"))
 
-    θ = [tupify_parameters(ip, θi) for θi in θ]
+    θ = [build_simulation_parameters(ip.free_parameters, θi) for θi in θ]
 
     # Fill out parameter set ensemble
     Nfewer > 0 && append!(θ, [θ[end] for _ = 1:Nfewer])
@@ -180,7 +177,10 @@ function forward_run!(ip::InverseProblem, parameters; suppress=false)
     simulation = ip.simulation
     closures = simulation.model.closure
 
+    # Ensure there are enough parameters for ensemble members in the simulation
     θ = expand_parameters(ip, parameters)
+
+    # Set closure parameters
     simulation.model.closure = new_closure_ensemble(closures, θ, architecture(simulation.model.grid))
 
     initialize_forward_run!(simulation, observations, ip.time_series_collector, ip.initialize_simulation)
