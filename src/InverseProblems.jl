@@ -52,17 +52,6 @@ struct ConcatenatedOutputMap end
     
 output_map_str(::ConcatenatedOutputMap) = "ConcatenatedOutputMap"
 
-"""
-    struct ConcatenatedVectorNormMap
-
-Forward map transformation of simulation output to a scalar by
-taking a naive `norm` of the difference between concatenated vectors of the
-observations and simulation output.
-"""
-struct ConcatenatedVectorNormMap end 
-
-output_map_str(::ConcatenatedVectorNormMap) = "ConcatenatedVectorNormMap"
-
 #####
 ##### InverseProblems
 #####
@@ -179,7 +168,6 @@ Transform and return `ip.observations` appropriate for `ip.output_map`.
 observation_map(ip::InverseProblem) = observation_map(ip.output_map, ip.observations)
 
 observation_map(map::ConcatenatedOutputMap, observations) = transform_time_series(map, observations)
-observation_map(map::ConcatenatedVectorNormMap, observations) = hcat(0.0)
 
 """
     forward_run!(ip, parameters)
@@ -285,7 +273,7 @@ transform_time_series(map, batched_observations::Vector) =
     vcat(Tuple(transform_time_series(map, obs) for obs in batched_observations)...)
 
 const BatchedOrSingletonObservations = Union{SyntheticObservations,
-                                             Vector{<:SyntheticObservations}}
+                                             BatchedSyntheticObservations}
 
 function transform_forward_map_output(map::ConcatenatedOutputMap,
                                       observations::BatchedOrSingletonObservations,
@@ -297,17 +285,6 @@ function transform_forward_map_output(map::ConcatenatedOutputMap,
     return transform_time_series(map, transposed_forward_map_output)
 end
 
-function transform_output(output_map::ConcatenatedVectorNormMap,
-                          observations::Union{SyntheticObservations, Vector{<:SyntheticObservations}},
-                          time_series_collector)
-
-    concat_map = ConcatenatedOutputMap()
-    fwd_map = transform_output(concat_map, observations, time_series_collector)
-    obs_map = transform_time_series(concat_map, observations)
-
-    diffn = fwd_map .- obs_map
-    return sqrt.(mapslices(norm, diffn; dims = 1))
-end
 
 vectorize(observation) = [observation]
 vectorize(observations::Vector) = observations
@@ -391,14 +368,22 @@ function drop_y_dimension(grid::SingleColumnGrid)
 end
 
 #####
-##### VectorNormMap
+##### ConcatenatedVectorNormMap 
 #####
 
-struct VectorNormMap end
+"""
+    ConcatenatedVectorNormMap()
 
-observation_map(::VectorNormMap, observations) = reshape([0], 1, 1)
+Forward map transformation of simulation output to a scalar by
+taking a naive `norm` of the difference between concatenated vectors of the
+observations and simulation output.
+"""
+struct ConcatenatedVectorNormMap end
 
-function transform_forward_map_output(::VectorNormMap, obs, time_series_collector)
+output_map_str(::ConcatenatedVectorNormMap) = "ConcatenatedVectorNormMap"
+observation_map(::ConcatenatedVectorNormMap, observations) = reshape([0], 1, 1)
+
+function transform_forward_map_output(::ConcatenatedVectorNormMap, obs, time_series_collector)
     # Collected concatenated output and observations
     G = transform_forward_map_output(ConcatenatedOutputMap(), obs, time_series_collector)
     y = observation_map(ConcatenatedOutputMap(), obs)
@@ -407,6 +392,8 @@ function transform_forward_map_output(::VectorNormMap, obs, time_series_collecto
     # (1, Nensemble)
     return mapslices(Gᵏ -> norm(Gᵏ - y), G, dims=1)
 end
+
+observation_map(map::ConcatenatedVectorNormMap, observations) = hcat(0.0)
 
 #####
 ##### Utils
