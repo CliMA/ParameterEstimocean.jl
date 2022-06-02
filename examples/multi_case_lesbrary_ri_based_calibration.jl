@@ -34,7 +34,7 @@ transformation = ZScore()
 regrid = (1, 1, 32)
 
 observations = [SyntheticObservations(path; field_names, times, transformation, regrid) for path in datapaths]
-batch = BatchedSyntheticObservations(batch) # weighted equally by default
+batch = BatchedSyntheticObservations(observations) # weighted equally by default
 
 # Let's take a look at the observations. We define a few
 # plotting utilities along the way to use later in the example:
