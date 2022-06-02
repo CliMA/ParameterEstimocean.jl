@@ -273,7 +273,7 @@ transform_time_series(map, batched_observations::Vector) =
     vcat(Tuple(transform_time_series(map, obs) for obs in batched_observations)...)
 
 const BatchedOrSingletonObservations = Union{SyntheticObservations,
-                                             BatchedSyntheticObservations}
+                                             Vector{<:SyntheticObservations}}
 
 function transform_forward_map_output(map::ConcatenatedOutputMap,
                                       observations::BatchedOrSingletonObservations,
