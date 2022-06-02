@@ -85,6 +85,8 @@ function InverseProblem(observations,
                         time_series_collector = nothing,
                         initialize_simulation = nothingfunction)
 
+    observations = batch(observations)
+
     if isnothing(time_series_collector) # attempt to construct automagically
         simulation_fields = fields(simulation.model)
         collected_fields = NamedTuple(name => simulation_fields[name] for name in forward_map_names(observations))

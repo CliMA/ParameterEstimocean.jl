@@ -180,7 +180,8 @@ BatchedSyntheticObservations(batched_obs; weights=Tuple(1 for o in batched_obs))
     BatchedSyntheticObservations(batched_obs, weights)
 
 batch(b::BatchedSyntheticObservations) = b
-batch(obs) = BatchedSyntheticObservations([obs])
+batch(obs::SyntheticObservations) = BatchedSyntheticObservations([obs])
+batch(obs) = BatchedSyntheticObservations(obs)
 
 Base.first(batch::BatchedSyntheticObservations) = first(batch.observations)
 Base.lastindex(batch::BatchedSyntheticObservations) = lastindex(batch.observations)
