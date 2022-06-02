@@ -339,7 +339,7 @@ function build_simulation_parameters(p::FreeParameters, free_θ)
     maps = values(p.dependent_parameters)
     dependent_θ = NamedTuple(name => maps[name](free_θ) for name in dependent_names)
 
-    return merge(free_θ, dependent_θ)
+    return merge(dependent_θ, free_θ) # prioritize free_θ
 end
 
 #####
