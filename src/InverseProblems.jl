@@ -12,7 +12,7 @@ using OffsetArrays, Statistics, OrderedCollections
 using Suppressor: @suppress
 
 using ..Transformations: transform_field_time_series
-using ..Parameters: new_closure_ensemble, transform_to_constrained, build_simulation_parameters
+using ..Parameters: new_closure_ensemble, transform_to_constrained, build_parameters_named_tuple
 
 using ..Observations:
     AbstractObservation,
@@ -130,7 +130,7 @@ function expand_parameters(ip, θ::Vector)
     Nfewer = Nensemble(ip) - length(θ)
     Nfewer < 0 && throw(ArgumentError("There are $(-Nfewer) more parameter sets than ensemble members!"))
 
-    θ = [build_simulation_parameters(ip.free_parameters, θi) for θi in θ]
+    θ = [build_parameters_named_tuple(ip.free_parameters, θi) for θi in θ]
 
     # Fill out parameter set ensemble
     Nfewer > 0 && append!(θ, [θ[end] for _ = 1:Nfewer])
