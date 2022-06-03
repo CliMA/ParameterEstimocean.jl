@@ -326,7 +326,7 @@ Base.length(p::FreeParameters) = length(p.names)
 function build_simulation_parameters(p::FreeParameters, free_θ)
     if free_θ isa Dict # convert to NamedTuple with
         free_θ = NamedTuple(name => free_θ[name] for name in p.names)
-    elseif !(θ isa NamedTuple) # mostly likely a Vector: convert to NamedTuple with
+    elseif !(free_θ isa NamedTuple) # mostly likely a Vector: convert to NamedTuple with
         free_θ = NamedTuple{p.names}(Tuple(free_θ))
     end
 
