@@ -227,9 +227,7 @@ to "constrained" (physical) space via the map associated with
 the distribution `Π` of `Y`.
 """
 transform_to_constrained(Π::Normal, X)    = X * Π.σ + Π.μ
-
 transform_to_constrained(Π::LogNormal, X) = exp(X * abs(Π.μ))
-
 transform_to_constrained(Π::ScaledLogitNormal, X) =
     normal_to_scaled_logit_normal(Π.lower_bound, Π.upper_bound, X)
 
@@ -249,9 +247,7 @@ function inverse_covariance_transform(Π, X, covariance)
 end
 
 covariance_transform_diagonal(::LogNormal, X) = exp(X)
-
-covariance_transform_diagonal(::Normal, X) = 1
-
+covariance_transform_diagonal(::Normal, X)    = 1
 covariance_transform_diagonal(Π::ScaledLogitNormal, X) = - (Π.upper_bound - Π.lower_bound) * exp(X) / (1 + exp(X))^2
 
 #####
@@ -328,7 +324,7 @@ end
 Base.length(p::FreeParameters) = length(p.names)
 
 function build_simulation_parameters(p::FreeParameters, free_θ)
-    if θ isa Dict # convert to NamedTuple with
+    if free_θ isa Dict # convert to NamedTuple with
         free_θ = NamedTuple(name => free_θ[name] for name in p.names)
     elseif !(θ isa NamedTuple) # mostly likely a Vector: convert to NamedTuple with
         free_θ = NamedTuple{p.names}(Tuple(free_θ))
