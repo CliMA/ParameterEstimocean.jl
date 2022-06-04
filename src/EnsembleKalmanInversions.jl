@@ -5,6 +5,7 @@ export
     EnsembleKalmanInversion,
     Resampler,
     FullEnsembleDistribution,
+    NormExceedsMedian,
     SuccessfulEnsembleDistribution
 
 using OffsetArrays
@@ -162,7 +163,8 @@ function EnsembleKalmanInversion(inverse_problem;
                                    resampler,
                                    Xᵢ,
                                    forward_map_output,
-                                   pseudo_stepping)
+                                   pseudo_stepping,
+                                   mark_failed_particles)
 
     if isnothing(forward_map_output) # execute forward map to generate initial summary and forward_map_output
         @info "Executing forward map while building EnsembleKalmanInversion..."
@@ -186,7 +188,8 @@ function EnsembleKalmanInversion(inverse_problem;
                                   eki′.resampler,
                                   eki′.unconstrained_parameters,
                                   forward_map_output,
-                                  eki′.pseudo_stepping)
+                                  eki′.pseudo_stepping,
+                                  eki′.mark_failed_particles)
     
     return eki
 end

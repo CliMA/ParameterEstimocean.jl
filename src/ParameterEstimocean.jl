@@ -27,6 +27,7 @@ export
     iterate!,
     EnsembleKalmanInversion,
     Resampler,
+    NormExceedsMedian,
     FullEnsembleDistribution,
     SuccessfulEnsembleDistribution,
     ConstantConvergence
