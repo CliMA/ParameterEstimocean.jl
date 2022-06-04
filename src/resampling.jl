@@ -37,10 +37,7 @@ struct FullEnsembleDistribution <: EnsembleDistribution end
 (::FullEnsembleDistribution)(X, G) = ensemble_normal_distribution(X)
 
 struct SuccessfulEnsembleDistribution <: EnsembleDistribution end
-(::SuccessfulEnsembleDistribution)(X, G) = ensemble_normal_distribution(X[:, findall(.!column_has_nan(G))])
-
-""" Return a BitVector indicating which particles are NaN."""
-column_has_nan(G) = vec(mapslices(any, isnan.(G); dims=1))
+(::SuccessfulEnsembleDistribution)(X, G) = ensemble_normal_distribution(X[:, findall(.!mark_failed_columns(G))])
 
 function failed_particle_str(θ, k, error=nothing)
     first = string(@sprintf(" particle % 3d: ", k), param_str.(values(θ[k]))...)
@@ -56,41 +53,41 @@ inside the forward map output `G`.
 """
 function resample!(resampler::Resampler, X, G, eki)
     # `Nensemble` vector of bits indicating, for each ensemble member, whether the forward map contained `NaN`s
-    nan_values = column_has_nan(G)
-    nan_columns = findall(nan_values) # indices of columns (particles) with `NaN`s
-    nan_count = length(nan_columns)
-    nan_fraction = nan_count / size(X, 2)
+    failed_vals = mark_failed_columns(G)
+    failed_cols = findall(failed_vals) # indices of columns (particles) with `NaN`s
+    failed_count = length(failed_cols)
+    failed_fraction = failed_count / size(X, 2)
 
-    if nan_fraction > 0
+    if failed_fraction > 0
         # Print a nice message
-        particles = nan_count == 1 ? "particle" : "particles"
+        particles = failed_count == 1 ? "particle" : "particles"
 
         priors = eki.inverse_problem.free_parameters.priors
         θ = transform_to_constrained(priors, X)
         failed_parameters_message = string("               ",  param_str.(keys(priors))..., '\n',
-                                           (failed_particle_str(θ, k) for k in nan_columns)...)
+                                           (failed_particle_str(θ, k) for k in failed_cols)...)
 
         @warn("""
-              The forward map for $nan_count $particles ($(100nan_fraction)%) included NaNs.
+              The forward map for $failed_count $particles ($(100failed_fraction)%) included NaNs.
               The failed particles are:
               $failed_parameters_message
               """)
     end
 
-    if nan_fraction > resampler.acceptable_failure_fraction
-        error("The forward map for $nan_count particles ($(100nan_fraction)%) included NaNs. Consider \n" *
+    if failed_fraction > resampler.acceptable_failure_fraction
+        error("The forward map for $failed_count particles ($(100failed_fraction)%) included NaNs. Consider \n" *
               "    1. Increasing `Resampler.acceptable_failure_fraction` for \n" *
               "         EnsembleKalmanInversion.resampler::Resampler \n" * 
               "    2. Reducing the time-step for `InverseProblem.simulation`, \n" *
               "    3. Evolving `InverseProblem.simulation` for less time \n" *
               "    4. Narrowing `FreeParameters` priors.")
 
-    elseif nan_fraction >= resampler.resample_failure_fraction || !(resampler.only_failed_particles)
+    elseif failed_fraction >= resampler.resample_failure_fraction || !(resampler.only_failed_particles)
         # We are resampling!
 
         if resampler.only_failed_particles
-            Nsample = nan_count
-            replace_columns = nan_columns
+            Nsample = failed_count
+            replace_columns = failed_cols
 
         else # resample everything
             Nsample = size(G, 2)
@@ -107,12 +104,12 @@ function resample!(resampler::Resampler, X, G, eki)
         if resampler.verbose && resampler.only_failed_particles # print a helpful message about the failure replacements
             Nobs, Nensemble = size(G)
             y = eki.mapped_observations
-            errors = [mapreduce((x, y) -> (x - y)^2, +, y, view(G, :, k)) / Nobs for k in nan_columns]
+            errors = [mapreduce((x, y) -> (x - y)^2, +, y, view(G, :, k)) / Nobs for k in failed_cols]
 
             priors = eki.inverse_problem.free_parameters.priors
             new_θ = transform_to_constrained(priors, X)
 
-            particle_strings = [failed_particle_str(new_θ, k, errors[i]) for (i, k) in enumerate(nan_columns)]
+            particle_strings = [failed_particle_str(new_θ, k, errors[i]) for (i, k) in enumerate(failed_cols)]
             failed_parameters_message = string("               ",  param_str.(keys(priors))..., '\n',
                                                particle_strings...)
 
@@ -157,8 +154,8 @@ function find_successful_particles(eki, X, G, Nsample)
 
         G_sample = inverting_forward_map(eki.inverse_problem, X_sample)
 
-        nan_values = column_has_nan(G_sample)
-        success_columns = findall(.!column_has_nan(G_sample))
+        failed_vals = mark_failed_columns(G_sample)
+        success_columns = findall(.!mark_failed_columns(G_sample))
         @info "    ... found $(length(success_columns)) successful particles."
 
         found_X = cat(found_X, X_sample[:, success_columns], dims=2)

@@ -261,6 +261,15 @@ end
 ##### Stepping and adaptive stepping
 #####
 
+""" Return a BitVector indicating which particles are NaN."""
+function mark_failed_columns(G)
+    G_norm = mapslices(norm, G, dims=1)
+    finite_G_norm = filter(!isnan, G_norm)
+    median_norm = median(finite_G_norm)
+    failed(column) = any(isnan.(column)) || norm(column) > 1e9 * median_norm
+    return vec(mapslices(failed, G; dims=1))
+end
+
 function step_parameters(X, G, y, Γy, process; Δt=1.0)
     ekp = EnsembleKalmanProcess(X, y, Γy, process; Δt)
     update_ensemble!(ekp, G)
@@ -279,18 +288,18 @@ function step_parameters(eki::EnsembleKalmanInversion, pseudo_stepping; Δt=1.0)
     Xⁿ⁺¹ = similar(Xⁿ)
 
     # Handle failed particles
-    nan_values = column_has_nan(Gⁿ)
-    failed_columns = findall(nan_values) # indices of columns (particles) with `NaN`s
-    successful_columns = findall(.!nan_values)
-    some_failures = length(failed_columns) > 0
+    failed_vals = mark_failed_columns(Gⁿ)
+    failed_cols = findall(failed_vals) # indices of columns (particles) with `NaN`s
+    successful_cols = findall(.!failed_vals)
+    some_failures = length(failed_cols) > 0
 
-    some_failures && @warn string(length(failed_columns), " particles failed. ",
+    some_failures && @warn string(length(failed_cols), " particles failed. ",
                                   "Performing ensemble update with statistics from ",
-                                  length(successful_columns), " successful particles.")
+                                  length(successful_cols), " successful particles.")
 
-    successful_Gⁿ = Gⁿ[:, successful_columns]
-    successful_Xⁿ = Xⁿ[:, successful_columns]
-    
+    successful_Gⁿ = Gⁿ[:, successful_cols]
+    successful_Xⁿ = Xⁿ[:, successful_cols]
+
     # Construct new parameters
     successful_Xⁿ⁺¹, Δt = adaptive_step_parameters(pseudo_stepping,
                                                    successful_Xⁿ,
@@ -300,12 +309,12 @@ function step_parameters(eki::EnsembleKalmanInversion, pseudo_stepping; Δt=1.0)
                                                    process;
                                                    Δt)
 
-    Xⁿ⁺¹[:, successful_columns] .= successful_Xⁿ⁺¹
+    Xⁿ⁺¹[:, successful_cols] .= successful_Xⁿ⁺¹
 
     if some_failures # resample failed particles with new ensemble distribution
         new_X_distribution = ensemble_normal_distribution(successful_Xⁿ⁺¹) 
-        sampled_Xⁿ⁺¹ = rand(new_X_distribution, length(failed_columns))
-        Xⁿ⁺¹[:, failed_columns] .= sampled_Xⁿ⁺¹
+        sampled_Xⁿ⁺¹ = rand(new_X_distribution, length(failed_cols))
+        Xⁿ⁺¹[:, failed_cols] .= sampled_Xⁿ⁺¹
     end
 
     return Xⁿ⁺¹, Δt
