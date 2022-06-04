@@ -27,7 +27,7 @@ using ..InverseProblems: inverting_forward_map
 
 using Oceananigans.Utils: prettytime
 
-mutable struct EnsembleKalmanInversion{E, I, M, O, S, R, X, G, C}
+mutable struct EnsembleKalmanInversion{E, I, M, O, S, R, X, G, C, F}
     inverse_problem :: I
     ensemble_kalman_process :: E
     mapped_observations :: M
@@ -40,6 +40,7 @@ mutable struct EnsembleKalmanInversion{E, I, M, O, S, R, X, G, C}
     unconstrained_parameters :: X
     forward_map_output :: G
     pseudo_stepping :: C
+    mark_failed_particles :: F
 end
 
 Base.show(io::IO, eki::EnsembleKalmanInversion) =
@@ -52,7 +53,8 @@ Base.show(io::IO, eki::EnsembleKalmanInversion) =
               "├── iteration: $(eki.iteration)", '\n',
               "├── resampler: $(summary(eki.resampler))",
               "├── unconstrained_parameters: $(summary(eki.unconstrained_parameters))", '\n',
-              "└── forward_map_output: $(summary(eki.forward_map_output))")
+              "├── forward_map_output: $(summary(eki.forward_map_output))", '\n',
+              "└── mark_failed_particles: $(summary(eki.mark_failed_particles))")
 
 construct_noise_covariance(noise_covariance::AbstractMatrix, y) = noise_covariance
 
@@ -69,7 +71,8 @@ end
                             resampler = Resampler(),
                             unconstrained_parameters = nothing,
                             forward_map_output = nothing,
-                            process = Inversion())
+                            mark_failed_particles = NormExceedsMedian(1e9),
+                            ensemble_kalman_process = Inversion())
 
 Return an object that finds local minima of the inverse problem:
 
@@ -107,7 +110,8 @@ Keyword Arguments
 
 - `forward_map_output`: Default: `nothing`.
 
-- `process`: The Ensemble Kalman process. Default: `Inversion().
+- `ensemble_kalman_process`: Process type defined by `EnsembleKalmanProcesses.jl`.
+                             Default: `Inversion()`.
 """
 function EnsembleKalmanInversion(inverse_problem;
                                  noise_covariance = 1,
@@ -116,10 +120,11 @@ function EnsembleKalmanInversion(inverse_problem;
                                  resampler = Resampler(),
                                  unconstrained_parameters = nothing,
                                  forward_map_output = nothing,
-                                 process = Inversion())
+                                 mark_failed_particles = NormExceedsMedian(1e9),
+                                 ensemble_kalman_process = Inversion())
 
-    if process isa Sampler && !isnothing(pseudo_stepping)
-        @warn "Process is $process; ignoring keyword argument pseudo_stepping=$pseudo_stepping."
+    if ensemble_kalman_process isa Sampler && !isnothing(pseudo_stepping)
+        @warn "Process is $ensemble_kalman_process; ignoring keyword argument pseudo_stepping=$pseudo_stepping."
         pseudo_stepping = nothing
     end
 
@@ -147,7 +152,7 @@ function EnsembleKalmanInversion(inverse_problem;
     pseudotime = 0.0
 
     eki′ = EnsembleKalmanInversion(inverse_problem,
-                                   process,
+                                   ensemble_kalman_process,
                                    y,
                                    Γy,
                                    iteration,
@@ -258,15 +263,25 @@ function iterate!(eki::EnsembleKalmanInversion;
 end
 
 #####
-##### Stepping and adaptive stepping
+##### Failure condition, stepping, and adaptive stepping
 #####
 
-""" Return a BitVector indicating which particles are NaN."""
-function mark_failed_columns(G)
+struct NormExceedsMedian{T}
+    minimum_relative_norm :: T
+end
+
+NormExceedsMedian() = NormExceedsMedian(1e9)
+
+""" Return a BitVector indicating whether the norm of the forward map
+for a given particle exceeds the median by `mrn.minimum_relative_norm`."""
+function (mrn::NormExceedsMedian)(G)
+    ϵ = mrn.minimum_relative_norm
+
     G_norm = mapslices(norm, G, dims=1)
     finite_G_norm = filter(!isnan, G_norm)
     median_norm = median(finite_G_norm)
-    failed(column) = any(isnan.(column)) || norm(column) > 1e9 * median_norm
+    failed(column) = any(isnan.(column)) || norm(column) > ϵ * median_norm
+
     return vec(mapslices(failed, G; dims=1))
 end
 
@@ -288,17 +303,17 @@ function step_parameters(eki::EnsembleKalmanInversion, pseudo_stepping; Δt=1.0)
     Xⁿ⁺¹ = similar(Xⁿ)
 
     # Handle failed particles
-    failed_vals = mark_failed_columns(Gⁿ)
-    failed_cols = findall(failed_vals) # indices of columns (particles) with `NaN`s
-    successful_cols = findall(.!failed_vals)
-    some_failures = length(failed_cols) > 0
+    particle_failure = eki.mark_failed_particles(Gⁿ)
+    failures = findall(particle_failure) # indices of columns (particles) with `NaN`s
+    successes = findall(.!particle_failure)
+    some_failures = length(failures) > 0
 
-    some_failures && @warn string(length(failed_cols), " particles failed. ",
+    some_failures && @warn string(length(failures), " particles failed. ",
                                   "Performing ensemble update with statistics from ",
-                                  length(successful_cols), " successful particles.")
+                                  length(successes), " successful particles.")
 
-    successful_Gⁿ = Gⁿ[:, successful_cols]
-    successful_Xⁿ = Xⁿ[:, successful_cols]
+    successful_Gⁿ = Gⁿ[:, successes]
+    successful_Xⁿ = Xⁿ[:, successes]
 
     # Construct new parameters
     successful_Xⁿ⁺¹, Δt = adaptive_step_parameters(pseudo_stepping,
@@ -309,12 +324,12 @@ function step_parameters(eki::EnsembleKalmanInversion, pseudo_stepping; Δt=1.0)
                                                    process;
                                                    Δt)
 
-    Xⁿ⁺¹[:, successful_cols] .= successful_Xⁿ⁺¹
+    Xⁿ⁺¹[:, successes] .= successful_Xⁿ⁺¹
 
     if some_failures # resample failed particles with new ensemble distribution
         new_X_distribution = ensemble_normal_distribution(successful_Xⁿ⁺¹) 
-        sampled_Xⁿ⁺¹ = rand(new_X_distribution, length(failed_cols))
-        Xⁿ⁺¹[:, failed_cols] .= sampled_Xⁿ⁺¹
+        sampled_Xⁿ⁺¹ = rand(new_X_distribution, length(failures))
+        Xⁿ⁺¹[:, failures] .= sampled_Xⁿ⁺¹
     end
 
     return Xⁿ⁺¹, Δt
