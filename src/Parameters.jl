@@ -8,6 +8,7 @@ using Oceananigans.TurbulenceClosures: AbstractTimeDiscretization, ExplicitTimeD
 
 using Printf
 using Distributions
+using DocStringExtensions
 using LinearAlgebra
 
 using SpecialFunctions: erfinv
@@ -255,14 +256,19 @@ covariance_transform_diagonal(Π::ScaledLogitNormal, X) = - (Π.upper_bound - Π
 #####
 
 """
-    struct FreeParameters{N, P}
+    struct FreeParameters{N, P, D}
 
 A container for free parameters that includes the parameter names and their
 corresponding prior distributions.
+
+$(FIELDS)
 """
 struct FreeParameters{N, P, D}
+    "free parameters"
     names :: N
+    "prior distributions for free parameters"
     priors :: P
+    "dependend parameters"
     dependent_parameters :: D
 end
 
@@ -270,9 +276,9 @@ end
     FreeParameters(priors; names = Symbol.(keys(priors)), dependent_parameters=NamedTuple())
 
 Return named `FreeParameters` with priors. Free parameter `names` are inferred from
-the keys of `priors` if not provided. `dependent_parameters` is a NamedTuple whose
-keys are the names of "additional" parameters, and whose values are functions
-that return those parameters given a vector of free parameters in `names`.
+the keys of `priors` if not provided. Optionally, `dependent_parameters` are prescribed
+as a `NamedTuple` whose keys are the names of "additional" parameters, and whose values
+are functions that return those parameters given a vector of free parameters in `names`.
 
 Example
 =======
