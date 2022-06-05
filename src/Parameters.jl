@@ -297,12 +297,8 @@ FreeParameters with 2 parameters
 │   └── κ => Normal{Float64}(μ=0.001, σ=1.0e-5)
 └── dependent parameters: Dict{Symbol, Any}
 
-julia> c(p) = p.a + p.b # compute a third dependent parameter `c` as a function of `ν` and `κ`
+julia> c(p) = p.ν + p.κ # compute a third dependent parameter `c` as a function of `ν` and `κ`
 c (generic function with 1 method)
-
-julia> free_parameters_with_a_dependent = FreeParameters(priors, dependent_parameters=(; c))
-
-julia> dependent_parameters=(; c)
 
 julia> free_parameters_with_a_dependent = FreeParameters(priors, dependent_parameters=(; c))
 FreeParameters with 2 parameters and 1 dependent parameters
