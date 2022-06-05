@@ -333,12 +333,13 @@ end
 parameter_str(N) = N>1 ? "parameters" : "parameter"
 
 function Base.show(io::IO, p::FreeParameters)
-    Np = length(p)
-    Nd = length(p.dependent_parameters)
+    Np, Nd = length(p), length(p.dependent_parameters)
+
+    free_parameters_summary = "FreeParameters with $Np " * parameter_str(Np)
 
     title = Nd > 0 ?
-            "FreeParameters with $Np " * parameter_str(Np) * " and $Nd dependent " * parameter_str(Nd) : 
-            "FreeParameters with $Np parameters"
+            free_parameters_summary * " and $Nd dependent " * parameter_str(Nd) : 
+            free_parameters_summary
 
     print(io, title, '\n',
               "├── names: $(p.names)", '\n',
