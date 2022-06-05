@@ -3,6 +3,7 @@ module Parameters
 export FreeParameters, lognormal, ScaledLogitNormal
 
 using Oceananigans.Architectures: CPU, arch_array, architecture
+using Oceananigans.Utils: prettysummary
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
 using Oceananigans.TurbulenceClosures: AbstractTimeDiscretization, ExplicitTimeDiscretization
 
@@ -301,13 +302,13 @@ julia> c(p) = p.ν + p.κ # compute a third dependent parameter `c` as a functio
 c (generic function with 1 method)
 
 julia> free_parameters_with_a_dependent = FreeParameters(priors, dependent_parameters=(; c))
-FreeParameters with 2 parameters and 1 dependent parameters
+FreeParameters with 2 parameters and 1 dependent parameter
 ├── names: (:ν, :κ)
 ├── priors: Dict{Symbol, Any}
 │   ├── ν => Normal{Float64}(μ=0.0001, σ=1.0e-5)
 │   └── κ => Normal{Float64}(μ=0.001, σ=1.0e-5)
 └── dependent parameters: Dict{Symbol, Any}
-    └── c => c
+    └── c => c (generic function with 1 method)
 ```
 """
 function FreeParameters(priors; names = Symbol.(keys(priors)), dependent_parameters=NamedTuple())
@@ -325,16 +326,18 @@ end
 
 function dependent_parameter_show(io, dependent_parameters, name, prefix, width)
     print(io, @sprintf("%s %s => ", prefix, lpad(name, width, " ")))
-    show(io, dependent_parameters[Symbol(name)])
+    print(io, prettysummary(dependent_parameters[Symbol(name)]))
     return nothing
 end
+
+parameter_str(N) = N>1 ? "parameters" : "parameter"
 
 function Base.show(io::IO, p::FreeParameters)
     Np = length(p)
     Nd = length(p.dependent_parameters)
 
-    title = Nd > 0 ? 
-            "FreeParameters with $Np parameters and $Nd dependent parameters" : 
+    title = Nd > 0 ?
+            "FreeParameters with $Np " * parameter_str(Np) * " and $Nd dependent " * parameter_str(Nd) : 
             "FreeParameters with $Np parameters"
 
     print(io, title, '\n',
