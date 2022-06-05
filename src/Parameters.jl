@@ -269,7 +269,7 @@ struct FreeParameters{N, P, D}
     names :: N
     "prior distributions for free parameters"
     priors :: P
-    "dependend parameters"
+    "dependent parameters"
     dependent_parameters :: D
 end
 
