@@ -273,7 +273,16 @@ struct NormExceedsMedian{T}
     minimum_relative_norm :: T
 end
 
-NormExceedsMedian() = NormExceedsMedian(1e9)
+"""
+    NormExceedsMedian(minimum_relative_norm)
+
+The particle failure condition. A particle is marked "failed" if the forward map norm is
+larger than `minimum_relative_norm` times more than the median value of the ensemble.
+By default `minimum_relative_norm = 1e9`.
+"""
+NormExceedsMedian(minimum_relative_norm = 1e9) = 
+    minimum_relative_norm < 0 ? error("minimum_relative_norm must non-negative") :
+    NormExceedsMedian{typeof(minimum_relative_norm)}(minimum_relative_norm)
 
 """ Return a BitVector indicating whether the norm of the forward map
 for a given particle exceeds the median by `mrn.minimum_relative_norm`."""
