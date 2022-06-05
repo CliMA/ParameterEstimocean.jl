@@ -292,9 +292,26 @@ julia> priors = (ν = Normal(1e-4, 1e-5), κ = Normal(1e-3, 1e-5))
 julia> free_parameters = FreeParameters(priors)
 FreeParameters with 2 parameters
 ├── names: (:ν, :κ)
-└── priors: Dict{Symbol, Any}
-    ├── ν => Normal{Float64}(μ=0.0001, σ=1.0e-5)
-    └── κ => Normal{Float64}(μ=0.001, σ=1.0e-5)
+├── priors: Dict{Symbol, Any}
+│   ├── ν => Normal{Float64}(μ=0.0001, σ=1.0e-5)
+│   └── κ => Normal{Float64}(μ=0.001, σ=1.0e-5)
+└── dependent parameters: Dict{Symbol, Any}
+
+julia> c(p) = p.a + p.b # compute a third dependent parameter `c` as a function of `ν` and `κ`
+c (generic function with 1 method)
+
+julia> free_parameters_with_a_dependent = FreeParameters(priors, dependent_parameters=(; c))
+
+julia> dependent_parameters=(; c)
+
+julia> free_parameters_with_a_dependent = FreeParameters(priors, dependent_parameters=(; c))
+FreeParameters with 2 parameters and 1 dependent parameters
+├── names: (:ν, :κ)
+├── priors: Dict{Symbol, Any}
+│   ├── ν => Normal{Float64}(μ=0.0001, σ=1.0e-5)
+│   └── κ => Normal{Float64}(μ=0.001, σ=1.0e-5)
+└── dependent parameters: Dict{Symbol, Any}
+    └── c => c
 ```
 """
 function FreeParameters(priors; names = Symbol.(keys(priors)), dependent_parameters=NamedTuple())
@@ -310,20 +327,46 @@ function prior_show(io, priors, name, prefix, width)
     return nothing
 end
 
+function dependent_parameter_show(io, dependent_parameters, name, prefix, width)
+    print(io, @sprintf("%s %s => ", prefix, lpad(name, width, " ")))
+    show(io, dependent_parameters[Symbol(name)])
+    return nothing
+end
+
 function Base.show(io::IO, p::FreeParameters)
     Np = length(p)
-    print(io, "FreeParameters with $Np parameters", '\n',
+    Nd = length(p.dependent_parameters)
+
+    title = Nd > 0 ? 
+            "FreeParameters with $Np parameters and $Nd dependent parameters" : 
+            "FreeParameters with $Np parameters"
+
+    print(io, title, '\n',
               "├── names: $(p.names)", '\n',
-              "└── priors: Dict{Symbol, Any}")
+              "├── priors: Dict{Symbol, Any}")
 
     maximum_name_length = maximum([length(string(name)) for name in p.names]) 
 
     for (i, name) in enumerate(p.names)
-        prefix = i == length(p.names) ? "    └──" : "    ├──"
+        prefix = i == length(p.names) ? "│   └──" : "│   ├──"
         print(io, '\n')
         prior_show(io, p.priors, name, prefix, maximum_name_length)
     end
     
+    print(io, '\n')
+
+    print(io, "└── dependent parameters: Dict{Symbol, Any}")
+
+    if !isempty(p.dependent_parameters)
+        maximum_name_length = maximum([length(string(name)) for name in p.dependent_parameters]) 
+
+        for (i, name) in enumerate(p.dependent_parameters)
+            prefix = i == length(p.dependent_parameters) ? "    └──" : "    ├──"
+            print(io, '\n')
+            dependent_parameter_show(io, p.dependent_parameters, name, prefix, maximum_name_length)
+        end
+    end
+
     return nothing
 end
 
