@@ -5,7 +5,7 @@
 # with "true" parameters. The true parameters are then "rediscovered" by calibrating the model
 # to match the synthetic observations.
 #
-# We use the discrepency between observed and modeled buoyancy ``b`` to calibrate
+# We use the discrepancy between observed and modeled buoyancy ``b`` to calibrate
 # the convective adjustment model.
 # The calibration problem is solved by Ensemble Kalman Inversion.
 # For more information about Ensemble Kalman Inversion, see the
@@ -22,14 +22,14 @@
 
 using ParameterEstimocean, LinearAlgebra, CairoMakie
 
-# We reuse some some code from a previous example to generate observations,
+# We reuse some code from a previous example to generate observations,
 examples_path = joinpath(pathof(ParameterEstimocean), "..", "..", "examples")
 include(joinpath(examples_path, "intro_to_inverse_problems.jl"))
 
 data_path = generate_synthetic_observations()
 observations = SyntheticObservations(data_path, field_names=:b, transformation=ZScore())
 
-# and an ensemble_simulation,
+# and an ensemble simulation,
 
 ensemble_simulation, closure★ = build_ensemble_simulation(observations; Nensemble=50)
 
@@ -103,7 +103,7 @@ for (i, pname) in enumerate(free_parameters.names)
     lines!(ax3, 0:eki.iteration, ev / ev[1], label = String(pname), linewidth = 2)
 end
 
-axislegend(ax3, position = :rt)
+axislegend(ax3, valign = :top, halign = :right)
 
 save("summary_convective_adjustment_eki.svg", f); nothing #hide
 
@@ -147,7 +147,7 @@ colsize!(fig.layout, 2, Fixed(200))
 rowsize!(fig.layout, 1, Fixed(200))
 rowsize!(fig.layout, 2, Fixed(300))
 
-Legend(fig[1, 2], scatters, labels, position = :lb)
+Legend(fig[1, 2], scatters, labels, valign = :bottom, halign = :left)
 
 hidedecorations!(axtop, grid = false)
 hidedecorations!(axright, grid = false)

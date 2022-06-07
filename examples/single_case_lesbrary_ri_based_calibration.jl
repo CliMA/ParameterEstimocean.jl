@@ -60,7 +60,7 @@ for (i, t) in enumerate(times)
     plot_fields!(axs, fields..., "t = " * prettytime(t), colorcycle[i])
 end
 
-[axislegend(ax, position=:rb, merge=true, fontsize=10) for ax in axs]
+[axislegend(ax, position=:rb, merge=true, labelsize=10) for ax in axs]
 
 save("lesbrary_synthetic_observations.svg", fig); nothing # hide
 
@@ -124,8 +124,8 @@ iterate!(eki; iterations = 10)
 
 # # Results
 #
-# To analyze the reuslts, we build a new simulation with just one ensemble member
-# to evaluate pasome utilities for analyzing the results:
+# To analyze the results, we build a new simulation with just one ensemble member
+# to evaluate some utilities for analyzing the results:
 
 Nt = length(observations.times)
 Niter = length(eki.iteration_summaries) - 1
@@ -137,7 +137,7 @@ function compare_model_observations(model_label="modeled")
     fig, axs = make_figure_axes()
     plot_fields!(axs, observed..., "observed at t = " * prettytime(times[end]), :black)
     plot_fields!(axs, modeled..., model_label, :blue)
-    [axislegend(ax, position=:rb, merge=true, fontsize=10) for ax in axs]
+    [axislegend(ax, position=:rb, merge=true, labelsize=10) for ax in axs]
     return fig
 end
 
@@ -164,7 +164,7 @@ save("model_observation_comparison_final_iteration.svg", fig); nothing # hide
 # ## Parameter evolution
 #
 # To understand how results changed over the EKI iterations,
-# we look at the evoluation of the ensemble means,
+# we look at the evolution of the ensemble means,
 
 ensemble_means = NamedTuple(n => map(summary -> summary.ensemble_mean[n], eki.iteration_summaries)
                             for n in calibration.free_parameters.names)

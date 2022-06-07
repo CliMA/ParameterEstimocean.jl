@@ -156,7 +156,7 @@ for (i, pname) in enumerate(free_parameters.names)
     lines!(ax3, 1:eki.iteration, ev / ev[1], label = String(pname), linewidth = 2)
 end
 
-axislegend(ax3, position = :rt)
+axislegend(ax3, valign = :top, halign = :right)
 
 save("summary_bca.png", f); nothing #hide 
 save("summary_bca.svg", f); nothing #hide 
@@ -200,7 +200,7 @@ colsize!(f.layout, 2, Fixed(200))
 rowsize!(f.layout, 1, Fixed(200))
 rowsize!(f.layout, 2, Fixed(300))
 
-Legend(f[1, 2], scatters, labels, position = :lb)
+Legend(f[1, 2], scatters, labels, valign = :bottom, halign = :left)
 
 hidedecorations!(axtop, grid = false)
 hidedecorations!(axright, grid = false)

@@ -1,8 +1,8 @@
 name = "ParameterEstimocean"
 uuid = "eca81dc5-87a6-4430-aec8-c76695404a43"
 license = "MIT"
-authors = ["Adeline Hillier <adelineh2000@gmail.com>", "Gregory L. Wagner <wagner.greg@gmail.com>", "Navid C. Constantinou <navidcy@gmail.com>", "and co-contributors"]
-version = "0.12.3"
+authors = ["Climate Modeling Alliance and contributors"]
+version = "0.13.1"
 
 [deps]
 DataDeps = "124859b0-ceae-595e-8997-d05f6a7a8dfe"
@@ -25,14 +25,16 @@ Suppressor = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
 
 [compat]
 DataDeps = "0.7"
-EnsembleKalmanProcesses = "0.3"
+EnsembleKalmanProcesses = "0.8"
 FileIO = "1"
 JLD2 = "0.4"
+Oceananigans = "0.76.1"
 OffsetArrays = "1"
 OrderedCollections = "1"
 ProgressBars = "1"
 SpecialFunctions = "1, 2"
 Suppressor = "0.2"
+julia = "^1.6"
 
 [extras]
 Coverage = "a2441757-f6aa-5fb2-8edb-039e3f45d037"

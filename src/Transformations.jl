@@ -26,19 +26,19 @@ weight in particular regions of the domain or particular times. Also, we can den
 a normalization procedure applied to the data *after* the space- and time-
 transformations.
 
-Slicing is prescribed as `SpaceIndices` and `TimeIndices`. For example
+Slicing is prescribed as `SpaceIndices` and `TimeIndices`. For example,
 
 ```julia
 Transformation(time = TimeIndices(4:10))
 ```
 
-will only keep time instances 4 to 10 from the observations. Similarly,
+only keeps time instances 4 to 10 from the observations. Similarly,
 
 ```julia
 Transformation(space = SpaceIndices(x=:, y=1:10, z=2:2:20))
 ```
 
-will not affect the `x` dimension of the data, but will slice the observations
+does not affect the `x` dimension of the data, but slices the observations
 in `y` and `z` as prescribed.
 
 Keyword Arguments
@@ -46,13 +46,13 @@ Keyword Arguments
 
 - `time`: The time transformation either as a `TimeIndices` or as an `AbstractVector` of
   weights of same size as `observations.times`. If `nothing` is given, then, by default,
-  the transformation ignores the first snapshot (initial state).
+  the transformation ignores the first snapshot (initial state). (Default: `nothing`)
 
 - `space`: The space trasformation either as a `SpaceIndices` or as an `AbstractArray` of
-  weights of same size as a snapshot of the observations.
+  weights of same size as a snapshot of the observations. (Default: `nothing`)
 
 - `normalization`: The normalization that is applied to the data after space and time 
-  transformations have been applied first.
+  transformations have been applied first. (Default: `nothing`)
 """
 Transformation(; time=nothing, space=nothing, normalization=nothing) =
     Transformation(time, space, normalization)
@@ -63,6 +63,7 @@ function compute_transformation(transformation, field_time_series)
     time = compute_time_transformation(transformation.time, field_time_series)
     space = compute_space_transformation(transformation.space, field_time_series)
     normalization = compute_normalization(transformation.normalization, transformation, field_time_series)
+
     return Transformation(time, space, normalization)
 end
 
@@ -82,6 +83,7 @@ struct TimeIndices{T}
     function TimeIndices(t)
         t = int_to_range(t)
         T = typeof(t)
+
         return new{T}(t)
     end
 end
@@ -168,7 +170,7 @@ end
 ZScore() = ZScore(nothing, nothing) # stub for user-interface
 
 """
-    ZScore(field_time_series::FieldTimeSeries)
+    ZScore(data)
 
 Return the `ZScore` normalization of a `FieldTimeSeries` after computing
 its mean and its variance.
