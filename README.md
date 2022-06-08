@@ -39,4 +39,4 @@ julia>]
 
 The code is citable via [zenodo](https://zenodo.org). Please cite as:
 
-> Adeline Hillier, Gregory L. Wagner, and Navid C. Constantinou. (2022). CliMA/ParameterEstimocean.jl: ParameterEstimocean.jl v0.13.0 (Version v0.13.0). Zenodo. [http://doi.org/10.5281/zenodo.5762810](http://doi.org/10.5281/zenodo.5762810)
+> Adeline Hillier, Gregory L. Wagner, and Navid C. Constantinou. (2022). CliMA/ParameterEstimocean.jl: ParameterEstimocean.jl v0.13.1 (Version v0.13.1). Zenodo. [http://doi.org/10.5281/zenodo.5762810](http://doi.org/10.5281/zenodo.5762810)
