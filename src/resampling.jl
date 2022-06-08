@@ -81,8 +81,7 @@ function resample!(resampler::Resampler, X, G, eki)
               "    3. Evolving `InverseProblem.simulation` for less time \n" *
               "    4. Narrowing `FreeParameters` priors.")
 
-    elseif failed_fraction >= resampler.resample_failure_fraction || !(resampler.only_failed_particles)
-        # We are resampling!
+    elseif failed_fraction > resampler.resample_failure_fraction # we are resampling!
 
         if resampler.only_failed_particles
             Nsample = Nfailures
