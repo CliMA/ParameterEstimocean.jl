@@ -12,7 +12,7 @@ using OffsetArrays, Statistics, OrderedCollections
 using Suppressor: @suppress
 
 using ..Transformations: transform_field_time_series
-using ..Parameters: new_closure_ensemble, transform_to_constrained
+using ..Parameters: new_closure_ensemble, transform_to_constrained, build_parameters_named_tuple
 
 using ..Observations:
     AbstractObservation,
@@ -51,17 +51,6 @@ vectors of the simulation output.
 struct ConcatenatedOutputMap end
     
 output_map_str(::ConcatenatedOutputMap) = "ConcatenatedOutputMap"
-
-"""
-    struct ConcatenatedVectorNormMap
-
-Forward map transformation of simulation output to a scalar by
-taking a naive `norm` of the difference between concatenated vectors of the
-observations and simulation output.
-"""
-struct ConcatenatedVectorNormMap end 
-
-output_map_str(::ConcatenatedVectorNormMap) = "ConcatenatedVectorNormMap"
 
 #####
 ##### InverseProblems
@@ -120,9 +109,6 @@ function Base.show(io::IO, ip::InverseProblem)
     return nothing
 end
 
-tupify_parameters(ip, θ) = NamedTuple{ip.free_parameters.names}(Tuple(θ))
-tupify_parameters(ip, θ::Union{Dict, NamedTuple}) = NamedTuple(name => θ[name] for name in ip.free_parameters.names)
-
 """
     expand_parameters(ip, θ::Vector)
 
@@ -144,7 +130,7 @@ function expand_parameters(ip, θ::Vector)
     Nfewer = Nensemble(ip) - length(θ)
     Nfewer < 0 && throw(ArgumentError("There are $(-Nfewer) more parameter sets than ensemble members!"))
 
-    θ = [tupify_parameters(ip, θi) for θi in θ]
+    θ = [build_parameters_named_tuple(ip.free_parameters, θi) for θi in θ]
 
     # Fill out parameter set ensemble
     Nfewer > 0 && append!(θ, [θ[end] for _ = 1:Nfewer])
@@ -179,7 +165,6 @@ Transform and return `ip.observations` appropriate for `ip.output_map`.
 observation_map(ip::InverseProblem) = observation_map(ip.output_map, ip.observations)
 
 observation_map(map::ConcatenatedOutputMap, observations) = transform_time_series(map, observations)
-observation_map(map::ConcatenatedVectorNormMap, observations) = hcat(0.0)
 
 """
     forward_run!(ip, parameters)
@@ -192,7 +177,10 @@ function forward_run!(ip::InverseProblem, parameters; suppress=false)
     simulation = ip.simulation
     closures = simulation.model.closure
 
+    # Ensure there are enough parameters for ensemble members in the simulation
     θ = expand_parameters(ip, parameters)
+
+    # Set closure parameters
     simulation.model.closure = new_closure_ensemble(closures, θ, architecture(simulation.model.grid))
 
     initialize_forward_run!(simulation, observations, ip.time_series_collector, ip.initialize_simulation)
@@ -297,17 +285,6 @@ function transform_forward_map_output(map::ConcatenatedOutputMap,
     return transform_time_series(map, transposed_forward_map_output)
 end
 
-function transform_output(output_map::ConcatenatedVectorNormMap,
-                          observations::Union{SyntheticObservations, Vector{<:SyntheticObservations}},
-                          time_series_collector)
-
-    concat_map = ConcatenatedOutputMap()
-    fwd_map = transform_output(concat_map, observations, time_series_collector)
-    obs_map = transform_time_series(concat_map, observations)
-
-    diffn = fwd_map .- obs_map
-    return sqrt.(mapslices(norm, diffn; dims = 1))
-end
 
 vectorize(observation) = [observation]
 vectorize(observations::Vector) = observations
@@ -391,14 +368,22 @@ function drop_y_dimension(grid::SingleColumnGrid)
 end
 
 #####
-##### VectorNormMap
+##### ConcatenatedVectorNormMap 
 #####
 
-struct VectorNormMap end
+"""
+    ConcatenatedVectorNormMap()
 
-observation_map(::VectorNormMap, observations) = reshape([0], 1, 1)
+Forward map transformation of simulation output to a scalar by
+taking a naive `norm` of the difference between concatenated vectors of the
+observations and simulation output.
+"""
+struct ConcatenatedVectorNormMap end
 
-function transform_forward_map_output(::VectorNormMap, obs, time_series_collector)
+output_map_str(::ConcatenatedVectorNormMap) = "ConcatenatedVectorNormMap"
+observation_map(::ConcatenatedVectorNormMap, observations) = reshape([0], 1, 1)
+
+function transform_forward_map_output(::ConcatenatedVectorNormMap, obs, time_series_collector)
     # Collected concatenated output and observations
     G = transform_forward_map_output(ConcatenatedOutputMap(), obs, time_series_collector)
     y = observation_map(ConcatenatedOutputMap(), obs)
@@ -407,6 +392,8 @@ function transform_forward_map_output(::VectorNormMap, obs, time_series_collecto
     # (1, Nensemble)
     return mapslices(Gᵏ -> norm(Gᵏ - y), G, dims=1)
 end
+
+observation_map(map::ConcatenatedVectorNormMap, observations) = hcat(0.0)
 
 #####
 ##### Utils

@@ -23,7 +23,7 @@ using EnsembleKalmanProcesses:
     EnsembleKalmanProcess
 
 using ..Parameters: unconstrained_prior, transform_to_constrained, inverse_covariance_transform
-using ..InverseProblems: Nensemble, observation_map, forward_map, tupify_parameters
+using ..InverseProblems: Nensemble, observation_map, forward_map
 using ..InverseProblems: inverting_forward_map
 
 using Oceananigans.Utils: prettytime
