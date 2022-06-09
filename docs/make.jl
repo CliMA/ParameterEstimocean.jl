@@ -85,9 +85,10 @@ makedocs(
 
 withenv("GITHUB_REPOSITORY" => "CliMA/ParameterEstimoceanDocumentation") do
     deploydocs(        repo = "github.com/CliMA/ParameterEstimoceanDocumentation.git",
-                  versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
+                   versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
                   forcepush = true,
                   devbranch = "main",
-              push_preview = true
+               push_preview = true,
+            branch_previews = "gh-pages-previews"
     )
 end
