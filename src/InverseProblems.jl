@@ -381,7 +381,6 @@ observations and simulation output.
 struct ConcatenatedVectorNormMap end
 
 output_map_str(::ConcatenatedVectorNormMap) = "ConcatenatedVectorNormMap"
-observation_map(::ConcatenatedVectorNormMap, observations) = reshape([0], 1, 1)
 
 function transform_forward_map_output(::ConcatenatedVectorNormMap, obs, time_series_collector)
     # Collected concatenated output and observations
