@@ -83,7 +83,7 @@ makedocs(
   checkdocs = :exports
 )
 
-deploydocs(        repo = "github.com/CliMA/ParameterEstimocean.jl",
+deploydocs(        repo = "github.com/CliMA/ParameterEstimoceanDocumentation.git",
                versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
               forcepush = true,
               devbranch = "main",
