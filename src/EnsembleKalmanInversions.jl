@@ -23,7 +23,7 @@ using EnsembleKalmanProcesses:
     EnsembleKalmanProcess
 
 using ..Parameters: unconstrained_prior, transform_to_constrained, inverse_covariance_transform
-using ..InverseProblems: Nensemble, observation_map, forward_map, tupify_parameters
+using ..InverseProblems: Nensemble, observation_map, forward_map
 using ..InverseProblems: inverting_forward_map
 
 using Oceananigans.Utils: prettytime
@@ -269,20 +269,19 @@ end
 ##### Failure condition, stepping, and adaptive stepping
 #####
 
-struct NormExceedsMedian{T}
-    minimum_relative_norm :: T
-end
-
 """
-    NormExceedsMedian(minimum_relative_norm)
+    NormExceedsMedian(minimum_relative_norm = 1e9)
 
 The particle failure condition. A particle is marked "failed" if the forward map norm is
 larger than `minimum_relative_norm` times more than the median value of the ensemble.
 By default `minimum_relative_norm = 1e9`.
 """
-NormExceedsMedian(minimum_relative_norm = 1e9) = 
-    minimum_relative_norm < 0 ? error("minimum_relative_norm must non-negative") :
-    NormExceedsMedian{typeof(minimum_relative_norm)}(minimum_relative_norm)
+struct NormExceedsMedian{T}
+    minimum_relative_norm :: T
+    NormExceedsMedian(minimum_relative_norm = 1e9) = 
+        minimum_relative_norm < 0 ? error("minimum_relative_norm must non-negative") :
+        new{typeof(minimum_relative_norm)}(minimum_relative_norm)
+end
 
 """ Return a BitVector indicating whether the norm of the forward map
 for a given particle exceeds the median by `mrn.minimum_relative_norm`."""

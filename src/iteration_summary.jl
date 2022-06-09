@@ -1,4 +1,4 @@
-using ..Parameters: transform_to_unconstrained
+using ..Parameters: transform_to_unconstrained, build_parameters_named_tuple
 
 using Oceananigans.Utils: prettysummary
 
@@ -70,7 +70,9 @@ function IterationSummary(eki, X, forward_map_output=nothing)
 
     ensemble_covariance = cov(X, dims=2)
     constrained_ensemble_covariance = inverse_covariance_transform(values(priors), X, ensemble_covariance)
-    constrained_ensemble_variance = tupify_parameters(eki.inverse_problem, diag(constrained_ensemble_covariance))
+
+    constrained_ensemble_variance = build_parameters_named_tuple(eki.inverse_problem.free_parameters,
+                                                                 diag(constrained_ensemble_covariance))
 
     constrained_parameters = transform_to_constrained(priors, X)
 
