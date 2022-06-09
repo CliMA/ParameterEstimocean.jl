@@ -270,7 +270,7 @@ end
 #####
 
 """
-    NormExceedsMedian(minimum_relative_norm)
+    NormExceedsMedian(minimum_relative_norm = 1e9)
 
 The particle failure condition. A particle is marked "failed" if the forward map norm is
 larger than `minimum_relative_norm` times more than the median value of the ensemble.
