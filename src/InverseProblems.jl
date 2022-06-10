@@ -379,7 +379,7 @@ observations and simulation output.
 struct ConcatenatedVectorNormMap end
     
 output_map_str(::ConcatenatedVectorNormMap) = "ConcatenatedVectorNormMap"
-observation_map(map::ConcatenatedVectorNormMap, observations) = hcat(0.0)
+observation_map(map::ConcatenatedVectorNormMap, observations) = hcat(0)
 
 function transform_forward_map_output(::ConcatenatedVectorNormMap, obs, time_series_collector)
     # Collected concatenated output and observations
