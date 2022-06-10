@@ -3,11 +3,13 @@ module Parameters
 export FreeParameters, lognormal, ScaledLogitNormal
 
 using Oceananigans.Architectures: CPU, arch_array, architecture
+using Oceananigans.Utils: prettysummary
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
 using Oceananigans.TurbulenceClosures: AbstractTimeDiscretization, ExplicitTimeDiscretization
 
 using Printf
 using Distributions
+using DocStringExtensions
 using LinearAlgebra
 
 using SpecialFunctions: erfinv
@@ -227,9 +229,7 @@ to "constrained" (physical) space via the map associated with
 the distribution `Π` of `Y`. 
 """
 transform_to_constrained(Π::Normal, X)    = X * Π.σ + Π.μ
-
 transform_to_constrained(Π::LogNormal, X) = exp(X * abs(Π.μ))
-
 transform_to_constrained(Π::ScaledLogitNormal, X) =
     normal_to_scaled_logit_normal(Π.lower_bound, Π.upper_bound, X)
 
@@ -249,9 +249,7 @@ function inverse_covariance_transform(Π, X, covariance)
 end
 
 covariance_transform_diagonal(::LogNormal, X) = exp(X)
-
-covariance_transform_diagonal(::Normal, X) = 1
-
+covariance_transform_diagonal(::Normal, X)    = 1
 covariance_transform_diagonal(Π::ScaledLogitNormal, X) = - (Π.upper_bound - Π.lower_bound) * exp(X) / (1 + exp(X))^2
 
 #####
@@ -259,21 +257,29 @@ covariance_transform_diagonal(Π::ScaledLogitNormal, X) = - (Π.upper_bound - Π
 #####
 
 """
-    struct FreeParameters{N, P}
+    struct FreeParameters{N, P, D}
 
 A container for free parameters that includes the parameter names and their
 corresponding prior distributions.
+
+$(FIELDS)
 """
-struct FreeParameters{N, P}
-     names :: N
+struct FreeParameters{N, P, D}
+    "free parameters"
+    names :: N
+    "prior distributions for free parameters"
     priors :: P
+    "dependent parameters"
+    dependent_parameters :: D
 end
 
 """
-    FreeParameters(priors; names = Symbol.(keys(priors)))
+    FreeParameters(priors; names = Symbol.(keys(priors)), dependent_parameters=NamedTuple())
 
 Return named `FreeParameters` with priors. Free parameter `names` are inferred from
-the keys of `priors` if not provided.
+the keys of `priors` if not provided. Optionally, `dependent_parameters` are prescribed
+as a `NamedTuple` whose keys are the names of "additional" parameters, and whose values
+are functions that return those parameters given a vector of free parameters in `names`.
 
 Example
 =======
@@ -287,14 +293,27 @@ julia> priors = (ν = Normal(1e-4, 1e-5), κ = Normal(1e-3, 1e-5))
 julia> free_parameters = FreeParameters(priors)
 FreeParameters with 2 parameters
 ├── names: (:ν, :κ)
-└── priors: Dict{Symbol, Any}
-    ├── ν => Normal{Float64}(μ=0.0001, σ=1.0e-5)
-    └── κ => Normal{Float64}(μ=0.001, σ=1.0e-5)
+├── priors: Dict{Symbol, Any}
+│   ├── ν => Normal{Float64}(μ=0.0001, σ=1.0e-5)
+│   └── κ => Normal{Float64}(μ=0.001, σ=1.0e-5)
+└── dependent parameters: Dict{Symbol, Any}
+
+julia> c(p) = p.ν + p.κ # compute a third dependent parameter `c` as a function of `ν` and `κ`
+c (generic function with 1 method)
+
+julia> free_parameters_with_a_dependent = FreeParameters(priors, dependent_parameters=(; c))
+FreeParameters with 2 parameters and 1 dependent parameter
+├── names: (:ν, :κ)
+├── priors: Dict{Symbol, Any}
+│   ├── ν => Normal{Float64}(μ=0.0001, σ=1.0e-5)
+│   └── κ => Normal{Float64}(μ=0.001, σ=1.0e-5)
+└── dependent parameters: Dict{Symbol, Any}
+    └── c => c (generic function with 1 method)
 ```
 """
-function FreeParameters(priors; names = Symbol.(keys(priors)))
+function FreeParameters(priors; names = Symbol.(keys(priors)), dependent_parameters=NamedTuple())
     priors = NamedTuple(name => priors[name] for name in names)
-    return FreeParameters(Tuple(names), priors)
+    return FreeParameters(Tuple(names), priors, dependent_parameters)
 end
 
 Base.summary(fp::FreeParameters) = "$(fp.names)"
@@ -305,24 +324,68 @@ function prior_show(io, priors, name, prefix, width)
     return nothing
 end
 
+function dependent_parameter_show(io, dependent_parameters, name, prefix, width)
+    print(io, @sprintf("%s %s => ", prefix, lpad(name, width, " ")))
+    print(io, prettysummary(dependent_parameters[Symbol(name)]))
+    return nothing
+end
+
+parameter_str(N) = N>1 ? "parameters" : "parameter"
+
 function Base.show(io::IO, p::FreeParameters)
-    Np = length(p)
-    print(io, "FreeParameters with $Np parameters", '\n',
+    Np, Nd = length(p), length(p.dependent_parameters)
+
+    free_parameters_summary = "FreeParameters with $Np " * parameter_str(Np)
+
+    title = Nd > 0 ?
+            free_parameters_summary * " and $Nd dependent " * parameter_str(Nd) : 
+            free_parameters_summary
+
+    print(io, title, '\n',
               "├── names: $(p.names)", '\n',
-              "└── priors: Dict{Symbol, Any}")
+              "├── priors: Dict{Symbol, Any}")
 
     maximum_name_length = maximum([length(string(name)) for name in p.names]) 
 
     for (i, name) in enumerate(p.names)
-        prefix = i == length(p.names) ? "    └──" : "    ├──"
+        prefix = i == length(p.names) ? "│   └──" : "│   ├──"
         print(io, '\n')
         prior_show(io, p.priors, name, prefix, maximum_name_length)
     end
     
+    print(io, '\n')
+
+    print(io, "└── dependent parameters: Dict{Symbol, Any}")
+
+    if !isempty(p.dependent_parameters)
+        maximum_name_length = maximum([length(string(name)) for name in p.dependent_parameters]) 
+
+        for (i, name) in enumerate(p.dependent_parameters)
+            prefix = i == length(p.dependent_parameters) ? "    └──" : "    ├──"
+            print(io, '\n')
+            dependent_parameter_show(io, p.dependent_parameters, name, prefix, maximum_name_length)
+        end
+    end
+
     return nothing
 end
 
 Base.length(p::FreeParameters) = length(p.names)
+
+function build_parameters_named_tuple(p::FreeParameters, free_θ)
+    if free_θ isa Dict # convert to NamedTuple with
+        free_θ = NamedTuple(name => free_θ[name] for name in p.names)
+    elseif !(free_θ isa NamedTuple) # mostly likely a Vector: convert to NamedTuple with
+        free_θ = NamedTuple{p.names}(Tuple(free_θ))
+    end
+
+    # Compute dependent parameters
+    dependent_names = keys(p.dependent_parameters) 
+    maps = values(p.dependent_parameters)
+    dependent_θ = NamedTuple(name => maps[name](free_θ) for name in dependent_names)
+
+    return merge(dependent_θ, free_θ) # prioritize free_θ
+end
 
 #####
 ##### Setting parameters

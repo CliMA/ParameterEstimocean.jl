@@ -11,7 +11,7 @@ using Oceananigans: fields
 using ParameterEstimocean
 using ParameterEstimocean.EnsembleKalmanInversions: iterate!
 using ParameterEstimocean.EnsembleKalmanInversions: FullEnsembleDistribution, Resampler
-using ParameterEstimocean.EnsembleKalmanInversions: resample!, column_has_nan
+using ParameterEstimocean.EnsembleKalmanInversions: resample!
 using ParameterEstimocean.InverseProblems: inverting_forward_map
 using ParameterEstimocean.PseudoSteppingSchemes
 
@@ -125,18 +125,19 @@ architecture = CPU()
             θ3 = deepcopy(θ[:, 3])
 
             # Fake a forward map output with NaNs
+            norm_exceeds_median = NormExceedsMedian(Inf)
             G = inverting_forward_map(eki.inverse_problem, θ)
             view(G, :, 2) .= NaN
             @test any(isnan.(G)) == true
 
-            @test sum(column_has_nan(G)) == 1
-            @test column_has_nan(G)[1] == false
-            @test column_has_nan(G)[2] == true
-            @test column_has_nan(G)[3] == false
+            @test sum(norm_exceeds_median(G)) == 1
+            @test norm_exceeds_median(G)[1] == false
+            @test norm_exceeds_median(G)[2] == true
+            @test norm_exceeds_median(G)[3] == false
 
             resample!(resampler, θ, G, eki)
 
-            @test sum(column_has_nan(G)) == 0
+            @test sum(norm_exceeds_median(G)) == 0
 
             @test any(isnan.(G)) == false
             @test θ[:, 1] == θ1
@@ -210,10 +211,10 @@ architecture = CPU()
             view(G, :, 1) .= NaN
             view(G, :, 2) .= NaN
 
-            @test sum(column_has_nan(G)) == 2
-            @test column_has_nan(G)[1]
-            @test column_has_nan(G)[2]
-            @test !(column_has_nan(G)[3])
+            @test sum(norm_exceeds_median(G)) == 2
+            @test norm_exceeds_median(G)[1]
+            @test norm_exceeds_median(G)[2]
+            @test !(norm_exceeds_median(G)[3])
 
             resample!(resampler, θ, G, eki)
 
