@@ -153,11 +153,6 @@ struct BatchedSyntheticObservations{O, W}
     observations :: O
     weights :: W
 
-    @doc """
-        BatchedSyntheticObservations(obs, weights)
-
-    Return a collection of synthetic `obs`ervations  and accompanying `weights` for each element of `obs`.
-    """
     function BatchedSyntheticObservations(obs, weights)
         length(obs) == length(weights) ||
             throw(ArgumentError("Must have the same number of weights and observations!"))
