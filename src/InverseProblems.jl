@@ -392,7 +392,7 @@ function transform_forward_map_output(::ConcatenatedVectorNormMap, obs, time_ser
     return mapslices(Gᵏ -> norm(Gᵏ - y), G, dims=1)
 end
 
-observation_map(map::ConcatenatedVectorNormMap, observations) = hcat(0.0)
+observation_map(map::ConcatenatedVectorNormMap, observations) = hcat(0)
 
 #####
 ##### Utils
