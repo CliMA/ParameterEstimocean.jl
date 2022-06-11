@@ -88,7 +88,6 @@ withenv("GITHUB_REPOSITORY" => "CliMA/ParameterEstimoceanDocumentation") do
                    versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
                   forcepush = true,
                   devbranch = "main",
-               push_preview = true,
-            branch_previews = "gh-pages-previews"
+               push_preview = true
     )
 end
