@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Intro to observations · OceanTurbulenceParameterEstimation.jl</title><script data-outdated-warner src="../../assets/warner.js"></script><link rel="canonical" href="https://clima.github.io/OceanTurbulenceParameterEstimation/dev/literated/intro_to_observations/"/><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.039/juliamono-regular.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.11/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><script src="../../../copy.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">OceanTurbulenceParameterEstimation.jl</a></span></div><form class="docs-search" action="../../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../installation_instructions/">Installation Instructions</a></li><li class="is-active"><a class="tocitem" href>Intro to observations</a><ul class="internal"><li><a class="tocitem" href="#Install-dependencies"><span>Install dependencies</span></a></li><li class="toplevel"><a class="tocitem" href="#Generating-synthetic-observations"><span>Generating synthetic observations</span></a></li><li class="toplevel"><a class="tocitem" href="#Specifying-observations"><span>Specifying observations</span></a></li><li class="toplevel"><a class="tocitem" href="#Visualizing-observations"><span>Visualizing observations</span></a></li></ul></li><li><a class="tocitem" href="../intro_to_inverse_problems/">Intro to inverse problems</a></li><li><a class="tocitem" href="../exploring_priors/">Exploring Prior distributions</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../perfect_convective_adjustment_calibration/">Perfect convective adjustment calibration with Ensemble Kalman Inversion</a></li><li><a class="tocitem" href="../perfect_catke_calibration/">Perfect CAKTE calibration with Ensemble Kalman Inversion</a></li><li><a class="tocitem" href="../lesbrary_catke_calibration/">CAKTE calibration with Ensemble Kalman Inversion using LESbrary data</a></li><li><a class="tocitem" href="../perfect_baroclinic_adjustment_calibration/">Perfect baroclinic adjustment calibration with Ensemble Kalman Inversion</a></li></ul></li><li><span class="tocitem">Library</span><ul><li><a class="tocitem" href="../../library/outline/">Contents</a></li><li><a class="tocitem" href="../../library/public/">Public</a></li><li><a class="tocitem" href="../../library/internals/">Private</a></li><li><a class="tocitem" href="../../library/function_index/">Function index</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Intro to observations</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Intro to observations</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/CliMA/OceanTurbulenceParameterEstimation.jl/blob/main/examples/intro_to_observations.jl" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Intro-to-observations"><a class="docs-heading-anchor" href="#Intro-to-observations">Intro to observations</a><a id="Intro-to-observations-1"></a><a class="docs-heading-anchor-permalink" href="#Intro-to-observations" title="Permalink"></a></h1><p>This example demonstrates the features of <code>SyntheticObservations</code> when constructed from  &quot;synthetic observations&quot; generated by an Oceananigans <code>Simulation</code>.</p><h2 id="Install-dependencies"><a class="docs-heading-anchor" href="#Install-dependencies">Install dependencies</a><a id="Install-dependencies-1"></a><a class="docs-heading-anchor-permalink" href="#Install-dependencies" title="Permalink"></a></h2><p>First let&#39;s make sure we have all required packages installed.</p><pre><code class="language-julia hljs">using Pkg
+pkg&quot;add OceanTurbulenceParameterEstimation, Oceananigans, CairoMakie&quot;</code></pre><p>First we load few things</p><pre><code class="language-julia hljs">using OceanTurbulenceParameterEstimation
+using Oceananigans
+using Oceananigans.Units
+using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
+using CairoMakie</code></pre><h1 id="Generating-synthetic-observations"><a class="docs-heading-anchor" href="#Generating-synthetic-observations">Generating synthetic observations</a><a id="Generating-synthetic-observations-1"></a><a class="docs-heading-anchor-permalink" href="#Generating-synthetic-observations" title="Permalink"></a></h1><p>We define a utility function for constructing synthetic observations,</p><pre><code class="language-julia hljs">default_closure = ConvectiveAdjustmentVerticalDiffusivity(; convective_κz = 1.0,
+                                                            convective_νz = 0.9,
+                                                            background_κz = 1e-4,
+                                                            background_νz = 1e-5)
+
+function generate_synthetic_observations(name = &quot;convective_adjustment&quot;; Nz = 32, Lz = 64,
+                                         Qᵇ = +1e-8, Qᵘ = -1e-5, f₀ = 1e-4, N² = 1e-6,
+                                         Δt = 10.0, stop_time = 12hours, overwrite=false,
+                                         tracers = :b, closure = default_closure)
+
+    data_path = name * &quot;.jld2&quot;
+
+    if isfile(data_path)
+        @warn(&quot;Using existing data at $data_path. &quot; *
+              &quot;Please delete this file if you wish to generate new data.&quot;)
+
+        return data_path
+    end
+
+    grid = RectilinearGrid(size=Nz, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
+    u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
+    b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ), bottom = GradientBoundaryCondition(N²))
+
+    model = HydrostaticFreeSurfaceModel(; grid, tracers, closure,
+                                          buoyancy = BuoyancyTracer(),
+                                          boundary_conditions = (u=u_bcs, b=b_bcs),
+                                          coriolis = FPlane(f=f₀))
+
+    set!(model, b = (x, y, z) -&gt; N² * z)
+    simulation = Simulation(model; Δt, stop_time)
+    init_with_parameters(file, model) = file[&quot;parameters&quot;] = (; Qᵇ, Qᵘ, Δt, N², tracers=keys(model.tracers))
+
+    simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
+                                                          schedule = TimeInterval(stop_time/3),
+                                                          prefix = name,
+                                                          array_type = Array{Float64},
+                                                          field_slicer = nothing,
+                                                          init = init_with_parameters,
+                                                          force = true)
+
+    run!(simulation)
+
+    return data_path
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">generate_synthetic_observations (generic function with 2 methods)</code></pre><p>and invoke it:</p><pre><code class="language-julia hljs">data_path = generate_synthetic_observations()</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">&quot;convective_adjustment.jld2&quot;</code></pre><h1 id="Specifying-observations"><a class="docs-heading-anchor" href="#Specifying-observations">Specifying observations</a><a id="Specifying-observations-1"></a><a class="docs-heading-anchor-permalink" href="#Specifying-observations" title="Permalink"></a></h1><p>When synthetic observations are constructed from simulation data, we can select</p><ul><li><p>The fields to include via <code>field_names</code></p></li><li><p>Which data in the time-series to include via the <code>times</code> keyword. This can be used to change the initial condition for a calibration run.</p></li></ul><p>For example, to build observations with a single field we write,</p><pre><code class="language-julia hljs">single_field_observations = SyntheticObservations(data_path, field_names=:b, transformation=ZScore())</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">SyntheticObservations with fields (:b,)
+├── times: [0 s, 4 hrs, 8 hrs … 12 hrs, 8 hrs, 4 hrs] (4 elements)
+├── grid: 1×1×32 RectilinearGrid{Float64, Oceananigans.Grids.Flat, Oceananigans.Grids.Flat, Oceananigans.Grids.Bounded} on Oceananigans.Architectures.CPU with 0×0×1 halo
+├── path: &quot;convective_adjustment.jld2&quot;
+├── metadata: (:parameters, :grid, :coriolis, :closure)
+└── transformation: Dict{Symbol, OceanTurbulenceParameterEstimation.Transformations.Transformation{TimeIndices{UnitRange{Int64}}, Nothing, ZScore{Float64}}} with 1 entry</code></pre><p>To build observations with two fields we write</p><pre><code class="language-julia hljs">two_field_observations = SyntheticObservations(data_path, field_names=(:u, :b), transformation=ZScore())</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">SyntheticObservations with fields (:u, :b)
+├── times: [0 s, 4 hrs, 8 hrs … 12 hrs, 8 hrs, 4 hrs] (4 elements)
+├── grid: 1×1×32 RectilinearGrid{Float64, Oceananigans.Grids.Flat, Oceananigans.Grids.Flat, Oceananigans.Grids.Bounded} on Oceananigans.Architectures.CPU with 0×0×1 halo
+├── path: &quot;convective_adjustment.jld2&quot;
+├── metadata: (:parameters, :grid, :coriolis, :closure)
+└── transformation: Dict{Symbol, OceanTurbulenceParameterEstimation.Transformations.Transformation{TimeIndices{UnitRange{Int64}}, Nothing, ZScore{Float64}}} with 2 entries</code></pre><p>And to build observations with specified times we write</p><pre><code class="language-julia hljs">times = single_field_observations.times[2:end]
+specified_times_observations = SyntheticObservations(data_path, field_names=(:u, :b), transformation=ZScore(), times=times)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">SyntheticObservations with fields (:u, :b)
+├── times: [4 hrs, 8 hrs, 12 hrs … 12 hrs, 8 hrs, 4 hrs] (3 elements)
+├── grid: 1×1×32 RectilinearGrid{Float64, Oceananigans.Grids.Flat, Oceananigans.Grids.Flat, Oceananigans.Grids.Bounded} on Oceananigans.Architectures.CPU with 0×0×1 halo
+├── path: &quot;convective_adjustment.jld2&quot;
+├── metadata: (:parameters, :grid, :coriolis, :closure)
+└── transformation: Dict{Symbol, OceanTurbulenceParameterEstimation.Transformations.Transformation{TimeIndices{UnitRange{Int64}}, Nothing, ZScore{Float64}}} with 2 entries</code></pre><p>Notice that in the last case, <code>specified_times_observations.times</code> is missing <code>0.0</code>.</p><h1 id="Visualizing-observations"><a class="docs-heading-anchor" href="#Visualizing-observations">Visualizing observations</a><a id="Visualizing-observations-1"></a><a class="docs-heading-anchor-permalink" href="#Visualizing-observations" title="Permalink"></a></h1><p>For this we include the initial condition and <span>$v$</span> velocity component,</p><pre><code class="language-julia hljs">observations = SyntheticObservations(data_path, field_names=(:u, :v, :b), transformation=ZScore())
+
+fig = Figure()
+
+ax_b = Axis(fig[1, 1], xlabel = &quot;Buoyancy [m s⁻²]&quot;, ylabel = &quot;z [m]&quot;)
+ax_u = Axis(fig[1, 2], xlabel = &quot;Velocities [m s⁻¹]&quot;, ylabel = &quot;z [m]&quot;)
+
+z = znodes(Center, observations.grid)
+
+colorcycle = [:black, :red, :blue, :orange, :pink]
+
+for i = 1:length(observations.times)
+    b_ = observations.field_time_serieses.b[i]
+    u_ = observations.field_time_serieses.u[i]
+    v_ = observations.field_time_serieses.v[i]
+    t_ = observations.times[i]
+
+    label = &quot;t = &quot; * prettytime(t_)
+    u_label = i == 1 ? &quot;u, &quot; * label : label
+    v_label = i == 1 ? &quot;v, &quot; * label : label
+
+    lines!(ax_b, 1e4 * interior(b_)[1, 1, :], z; label, color=colorcycle[i]) # convert units from m s⁻² to 10⁻⁴ m s⁻²
+    lines!(ax_u, interior(u_)[1, 1, :], z; linestyle=:solid, color=colorcycle[i], label=u_label)
+    lines!(ax_u, interior(v_)[1, 1, :], z; linestyle=:dash, color=colorcycle[i], label=v_label)
+end
+
+axislegend(ax_b, position=:rb)
+axislegend(ax_u, position=:lb, merge=true)
+
+save(&quot;intro_to_observations.svg&quot;, fig)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">CairoScreen{Cairo.CairoSurfaceIOStream{UInt32}} with surface:
+Cairo.CairoSurfaceIOStream{UInt32}(Ptr{Nothing} @0x000000000fa826f0, 600.0, 450.0, IOBuffer(data=UInt8[...], readable=true, writable=true, seekable=true, append=false, size=0, maxsize=Inf, ptr=1, mark=-1))
+</code></pre><p><img src="../intro_to_observations.svg" alt/></p><p>Hint: if using a REPL or notebook, try <code>using Pkg; Pkg.add(&quot;ElectronDisplay&quot;); using ElectronDisplay; display(fig)</code> To see the figure in a window.</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../installation_instructions/">« Installation Instructions</a><a class="docs-footer-nextpage" href="../intro_to_inverse_problems/">Intro to inverse problems »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.12 on <span class="colophon-date" title="Monday 14 February 2022 16:43">Monday 14 February 2022</span>. Using Julia version 1.6.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

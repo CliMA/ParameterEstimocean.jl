@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Perfect CAKTE calibration with Ensemble Kalman Inversion · OceanTurbulenceParameterEstimation.jl</title><script data-outdated-warner src="../../assets/warner.js"></script><link rel="canonical" href="https://clima.github.io/OceanTurbulenceParameterEstimation/dev/literated/perfect_catke_calibration/"/><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.039/juliamono-regular.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.11/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><script src="../../../copy.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">OceanTurbulenceParameterEstimation.jl</a></span></div><form class="docs-search" action="../../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../installation_instructions/">Installation Instructions</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../intro_to_observations/">Intro to observations</a></li><li><a class="tocitem" href="../intro_to_inverse_problems/">Intro to <code>InverseProblem</code></a></li><li><a class="tocitem" href="../perfect_convective_adjustment_calibration/">Perfect convective adjustment calibration with Ensemble Kalman Inversion</a></li><li class="is-active"><a class="tocitem" href>Perfect CAKTE calibration with Ensemble Kalman Inversion</a><ul class="internal"><li><a class="tocitem" href="#Install-dependencies"><span>Install dependencies</span></a></li><li class="toplevel"><a class="tocitem" href="#Perfect-observations-of-CATKE-driven-mixing"><span>Perfect observations of CATKE-driven mixing</span></a></li><li class="toplevel"><a class="tocitem" href="#Calibration"><span>Calibration</span></a></li><li class="toplevel"><a class="tocitem" href="#Ensemble-Kalman-Inversion"><span>Ensemble Kalman Inversion</span></a></li></ul></li><li><a class="tocitem" href="../lesbrary_catke_calibration/">CAKTE calibration with Ensemble Kalman Inversion using LESbrary data</a></li><li><a class="tocitem" href="../perfect_baroclinic_adjustment_calibration/">Perfect baroclinic adjustment calibration with Ensemble Kalman Inversion</a></li></ul></li><li><span class="tocitem">Library</span><ul><li><a class="tocitem" href="../../library/outline/">Contents</a></li><li><a class="tocitem" href="../../library/public/">Public</a></li><li><a class="tocitem" href="../../library/internals/">Private</a></li><li><a class="tocitem" href="../../library/function_index/">Function index</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Perfect CAKTE calibration with Ensemble Kalman Inversion</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Perfect CAKTE calibration with Ensemble Kalman Inversion</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/CliMA/OceanTurbulenceParameterEstimation.jl/blob/main/examples/perfect_catke_calibration.jl" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Perfect-CAKTE-calibration-with-Ensemble-Kalman-Inversion"><a class="docs-heading-anchor" href="#Perfect-CAKTE-calibration-with-Ensemble-Kalman-Inversion">Perfect CAKTE calibration with Ensemble Kalman Inversion</a><a id="Perfect-CAKTE-calibration-with-Ensemble-Kalman-Inversion-1"></a><a class="docs-heading-anchor-permalink" href="#Perfect-CAKTE-calibration-with-Ensemble-Kalman-Inversion" title="Permalink"></a></h1><h2 id="Install-dependencies"><a class="docs-heading-anchor" href="#Install-dependencies">Install dependencies</a><a id="Install-dependencies-1"></a><a class="docs-heading-anchor-permalink" href="#Install-dependencies" title="Permalink"></a></h2><pre><code class="language-julia hljs">using Pkg
+pkg&quot;add OceanTurbulenceParameterEstimation, Oceananigans, Distributions, CairoMakie&quot;</code></pre><pre><code class="language-julia hljs">using OceanTurbulenceParameterEstimation, LinearAlgebra, CairoMakie
+using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity, MixingLength, SurfaceTKEFlux</code></pre><h1 id="Perfect-observations-of-CATKE-driven-mixing"><a class="docs-heading-anchor" href="#Perfect-observations-of-CATKE-driven-mixing">Perfect observations of CATKE-driven mixing</a><a id="Perfect-observations-of-CATKE-driven-mixing-1"></a><a class="docs-heading-anchor-permalink" href="#Perfect-observations-of-CATKE-driven-mixing" title="Permalink"></a></h1><p>Our first task is to generate synthetic observations, using a one-dimensional model driven by surface fluxes and with turbulent mixing parameterized by CATKE. We use a simplified CATKE with no stability function (by setting <code>Cᴷuʳ = Cᴷcʳ = Cᴷeʳ = 0</code>) and &quot;reasonable&quot;, but unrealistic parameters. We will only attempt to calibrate a subset of the parameters that we set to generate the observations.</p><pre><code class="language-julia hljs"># Load utilities
+examples_path = joinpath(pathof(OceanTurbulenceParameterEstimation), &quot;..&quot;, &quot;..&quot;, &quot;examples&quot;)
+include(joinpath(examples_path, &quot;intro_to_inverse_problems.jl&quot;))
+
+mixing_length = MixingLength(Cᴬu  = 0.1,
+                             Cᴬc  = 0.5,
+                             Cᴬe  = 0.1,
+                             Cᴷu⁻ = 0.1,
+                             Cᴷc⁻ = 0.1,
+                             Cᴷe⁻ = 0.1,
+                             Cᴷuʳ = 0.0,
+                             Cᴷcʳ = 0.0,
+                             Cᴷeʳ = 0.0)
+
+catke = CATKEVerticalDiffusivity(mixing_length=mixing_length)
+
+# Specify both wind mixing and convection:
+data_path = generate_synthetic_observations(&quot;catke&quot;,
+                                            closure = catke,
+                                            tracers = (:b, :e),
+                                            Nz = 32,
+                                            Lz = 64,
+                                            Δt = 10.0,
+                                            stop_time = 12hours,
+                                            overwrite = true,
+                                            Qᵘ = -1e-4,
+                                            Qᵇ = 1e-8,
+                                            N² = 1e-5)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">&quot;catke.jld2&quot;</code></pre><p>Next, we load and inspect the observations to make sure they&#39;re sensible:</p><pre><code class="language-julia hljs">observations = SyntheticObservations(data_path, field_names=(:u, :v, :b, :e), normalization=ZScore())
+
+fig = Figure()
+
+ax_b = Axis(fig[1, 1], xlabel = &quot;Buoyancy\n[10⁻⁴ m s⁻²]&quot;, ylabel = &quot;z [m]&quot;)
+ax_u = Axis(fig[1, 2], xlabel = &quot;Velocities\n[cm s⁻¹]&quot;)
+ax_e = Axis(fig[1, 3], xlabel = &quot;Turbulent kinetic energy\n[10⁻⁴ m² s⁻²]&quot;)
+
+z = znodes(Center, observations.grid)
+
+colorcycle = [:black, :red, :blue, :orange, :pink]
+
+for i = 1:length(observations.times)
+    b = observations.field_time_serieses.b[i]
+    e = observations.field_time_serieses.e[i]
+    u = observations.field_time_serieses.u[i]
+    v = observations.field_time_serieses.v[i]
+    t = observations.times[i]
+
+    label = &quot;t = &quot; * prettytime(t)
+    u_label = i == 1 ? &quot;u, &quot; * label : label
+    v_label = i == 1 ? &quot;v, &quot; * label : label
+
+    lines!(ax_b, 1e4 * interior(b)[1, 1, :], z; label, color=colorcycle[i]) # convert units m s⁻² -&gt; 10⁻⁴ m s⁻²
+    lines!(ax_u, 1e2 * interior(u)[1, 1, :], z; linestyle=:solid, color=colorcycle[i], label=u_label) # convert units m s⁻¹ -&gt; cm s⁻¹
+    lines!(ax_u, 1e2 * interior(v)[1, 1, :], z; linestyle=:dash, color=colorcycle[i], label=v_label) # convert units m s⁻¹ -&gt; cm s⁻¹
+    lines!(ax_e, 1e4 * interior(e)[1, 1, :], z; label, color=colorcycle[i]) # convert units m² s⁻² -&gt; 10⁻⁴ m² s⁻²
+end
+
+axislegend(ax_b, position=:rb)
+axislegend(ax_u, position=:lb, merge=true)
+axislegend(ax_e, position=:rb)
+
+##display(fig)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">┌ Warning: Assignment to `b` in soft scope is ambiguous because a global variable by the same name exists: `b` will be treated as a new local. Disambiguate by using `local b` to suppress this warning or `global b` to assign to the existing global variable.
+└ @ perfect_catke_calibration.md:76
+┌ Warning: Assignment to `t` in soft scope is ambiguous because a global variable by the same name exists: `t` will be treated as a new local. Disambiguate by using `local t` to suppress this warning or `global t` to assign to the existing global variable.
+└ @ perfect_catke_calibration.md:80</code></pre><p><img src="../synthetic_catke_observations.svg" alt/></p><p>Well, that looks like a boundary layer, in some respects.</p><h1 id="Calibration"><a class="docs-heading-anchor" href="#Calibration">Calibration</a><a id="Calibration-1"></a><a class="docs-heading-anchor-permalink" href="#Calibration" title="Permalink"></a></h1><p>Next, we build a simulation of an ensemble of column models to calibrate CATKE using Ensemble Kalman Inversion.</p><pre><code class="language-julia hljs">architecture = CPU()
+ensemble_simulation, closure★ = build_ensemble_simulation(observations, architecture; Nensemble=50)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(Simulation{typename(Oceananigans.Models.HydrostaticFreeSurfaceModels.HydrostaticFreeSurfaceModel){typename(Oceananigans.Architectures.CPU), Float64}}
+├── Model clock: time = 0 seconds, iteration = 0
+├── Next time step: 10 seconds
+├── Elapsed wall time: 0 seconds
+├── Stop time: 12 hours
+├── Stop iteration : Inf
+├── Wall time limit: Inf
+├── Callbacks: typename(OrderedCollections.OrderedDict) with 4 entries:
+│   ├── stop_time_exceeded =&gt; typename(Oceananigans.Simulations.Callback)
+│   ├── stop_iteration_exceeded =&gt; typename(Oceananigans.Simulations.Callback)
+│   ├── wall_time_limit_exceeded =&gt; typename(Oceananigans.Simulations.Callback)
+│   └── nan_checker =&gt; typename(Oceananigans.Simulations.Callback)
+├── Output writers: typename(OrderedCollections.OrderedDict) with no entries
+└── Diagnostics: typename(OrderedCollections.OrderedDict) with no entries, Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities.CATKEVerticalDiffusivity{Oceananigans.TurbulenceClosures.VerticallyImplicitTimeDiscretization, Float64, Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities.MixingLength{Float64}, Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities.SurfaceTKEFlux{Float64}}(2.91, Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities.MixingLength{Float64}(1.16, 0.5, 0.5, 0.5, 0.1, 0.5, 0.1, 0.1, 0.0, 0.1, 0.0, 0.1, 0.0, 0.72, 0.76), Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities.SurfaceTKEFlux{Float64}(3.62, 1.31)))</code></pre><p>We choose to calibrate a subset of the CATKE parameters,</p><pre><code class="language-julia hljs">priors = (Cᴬu = lognormal_with_mean_std(0.05, 0.01),
+          Cᴬc = lognormal_with_mean_std(0.6, 0.1),
+          Cᴬe = lognormal_with_mean_std(0.2, 0.04))
+
+free_parameters = FreeParameters(priors)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">FreeParameters with 3 parameters
+├── names: (:Cᴬu, :Cᴬc, :Cᴬe)
+└── priors: Dict{Symbol, Any}
+    ├── Cᴬu =&gt; LogNormal{Float64}(μ=-3.0153426301306316, σ=0.1980422004353651)
+    ├── Cᴬc =&gt; LogNormal{Float64}(μ=-0.5245251108600478, σ=0.16552635496534787)
+    └── Cᴬe =&gt; LogNormal{Float64}(μ=-1.629048269010741, σ=0.1980422004353651)</code></pre><p>The handy utility function <code>build_ensemble_simulation</code> also tells us the optimal parameters that were used when generating the synthetic observations:</p><pre><code class="language-julia hljs">@show θ★ = (Cᴬu = closure★.mixing_length.Cᴬu,
+            Cᴬc = closure★.mixing_length.Cᴬc,
+            Cᴬe = closure★.mixing_length.Cᴬe)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(Cᴬu = 0.1, Cᴬc = 0.5, Cᴬe = 0.1)</code></pre><p>We construct the <code>InverseProblem</code> from <code>observations</code>, <code>ensemble_simulation</code>, and <code>free_parameters</code>,</p><pre><code class="language-julia hljs">calibration = InverseProblem(observations, ensemble_simulation, free_parameters)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">InverseProblem{ConcatenatedOutputMap}
+├── observations: SyntheticObservations of (:u, :v, :b, :e) on 1×1×32 RectilinearGrid{Float64, Oceananigans.Grids.Flat, Oceananigans.Grids.Flat, Oceananigans.Grids.Bounded} on Oceananigans.Architectures.CPU with 0×0×1 halo
+├── simulation: Simulation on 50×1×32 RectilinearGrid{Float64, Oceananigans.Grids.Flat, Oceananigans.Grids.Flat, Oceananigans.Grids.Bounded} on Oceananigans.Architectures.CPU with 0×0×1 halo with Δt=10.0
+├── free_parameters: (:Cᴬu, :Cᴬc, :Cᴬe)
+└── output map: ConcatenatedOutputMap</code></pre><p>We can check that the first ensemble member of the mapped output, which was run with the &quot;true&quot; parameters, is identical to the mapped observations:</p><pre><code class="language-julia hljs">G = forward_map(calibration, θ★)
+y = observation_map(calibration)
+
+@show G[:, 1] ≈ y</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">true</code></pre><h1 id="Ensemble-Kalman-Inversion"><a class="docs-heading-anchor" href="#Ensemble-Kalman-Inversion">Ensemble Kalman Inversion</a><a id="Ensemble-Kalman-Inversion-1"></a><a class="docs-heading-anchor-permalink" href="#Ensemble-Kalman-Inversion" title="Permalink"></a></h1><p>Next, we construct an <code>EnsembleKalmanInversion</code> (EKI) object,</p><p>The calibration is done here using Ensemble Kalman Inversion. For more information about the algorithm refer to <a href="literated/ https:/clima.github.io/EnsembleKalmanProcesses.jl/stable/ensemble_kalman_inversion/">EnsembleKalmanProcesses.jl documentation</a>.</p><pre><code class="language-julia hljs">noise_variance = (observation_map_variance_across_time(calibration)[1, :, 1] .+ 1) .* 1e-3
+
+eki = EnsembleKalmanInversion(calibration; noise_covariance = Matrix(Diagonal(noise_variance)))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">EnsembleKalmanInversion
+├── inverse_problem: InverseProblem
+├── parameter_distribution: EnsembleKalmanProcesses.ParameterDistributionStorage.ParameterDistribution
+├── ensemble_kalman_process: EnsembleKalmanProcesses.EnsembleKalmanProcessModule.EnsembleKalmanProcess{Float64, Int64, EnsembleKalmanProcesses.EnsembleKalmanProcessModule.Inversion}
+├── mapped_observations: 512-element Vector{Float64}
+├── noise_covariance: 512×512 Matrix{Float64}
+├── inverting_forward_map: OceanTurbulenceParameterEstimation.EnsembleKalmanInversions.var&quot;#inverting_forward_map#12&quot;
+├── iteration: 0
+└── resampler: NaNResampler{FullEnsembleDistribution}</code></pre><p>and perform few iterations to see if we can converge to the true parameter values.</p><pre><code class="language-julia hljs">iterate!(eki; iterations = 20)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(Cᴬu = 0.08447294043932385, Cᴬc = 0.5030920653186743, Cᴬe = 0.09997579580387472)</code></pre><p>Last, we visualize the outputs of EKI calibration.</p><pre><code class="language-julia hljs"># Convert everything to a vector
+optimal_θ = collect(values(θ★))
+ensemble_mean_θ = map(summary -&gt; collect(values(summary.ensemble_mean)), eki.iteration_summaries)
+θ_variances = map(summary -&gt; collect(values(summary.ensemble_var)), eki.iteration_summaries)
+
+names = keys(θ★)
+absolute_error = NamedTuple(name =&gt; map(θ -&gt; θ[p] - θ★[p], ensemble_mean_θ) for (p, name) in enumerate(names))
+relative_error = NamedTuple(name =&gt; abs.(absolute_error[name]) ./ θ★[name] for name in names)
+
+output_distances = map(θ -&gt; norm(forward_map(calibration, θ)[:, 1:1] - y), ensemble_mean_θ)
+
+fig = Figure()
+
+ax_error = Axis(fig[1, 1], title = &quot;Parameter distance&quot;, xlabel = &quot;Iteration&quot;, ylabel = &quot;|⟨θₙ⟩ - θ★| / θ★&quot;)
+
+for name in names
+    lines!(ax_error, 0:eki.iteration, parent(relative_error[name]), linewidth=2, label=string(name))
+end
+
+axislegend(ax_error, position=:rt)
+
+lines(fig[1, 2], 0:eki.iteration, parent(output_distances), color = :blue, linewidth = 2,
+      axis = (title = &quot;Output distance&quot;, xlabel = &quot;Iteration&quot;, ylabel = &quot;|G(⟨θₙ⟩) - y|&quot;))
+
+ax3 = Axis(fig[2, 1:2], title = &quot;Parameter convergence&quot;, xlabel = &quot;Iteration&quot;,
+           ylabel = &quot;Relative change ensemble variance&quot;, yscale = log10)
+
+for (p, name) in enumerate(free_parameters.names)
+    θp_variances = [θ_variances[iter][p] for iter = 0:eki.iteration]
+    lines!(ax3, 0:eki.iteration, parent(θp_variances / θp_variances[1]), label = String(name), linewidth = 2)
+end
+
+axislegend(ax3, position = :rt)
+
+##display(fig)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (1.044 ms)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (3.781 ms).
+[ Info: Simulation is stopping. Model time 12 hours has hit or exceeded simulation stop time 12 hours.
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (1.092 ms)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (3.636 ms).
+[ Info: Simulation is stopping. Model time 12 hours has hit or exceeded simulation stop time 12 hours.
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (813.182 μs)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (3.222 ms).
+[ Info: Simulation is stopping. Model time 12 hours has hit or exceeded simulation stop time 12 hours.
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (813.882 μs)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (3.376 ms).
+[ Info: Simulation is stopping. Model time 12 hours has hit or exceeded simulation stop time 12 hours.
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (874.287 μs)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (3.584 ms).
+[ Info: Simulation is stopping. Model time 12 hours has hit or exceeded simulation stop time 12 hours.
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (850.186 μs)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (3.322 ms).
+[ Info: Simulation is stopping. Model time 12 hours has hit or exceeded simulation stop time 12 hours.
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (866.470 μs)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (3.271 ms).
+[ Info: Simulation is stopping. Model time 12 hours has hit or exceeded simulation stop time 12 hours.
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (865.182 μs)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (3.181 ms).
+[ Info: Simulation is stopping. Model time 12 hours has hit or exceeded simulation stop time 12 hours.
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (844.879 μs)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (3.466 ms).
+[ Info: Simulation is stopping. Model time 12 hours has hit or exceeded simulation stop time 12 hours.
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (822.180 μs)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (3.402 ms).
+[ Info: Simulation is stopping. Model time 12 hours has hit or exceeded simulation stop time 12 hours.
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (823.088 μs)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (3.286 ms).
+[ Info: Simulation is stopping. Model time 12 hours has hit or exceeded simulation stop time 12 hours.
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (1.542 ms)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (4.884 ms).
+[ Info: Simulation is stopping. Model time 12 hours has hit or exceeded simulation stop time 12 hours.
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (854.790 μs)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (3.233 ms).
+[ Info: Simulation is stopping. Model time 12 hours has hit or exceeded simulation stop time 12 hours.
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (847.787 μs)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (3.286 ms).
+[ Info: Simulation is stopping. Model time 12 hours has hit or exceeded simulation stop time 12 hours.
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (867.887 μs)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (3.435 ms).
+[ Info: Simulation is stopping. Model time 12 hours has hit or exceeded simulation stop time 12 hours.
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (883.289 μs)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (3.297 ms).
+[ Info: Simulation is stopping. Model time 12 hours has hit or exceeded simulation stop time 12 hours.
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (890.390 μs)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (3.510 ms).
+[ Info: Simulation is stopping. Model time 12 hours has hit or exceeded simulation stop time 12 hours.
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (868.688 μs)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (3.451 ms).
+[ Info: Simulation is stopping. Model time 12 hours has hit or exceeded simulation stop time 12 hours.
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (882.592 μs)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (3.276 ms).
+[ Info: Simulation is stopping. Model time 12 hours has hit or exceeded simulation stop time 12 hours.
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (866.188 μs)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (3.287 ms).
+[ Info: Simulation is stopping. Model time 12 hours has hit or exceeded simulation stop time 12 hours.
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (819.683 μs)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (3.370 ms).
+[ Info: Simulation is stopping. Model time 12 hours has hit or exceeded simulation stop time 12 hours.</code></pre><p><img src="../perfect_catke_calibration_summary.svg" alt/></p><pre><code class="language-julia hljs">final_mean_θ = eki.iteration_summaries[end].ensemble_mean
+forward_run!(calibration, [θ★, final_mean_θ])
+
+time_series_collector = calibration.time_series_collector
+times = time_series_collector.times
+
+# Extract last save point and plot each solution component
+Nt = length(times)
+
+b = time_series_collector.field_time_serieses.b[Nt]
+e = time_series_collector.field_time_serieses.e[Nt]
+u = time_series_collector.field_time_serieses.u[Nt]
+v = time_series_collector.field_time_serieses.v[Nt]
+
+t = times[Nt]
+z = znodes(b)
+
+# The ensemble varies along the first, or `x`-dimension:
+b★ = 1e4 * interior(b)[1, 1, :]  # convert units m s⁻² -&gt; 10⁻⁴ m s⁻²
+b¹ = 1e4 * interior(b)[2, 1, :]  # convert units m s⁻² -&gt; 10⁻⁴ m s⁻²
+
+e★ = 1e4 * interior(e)[1, 1, :]  # convert units m² s⁻² -&gt; 10⁻⁴ m² s⁻²
+e¹ = 1e4 * interior(e)[2, 1, :]  # convert units m² s⁻² -&gt; 10⁻⁴ m² s⁻²
+
+u★ = 1e2 * interior(u)[1, 1, :]  # convert units m s⁻¹ -&gt; cm s⁻¹
+u¹ = 1e2 * interior(u)[2, 1, :]  # convert units m s⁻¹ -&gt; cm s⁻¹
+
+v★ = 1e2 * interior(v)[1, 1, :]  # convert units m s⁻¹ -&gt; cm s⁻¹
+v¹ = 1e2 * interior(v)[2, 1, :]  # convert units m s⁻¹ -&gt; cm s⁻¹
+
+fig = Figure()
+
+ax = Axis(fig[1, 1], xlabel = &quot;Buoyancy\n[10⁻⁴ m s⁻²]&quot;, ylabel = &quot;z [m]&quot;)
+b★_label = &quot;true b at &quot; * prettytime(t)
+b¹_label = &quot;b with ⟨θ⟩&quot;
+lines!(ax, b★, z; label=b★_label, linewidth=3)
+lines!(ax, b¹, z; label=b¹_label, linewidth=2)
+axislegend(ax, position=:lb)
+
+ax = Axis(fig[1, 2], xlabel = &quot;Turbulent kinetic energy\n[10⁻⁴ m² s⁻²]&quot;)
+e★_label = &quot;true e at &quot; * prettytime(t)
+e¹_label = &quot;e with ⟨θ⟩&quot;
+lines!(ax, e★, z; label=e★_label, linewidth=3)
+lines!(ax, e¹, z; label=e¹_label, linewidth=2)
+axislegend(ax, position=:lb)
+
+ax = Axis(fig[1, 3], xlabel = &quot;Velocities\n[cm s⁻¹]&quot;)
+u★_label = &quot;true u at &quot; * prettytime(t)
+u¹_label = &quot;u with ⟨θ⟩&quot;
+v★_label = &quot;true v&quot;
+v¹_label = &quot;v with ⟨θ⟩&quot;
+lines!(ax, u★, z; label=u★_label, linewidth=3)
+lines!(ax, u¹, z; label=u¹_label, linewidth=2)
+lines!(ax, v★, z; label=v★_label, linestyle=:dash, linewidth=3)
+lines!(ax, v¹, z; label=v¹_label, linestyle=:dash, linewidth=2)
+axislegend(ax, position=:lb)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (1.026 ms)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (3.770 ms).
+[ Info: Simulation is stopping. Model time 12 hours has hit or exceeded simulation stop time 12 hours.</code></pre><p><img src="../perfect_catke_calibration_particle_realizations.svg" alt/></p><pre><code class="language-julia hljs">##display(fig)</code></pre><p>And also we plot the the distributions of the various model ensembles for few EKI iterations to see if and how well they converge to the true diffusivity values.</p><pre><code class="language-julia hljs">fig = Figure()
+
+ax1 = Axis(fig[1, 1])
+ax2 = Axis(fig[2, 1], xlabel = &quot;Cᴬu [m² s⁻¹]&quot;, ylabel = &quot;Cᴬc [m² s⁻¹]&quot;)
+ax3 = Axis(fig[2, 2])
+scatters = []
+labels = String[]
+
+for iteration in [0, 2, 10, 20]
+    # Make parameter matrix
+    parameters = eki.iteration_summaries[iteration].parameters
+    Nensemble = length(parameters)
+    parameter_ensemble_matrix = [parameters[i][j] for i=1:Nensemble, j=1:2]
+
+    label = iteration == 0 ? &quot;Initial ensemble&quot; : &quot;Iteration $iteration&quot;
+    push!(labels, label)
+    push!(scatters, scatter!(ax2, parameter_ensemble_matrix))
+    density!(ax1, parameter_ensemble_matrix[:, 1])
+    density!(ax3, parameter_ensemble_matrix[:, 2], direction = :y)
+end
+
+vlines!(ax1, [θ★.Cᴬu], color = :red)
+vlines!(ax2, [θ★.Cᴬu], color = :red)
+hlines!(ax2, [θ★.Cᴬc], color = :red)
+hlines!(ax3, [θ★.Cᴬc], color = :red)
+
+colsize!(fig.layout, 1, Fixed(300))
+colsize!(fig.layout, 2, Fixed(200))
+rowsize!(fig.layout, 1, Fixed(200))
+rowsize!(fig.layout, 2, Fixed(300))
+
+Legend(fig[1, 2], scatters, labels, position = :lb)
+
+hidedecorations!(ax1, grid = false)
+hidedecorations!(ax3, grid = false)
+
+xlims!(ax1, 0.025, 0.125)
+xlims!(ax2, 0.025, 0.125)
+ylims!(ax2, 0.35, 0.9)
+ylims!(ax3, 0.35, 0.9)
+
+##display(fig)</code></pre><p><img src="../perfect_catke_calibration_parameter_distributions.svg" alt/></p><p>Hint: if using a REPL or notebook, try <code>using Pkg; Pkg.add(&quot;ElectronDisplay&quot;); using ElectronDisplay; display(fig)</code> To see the figure in a window.</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../perfect_convective_adjustment_calibration/">« Perfect convective adjustment calibration with Ensemble Kalman Inversion</a><a class="docs-footer-nextpage" href="../lesbrary_catke_calibration/">CAKTE calibration with Ensemble Kalman Inversion using LESbrary data »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.12 on <span class="colophon-date" title="Monday 31 January 2022 21:18">Monday 31 January 2022</span>. Using Julia version 1.6.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

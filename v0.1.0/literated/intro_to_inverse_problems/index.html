@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Intro to InverseProblem · OceanTurbulenceParameterEstimation.jl</title><script data-outdated-warner src="../../assets/warner.js"></script><link rel="canonical" href="https://clima.github.io/OceanTurbulenceParameterEstimation/dev/literated/intro_to_inverse_problems/"/><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.039/juliamono-regular.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.11/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">OceanTurbulenceParameterEstimation.jl</a></span></div><form class="docs-search" action="../../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../installation_instructions/">Installation Instructions</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../intro_to_observations/">Intro to observations</a></li><li class="is-active"><a class="tocitem" href>Intro to <code>InverseProblem</code></a><ul class="internal"><li><a class="tocitem" href="#Install-dependencies"><span>Install dependencies</span></a></li><li class="toplevel"><a class="tocitem" href="#Building-an-&quot;ensemble-simulation&quot;"><span>Building an &quot;ensemble simulation&quot;</span></a></li><li class="toplevel"><a class="tocitem" href="#Free-parameters"><span>Free parameters</span></a></li><li><a class="tocitem" href="#Visualizing-the-priors"><span>Visualizing the priors</span></a></li><li class="toplevel"><a class="tocitem" href="#The-InverseProblem"><span>The <code>InverseProblem</code></span></a></li><li><a class="tocitem" href="#Using-InverseProblem-to-compute-forward_map"><span>Using <code>InverseProblem</code> to compute <code>forward_map</code></span></a></li></ul></li><li><a class="tocitem" href="../perfect_convective_adjustment_calibration/">Perfect convective adjustment calibration with Ensemble Kalman Inversion</a></li><li><a class="tocitem" href="../unscented_perfect_convective_adjustment_calibration/">Perfect convective adjustment calibration with Unscented Ensemble Kalman Inversion</a></li><li><a class="tocitem" href="../perfect_baroclinic_adjustment_calibration/">Perfect baroclinic adjustment calibration with Ensemble Kalman Inversion</a></li></ul></li><li><span class="tocitem">Library</span><ul><li><a class="tocitem" href="../../library/outline/">Contents</a></li><li><a class="tocitem" href="../../library/public/">Public</a></li><li><a class="tocitem" href="../../library/internals/">Private</a></li><li><a class="tocitem" href="../../library/function_index/">Function index</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Intro to <code>InverseProblem</code></a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Intro to <code>InverseProblem</code></a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/CliMA/OceanTurbulenceParameterEstimation.jl/blob/master/examples/intro_to_inverse_problems.jl" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Intro-to-InverseProblem"><a class="docs-heading-anchor" href="#Intro-to-InverseProblem">Intro to <code>InverseProblem</code></a><a id="Intro-to-InverseProblem-1"></a><a class="docs-heading-anchor-permalink" href="#Intro-to-InverseProblem" title="Permalink"></a></h1><p>This example illustrates the construction of an &quot;ensemble simulation&quot; that can evaluate an ensemble of column models given an ensemble of free parameter sets. The example then builds an <code>InverseProblem</code> from observations, an ensemble simulation, and a set of free parameters, and illustrates its basic usage.</p><h2 id="Install-dependencies"><a class="docs-heading-anchor" href="#Install-dependencies">Install dependencies</a><a id="Install-dependencies-1"></a><a class="docs-heading-anchor-permalink" href="#Install-dependencies" title="Permalink"></a></h2><p>First let&#39;s make sure we have all required packages installed.</p><pre><code class="language-julia hljs">using Pkg
+pkg&quot;add OceanTurbulenceParameterEstimation, Oceananigans, Distributions, CairoMakie&quot;</code></pre><p>First we load few things</p><pre><code class="language-julia hljs">using OceanTurbulenceParameterEstimation
+
+using Oceananigans
+using Oceananigans.Units
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
+using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
+
+using CairoMakie
+using Distributions
+using JLD2</code></pre><p>We reuse some utilities from a previous example to build observations:</p><pre><code class="language-julia hljs">examples_path = joinpath(pathof(OceanTurbulenceParameterEstimation), &quot;..&quot;, &quot;..&quot;, &quot;examples&quot;)
+include(joinpath(examples_path, &quot;intro_to_observations.jl&quot;))
+data_path = generate_synthetic_observations()
+observations = OneDimensionalTimeSeries(data_path, field_names=:b, normalize=ZScore)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">OneDimensionalTimeSeries with fields (:b,)
+├── times: [0.0, 14400.0, 28800.0, 43200.0]
+├── grid: RectilinearGrid{Float64, Oceananigans.Grids.Flat, Oceananigans.Grids.Flat, Oceananigans.Grids.Bounded}(Nx=1, Ny=1, Nz=32)
+├── path: &quot;convective_adjustment.jld2&quot;
+├── metadata: (:parameters, :grid, :coriolis, :closure)
+└── normalization: Dict{Symbol, ZScore{Float64}}(:b =&gt; ZScore{Float64}(-3.537500000000092e-5, 1.4679348395235289e-5))</code></pre><h1 id="Building-an-&quot;ensemble-simulation&quot;"><a class="docs-heading-anchor" href="#Building-an-&quot;ensemble-simulation&quot;">Building an &quot;ensemble simulation&quot;</a><a id="Building-an-&quot;ensemble-simulation&quot;-1"></a><a class="docs-heading-anchor-permalink" href="#Building-an-&quot;ensemble-simulation&quot;" title="Permalink"></a></h1><p>Our next task is to construct a parameterized <code>Oceananigans.Simulation</code> that generates the &quot;foward map&quot; for an ensemble of free parameter sets. To generate an ensemble of column model model outputs efficiently, we construct one 3D <code>Oceananigans.Simulation</code> consisting of <code>Nx</code> by <code>Ny</code> independent column models.</p><p>The calibration problem then uses the ensemble simulation to find optimal parameters by minimizing the discrepency between the observations and the forward map.</p><pre><code class="language-julia hljs">&quot;&quot;&quot;
+    extract_perfect_parameters(observations, Nensemble)
+
+Extract parameters from a batch of &quot;perfect&quot; observations.
+&quot;&quot;&quot;
+function extract_perfect_parameters(observations, Nensemble)
+    Nbatch = length(observations)
+    Qᵘ, Qᵇ, N², f = [zeros(Nensemble, Nbatch) for i = 1:4]
+
+    Nz = first(observations).grid.Nz
+    Hz = first(observations).grid.Hz
+    Lz = first(observations).grid.Lz
+    Δt = first(observations).metadata.parameters.Δt
+
+    for (j, obs) in enumerate(observations)
+        Qᵘ[:, j] .= obs.metadata.parameters.Qᵘ
+        Qᵇ[:, j] .= obs.metadata.parameters.Qᵇ
+        N²[:, j] .= obs.metadata.parameters.N²
+        f[:, j] .= obs.metadata.coriolis.f
+    end
+
+    file = jldopen(first(observations).path)
+    closure = file[&quot;serialized/closure&quot;]
+    close(file)
+
+    return Qᵘ, Qᵇ, N², f, Δt, Lz, Nz, Hz, closure
+end
+
+&quot;&quot;&quot;
+    build_ensemble_simulation(observations; Nensemble=1)
+
+Returns an `Oceananigans.Simulation` representing an `Nensemble × 1`
+ensemble of column models designed to reproduce `observations`.
+&quot;&quot;&quot;
+function build_ensemble_simulation(observations; Nensemble=1)
+
+    observations isa Vector || (observations = [observations]) # Singleton batch
+    Nbatch = length(observations)
+
+    Qᵘ, Qᵇ, N², f, Δt, Lz, Nz, Hz, closure = extract_perfect_parameters(observations, Nensemble)
+
+    column_ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(Nensemble, Nbatch), Hz=Hz)
+    ensemble_grid = RectilinearGrid(size = column_ensemble_size, topology = (Flat, Flat, Bounded), z = (-Lz, 0))
+
+    coriolis_ensemble = [FPlane(f=f[i, j]) for i = 1:Nensemble, j=1:Nbatch]
+    closure_ensemble = [deepcopy(closure) for i = 1:Nensemble, j=1:Nbatch]
+
+    u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
+    b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ), bottom = GradientBoundaryCondition(N²))
+
+    tracers = first(observations).metadata.parameters.tracers
+
+    ensemble_model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
+                                                 tracers = tracers,
+                                                 buoyancy = BuoyancyTracer(),
+                                                 boundary_conditions = (; u=u_bcs, b=b_bcs),
+                                                 coriolis = coriolis_ensemble,
+                                                 closure = closure_ensemble)
+
+    ensemble_simulation = Simulation(ensemble_model; Δt=Δt, stop_time=first(observations).times[end])
+
+    return ensemble_simulation, closure
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Main.build_ensemble_simulation</code></pre><p>The following illustrations uses a simple ensemble simulation with two ensemble members:</p><pre><code class="language-julia hljs">ensemble_simulation, closure★ = build_ensemble_simulation(observations; Nensemble=3)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(Simulation{typename(Oceananigans.Models.HydrostaticFreeSurfaceModels.HydrostaticFreeSurfaceModel){typename(Oceananigans.Architectures.CPU), Float64}}
+├── Model clock: time = 0 seconds, iteration = 0
+├── Next time step: 10 seconds
+├── Elapsed wall time: 0 seconds
+├── Stop time: 12 hours
+├── Stop iteration : Inf
+├── Wall time limit: Inf
+├── Callbacks: typename(OrderedCollections.OrderedDict) with 4 entries:
+│   ├── stop_time_exceeded =&gt; typename(Oceananigans.Simulations.Callback)
+│   ├── stop_iteration_exceeded =&gt; typename(Oceananigans.Simulations.Callback)
+│   ├── wall_time_limit_exceeded =&gt; typename(Oceananigans.Simulations.Callback)
+│   └── nan_checker =&gt; typename(Oceananigans.Simulations.Callback)
+├── Output writers: typename(OrderedCollections.OrderedDict) with no entries
+└── Diagnostics: typename(OrderedCollections.OrderedDict) with no entries, ConvectiveAdjustmentVerticalDiffusivity: (background_κz=0.0001, convective_κz=1.0, background_νz=1.0e-5, convective_νz=0.9))</code></pre><h1 id="Free-parameters"><a class="docs-heading-anchor" href="#Free-parameters">Free parameters</a><a id="Free-parameters-1"></a><a class="docs-heading-anchor-permalink" href="#Free-parameters" title="Permalink"></a></h1><p>We construct some prior distributions for our free parameters. We found that it often helps to constrain the prior distributions so that neither very high nor very low values for diffusivities can be drawn out of the distribution.</p><pre><code class="language-julia hljs">priors = (convective_κz = lognormal_with_mean_std(0.3, 0.05),
+          background_κz = lognormal_with_mean_std(2.5e-4, 0.25e-4))
+
+free_parameters = FreeParameters(priors)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">FreeParameters with 2 parameters
+├── names: (:convective_κz, :background_κz)
+└── priors: Dict{Symbol, Any}
+    ├── convective_κz =&gt; LogNormal{Float64}(μ=-1.2176722914199931, σ=0.16552635496534787)
+    └── background_κz =&gt; LogNormal{Float64}(μ=-8.299024805528612, σ=0.0997513451195927)</code></pre><p>We also take the opportunity to collect a named tuple of the optimal parameters</p><pre><code class="language-julia hljs">θ★ = (convective_κz = closure★.convective_κz,
+      background_κz = closure★.background_κz)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(convective_κz = 1.0, background_κz = 0.0001)</code></pre><h2 id="Visualizing-the-priors"><a class="docs-heading-anchor" href="#Visualizing-the-priors">Visualizing the priors</a><a id="Visualizing-the-priors-1"></a><a class="docs-heading-anchor-permalink" href="#Visualizing-the-priors" title="Permalink"></a></h2><p>We visualize our prior distributions by plotting a huge number of samples:</p><pre><code class="language-julia hljs">using OceanTurbulenceParameterEstimation.EnsembleKalmanInversions: convert_prior, inverse_parameter_transform
+
+Nsamples = 50000000
+
+samples(prior) = [inverse_parameter_transform(prior, θ) for θ in rand(convert_prior(prior), Nsamples)]
+
+convective_κz_samples = samples(priors.convective_κz)
+background_κz_samples = samples(priors.background_κz)
+
+fig = Figure()
+ax_top = Axis(fig[1, 1], xlabel = &quot;convective κᶻ [m² s⁻¹]&quot;, ylabel = &quot;Density&quot;)
+density!(ax_top, convective_κz_samples)
+xlims!(ax_top, 0, 10)
+
+ax_bottom = Axis(fig[2, 1], xlabel = &quot;background κᶻ [m² s⁻¹]&quot;, ylabel = &quot;Density&quot;)
+density!(ax_bottom, background_κz_samples)
+
+save(&quot;prior_visualization.svg&quot;, fig)</code></pre><p><img src="../prior_visualization.svg" alt/></p><h1 id="The-InverseProblem"><a class="docs-heading-anchor" href="#The-InverseProblem">The <code>InverseProblem</code></a><a id="The-InverseProblem-1"></a><a class="docs-heading-anchor-permalink" href="#The-InverseProblem" title="Permalink"></a></h1><p>We can construct the inverse problem <span>$y = G(θ) + η$</span>. Here, <span>$y$</span> are the <code>observations</code> and <span>$G$</span> is the <code>ensemble_model</code>.</p><pre><code class="language-julia hljs">calibration = InverseProblem(observations, ensemble_simulation, free_parameters)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">InverseProblem{ConcatenatedOutputMap}
+├── observations: OneDimensionalTimeSeries of (:b,) on RectilinearGrid{Float64, Oceananigans.Grids.Flat, Oceananigans.Grids.Flat, Oceananigans.Grids.Bounded}(Nx=1, Ny=1, Nz=32)
+├── simulation: Simulation on RectilinearGrid{Float64, Oceananigans.Grids.Flat, Oceananigans.Grids.Flat, Oceananigans.Grids.Bounded}(Nx=3, Ny=1, Nz=32) with Δt=10.0
+├── free_parameters: (:convective_κz, :background_κz)
+└── output map: ConcatenatedOutputMap</code></pre><h2 id="Using-InverseProblem-to-compute-forward_map"><a class="docs-heading-anchor" href="#Using-InverseProblem-to-compute-forward_map">Using <code>InverseProblem</code> to compute <code>forward_map</code></a><a id="Using-InverseProblem-to-compute-forward_map-1"></a><a class="docs-heading-anchor-permalink" href="#Using-InverseProblem-to-compute-forward_map" title="Permalink"></a></h2><p>As a sanity check we apply the <code>forward_map</code> on the calibration after we initialize all ensemble members with the true parameter values. We then confirm that the output of the <code>forward_map</code> matches the observations to machine precision.</p><pre><code class="language-julia hljs">θ¹ = (convective_κz = 0.8 * θ★.convective_κz,
+      background_κz = 9.0 * θ★.background_κz)
+
+θ² = (convective_κz = 2.0 * θ★.convective_κz,
+      background_κz = 0.1 * θ★.background_κz)
+
+θ_ensemble = [θ★, θ¹, θ²]
+
+G = forward_map(calibration, θ_ensemble)
+y = observation_map(calibration)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">128×1 Matrix{Float64}:
+ -1.881895521259361
+ -1.7456496916659185
+ -1.609403862072476
+ -1.4731580324790334
+ -1.3369122028855909
+ -1.200666373292149
+ -1.0644205436987064
+ -0.9281747141052639
+ -0.7919288845118213
+ -0.6556830549183787
+  ⋮
+  0.30054788812501676
+  0.29999404514341316
+  0.2993295949750586
+  0.298557308508006
+  0.2976803229756046
+  0.2967017724260549
+  0.2956244916660694
+  0.29445079034360183
+  0.29318229233058724</code></pre><p>The <code>forward_map</code> output <code>G</code> is a two-dimensional matrix whose first dimension is the size of the state space and whose second dimension is the <code>ensemble_size</code>. Here we ensure that mapped output first ensemble member, which was run with the &quot;true&quot; parameters, is identical to the mapped observations:</p><pre><code class="language-julia hljs">G[:, 1] ≈ y</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">true</code></pre><p>Visualizing forward model output</p><p>Next we visualize the discrepency between solutions generated by true and non-optimal parameter sets <code>θ¹</code> and <code>θ²</code>. Time-series data from the ensemble run is collected by <code>calibration.time_series_collector</code>:</p><pre><code class="language-julia hljs">time_series_collector = calibration.time_series_collector
+times = time_series_collector.times
+
+# Extract last save point and plot each solution component
+Nt = length(times)
+
+b = time_series_collector.field_time_serieses.b[Nt]
+t = times[Nt]
+z = znodes(b)
+
+# The ensemble varies along the first, or `x`-dimension:
+b★ = interior(b)[1, 1, :]
+b¹ = interior(b)[2, 1, :]
+b² = interior(b)[3, 1, :]
+
+fig = Figure()
+ax = Axis(fig[1, 1],
+          xlabel = &quot;Buoyancy [m s⁻²]&quot;,
+          ylabel = &quot;Depth [m]&quot;)
+
+b★_label = &quot;true b at t = &quot; * prettytime(t)
+b¹_label = &quot;b with $θ¹&quot;
+b²_label = &quot;b with $θ²&quot;
+
+lines!(ax, b★, z; label=b★_label, linewidth=2)
+lines!(ax, b¹, z; label=b¹_label, linewidth=2)
+lines!(ax, b², z; label=b²_label, linewidth=2)
+
+axislegend(ax, position=:lt)
+
+save(&quot;ensemble_simulation_demonstration.svg&quot;, fig)</code></pre><p><img src="../ensemble_simulation_demonstration.svg" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../intro_to_observations/">« Intro to observations</a><a class="docs-footer-nextpage" href="../perfect_convective_adjustment_calibration/">Perfect convective adjustment calibration with Ensemble Kalman Inversion »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.10 on <span class="colophon-date" title="Tuesday 7 December 2021 04:24">Tuesday 7 December 2021</span>. Using Julia version 1.6.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

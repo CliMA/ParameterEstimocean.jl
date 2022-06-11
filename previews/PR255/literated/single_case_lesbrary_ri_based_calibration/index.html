@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Calibration of RiBasedVerticalDiffusivity to one LESbrary simulation · ParameterEstimocean.jl</title><script data-outdated-warner src="../../assets/warner.js"></script><link rel="canonical" href="https://clima.github.io/ParameterEstimocean/dev/literated/single_case_lesbrary_ri_based_calibration/"/><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.039/juliamono-regular.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.11/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">ParameterEstimocean.jl</a></span></div><form class="docs-search" action="../../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../installation_instructions/">Installation Instructions</a></li><li><a class="tocitem" href="../intro_to_observations/">Intro to observations</a></li><li><a class="tocitem" href="../intro_to_inverse_problems/">Intro to inverse problems</a></li><li><a class="tocitem" href="../exploring_priors/">Exploring Prior distributions</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../perfect_convective_adjustment_calibration/">Perfect convective adjustment calibration with Ensemble Kalman Inversion</a></li><li class="is-active"><a class="tocitem" href>Calibration of <code>RiBasedVerticalDiffusivity</code> to one LESbrary simulation</a><ul class="internal"><li><a class="tocitem" href="#Install-dependencies"><span>Install dependencies</span></a></li><li class="toplevel"><a class="tocitem" href="#Using-LESbrary-data"><span>Using LESbrary data</span></a></li><li class="toplevel"><a class="tocitem" href="#Calibration"><span>Calibration</span></a></li><li class="toplevel"><a class="tocitem" href="#Results"><span>Results</span></a></li><li><a class="tocitem" href="#Parameter-evolution"><span>Parameter evolution</span></a></li></ul></li><li><a class="tocitem" href="../multi_case_lesbrary_ri_based_calibration/">Calibration of <code>RiBasedVerticalDiffusivity</code> to five LESbrary simulations</a></li><li><a class="tocitem" href="../perfect_baroclinic_adjustment_calibration/">Perfect baroclinic adjustment calibration with Ensemble Kalman Inversion</a></li></ul></li><li><span class="tocitem">Library</span><ul><li><a class="tocitem" href="../../library/outline/">Contents</a></li><li><a class="tocitem" href="../../library/public/">Public</a></li><li><a class="tocitem" href="../../library/internals/">Private</a></li><li><a class="tocitem" href="../../library/function_index/">Function index</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Calibration of <code>RiBasedVerticalDiffusivity</code> to one LESbrary simulation</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Calibration of <code>RiBasedVerticalDiffusivity</code> to one LESbrary simulation</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/CliMA/ParameterEstimocean.jl/blob/main/examples/single_case_lesbrary_ri_based_calibration.jl" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Calibration-of-RiBasedVerticalDiffusivity-to-one-LESbrary-simulation"><a class="docs-heading-anchor" href="#Calibration-of-RiBasedVerticalDiffusivity-to-one-LESbrary-simulation">Calibration of <code>RiBasedVerticalDiffusivity</code> to one LESbrary simulation</a><a id="Calibration-of-RiBasedVerticalDiffusivity-to-one-LESbrary-simulation-1"></a><a class="docs-heading-anchor-permalink" href="#Calibration-of-RiBasedVerticalDiffusivity-to-one-LESbrary-simulation" title="Permalink"></a></h1><h2 id="Install-dependencies"><a class="docs-heading-anchor" href="#Install-dependencies">Install dependencies</a><a id="Install-dependencies-1"></a><a class="docs-heading-anchor-permalink" href="#Install-dependencies" title="Permalink"></a></h2><pre><code class="language-julia hljs">using Pkg
+pkg&quot;add ParameterEstimocean, Oceananigans, CairoMakie&quot;</code></pre><pre><code class="language-julia hljs">using Oceananigans
+using Oceananigans.Units
+using ParameterEstimocean
+using LinearAlgebra, CairoMakie, DataDeps, Distributions
+
+using Oceananigans.TurbulenceClosures: RiBasedVerticalDiffusivity</code></pre><h1 id="Using-LESbrary-data"><a class="docs-heading-anchor" href="#Using-LESbrary-data">Using LESbrary data</a><a id="Using-LESbrary-data-1"></a><a class="docs-heading-anchor-permalink" href="#Using-LESbrary-data" title="Permalink"></a></h1><p><code>ParameterEstimocean.jl</code> provides paths to synthetic observations derived from high-fidelity large eddy simulations. In this example, we illustrate calibration of a turbulence parameterization to one of these simulations:</p><pre><code class="language-julia hljs">datapath = datadep&quot;two_day_suite_1m/strong_wind_instantaneous_statistics.jld2&quot;
+times = [2hours, 12hours, 24hours]
+field_names = (:b, :u, :v)
+transformation = ZScore()
+regrid = (1, 1, 32)
+
+observations = SyntheticObservations(datapath; field_names, times, transformation, regrid)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">SyntheticObservations with fields (:b, :v, :u)
+├── times: [2 hrs, 12 hrs, 1 d]
+├── grid: 1×1×32 RectilinearGrid{Float64, Oceananigans.Grids.Periodic, Oceananigans.Grids.Periodic, Oceananigans.Grids.Bounded} on Oceananigans.Architectures.CPU with 3×3×3 halo
+├── path: &quot;/home/runner/.julia/datadeps/two_day_suite_1m/strong_wind_instantaneous_statistics.jld2&quot;
+├── metadata: (:parameters, :grid, :coriolis, :buoyancy, :closure)
+└── transformation: Dict{Symbol, ParameterEstimocean.Transformations.Transformation{TimeIndices{UnitRange{Int64}}, Nothing, ZScore{Float64}}} with 3 entries</code></pre><p>Let&#39;s take a look at the observations. We define a few plotting utilities along the way to use later in the example:</p><pre><code class="language-julia hljs">colorcycle = [:black, :red, :darkblue, :orange, :pink1, :seagreen, :magenta2]
+markercycle = [:rect, :utriangle, :star5, :circle, :cross, :+, :pentagon]
+
+function make_figure_axes()
+    fig = Figure(resolution=(1200, 400))
+    ax_b = Axis(fig[1, 1], xlabel = &quot;Buoyancy \n[cm s⁻²]&quot;, ylabel = &quot;z [m]&quot;)
+    ax_u = Axis(fig[1, 2], xlabel = &quot;x-velocity, u \n[cm s⁻¹]&quot;)
+    ax_v = Axis(fig[1, 3], xlabel = &quot;y-velocity, v \n[cm s⁻¹]&quot;)
+    return fig, (ax_b, ax_u, ax_v)
+end
+
+function plot_fields!(axs, b, u, v, label, color)
+    z = znodes(Center, b.grid)
+    # Note unit conversions below, eg m s⁻² -&gt; cm s⁻²:
+    lines!(axs[1], 1e2 * interior(b, 1, 1, :), z; color, label)
+    lines!(axs[2], 1e2 * interior(u, 1, 1, :), z; color, label)
+    lines!(axs[3], 1e2 * interior(v, 1, 1, :), z; color, label)
+    return nothing
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">plot_fields! (generic function with 1 method)</code></pre><p>And then plot the evolution of the observed fields,</p><pre><code class="language-julia hljs">fig, axs = make_figure_axes()
+
+for (i, t) in enumerate(times)
+    fields = map(name -&gt; observations.field_time_serieses[name][i], field_names)
+    plot_fields!(axs, fields..., &quot;t = &quot; * prettytime(t), colorcycle[i])
+end
+
+[axislegend(ax, position=:rb, merge=true, fontsize=10) for ax in axs]</code></pre><p><img src="../lesbrary_synthetic_observations.svg" alt/></p><p>Behold, boundary layer turbulence!</p><h1 id="Calibration"><a class="docs-heading-anchor" href="#Calibration">Calibration</a><a id="Calibration-1"></a><a class="docs-heading-anchor-permalink" href="#Calibration" title="Permalink"></a></h1><p>Next, we build a simulation of an ensemble of column models to calibrate the closure using Ensemble Kalman Inversion. We configure the closure without convective adjustment and with constant (rather than Richardson-number-dependent) diffusivity parameters.</p><pre><code class="language-julia hljs">ri_based_closure = RiBasedVerticalDiffusivity()
+
+simulation = ensemble_column_model_simulation(observations;
+                                              Nensemble = 60,
+                                              architecture = CPU(),
+                                              tracers = (:b, :e),
+                                              closure = ri_based_closure)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Simulation of HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
+├── Next time step: 1 second
+├── Elapsed wall time: 0 seconds
+├── Stop time: 1 day
+├── Stop iteration : Inf
+├── Wall time limit: Inf
+├── Callbacks: OrderedDict with 4 entries:
+│   ├── stop_time_exceeded =&gt; Callback of stop_time_exceeded on IterationInterval(1)
+│   ├── stop_iteration_exceeded =&gt; Callback of stop_iteration_exceeded on IterationInterval(1)
+│   ├── wall_time_limit_exceeded =&gt; Callback of wall_time_limit_exceeded on IterationInterval(1)
+│   └── nan_checker =&gt; Callback of NaNChecker for u on IterationInterval(100)
+├── Output writers: OrderedDict with no entries
+└── Diagnostics: OrderedDict with no entries</code></pre><p>The simulation is initialized with neutral boundary conditions and a default time-step, which we modify for our particular problem:</p><pre><code class="language-julia hljs">Qᵘ = simulation.model.velocities.u.boundary_conditions.top.condition
+Qᵇ = simulation.model.tracers.b.boundary_conditions.top.condition
+N² = simulation.model.tracers.b.boundary_conditions.bottom.condition
+
+simulation.Δt = 20minutes
+
+Qᵘ .= observations.metadata.parameters.momentum_flux
+Qᵇ .= observations.metadata.parameters.buoyancy_flux
+N² .= observations.metadata.parameters.N²_deep</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">60×1 Matrix{Float64}:
+ 2.0e-6
+ 2.0e-6
+ 2.0e-6
+ 2.0e-6
+ 2.0e-6
+ 2.0e-6
+ 2.0e-6
+ 2.0e-6
+ 2.0e-6
+ 2.0e-6
+ ⋮
+ 2.0e-6
+ 2.0e-6
+ 2.0e-6
+ 2.0e-6
+ 2.0e-6
+ 2.0e-6
+ 2.0e-6
+ 2.0e-6
+ 2.0e-6</code></pre><p>We identify a subset of the closure parameters to calibrate by specifying parameter names and prior distributions:</p><pre><code class="language-julia hljs">priors = (ν₀   = lognormal(mean=0.01, std=0.005),
+          κ₀   = lognormal(mean=0.1,  std=0.05),
+          Ri₀ν = Normal(-0.5, 1.0),
+          Ri₀κ = Normal(-0.5, 1.0),
+          Riᵟν = lognormal(mean=1.0,  std=0.5),
+          Riᵟκ = lognormal(mean=1.0,  std=0.5))
+
+free_parameters = FreeParameters(priors)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">FreeParameters with 6 parameters
+├── names: (:ν₀, :κ₀, :Ri₀ν, :Ri₀κ, :Riᵟν, :Riᵟκ)
+└── priors: Dict{Symbol, Any}
+    ├──   ν₀ =&gt; LogNormal{Float64}(μ=-4.716741961645196, σ=0.47238072707743883)
+    ├──   κ₀ =&gt; LogNormal{Float64}(μ=-2.4141568686511503, σ=0.47238072707743883)
+    ├── Ri₀ν =&gt; Normal{Float64}(μ=-0.5, σ=1.0)
+    ├── Ri₀κ =&gt; Normal{Float64}(μ=-0.5, σ=1.0)
+    ├── Riᵟν =&gt; LogNormal{Float64}(μ=-0.11157177565710488, σ=0.47238072707743883)
+    └── Riᵟκ =&gt; LogNormal{Float64}(μ=-0.11157177565710488, σ=0.47238072707743883)</code></pre><p>TODO: explain the meaning of each parameter The prior information comes from experience, prior calibration runs, and educated guesses.</p><pre><code class="language-julia hljs">calibration = InverseProblem(observations, simulation, free_parameters)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">InverseProblem{ConcatenatedOutputMap} with free parameters (:ν₀, :κ₀, :Ri₀ν, :Ri₀κ, :Riᵟν, :Riᵟκ)
+├── observations: SyntheticObservations of (:b, :v, :u) on 1×1×32 RectilinearGrid{Float64, Oceananigans.Grids.Periodic, Oceananigans.Grids.Periodic, Oceananigans.Grids.Bounded} on Oceananigans.Architectures.CPU with 3×3×3 halo
+├── simulation: Simulation on 60×1×32 RectilinearGrid{Float64, Oceananigans.Grids.Flat, Oceananigans.Grids.Flat, Oceananigans.Grids.Bounded} on Oceananigans.Architectures.CPU with 0×0×3 halo with Δt=1200.0
+├── free_parameters: (:ν₀, :κ₀, :Ri₀ν, :Ri₀κ, :Riᵟν, :Riᵟκ)
+└── output map: ConcatenatedOutputMap</code></pre><p>Next, we calibrate, using a relatively large noise to reflect our uncertainty about how close the observations and model can really get,</p><pre><code class="language-julia hljs">eki = EnsembleKalmanInversion(calibration; pseudo_stepping=ConstantConvergence(0.8))
+iterate!(eki; iterations = 10)
+
+@show eki.iteration_summaries[end]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">IterationSummary(iteration=10, pseudotime=0.316491, pseudo_Δt=0.0601316) for 60 particles and 6 parameters
+                              ν₀ |         κ₀ |       Ri₀ν |       Ri₀κ |       Riᵟν |       Riᵟκ | 
+       ensemble_mean:  4.411e-02 |  7.979e-02 |  9.127e-01 |  5.161e-01 |  8.606e-01 |  8.733e-01 | 
+       best particle:  7.281e-02 |  8.409e-02 |  3.034e-01 |  2.286e-01 |  8.320e-01 |  4.833e-01 | error = 4.299181e-02
+      worst particle:  2.682e-02 |  7.698e-02 |  4.529e-01 | -4.527e-02 |  1.165e+00 |  6.595e-01 | error = 3.410785e-01
+             minimum:  2.682e-02 |  2.677e-02 | -8.377e-01 | -1.296e+00 |  2.332e-01 |  2.930e-01 | 
+             maximum:  7.631e-02 |  2.826e-01 |  3.119e+00 |  2.091e+00 |  2.414e+00 |  3.500e+00 | 
+   ensemble_variance:  7.144e-04 |  4.824e-03 |  7.760e-01 |  6.953e-01 |  3.396e-07 |  9.730e-06 | </code></pre><h1 id="Results"><a class="docs-heading-anchor" href="#Results">Results</a><a id="Results-1"></a><a class="docs-heading-anchor-permalink" href="#Results" title="Permalink"></a></h1><p>To analyze the reuslts, we build a new simulation with just one ensemble member to evaluate pasome utilities for analyzing the results:</p><pre><code class="language-julia hljs">Nt = length(observations.times)
+Niter = length(eki.iteration_summaries) - 1
+modeled_time_serieses = calibration.time_series_collector.field_time_serieses
+observed = map(name -&gt; observations.field_time_serieses[name][Nt], field_names)
+modeled = map(name -&gt; modeled_time_serieses[name][Nt], field_names)
+
+function compare_model_observations(model_label=&quot;modeled&quot;)
+    fig, axs = make_figure_axes()
+    plot_fields!(axs, observed..., &quot;observed at t = &quot; * prettytime(times[end]), :black)
+    plot_fields!(axs, modeled..., model_label, :blue)
+    [axislegend(ax, position=:rb, merge=true, fontsize=10) for ax in axs]
+    return fig
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">compare_model_observations (generic function with 2 methods)</code></pre><p>Now we execute forward runs for the initial ensemble mean,</p><pre><code class="language-julia hljs">initial_parameters = eki.iteration_summaries[0].ensemble_mean
+forward_run!(calibration, initial_parameters)
+fig = compare_model_observations(&quot;modeled after 0 iterations&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (726.909 μs)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (3.437 ms).
+[ Info: Simulation is stopping. Model time 1 day has hit or exceeded simulation stop time 1 day.</code></pre><p><img src="../model_observation_comparison_iteration_0.svg" alt/></p><p>and the final ensemble mean, representing our &quot;best&quot; parameter set,</p><pre><code class="language-julia hljs">best_parameters = eki.iteration_summaries[end].ensemble_mean
+forward_run!(calibration, best_parameters)
+fig = compare_model_observations(&quot;modeled after $Niter iterations&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (707.809 μs)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (3.497 ms).
+[ Info: Simulation is stopping. Model time 1 day has hit or exceeded simulation stop time 1 day.</code></pre><p><img src="../model_observation_comparison_final_iteration.svg" alt/></p><h2 id="Parameter-evolution"><a class="docs-heading-anchor" href="#Parameter-evolution">Parameter evolution</a><a id="Parameter-evolution-1"></a><a class="docs-heading-anchor-permalink" href="#Parameter-evolution" title="Permalink"></a></h2><p>To understand how results changed over the EKI iterations, we look at the evoluation of the ensemble means,</p><pre><code class="language-julia hljs">ensemble_means = NamedTuple(n =&gt; map(summary -&gt; summary.ensemble_mean[n], eki.iteration_summaries)
+                            for n in calibration.free_parameters.names)
+
+fig = Figure()
+ax = Axis(fig[1, 1], xlabel = &quot;Ensemble Kalman iteration&quot;, ylabel = &quot;Parameter value&quot;)
+
+for (i, name) in enumerate(calibration.free_parameters.names)
+    label = string(name)
+    marker = markercycle[i]
+    color = colorcycle[i]
+    scatterlines!(ax, 0:Niter, parent(ensemble_means[name]); marker, color, label)
+end
+
+axislegend(ax, position=:rb)</code></pre><p><img src="../lesbrary_catke_parameter_evolution.svg" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../perfect_convective_adjustment_calibration/">« Perfect convective adjustment calibration with Ensemble Kalman Inversion</a><a class="docs-footer-nextpage" href="../multi_case_lesbrary_ri_based_calibration/">Calibration of <code>RiBasedVerticalDiffusivity</code> to five LESbrary simulations »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.14 on <span class="colophon-date" title="Thursday 28 April 2022 05:12">Thursday 28 April 2022</span>. Using Julia version 1.6.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

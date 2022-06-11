@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Perfect convective adjustment calibration with Ensemble Kalman Inversion · OceanTurbulenceParameterEstimation.jl</title><script data-outdated-warner src="../../assets/warner.js"></script><link rel="canonical" href="https://clima.github.io/OceanTurbulenceParameterEstimation/dev/literated/perfect_convective_adjustment_calibration/"/><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.039/juliamono-regular.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.11/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">OceanTurbulenceParameterEstimation.jl</a></span></div><form class="docs-search" action="../../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../installation_instructions/">Installation Instructions</a></li><li><a class="tocitem" href="../intro_to_observations/">Intro to observations</a></li><li><a class="tocitem" href="../intro_to_inverse_problems/">Intro to inverse problems</a></li><li><a class="tocitem" href="../exploring_priors/">Exploring Prior distributions</a></li><li><span class="tocitem">Examples</span><ul><li class="is-active"><a class="tocitem" href>Perfect convective adjustment calibration with Ensemble Kalman Inversion</a><ul class="internal"><li><a class="tocitem" href="#Install-dependencies"><span>Install dependencies</span></a></li><li class="toplevel"><a class="tocitem" href="#The-InverseProblem"><span>The <code>InverseProblem</code></span></a></li><li class="toplevel"><a class="tocitem" href="#Ensemble-Kalman-Inversion"><span>Ensemble Kalman Inversion</span></a></li></ul></li><li><a class="tocitem" href="../lesbrary_catke_calibration/">CAKTE calibration with Ensemble Kalman Inversion using LESbrary data</a></li><li><a class="tocitem" href="../perfect_baroclinic_adjustment_calibration/">Perfect baroclinic adjustment calibration with Ensemble Kalman Inversion</a></li></ul></li><li><span class="tocitem">Library</span><ul><li><a class="tocitem" href="../../library/outline/">Contents</a></li><li><a class="tocitem" href="../../library/public/">Public</a></li><li><a class="tocitem" href="../../library/internals/">Private</a></li><li><a class="tocitem" href="../../library/function_index/">Function index</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Perfect convective adjustment calibration with Ensemble Kalman Inversion</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Perfect convective adjustment calibration with Ensemble Kalman Inversion</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/CliMA/OceanTurbulenceParameterEstimation.jl/blob/main/examples/perfect_convective_adjustment_calibration.jl" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Perfect-convective-adjustment-calibration-with-Ensemble-Kalman-Inversion"><a class="docs-heading-anchor" href="#Perfect-convective-adjustment-calibration-with-Ensemble-Kalman-Inversion">Perfect convective adjustment calibration with Ensemble Kalman Inversion</a><a id="Perfect-convective-adjustment-calibration-with-Ensemble-Kalman-Inversion-1"></a><a class="docs-heading-anchor-permalink" href="#Perfect-convective-adjustment-calibration-with-Ensemble-Kalman-Inversion" title="Permalink"></a></h1><p>This example calibrates a convective adjustment model in the &quot;perfect model context&quot;. In this context, synthetic observations are generated by a convective adjustment model with &quot;true&quot; parameters. The true parameters are then &quot;rediscovered&quot; by calibrating the model to match the synthetic observations.</p><p>We use the discrepency between observed and modeled buoyancy <span>$b$</span> to calibrate the convective adjustment model. The calibration problem is solved by Ensemble Kalman Inversion. For more information about Ensemble Kalman Inversion, see the <a href="https://clima.github.io/EnsembleKalmanProcesses.jl/stable/ensemble_kalman_inversion/">EnsembleKalmanProcesses.jl documentation</a>.</p><h2 id="Install-dependencies"><a class="docs-heading-anchor" href="#Install-dependencies">Install dependencies</a><a id="Install-dependencies-1"></a><a class="docs-heading-anchor-permalink" href="#Install-dependencies" title="Permalink"></a></h2><p>First let&#39;s make sure we have all required packages installed.</p><pre><code class="language-julia hljs">using Pkg
+pkg&quot;add OceanTurbulenceParameterEstimation, Oceananigans, Distributions, CairoMakie&quot;</code></pre><pre><code class="language-julia hljs">using OceanTurbulenceParameterEstimation, LinearAlgebra, CairoMakie</code></pre><p>We reuse some some code from a previous example to generate observations,</p><pre><code class="language-julia hljs">examples_path = joinpath(pathof(OceanTurbulenceParameterEstimation), &quot;..&quot;, &quot;..&quot;, &quot;examples&quot;)
+include(joinpath(examples_path, &quot;intro_to_inverse_problems.jl&quot;))
+
+data_path = generate_synthetic_observations()
+observations = SyntheticObservations(data_path, field_names=:b, transformation=ZScore())</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">SyntheticObservations with fields (:b,)
+├── times: [0 s, 4 hrs, 8 hrs, 12 hrs]
+├── grid: 1×1×32 RectilinearGrid{Float64, Oceananigans.Grids.Flat, Oceananigans.Grids.Flat, Oceananigans.Grids.Bounded} on Oceananigans.Architectures.CPU with 0×0×1 halo
+├── path: &quot;convective_adjustment.jld2&quot;
+├── metadata: (:parameters, :grid, :coriolis, :closure)
+└── transformation: Dict{Symbol, OceanTurbulenceParameterEstimation.Transformations.Transformation{TimeIndices{UnitRange{Int64}}, Nothing, ZScore{Float64}}} with 1 entry</code></pre><p>and an ensemble_simulation,</p><pre><code class="language-julia hljs">ensemble_simulation, closure★ = build_ensemble_simulation(observations; Nensemble=50)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(Simulation of HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
+├── Next time step: 10 seconds
+├── Elapsed wall time: 0 seconds
+├── Stop time: 12 hours
+├── Stop iteration : Inf
+├── Wall time limit: Inf
+├── Callbacks: OrderedDict with 4 entries:
+│   ├── stop_time_exceeded =&gt; Callback of stop_time_exceeded on IterationInterval(1)
+│   ├── stop_iteration_exceeded =&gt; Callback of stop_iteration_exceeded on IterationInterval(1)
+│   ├── wall_time_limit_exceeded =&gt; Callback of wall_time_limit_exceeded on IterationInterval(1)
+│   └── nan_checker =&gt; Callback of NaNChecker for u on IterationInterval(100)
+├── Output writers: OrderedDict with no entries
+└── Diagnostics: OrderedDict with no entries, ConvectiveAdjustmentVerticalDiffusivity: (background_κz=0.0001, convective_κz=1.0, background_νz=1.0e-5, convective_νz=0.9))</code></pre><p>The handy utility function <code>build_ensemble_simulation</code> also tells us the optimal parameters that were used when generating the synthetic observations:</p><pre><code class="language-julia hljs">@show θ★ = (convective_κz = closure★.convective_κz, background_κz = closure★.background_κz)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(convective_κz = 1.0, background_κz = 0.0001)</code></pre><h1 id="The-InverseProblem"><a class="docs-heading-anchor" href="#The-InverseProblem">The <code>InverseProblem</code></a><a id="The-InverseProblem-1"></a><a class="docs-heading-anchor-permalink" href="#The-InverseProblem" title="Permalink"></a></h1><p>To build an inverse problem we first define free parameters. Here we calibrate <code>convective_κz</code> and <code>background_κz</code>, using log-normal priors to prevent the parameters from becoming negative:</p><pre><code class="language-julia hljs">priors = (convective_κz = lognormal(mean=0.3, std=0.5),
+          background_κz = lognormal(mean=2.5e-4, std=2.5e-5))
+
+free_parameters = FreeParameters(priors)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">FreeParameters with 2 parameters
+├── names: (:convective_κz, :background_κz)
+└── priors: Dict{Symbol, Any}
+    ├── convective_κz =&gt; LogNormal{Float64}(μ=-1.8685407779659071, σ=1.152881584240091)
+    └── background_κz =&gt; LogNormal{Float64}(μ=-8.299024805528612, σ=0.0997513451195927)</code></pre><p>The <code>InverseProblem</code> is then constructed from <code>observations</code>, <code>ensemble_simulation</code>, and <code>free_parameters</code>,</p><pre><code class="language-julia hljs">calibration = InverseProblem(observations, ensemble_simulation, free_parameters)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">InverseProblem{ConcatenatedOutputMap} with free parameters (:convective_κz, :background_κz)
+├── observations: SyntheticObservations of (:b,) on 1×1×32 RectilinearGrid{Float64, Oceananigans.Grids.Flat, Oceananigans.Grids.Flat, Oceananigans.Grids.Bounded} on Oceananigans.Architectures.CPU with 0×0×1 halo
+├── simulation: Simulation on 50×1×32 RectilinearGrid{Float64, Oceananigans.Grids.Flat, Oceananigans.Grids.Flat, Oceananigans.Grids.Bounded} on Oceananigans.Architectures.CPU with 0×0×1 halo with Δt=10.0
+├── free_parameters: (:convective_κz, :background_κz)
+└── output map: ConcatenatedOutputMap</code></pre><p>For more information about the above steps, see <a href="../intro_to_observations/#Intro-to-observations">Intro to observations</a> and <a href="../intro_to_inverse_problems/#Intro-to-InverseProblem">Intro to <code>InverseProblem</code></a>.</p><h1 id="Ensemble-Kalman-Inversion"><a class="docs-heading-anchor" href="#Ensemble-Kalman-Inversion">Ensemble Kalman Inversion</a><a id="Ensemble-Kalman-Inversion-1"></a><a class="docs-heading-anchor-permalink" href="#Ensemble-Kalman-Inversion" title="Permalink"></a></h1><p>Next, we construct an <code>EnsembleKalmanInversion</code> (EKI) object,</p><p>The calibration is done here using Ensemble Kalman Inversion. For more information about the algorithm refer to <a href="https://clima.github.io/EnsembleKalmanProcesses.jl/stable/ensemble_kalman_inversion/">EnsembleKalmanProcesses.jl documentation</a>.</p><pre><code class="language-julia hljs">eki = EnsembleKalmanInversion(calibration; convergence_rate = 0.5)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">EnsembleKalmanInversion
+├── inverse_problem: InverseProblem{ConcatenatedOutputMap} with free parameters (:convective_κz, :background_κz)
+├── ensemble_kalman_process: EnsembleKalmanProcesses.Inversion
+├── mapped_observations: 96-element Vector{Float64}
+├── noise_covariance: 96×96 Matrix{Float64}
+├── convergence_rate: 0.5
+├── iteration: 0
+├── resampler: Resampler{FullEnsembleDistribution}├── unconstrained_parameters: 2×50 Matrix{Float64}
+└── forward_map_output: 96×50 Matrix{Float64}</code></pre><p>and perform few iterations to see if we can converge to the true parameter values.</p><pre><code class="language-julia hljs">iterate!(eki; iterations = 10)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(convective_κz = 1.0750968579265856, background_κz = 0.00018577738500782554)</code></pre><p>Last, we visualize the outputs of EKI calibration.</p><pre><code class="language-julia hljs">θ̅(iteration) = [eki.iteration_summaries[iteration].ensemble_mean...]
+varθ(iteration) = eki.iteration_summaries[iteration].ensemble_var
+
+weight_distances = [norm(θ̅(iter) - [θ★[1], θ★[2]]) for iter in 0:eki.iteration]
+output_distances = [norm(forward_map(calibration, θ̅(iter))[:, 1] - y) for iter in 0:eki.iteration]
+ensemble_variances = [varθ(iter) for iter in 0:eki.iteration]
+
+f = Figure()
+
+lines(f[1, 1], 0:eki.iteration, weight_distances, color = :red, linewidth = 2,
+      axis = (title = &quot;Parameter distance&quot;,
+              xlabel = &quot;Iteration&quot;,
+              ylabel = &quot;|θ̅ₙ - θ★|&quot;))
+
+lines(f[1, 2], 0:eki.iteration, output_distances, color = :blue, linewidth = 2,
+      axis = (title = &quot;Output distance&quot;,
+              xlabel = &quot;Iteration&quot;,
+              ylabel = &quot;|G(θ̅ₙ) - y|&quot;))
+
+ax3 = Axis(f[2, 1:2],
+           title = &quot;Parameter convergence&quot;,
+           xlabel = &quot;Iteration&quot;,
+           ylabel = &quot;Ensemble variance&quot;,
+           yscale = log10)
+
+for (i, pname) in enumerate(free_parameters.names)
+    ev = getindex.(ensemble_variances, i)
+    lines!(ax3, 0:eki.iteration, ev / ev[1], label = String(pname), linewidth = 2)
+end
+
+axislegend(ax3, position = :rt)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (445.626 μs)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (2.480 ms).
+[ Info: Simulation is stopping. Model time 12 hours has hit or exceeded simulation stop time 12 hours.
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (486.728 μs)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (2.498 ms).
+[ Info: Simulation is stopping. Model time 12 hours has hit or exceeded simulation stop time 12 hours.
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (372.722 μs)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (2.170 ms).
+[ Info: Simulation is stopping. Model time 12 hours has hit or exceeded simulation stop time 12 hours.
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (437.525 μs)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (2.169 ms).
+[ Info: Simulation is stopping. Model time 12 hours has hit or exceeded simulation stop time 12 hours.
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (403.424 μs)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (2.239 ms).
+[ Info: Simulation is stopping. Model time 12 hours has hit or exceeded simulation stop time 12 hours.
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (404.123 μs)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (2.233 ms).
+[ Info: Simulation is stopping. Model time 12 hours has hit or exceeded simulation stop time 12 hours.
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (406.824 μs)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (2.178 ms).
+[ Info: Simulation is stopping. Model time 12 hours has hit or exceeded simulation stop time 12 hours.
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (412.524 μs)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (2.196 ms).
+[ Info: Simulation is stopping. Model time 12 hours has hit or exceeded simulation stop time 12 hours.
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (404.124 μs)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (2.178 ms).
+[ Info: Simulation is stopping. Model time 12 hours has hit or exceeded simulation stop time 12 hours.
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (391.824 μs)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (2.194 ms).
+[ Info: Simulation is stopping. Model time 12 hours has hit or exceeded simulation stop time 12 hours.
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (446.659 μs)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (2.155 ms).
+[ Info: Simulation is stopping. Model time 12 hours has hit or exceeded simulation stop time 12 hours.</code></pre><p><img src="../summary_convective_adjustment_eki.svg" alt/></p><p>And also we plot the the distributions of the various model ensembles for few EKI iterations to see if and how well they converge to the true diffusivity values.</p><pre><code class="language-julia hljs">f = Figure()
+
+axtop = Axis(f[1, 1])
+
+axmain = Axis(f[2, 1],
+              xlabel = &quot;convective_κz [m² s⁻¹]&quot;,
+              ylabel = &quot;background_κz [m² s⁻¹]&quot;)
+
+axright = Axis(f[2, 2])
+scatters = []
+labels = String[]
+
+for iteration in [0, 1, 2, 10]
+    # Make parameter matrix
+    parameters = eki.iteration_summaries[iteration].parameters
+    Nensemble = length(parameters)
+    Nparameters = length(first(parameters))
+    parameter_ensemble_matrix = [parameters[i][j] for i=1:Nensemble, j=1:Nparameters]
+
+    label = iteration == 0 ? &quot;Initial ensemble&quot; : &quot;Iteration $iteration&quot;
+    push!(labels, label)
+    push!(scatters, scatter!(axmain, parameter_ensemble_matrix))
+    density!(axtop, parameter_ensemble_matrix[:, 1])
+    density!(axright, parameter_ensemble_matrix[:, 2], direction = :y)
+end
+
+vlines!(axmain, [θ★.convective_κz], color = :red)
+vlines!(axtop, [θ★.convective_κz], color = :red)
+
+hlines!(axmain, [θ★.background_κz], color = :red)
+hlines!(axright, [θ★.background_κz], color = :red)
+
+colsize!(f.layout, 1, Fixed(300))
+colsize!(f.layout, 2, Fixed(200))
+rowsize!(f.layout, 1, Fixed(200))
+rowsize!(f.layout, 2, Fixed(300))
+
+Legend(f[1, 2], scatters, labels, position = :lb)
+
+hidedecorations!(axtop, grid = false)
+hidedecorations!(axright, grid = false)
+
+xlims!(axmain, -0.25, 3.2)
+xlims!(axtop, -0.25, 3.2)
+ylims!(axmain, 5e-5, 35e-5)
+ylims!(axright, 5e-5, 35e-5)</code></pre><p><img src="../distributions_convective_adjustment_eki.svg" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../exploring_priors/">« Exploring Prior distributions</a><a class="docs-footer-nextpage" href="../lesbrary_catke_calibration/">CAKTE calibration with Ensemble Kalman Inversion using LESbrary data »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.13 on <span class="colophon-date" title="Tuesday 1 March 2022 04:20">Tuesday 1 March 2022</span>. Using Julia version 1.6.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
