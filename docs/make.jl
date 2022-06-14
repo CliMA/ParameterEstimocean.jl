@@ -46,7 +46,7 @@ Timer(t -> println(" "), 0, interval=240)
 format = Documenter.HTML(
   collapselevel = 2,
      prettyurls = get(ENV, "CI", nothing) == "true",
-      canonical = "https://clima.github.io/ParameterEstimocean/dev/",
+      canonical = "https://clima.github.io/ParameterEstimoceanDocumentation/dev/",
 )
 
 pages = [

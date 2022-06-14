@@ -8,9 +8,9 @@ Continuous Integration: [![Build Status](https://github.com/CliMA/ParameterEstim
 
 Code Coverage: [![codecov](https://codecov.io/gh/CliMA/ParameterEstimocean.jl/branch/main/graph/badge.svg?token=cPeTALmiPU)](https://codecov.io/gh/CliMA/ParameterEstimocean.jl)
 
-Stable Release Documentation: [![Build Status](https://img.shields.io/badge/documentation-stable%20release-blue)](https://clima.github.io/ParameterEstimocean.jl/stable)
+Stable Release Documentation: [![Build Status](https://img.shields.io/badge/documentation-stable%20release-blue)](https://clima.github.io/ParameterEstimoceanDocumentation/stable)
 
-Latest Documentation: [![Build Status](https://img.shields.io/badge/documentation-in%20development-orange)](https://clima.github.io/ParameterEstimocean.jl/dev)
+Latest Documentation: [![Build Status](https://img.shields.io/badge/documentation-in%20development-orange)](https://clima.github.io/ParameterEstimoceanDocumentation/dev)
 
 Zenodo: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5762810.svg)](https://doi.org/10.5281/zenodo.5762810)
 
