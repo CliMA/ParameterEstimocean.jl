@@ -194,7 +194,7 @@ end
     @testset "Six-member (2x3) transposition of model output" begin
         ensemble_size = 2
         batch_size = 3
-        observations_batch = [observations, observations, observations]
+        observations_batch = BatchedSyntheticObservations([observations, observations, observations])
         column_ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(ensemble_size, batch_size), Hz=1)
         test_simulation = build_simulation(column_ensemble_size)
         collected_fields = (u = test_simulation.model.velocities.u, b = test_simulation.model.tracers.b)

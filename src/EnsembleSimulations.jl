@@ -4,7 +4,7 @@ export ensemble_column_model_simulation
 
 using DataDeps
 
-using ..Observations: SyntheticObservations, tupleit
+using ..Observations: SyntheticObservations, batch, tupleit
 
 using Oceananigans
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
@@ -19,7 +19,7 @@ function ensemble_column_model_simulation(observations;
                                           buoyancy = BuoyancyTracer(),
                                           kwargs...)
 
-    observations isa Vector || (observations = [observations]) # Singleton batch
+    observations = batch(observations)
     Nbatch = length(observations)
 
     # Assuming all observations are on similar grids...

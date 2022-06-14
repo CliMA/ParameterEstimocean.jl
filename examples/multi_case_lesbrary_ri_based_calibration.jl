@@ -33,8 +33,8 @@ field_names = (:b, :u, :v)
 transformation = ZScore()
 regrid = (1, 1, 32)
 
-observations = [SyntheticObservations(path; field_names, times, transformation, regrid)
-                for path in datapaths]
+observations = [SyntheticObservations(path; field_names, times, transformation, regrid) for path in datapaths]
+batch = BatchedSyntheticObservations(observations) # weighted equally by default
 
 # Let's take a look at the observations. We define a few
 # plotting utilities along the way to use later in the example:
@@ -55,7 +55,7 @@ function make_figure_axes(n=1)
     return fig, axs
 end
 
-function plot_fields!(axs, b, u, v, label, color, grid=first(observations).grid)
+function plot_fields!(axs, b, u, v, label, color, grid=first(batch).grid)
     z = znodes(Center, grid)
     ## Note unit conversions below, eg m s⁻² -> cm s⁻²:
     lines!(axs[1], 1e2 * b, z; color, label)
@@ -68,7 +68,7 @@ end
 
 fig, axs = make_figure_axes()
 
-for (i, obs) in enumerate(observations)
+for (i, obs) in enumerate(batch.observations)
     Nt = length(obs.times)
     t = obs.times[end]
     fields = map(name -> interior(obs.field_time_serieses[name][Nt], 1, 1, :), field_names)
@@ -85,7 +85,7 @@ save("multi_case_lesbrary_synthetic_observations.svg", fig); nothing # hide
 
 ri_based_closure = RiBasedVerticalDiffusivity()
 
-simulation = ensemble_column_model_simulation(observations;
+simulation = ensemble_column_model_simulation(batch;
                                               Nensemble = 60,
                                               architecture = CPU(),
                                               tracers = (:b, :e),
@@ -100,7 +100,7 @@ N² = simulation.model.tracers.b.boundary_conditions.bottom.condition
 
 simulation.Δt = 20minutes
 
-for (i, obs) in enumerate(observations)
+for (i, obs) in enumerate(batch.observations)
     view(Qᵘ, :, i) .= obs.metadata.parameters.momentum_flux
     view(Qᵇ, :, i) .= obs.metadata.parameters.buoyancy_flux
     view(N², :, i) .= obs.metadata.parameters.N²_deep
@@ -122,7 +122,7 @@ free_parameters = FreeParameters(priors)
 # The prior information comes from experience, prior calibration runs,
 # and educated guesses.
 
-calibration = InverseProblem(observations, simulation, free_parameters)
+calibration = InverseProblem(batch, simulation, free_parameters)
 
 # Next, we calibrate, using a relatively large noise to reflect our
 # uncertainty about how close the observations and model can really get,
@@ -136,19 +136,19 @@ iterate!(eki; iterations = 10)
 # To analyze the results, we build a new simulation with just one ensemble member
 # to evaluate some utilities for analyzing the results:
 
-Nt = length(first(observations).times)
+Nt = length(first(batch).times)
 Niter = length(eki.iteration_summaries) - 1
 modeled_time_serieses = calibration.time_series_collector.field_time_serieses 
 
 observed, modeled = [], []
-for (c, obs) in enumerate(observations)
+for (c, obs) in enumerate(batch.observations)
     push!(observed, map(name -> interior(obs.field_time_serieses[name][Nt], 1, 1, :), field_names))
     push!(modeled,  map(name -> interior(  modeled_time_serieses[name][Nt], 1, c, :), field_names))
 end
 
 function compare_model_observations(model_label="modeled")
-    fig, axs = make_figure_axes(length(observations))
-    for (c, obs) in enumerate(observations)
+    fig, axs = make_figure_axes(length(batch))
+    for (c, obs) in enumerate(batch.observations)
         plot_fields!(axs[c], observed[c]..., "observed at t = " * prettytime(times[end]), :black)
         plot_fields!(axs[c], modeled[c]..., model_label, :blue)
         [axislegend(ax, position=:rb, merge=true, labelsize=10) for ax in axs[c]]
