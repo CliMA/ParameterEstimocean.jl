@@ -9,8 +9,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout gh-pages branch
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
+          repository: CliMA/ParameterEstimoceanDocumentation
           ref: gh-pages
       - name: Delete preview and history + push changes
         run: |
@@ -24,3 +25,5 @@ jobs:
             fi
         env:
             PRNUM: ${{ github.event.number }}
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # For authentication with GitHub Actions token
+            DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }} # For authentication with SSH deploy key
