@@ -6,6 +6,7 @@ module ParameterEstimocean
 
 export
     SyntheticObservations,
+    BatchedSyntheticObservations,
     InverseProblem,
     FreeParameters,
     Transformation,

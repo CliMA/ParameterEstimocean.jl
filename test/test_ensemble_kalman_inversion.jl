@@ -38,7 +38,8 @@ architecture = CPU()
                                                   closure,
                                                   tracers = :b)
 
-    batched_simulation = ensemble_column_model_simulation([observation, observation];
+    batched_observations = BatchedSyntheticObservations([observation, observation], weights=[0.5, 1.0])
+    batched_simulation = ensemble_column_model_simulation(batched_observations;
                                                           Nensemble,
                                                           architecture,
                                                           closure,
@@ -59,7 +60,7 @@ architecture = CPU()
     
     free_parameters = FreeParameters(priors)
     calibration = InverseProblem(observation, simulation, free_parameters)
-    batched_calibration = InverseProblem([observation, observation], batched_simulation, free_parameters)
+    batched_calibration = InverseProblem(batched_observations, batched_simulation, free_parameters)
 
     #####
     ##### Test EKI

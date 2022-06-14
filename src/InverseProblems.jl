@@ -15,10 +15,11 @@ using ..Transformations: transform_field_time_series
 using ..Parameters: new_closure_ensemble, transform_to_constrained, build_parameters_named_tuple
 
 using ..Observations:
-    AbstractObservation,
     SyntheticObservations,
+    BatchedSyntheticObservations,
     initialize_forward_run!,
     FieldTimeSeriesCollector,
+    batch,
     observation_times,
     forward_map_names
 
@@ -163,7 +164,6 @@ Nensemble(ip::InverseProblem) = Nensemble(ip.simulation.model.grid)
 Transform and return `ip.observations` appropriate for `ip.output_map`. 
 """
 observation_map(ip::InverseProblem) = observation_map(ip.output_map, ip.observations)
-
 observation_map(map::ConcatenatedOutputMap, observations) = transform_time_series(map, observations)
 
 """
@@ -264,16 +264,21 @@ function transform_time_series(::ConcatenatedOutputMap, observation::SyntheticOb
 end
 
 """
-    transform_time_series(map, batched_observations::Vector)
+    transform_time_series(map, batch::BatchedSyntheticObservations)
 
 Concatenate the output of `transform_time_series` of each observation
 in `batched_observations`.
 """
-transform_time_series(map, batched_observations::Vector) =
-    vcat(Tuple(transform_time_series(map, obs) for obs in batched_observations)...)
+function transform_time_series(map, batch::BatchedSyntheticObservations)
+    w = batch.weights
+    obs = batch.observations
+    N = length(obs)
+    weighted_maps = Tuple(w[i] * transform_time_series(map, obs[i]) for i = 1:N)
+    return vcat(weighted_maps...)
+end
 
 const BatchedOrSingletonObservations = Union{SyntheticObservations,
-                                             Vector{<:SyntheticObservations}}
+                                             BatchedSyntheticObservations}
 
 function transform_forward_map_output(map::ConcatenatedOutputMap,
                                       observations::BatchedOrSingletonObservations,
@@ -284,10 +289,6 @@ function transform_forward_map_output(map::ConcatenatedOutputMap,
 
     return transform_time_series(map, transposed_forward_map_output)
 end
-
-
-vectorize(observation) = [observation]
-vectorize(observations::Vector) = observations
 
 # Dispatch transpose_model_output based on collector grid
 transpose_model_output(time_series_collector, observations) =
@@ -311,18 +312,16 @@ into a Vector of `SyntheticObservations` for each member of the observation batc
 Return a 1-vector in the case of singleton observations.
 """
 function transpose_model_output(collector_grid::SingleColumnGrid, time_series_collector, observations)
-    observations = vectorize(observations)
-    times = time_series_collector.times
+    observations = batch(observations)
+    times        = time_series_collector.times
+    grid         = drop_y_dimension(collector_grid)
+    Nensemble    = collector_grid.Nx
+    Nbatch       = collector_grid.Ny
+    Nz           = collector_grid.Nz
+    Hz           = collector_grid.Hz
+    Nt           = length(times)
 
     transposed_output = []
-
-    Nensemble = collector_grid.Nx
-    Nbatch =  collector_grid.Ny
-    Nz = collector_grid.Nz
-    Hz = collector_grid.Hz
-    Nt = length(times)
-
-    grid = drop_y_dimension(collector_grid)
 
     for j = 1:Nbatch
         observation = observations[j]
@@ -356,7 +355,7 @@ function transpose_model_output(collector_grid::SingleColumnGrid, time_series_co
         push!(transposed_output, batch_output)
     end
 
-    return transposed_output
+    return BatchedSyntheticObservations(transposed_output; weights=observations.weights)
 end
 
 function drop_y_dimension(grid::SingleColumnGrid)
@@ -373,15 +372,14 @@ end
 
 """
     ConcatenatedVectorNormMap()
-
 Forward map transformation of simulation output to a scalar by
 taking a naive `norm` of the difference between concatenated vectors of the
 observations and simulation output.
 """
 struct ConcatenatedVectorNormMap end
-
+    
 output_map_str(::ConcatenatedVectorNormMap) = "ConcatenatedVectorNormMap"
-observation_map(::ConcatenatedVectorNormMap, observations) = reshape([0], 1, 1)
+observation_map(map::ConcatenatedVectorNormMap, observations) = hcat(0)
 
 function transform_forward_map_output(::ConcatenatedVectorNormMap, obs, time_series_collector)
     # Collected concatenated output and observations
@@ -392,8 +390,6 @@ function transform_forward_map_output(::ConcatenatedVectorNormMap, obs, time_ser
     # (1, Nensemble)
     return mapslices(Gᵏ -> norm(Gᵏ - y), G, dims=1)
 end
-
-observation_map(map::ConcatenatedVectorNormMap, observations) = hcat(0.0)
 
 #####
 ##### Utils

@@ -37,19 +37,14 @@ using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
     u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
     b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ), bottom = GradientBoundaryCondition(N²))
 
-    model = HydrostaticFreeSurfaceModel(grid = grid,
+    model = HydrostaticFreeSurfaceModel(; grid, coriolis, closure,
                                         tracers = :b,
                                         buoyancy = BuoyancyTracer(),
-                                        boundary_conditions = (; u=u_bcs, b=b_bcs),
-                                        coriolis = coriolis,
-                                        closure = closure)
+                                        boundary_conditions = (; u=u_bcs, b=b_bcs))
 
     set!(model, b = (x, y, z) -> N² * z)
-
     simulation = Simulation(model; Δt, stop_time)
-
     init_with_parameters(file, model) = file["parameters"] = (; Qᵇ, Qᵘ, Δt, N², tracers=keys(model.tracers))
-
     simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
                                                           schedule = TimeInterval(save_interval),
                                                           filename = experiment_name,
@@ -75,6 +70,13 @@ using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
         @test keys(b_observations.field_time_serieses) == tuple(:b)
         @test keys(ub_observations.field_time_serieses) == tuple(:u, :b)
         @test keys(uvb_observations.field_time_serieses) == tuple(:u, :v, :b)
+
+        # Batched observations
+        batch = BatchedSyntheticObservations((b_observations, ub_observations))
+        @test batch isa BatchedSyntheticObservations
+        @test batch[1] isa SyntheticObservations
+        @test length(batch.observations) == 2
+        @test batch.weights == (1, 1)
 
         # transformations and normalizations
         field_names = (:u, :v, :b)
