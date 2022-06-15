@@ -52,10 +52,3 @@ Private = false
 Modules = [ParameterEstimocean.EnsembleKalmanInversions]
 Private = false
 ```
-
-## PseudoSteppingSchemes
-
-```@autodocs
-Modules = [ParameterEstimocean.PseudoSteppingSchemes]
-Public = false
-```
