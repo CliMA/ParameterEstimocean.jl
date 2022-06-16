@@ -2,7 +2,7 @@ using ..Parameters: transform_to_unconstrained, build_parameters_named_tuple
 
 using Oceananigans.Utils: prettysummary
 
-struct IterationSummary{U, G, P, M, C, V, E, O}
+struct IterationSummary{U, P, M, C, V, E, O}
     parameters_unconstrained :: U
     parameters :: P     # constrained
     ensemble_mean :: M  # constrained
