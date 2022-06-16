@@ -13,7 +13,7 @@ using ParameterEstimocean.Transformations: ZScore, normalize!, inverse_normalize
 
 import ..EnsembleKalmanInversions: adaptive_step_parameters, eki_objective
 
-export ConstantPseudoTimeStep, Default, GPLineSearch, ConstantConvergence, Kovachki2018, Kovachki2018InitialConvergenceRatio, Iglesias2021, Chada2021
+export ConstantPseudoTimeStep, Default, ConstantConvergence, Kovachki2018, Kovachki2018InitialConvergenceRatio, Iglesias2021, Chada2021
 
 # Default pseudo_stepping::Nothing --- it's not adaptive
 eki_update(::Nothing, Xₙ, Gₙ, eki, Δtₙ) = eki_update(ConstantPseudoTimeStep(Δtₙ), Xₙ, Gₙ, eki)
@@ -132,13 +132,6 @@ struct Default{C} <: AbstractSteppingScheme
 end
 
 Default(; cov_threshold=0.01) = Default(cov_threshold)
-
-struct GPLineSearch{L, I} <: AbstractSteppingScheme
-    learning_rate :: L
-    initial_step_size :: I
-end
-
-GPLineSearch(; learning_rate=1e-4, initial_step_size=1e-4) = GPLineSearch(learning_rate, initial_step_size)
 
 struct Chada2021{I, B} <: AbstractSteppingScheme
     initial_step_size :: I
@@ -440,96 +433,6 @@ function trained_gp_predict_function(X, y; standardize_X=true, zscore_limit=noth
 end
 
 ensemble_array(eki, iter) = eki.iteration_summaries[iter].parameters_unconstrained
-
-"""
-    eki_update(pseudo_scheme::GPLineSearch, Xₙ, Gₙ, eki)
-
-Implements an EKI update with an adaptive time step estimated by (1) generating a differentiable local approximation of
-the EKI objective using a Gaussian Process trained on all EKI samples generated thus far, with a Squared Exponential kernel 
-optimized using BFGS, (2) applying backtracking line search from each particle in Xₙ to determine a step size 
-that satisfies the Armijo rule, (3) taking the average estimated step size across all particles.
-"""
-function eki_update(pseudo_scheme::GPLineSearch, Xₙ, Gₙ, eki)
-    
-    N_param, N_ensemble = size(Xₙ)
-    @assert N_ensemble > N_param "The number of parameters exceeds the ensemble size and so the ensemble covariance matrix
-                                  will be singular. Please increase the ensemble size to at least $N_param or choose an 
-                                  AbstractSteppingScheme that does not rely on inverting the ensemble convariance matrix."
-
-    # ensemble covariance
-    Cᶿᶿ = cov(Xₙ, dims = 2)
-
-    n = eki.iteration
-
-    if n == 0
-        Δtₙ = pseudo_scheme.initial_step_size
-       return iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ), Δtₙ
-    end
-
-    Xₙ = ensemble_array(eki, n)
-    Xₙ₋₁ = ensemble_array(eki, n-1)
-
-    # approximate time derivatives of the particles
-    # looking backward. size N_param x N_ensemble
-    Ẋ_backward = Xₙ - Xₙ₋₁
-
-    # In the continuous-time limit assuming locally linear G,
-    # the EKI dynamic for each individual particle θ
-    # becomes a preconditioned gradient descent
-    # θ̇ = - Cᶿᶿ ∇Φ(θ), where Φ is the EKI objective
-    approx_∇Φ = - Cᶿᶿ \ Ẋ_backward
-
-    Xₙ₊₁_test = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ=1.0)
-
-    Ẋ_forward = Xₙ₊₁_test - Xₙ
-
-    ls = BackTracking(c_1 = pseudo_scheme.learning_rate)
-
-    # X is all samples generated thus far
-    X = hcat([ensemble_array(eki, iter) for iter in 0:n]...) 
-    y = vcat([sum.(eki.iteration_summaries[iter].objective_values) for iter in 0:n]...)
-
-    not_nan_indices = findall(.!isnan.(y))
-    X = X[:, not_nan_indices]
-    y = y[not_nan_indices]
-
-    predict = trained_gp_predict_function(X, y; standardize_X=true, zscore_limit=3)
-
-    αs = []
-    αinitial = 1.0
-
-    for j = 1:N_ensemble
-
-        xʲ = Xₙ[:, j:j]
-
-        # search direction looking forward
-        # Gʲ = G[:, j]
-        # s .= - (1/N_ensemble) .* sum( [dot(G[:, k] - g̅, Γy⁻¹ * (Gʲ - y)) .* Xₙ[:, k] for k = 1:N_ensemble] )
-        s = Ẋ_forward[:, j]
-        
-        ϕ(α) = predict(xʲ .+ α .* s)[1]
-
-        # gradient w.r.t. linesearch step size parameter α
-        # (equivalent to directional derivative in the search direction, s)
-        dϕ_0 = dot(s, approx_∇Φ[:, j])
-
-        ϕ_0 = sum(eki.iteration_summaries[end].objective_values[j])
-        
-        # For general linesearch, arguments are (ϕ, dϕ, ϕdϕ, α0, ϕ0,dϕ0)
-        α, _ = ls(ϕ, αinitial, ϕ_0, dϕ_0)
-
-        isfinite(α) && push!(αs, α)
-    end
-
-    @show αs
-    Δtₙ = mean(αs)
-
-    Xₙ₊₁ = Xₙ + Δtₙ * Ẋ_forward
-    
-    @info "Particles stepped adaptively with time step $Δtₙ"
-
-    return Xₙ₊₁, Δtₙ
-end
 
 """
     eki_update(pseudo_scheme::ConstantConvergence, Xₙ, Gₙ, eki)
