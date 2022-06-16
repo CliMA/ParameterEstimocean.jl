@@ -57,5 +57,5 @@ Private = false
 
 ```@autodocs
 Modules = [ParameterEstimocean.PseudoSteppingSchemes]
-Public = false
+Private = false
 ```
