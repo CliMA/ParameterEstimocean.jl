@@ -243,25 +243,20 @@ end
 """
     iterate!(eki::EnsembleKalmanInversion;
              iterations = 1,
-             pseudo_Δt = eki.pseudo_Δt,
-             pseudo_stepping = eki.pseudo_stepping,
-             show_progress = true)
+             show_progress = true,
+             kwargs...)
 
-Iterate the ensemble Kalman inversion problem `eki` forward by `iterations`.
+Convenience function for running `pseudo_step!` multiple times with the same argument.
+Iterates the ensemble Kalman inversion dynamic forward by `iterations` given current state `eki`.
 
 Keyword arguments
 =================
 
 - `iterations` (`Int`): Number of iterations to run. (Default: 1)
 
-- `pseudo_Δt` (`Float64`): Pseudo time-step. When `convegence_rate` is specified,
-                           this is an initial guess for finding an adaptive time-step.
-                           (Default: `eki.pseudo_Δt`)
-
-- `pseudo_stepping` (`Float64`): Ensemble convergence rate for adaptive time-stepping.
-                                 (Default: `eki.pseudo_stepping`)
-
 - `show_progress` (`Boolean`): Whether to show a progress bar. (Default: `true`)
+
+- `kwargs` (`NamedTuple`): Keyword arguments to be passed to `pseudo_step!` at each iteration. (Defaults: see `pseudo_step!`)
 
 Return
 ======
@@ -270,50 +265,82 @@ Return
 """
 function iterate!(eki::EnsembleKalmanInversion;
                   iterations = 1,
-                  pseudo_Δt = eki.pseudo_Δt,
-                  pseudo_stepping = eki.pseudo_stepping,
                   show_progress = true,
-                  covariance_inflation = 0.0,
-                  momentum_parameter = 0.0)
+                  kwargs...)
 
     iterator = show_progress ? ProgressBar(1:iterations) : 1:iterations
 
     for _ in iterator
-        # When stepping adaptively, `Δt` is an initial guess for the
-        # actual adaptive step that gets taken.
-        eki.unconstrained_parameters, adaptive_Δt = step_parameters(eki, pseudo_stepping;
-                                                                    Δt=pseudo_Δt,
-                                                                    covariance_inflation,
-                                                                    momentum_parameter)
 
-        last_summary = eki.iteration_summaries[end]
-        eki.iteration_summaries[end] = IterationSummary(last_summary.parameters_unconstrained,
-                                                        last_summary.forward_map_output,
-                                                        last_summary.parameters,
-                                                        last_summary.ensemble_mean,
-                                                        last_summary.ensemble_cov,
-                                                        last_summary.ensemble_var,
-                                                        last_summary.mean_square_errors,
-                                                        last_summary.objective_values,
-                                                        last_summary.iteration,
-                                                        last_summary.pseudotime,
-                                                        adaptive_Δt)
-
-        # Update the pseudoclock
-        eki.iteration += 1
-        eki.pseudotime += adaptive_Δt
-        eki.pseudo_Δt = adaptive_Δt
-
-        # Forward map
-        eki.forward_map_output = resampling_forward_map!(eki)
-        summary = IterationSummary(eki, eki.unconstrained_parameters, eki.forward_map_output)
-        push!(eki.iteration_summaries, summary)
+        pseudo_step!(eki; kwargs...)
     end
 
     # Return ensemble mean (best guess for optimal parameters)
     best_parameters = eki.iteration_summaries[end].ensemble_mean
 
     return best_parameters
+end
+
+"""
+    pseudo_step!(eki::EnsembleKalmanInversion;
+                pseudo_Δt = eki.pseudo_Δt,
+                pseudo_stepping = eki.pseudo_stepping)
+
+Iterate the ensemble Kalman inversion dynamic forward by one iteration given current state `eki`.
+
+Keyword arguments
+=================
+
+- `pseudo_Δt` (`Float64`): Pseudo time-step. When `convegence_rate` is specified,
+                           this is an initial guess for finding an adaptive time-step.
+                           (Default: `eki.pseudo_Δt`)
+
+- `pseudo_stepping` (`Float64`): Ensemble convergence rate for adaptive time-stepping.
+                                 (Default: `eki.pseudo_stepping`)
+
+Return
+======
+
+- `ensemble_mean`: the ensemble mean following the step.
+"""
+function pseudo_step!(eki::EnsembleKalmanInversion; 
+                          pseudo_Δt = eki.pseudo_Δt,
+                          pseudo_stepping = eki.pseudo_stepping,
+                          covariance_inflation = 0.0,
+                          momentum_parameter = 0.0)
+
+    # When stepping adaptively, `Δt` is an initial guess for the
+    # actual adaptive step that gets taken.
+    eki.unconstrained_parameters, adaptive_Δt = step_parameters(eki, pseudo_stepping;
+                                                                Δt=pseudo_Δt,
+                                                                covariance_inflation,
+                                                                momentum_parameter)
+
+    last_summary = eki.iteration_summaries[end]
+    eki.iteration_summaries[end] = IterationSummary(last_summary.parameters_unconstrained,
+                                                    last_summary.forward_map_output,
+                                                    last_summary.parameters,
+                                                    last_summary.ensemble_mean,
+                                                    last_summary.ensemble_cov,
+                                                    last_summary.ensemble_var,
+                                                    last_summary.mean_square_errors,
+                                                    last_summary.objective_values,
+                                                    last_summary.iteration,
+                                                    last_summary.pseudotime,
+                                                    adaptive_Δt)
+
+    # Update the pseudoclock
+    eki.iteration += 1
+    eki.pseudotime += adaptive_Δt
+    eki.pseudo_Δt = adaptive_Δt
+
+    # Forward map
+    eki.forward_map_output = resampling_forward_map!(eki)
+    summary = IterationSummary(eki, eki.unconstrained_parameters, eki.forward_map_output)
+    push!(eki.iteration_summaries, summary)
+
+    ensemble_mean = eki.iteration_summaries[end].ensemble_mean
+    return ensemble_mean
 end
 
 #####
