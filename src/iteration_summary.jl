@@ -4,7 +4,6 @@ using Oceananigans.Utils: prettysummary
 
 struct IterationSummary{U, G, P, M, C, V, E, O}
     parameters_unconstrained :: U
-    forward_map_output :: G
     parameters :: P     # constrained
     ensemble_mean :: M  # constrained
     ensemble_cov :: C   # constrained
@@ -97,7 +96,6 @@ function IterationSummary(eki, X, forward_map_output=nothing)
     objective_values = [eki_objective(eki, X[:, j], G[:, j]) for j in 1:size(G, 2)]
 
     return IterationSummary(X,
-                            G,
                             constrained_parameters,
                             constrained_ensemble_mean,
                             constrained_ensemble_covariance,
