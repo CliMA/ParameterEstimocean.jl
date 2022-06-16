@@ -9,7 +9,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 using Oceananigans: fields
 
 using ParameterEstimocean
-using ParameterEstimocean.EnsembleKalmanInversions: iterate!
+using ParameterEstimocean.EnsembleKalmanInversions: iterate!, pseudo_step!
 using ParameterEstimocean.EnsembleKalmanInversions: FullEnsembleDistribution, Resampler
 using ParameterEstimocean.EnsembleKalmanInversions: resample!
 using ParameterEstimocean.InverseProblems: inverting_forward_map

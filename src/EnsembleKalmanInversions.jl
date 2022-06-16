@@ -2,6 +2,7 @@ module EnsembleKalmanInversions
 
 export
     iterate!,
+    pseudo_step!,
     EnsembleKalmanInversion,
     Resampler,
     FullEnsembleDistribution,
@@ -318,7 +319,6 @@ function pseudo_step!(eki::EnsembleKalmanInversion;
 
     last_summary = eki.iteration_summaries[end]
     eki.iteration_summaries[end] = IterationSummary(last_summary.parameters_unconstrained,
-                                                    last_summary.forward_map_output,
                                                     last_summary.parameters,
                                                     last_summary.ensemble_mean,
                                                     last_summary.ensemble_cov,
