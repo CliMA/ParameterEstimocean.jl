@@ -313,6 +313,7 @@ function pseudo_step!(eki::EnsembleKalmanInversion;
 
     if isnothing(pseudo_Δt)
         pseudo_Δt = eki.pseudo_Δt
+    else
         pseudo_stepping = nothing
     end
 
