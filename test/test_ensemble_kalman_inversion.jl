@@ -91,11 +91,11 @@ architecture = CPU()
             # Test that parameters change
             @test convective_κzs[1] != convective_κzs[2]
 
-            pseudo_step!(eki; pseudo_Δt=nothing)
-            @test eki.pseudo_Δt == 1.0
-
             pseudo_step!(eki; pseudo_Δt=0.01)
             @test eki.pseudo_Δt == 0.01
+
+            pseudo_step!(eki; pseudo_Δt=nothing)
+            @test eki.pseudo_Δt != 0.01
 
             @test length(eki.iteration_summaries) == iterations + 3
             @test eki.iteration == iterations + 2
