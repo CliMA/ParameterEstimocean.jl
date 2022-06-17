@@ -15,9 +15,10 @@ import ..EnsembleKalmanInversions: adaptive_step_parameters, eki_objective
 
 export ConstantPseudoTimeStep, Default, ConstantConvergence, Kovachki2018, Kovachki2018InitialConvergenceRatio, Iglesias2021, Chada2021
 
-# Default pseudo_stepping::Nothing --- it's not adaptive
+# If pseudo_stepping::Nothing, it's not adaptive; Δtₙ₊₁ = Δtₙ.
 eki_update(::Nothing, Xₙ, Gₙ, eki, Δtₙ) = eki_update(ConstantPseudoTimeStep(Δtₙ), Xₙ, Gₙ, eki)
 
+# Δtₙ₊₁ selected according to `pseudo_stepping`
 eki_update(pseudo_scheme, Xₙ, Gₙ, eki, Δtₙ) = eki_update(pseudo_scheme, Xₙ, Gₙ, eki)
 
 function obs_noise_mean(eki)
