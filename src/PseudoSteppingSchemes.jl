@@ -13,7 +13,7 @@ using ParameterEstimocean.Transformations: ZScore, normalize!, inverse_normalize
 
 import ..EnsembleKalmanInversions: adaptive_step_parameters, eki_objective
 
-export ConstantPseudoTimeStep, Default, ConstantConvergence, Kovachki2018, Kovachki2018InitialConvergenceRatio, Iglesias2021, Chada2021
+export ConstantPseudoTimeStep, ThresholdedConvergenceRatio, ConstantConvergence, Kovachki2018, Kovachki2018InitialConvergenceRatio, Iglesias2021, Chada2021
 
 # If pseudo_stepping::Nothing, it's not adaptive; Δtₙ₊₁ = Δtₙ.
 eki_update(::Nothing, Xₙ, Gₙ, eki, Δtₙ) = eki_update(ConstantPseudoTimeStep(Δtₙ), Xₙ, Gₙ, eki)
@@ -128,11 +128,11 @@ end
 
 ConstantPseudoTimeStep(; step_size=1.0) = ConstantPseudoTimeStep(step_size)
 
-struct Default{C} <: AbstractSteppingScheme 
+struct ThresholdedConvergenceRatio{C} <: AbstractSteppingScheme 
     cov_threshold :: C
 end
 
-Default(; cov_threshold=0.01) = Default(cov_threshold)
+ThresholdedConvergenceRatio(; cov_threshold=0.01) = ThresholdedConvergenceRatio(cov_threshold)
 
 struct Chada2021{I, B} <: AbstractSteppingScheme
     initial_step_size :: I
@@ -281,7 +281,7 @@ function eki_update(pseudo_scheme::Kovachki2018InitialConvergenceRatio, Xₙ, G�
 end
 
 """
-    eki_update(pseudo_scheme::Default, Xₙ, Gₙ, eki; initial_guess=nothing)
+    eki_update(pseudo_scheme::ThresholdedConvergenceRatio, Xₙ, Gₙ, eki; initial_guess=nothing)
 
 Implements an EKI update with an adaptive time step estimated as suggested in Chada, Neil and Tong, Xin 
 "Convergence Acceleration of Ensemble Kalman Inversion in Nonlinear Settings," Math. Comp. 91 (2022).
@@ -299,7 +299,7 @@ function eki_update(pseudo_scheme::Chada2021, Xₙ, Gₙ, eki)
 end
 
 """
-    eki_update(pseudo_scheme::Default, Xₙ, Gₙ, eki; initial_guess=nothing)
+    eki_update(pseudo_scheme::ThresholdedConvergenceRatio, Xₙ, Gₙ, eki; initial_guess=nothing)
 
 Implements an EKI update with an adaptive time step estimated by finding the first step size
 in the sequence Δtₖ = Δtₙ₋₁(1/2)^k with k = {0,1,2,...} that satisfies 
@@ -309,7 +309,7 @@ is a monotonically increasing function of k. If an `initial_guess` is provided,
 is not provided, the time step can only decrease or stay the same at future iterations
 with this time stepping scheme.
 """
-function eki_update(pseudo_scheme::Default, Xₙ, Gₙ, eki; initial_guess=nothing, report=true)
+function eki_update(pseudo_scheme::ThresholdedConvergenceRatio, Xₙ, Gₙ, eki; initial_guess=nothing, report=true)
 
     N_param, N_ensemble = size(Xₙ)
     @assert N_ensemble > N_param "The number of parameters exceeds the ensemble size and so the ensemble covariance matrix
@@ -454,7 +454,7 @@ function eki_update(pseudo_scheme::ConstantConvergence, Xₙ, Gₙ, eki)
     # Start with Δtₙ = 1.0; `Δtₙ_first_guess` is the first time step in the sequence Δtₖ = (1/2)^k where k={0,1,2...}
     # such that |cov(Xₙ₊₁)|/|cov(Xₙ)| > pseudo_scheme.convergence_ratio (assuming the determinant ratio
     # is monotonically increasing as a function of k).
-    _, Δtₙ_first_guess = eki_update(Default(cov_threshold=pseudo_scheme.convergence_ratio), Xₙ, Gₙ, eki; initial_guess=1.0, report=false)
+    _, Δtₙ_first_guess = eki_update(ThresholdedConvergenceRatio(cov_threshold=pseudo_scheme.convergence_ratio), Xₙ, Gₙ, eki; initial_guess=1.0, report=false)
 
     # `Δtₙ_first_guess` provides a reasonable initial guess for the time step. If we were to 
     # start the fixed point iteration algorithm below with an initial guess of 1.0, the initial volume 
