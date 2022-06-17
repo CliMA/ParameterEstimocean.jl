@@ -203,7 +203,7 @@ function eki_update(pseudo_scheme::Kovachki2018, Xₙ, Gₙ, eki)
     return Xₙ₊₁, Δtₙ
 end
 
-function eki_update(pseudo_scheme::Kovachki2018InitialConvergenceRatio, Xₙ, Gₙ, eki; verbose=false)
+function eki_update(pseudo_scheme::Kovachki2018InitialConvergenceRatio, Xₙ, Gₙ, eki)
 
     if pseudo_scheme.initial_step_size == 0
 
@@ -244,8 +244,6 @@ function eki_update(pseudo_scheme::Kovachki2018InitialConvergenceRatio, Xₙ, G�
             r = r_test
             i = r > target
             iter += 1
-    
-            verbose && @show i, Δt₀, conv_ratio(Xₙ₊₁)
         end
         
         # Fine-grained adjustment
@@ -253,7 +251,6 @@ function eki_update(pseudo_scheme::Kovachki2018InitialConvergenceRatio, Xₙ, G�
         iter = 1
         while !isapprox(r, target, atol=0.03, rtol=0.1) && iter < 10
 
-            verbose && @show r, target, Δt₀
             Δt₀_test = Δt₀ * (r / target)^p
             Xₙ₊₁, Δtₙ = kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀=Δt₀_test, D)
             r_test = conv_ratio(Xₙ₊₁)
@@ -346,7 +343,7 @@ function eki_update(pseudo_scheme::ThresholdedConvergenceRatio, Xₙ, Gₙ, eki;
 end
 
 """
-    trained_gp_predict_function(X, y; standardize_X=true)
+    trained_gp_predict_function(X, y; standardize_X=true, zscore_limit=nothing, kernel=nothing)
 
 Return a trained Gaussian Process given inputs X and outputs y.
 # Arguments
