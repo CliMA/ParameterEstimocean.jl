@@ -2,6 +2,7 @@ module InverseProblems
 
 export
     InverseProblem,
+    BatchedInverseProblem,
     forward_map,
     forward_run!,
     observation_map,
@@ -11,6 +12,7 @@ export
 using OffsetArrays, Statistics, OrderedCollections
 using Suppressor: @suppress
 
+using ..Utils: tupleit
 using ..Transformations: transform_field_time_series
 using ..Parameters: new_closure_ensemble, transform_to_constrained, build_parameters_named_tuple
 
@@ -152,7 +154,7 @@ function forward_run!(ip::InverseProblem, parameters; suppress=false)
     # Set closure parameters
     simulation.model.closure = new_closure_ensemble(closures, θ, architecture(simulation.model.grid))
 
-    initialize_forward_run!(simulation, observations, ip.time_series_collector, ip.initialize_simulation)
+    initialize_forward_run!(simulation, observations, ip.time_series_collector, ip.initialize_simulation, θ)
 
     if suppress
         @suppress run!(simulation)
@@ -220,39 +222,57 @@ observation_map(ip::InverseProblem) = observation_map(ip.output_map, ip.observat
 ##### BatchedInverseProblem
 #####
 
-struct BatchedInverseProblem{I, W}
+struct BatchedInverseProblem{I, P, W}
     inverse_problems :: I
+    free_parameters :: P
     weights :: W
 end
+
+"""
+    BatchedInverseProblem(batched_ip; weights)
+
+Return a collection of `observations` with `weights`, where
+`observations` is a `Vector` or `Tuple` of `SyntheticObservations`.
+`weights` are unity by default.
+"""
+function BatchedInverseProblem(batched_ip; weights=Tuple(1 for o in batched_ip))
+    tupled_batched_ip = tupleit(batched_ip)
+
+    # TODO: relax this assumption
+    free_parameters = tupled_batched_ip[1].free_parameters
+
+    return BatchedInverseProblem(tupled_batched_ip, free_parameters, weights)
+end
+
+# Convenience
+const IP = InverseProblem
+
+BatchedInverseProblem(first_ip::IP, second_ip::IP, other_ips...; kw...) =
+    BatchedInverseProblem(tuple(first_ip, second_ip, other_ips...); kw...)
 
 # TODO:
 # - forward_map
 # - forward_run
 # - utils: Nensemble, Nobservations...
 
-"""
-    BatchedInverseProblem(observations; weights)
-
-Return a collection of `observations` with `weights`, where
-`observations` is a `Vector` or `Tuple` of `SyntheticObservations`.
-`weights` are unity by default.
-"""
-BatchedInverseProblem(batched_ip; weights=Tuple(1 for o in batched_ip)) =
-    BatchedInverseProblem(batched_ip, weights)
-
-Base.first(batch::BatchedInverseProblem) = first(batch.observations)
-Base.lastindex(batch::BatchedInverseProblem) = lastindex(batch.observations)
-Base.getindex(batch::BatchedInverseProblem, i) = getindex(batch.observations, i)
-Base.length(batch::BatchedInverseProblem) = length(batch.observations)
+Base.first(batch::BatchedInverseProblem) = first(batch.inverse_problems)
+Base.lastindex(batch::BatchedInverseProblem) = lastindex(batch.inverse_problems)
+Base.getindex(batch::BatchedInverseProblem, i) = getindex(batch.inverse_problems, i)
+Base.length(batch::BatchedInverseProblem) = length(batch.inverse_problems)
 
 function forward_map(batched_ip::BatchedInverseProblem, parameters; kw...)
-    outputs = []
-    for ip in batched_ip.inverse_problems
-        output = forward_map(ip, parameters; kw...)
-        push!(outputs, output)
+    outputs = Dict()
+
+    @sync begin
+        for (n, ip) in enumerate(batched_ip.inverse_problems)
+            @async begin
+                outputs[n] = forward_map(ip, parameters; kw...)
+            end
+        end
     end
-    
-    return hcat([outputs...])
+
+    vectorized_outputs = [outputs[n] for n = 1:length(batched_ip)]
+    return hcat([vectorized_outputs...])
 end
 
 #####

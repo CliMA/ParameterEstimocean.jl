@@ -1,5 +1,11 @@
 module Utils
 
+tupleit(t) = try
+    Tuple(t)
+catch
+    tuple(t)
+end
+
 field_name_pairs(value, field_names, args...) = NamedTuple(name => value for name in field_names)
 field_name_pairs(t::Union{Tuple, AbstractArray}, field_names, args...) =
     NamedTuple(name => t[i] for (i, name) in enumerate(field_names))

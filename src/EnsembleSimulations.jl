@@ -4,6 +4,7 @@ export ensemble_column_model_simulation
 
 using DataDeps
 
+using ..Utils: tupleit
 using ..Observations: SyntheticObservations, batch, tupleit
 
 using Oceananigans

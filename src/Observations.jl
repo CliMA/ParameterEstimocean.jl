@@ -2,7 +2,7 @@ module Observations
 
 export SyntheticObservations, BatchedSyntheticObservations, observation_times
 
-using ..Utils: prettyvector
+using ..Utils: prettyvector, tupleit
 
 using Oceananigans
 using Oceananigans: fields
@@ -152,20 +152,6 @@ observation_times(observation::SyntheticObservations) = observation.times
 struct BatchedSyntheticObservations{O, W}
     observations :: O
     weights :: W
-
-    function BatchedSyntheticObservations(obs, weights)
-        length(obs) == length(weights) ||
-            throw(ArgumentError("Must have the same number of weights and observations!"))
-
-        # Tuple stuff 
-        tupled_obs = Tuple(o for o in obs)
-        tupled_weights = Tuple(w for w in weights)
-
-        O = typeof(tupled_obs)
-        W = typeof(tupled_weights)
-
-        return new{O, W}(tupled_obs, tupled_weights)
-    end
 end
 
 """
@@ -175,8 +161,21 @@ Return a collection of `observations` with `weights`, where
 `observations` is a `Vector` or `Tuple` of `SyntheticObservations`.
 `weights` are unity by default.
 """
-BatchedSyntheticObservations(batched_obs; weights=Tuple(1 for o in batched_obs)) =
-    BatchedSyntheticObservations(batched_obs, weights)
+function BatchedSyntheticObservations(batched_obs; weights=Tuple(1 for o in batched_obs))
+    length(batched_obs) == length(weights) ||
+        throw(ArgumentError("Must have the same number of weights and observations!"))
+
+    tupled_batched_obs = tupleit(batched_obs)
+    tupled_weights = tupleit(weights)
+
+    return BatchedSyntheticObservations(tupled_batched_obs, tupled_weights)
+end
+
+# Convenience
+const SO = SyntheticObservations
+
+BatchedSyntheticObservations(first_obs::SO, second_obs::SO, other_obs...; kw...) =
+    BatchedSyntheticObservations(tuple(first_obs, second_obs, other_obs...); kw...)
 
 batch(b::BatchedSyntheticObservations) = b
 batch(obs::SyntheticObservations) = BatchedSyntheticObservations([obs])
@@ -221,12 +220,6 @@ end
 #####
 ##### Utilities for building SyntheticObservations
 #####
-
-tupleit(t) = try
-    Tuple(t)
-catch
-    tuple(t)
-end
 
 const not_metadata_names = ("serialized", "timeseries")
 
@@ -424,7 +417,8 @@ nothingfunction(simulation) = nothing
 function initialize_forward_run!(simulation,
                                  observations,
                                  time_series_collector,
-                                 initialize_simulation! = nothingfunction)
+                                 initialize_simulation!,
+                                 parameters)
 
     reset!(simulation)
 
@@ -459,7 +453,7 @@ function initialize_forward_run!(simulation,
 
     set!(simulation.model, observations, 1)
 
-    initialize_simulation!(simulation)
+    initialize_simulation!(simulation, parameters)
 
     return nothing
 end
