@@ -210,10 +210,15 @@ function normalize!(data, normalization::ZScore)
     return nothing
 end
 
-function inverse_normalize!(data, normalization::ZScore)
-    μ, σ = normalization.μ, normalization.σ
+"""
+    denormalize!(data, normalization::ZScore)
 
-    # @show size(data), typeof(σ), size(μ), size((data .* σ) .+ μ)
+Given some `data` that has been normalized as specified by `normalization`,
+return the data to its original scale by performing the inverse of the 
+`normalize!` operation.
+"""
+function denormalize!(data, normalization::ZScore)
+    μ, σ = normalization.μ, normalization.σ
     @. data = (data * σ) + μ
     return nothing
 end

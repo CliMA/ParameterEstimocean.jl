@@ -9,7 +9,7 @@ using Distributions
 using GaussianProcesses
 
 using ..EnsembleKalmanInversions: step_parameters
-using ParameterEstimocean.Transformations: ZScore, normalize!, inverse_normalize!
+using ParameterEstimocean.Transformations: ZScore, normalize!, denormalize!
 
 import ..EnsembleKalmanInversions: adaptive_step_parameters, eki_objective
 
@@ -414,7 +414,7 @@ function trained_gp_predict_function(X, y; standardize_X=true, zscore_limit=noth
         standardize_X && normalize!(X★, zscore_X)
         μ, Γgp = predict_f(gp, X★; full_cov=true)
 
-        inverse_normalize!(μ, zscore_y)
+        denormalize!(μ, zscore_y)
         # inverse standardization has element-wise effect on Γgp
         Γgp .*= zscore_y.σ^2
 
