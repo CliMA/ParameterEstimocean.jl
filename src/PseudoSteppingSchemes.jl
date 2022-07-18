@@ -430,7 +430,7 @@ function trained_gp_predict_function(X, y; standardize_X=true, zscore_limit=noth
     return predict
 end
 
-ensemble_array(eki, iter) = eki.iteration_summaries[iter].parameters_unconstrained
+ensemble_array(eki, iter) = eki.iteration_summaries[iter].unconstrained_parameters
 
 """
     eki_update(pseudo_scheme::ConstantConvergence, Xₙ, Gₙ, eki)

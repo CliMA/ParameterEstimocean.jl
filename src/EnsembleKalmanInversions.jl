@@ -323,7 +323,7 @@ function pseudo_step!(eki::EnsembleKalmanInversion;
                                                                 momentum_parameter)
 
     last_summary = eki.iteration_summaries[end]
-    eki.iteration_summaries[end] = IterationSummary(last_summary.parameters_unconstrained,
+    eki.iteration_summaries[end] = IterationSummary(last_summary.unconstrained_parameters,
                                                     last_summary.parameters,
                                                     last_summary.ensemble_mean,
                                                     last_summary.ensemble_cov,
