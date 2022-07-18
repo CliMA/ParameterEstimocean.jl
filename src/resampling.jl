@@ -27,7 +27,7 @@ end
 
 abstract type EnsembleDistribution end
 
-function unconstrained_parameters(X)
+function ensemble_normal_distribution(X)
     μ = [mean(X, dims=2)...]
     Σ = cov(X, dims=2)
     Σᴴ = Matrix(Hermitian(Σ))
@@ -35,10 +35,10 @@ function unconstrained_parameters(X)
 end
 
 struct FullEnsembleDistribution <: EnsembleDistribution end
-(::FullEnsembleDistribution)(X, G, successes) = unconstrained_parameters(X)
+(::FullEnsembleDistribution)(X, G, successes) = ensemble_normal_distribution(X)
 
 struct SuccessfulEnsembleDistribution <: EnsembleDistribution end
-(::SuccessfulEnsembleDistribution)(X, G, successes) = unconstrained_parameters(X[:, successes])
+(::SuccessfulEnsembleDistribution)(X, G, successes) = ensemble_normal_distribution(X[:, successes])
 
 function failed_particle_str(θ, k, error=nothing)
     first = string(@sprintf(" particle % 3d: ", k), param_str.(values(θ[k]))...)
