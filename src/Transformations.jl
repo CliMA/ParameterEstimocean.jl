@@ -222,7 +222,7 @@ end
 RescaledZScore(scale) = RescaledZScore(scale, nothing)
 
 compute_normalization(r::RescaledZScore, transformation, fts) =
-    RescaledZScore(r.scale, compute_normalization(r.zscore, transformation, fts))
+    RescaledZScore(r.scale, compute_normalization(ZScore(), transformation, fts))
 
 function normalize!(data, normalization::RescaledZScore)
     normalize!(data, normalization.zscore)
