@@ -181,7 +181,7 @@ function ZScore(data)
 
     data = dropdims(data, dims=1)
     μ = mean(data)
-    σ = sqrt(cov(data; corrected=false))
+    σ = std(data; corrected=false)
 
     if σ == 0
         @warn "Your data has zero variance --- just sayin'! I'm setting ZScore σ = 1."
@@ -207,6 +207,19 @@ end
 function normalize!(data, normalization::ZScore)
     μ, σ = normalization.μ, normalization.σ
     @. data = (data - μ) / σ
+    return nothing
+end
+
+"""
+    denormalize!(data, normalization::ZScore)
+
+Given some `data` that has been normalized as specified by `normalization`,
+return the data to its original scale by performing the inverse of the 
+`normalize!` operation.
+"""
+function denormalize!(data, normalization::ZScore)
+    μ, σ = normalization.μ, normalization.σ
+    @. data = (data * σ) + μ
     return nothing
 end
 

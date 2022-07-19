@@ -26,6 +26,7 @@ export
     lognormal,
     ScaledLogitNormal,
     iterate!,
+    pseudo_step!,
     EnsembleKalmanInversion,
     Resampler,
     NormExceedsMedian,

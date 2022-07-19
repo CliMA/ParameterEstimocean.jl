@@ -9,10 +9,11 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 using Oceananigans: fields
 
 using ParameterEstimocean
-using ParameterEstimocean.EnsembleKalmanInversions: iterate!
+using ParameterEstimocean.EnsembleKalmanInversions: iterate!, pseudo_step!
 using ParameterEstimocean.EnsembleKalmanInversions: FullEnsembleDistribution, Resampler
 using ParameterEstimocean.EnsembleKalmanInversions: resample!
 using ParameterEstimocean.InverseProblems: inverting_forward_map
+using ParameterEstimocean.PseudoSteppingSchemes
 
 data_path = "convective_adjustment_test.jld2"
 Nensemble = 3
@@ -70,7 +71,7 @@ architecture = CPU()
 
         batch_str = string("(Nbatch = ", size(eki.inverse_problem.simulation.model.grid, 2), ")")
         @testset "EnsembleKalmanInversions construction and iteration tests $batch_str" begin
-            @info "  Testing EnsembleKalmanInversion construcation and basic iteration $batch_str..."
+            @info "  Testing EnsembleKalmanInversion construction and basic iteration $batch_str..."
 
             iterations = 5
             iterate!(eki; iterations = iterations, show_progress = false)
@@ -90,10 +91,26 @@ architecture = CPU()
             # Test that parameters change
             @test convective_κzs[1] != convective_κzs[2]
 
-            iterate!(eki; iterations = 1, show_progress = false)
+            pseudo_step!(eki; pseudo_Δt=0.01)
+            @test eki.pseudo_Δt == 0.01
 
-            @test length(eki.iteration_summaries) == iterations + 2
-            @test eki.iteration == iterations + 1
+            pseudo_step!(eki; pseudo_Δt=nothing)
+            @test eki.pseudo_Δt != 0.01
+
+            @test length(eki.iteration_summaries) == iterations + 3
+            @test eki.iteration == iterations + 2
+        end
+
+        #####
+        ##### Test PseudoSteppingSchemes
+        #####
+
+        @testset "PseudoSteppingSchemes tests" begin
+            @info "  Testing pseudo-stepping schemes with default hyperparameters"
+
+            for pseudo_stepping in [ConstantPseudoTimeStep, ThresholdedConvergenceRatio, Chada2021, ConstantConvergence, Kovachki2018, Kovachki2018InitialConvergenceRatio, Iglesias2021]
+                iterate!(eki; iterations = 1, show_progress=false, pseudo_stepping = pseudo_stepping())
+            end
         end
 
         #####
