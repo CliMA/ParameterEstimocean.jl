@@ -52,7 +52,7 @@ struct InverseProblem{F, O, S, T, P, I}
     initialize_simulation :: I
 end
 
-nothingfunction(simulation) = nothing
+nothingfunction(args...) = nothing
 
 const OneDimensionalEnsembleGrid = RectilinearGrid{<:Any, Flat, Flat, Bounded}
 const TwoDimensionalEnsembleGrid = RectilinearGrid{<:Any, Flat, Bounded, Bounded}
@@ -171,7 +171,7 @@ end
 Transform unconstrained parameters `X` into constrained,
 physical-space parameters `θ` and execute `forward_map(ip, θ)`.
 """
-function inverting_forward_map(ip::InverseProblem, X)
+function inverting_forward_map(ip::Union{InverseProblem, BatchedInverseProblem}, X)
     θ = transform_to_constrained(ip.free_parameters.priors, X)
     return forward_map(ip, θ)
 end
@@ -241,6 +241,8 @@ function BatchedInverseProblem(batched_ip; weights=Tuple(1 for o in batched_ip))
     # TODO: relax this assumption
     free_parameters = tupled_batched_ip[1].free_parameters
 
+    # TODO: validate Nensemble for each child InverseProblem
+
     return BatchedInverseProblem(tupled_batched_ip, free_parameters, weights)
 end
 
@@ -260,19 +262,33 @@ Base.lastindex(batch::BatchedInverseProblem) = lastindex(batch.inverse_problems)
 Base.getindex(batch::BatchedInverseProblem, i) = getindex(batch.inverse_problems, i)
 Base.length(batch::BatchedInverseProblem) = length(batch.inverse_problems)
 
+Nensemble(batched_ip::BatchedInverseProblem) = Nensemble(first(batched_ip.inverse_problems))
+
 function forward_map(batched_ip::BatchedInverseProblem, parameters; kw...)
     outputs = Dict()
 
     @sync begin
         for (n, ip) in enumerate(batched_ip.inverse_problems)
             @async begin
-                outputs[n] = forward_map(ip, parameters; kw...)
+                outputs[n] = batched_ip.weights[n] * forward_map(ip, parameters; kw...)
             end
         end
     end
 
     vectorized_outputs = [outputs[n] for n = 1:length(batched_ip)]
-    return hcat([vectorized_outputs...])
+
+    return vcat(vectorized_outputs...)
+end
+
+function observation_map(batched_ip::BatchedInverseProblem)
+    maps = []
+
+    for (n, ip) in enumerate(batched_ip.inverse_problems)
+        w = batched_ip.weights[n]
+        push!(maps, w * observation_map(ip))
+    end
+
+    return vcat(maps...)
 end
 
 #####
@@ -290,17 +306,17 @@ struct ConcatenatedOutputMap end
 output_map_str(::ConcatenatedOutputMap) = "ConcatenatedOutputMap"
 
 """
-    transform_time_series(::ConcatenatedOutputMap, observation::SyntheticObservations)
+    transform_dataset(::ConcatenatedOutputMap, observation::SyntheticObservations)
 
-Transforms, normalizes, and concatenates data for field time series in `observation`.
+Transforms, normalizes, and concatenates data for the set of FieldTimeSeries in `observations`.
 """
-function transform_time_series(::ConcatenatedOutputMap, observation::SyntheticObservations)
+function transform_dataset(::ConcatenatedOutputMap, observations::SyntheticObservations)
     data_vector = []
 
     for field_name in forward_map_names(observation)
         # Transform time series data observation-specified `transformation`
-        field_time_series = observation.field_time_serieses[field_name]
-        transformation = observation.transformation[field_name]
+        field_time_series = observations.field_time_serieses[field_name]
+        transformation = observations.transformation[field_name]
         transformed_datum = transform_field_time_series(transformation, field_time_series)
 
         # Build out array
@@ -314,20 +330,20 @@ function transform_time_series(::ConcatenatedOutputMap, observation::SyntheticOb
 end
 
 """
-    transform_time_series(map, batch::BatchedSyntheticObservations)
+    transform_dataset(map, batch::BatchedSyntheticObservations)
 
-Concatenate the output of `transform_time_series` of each observation
+Concatenate the output of `transform_dataset` of each observation
 in `batched_observations`.
 """
-function transform_time_series(map, batch::BatchedSyntheticObservations)
+function transform_dataset(map, batch::BatchedSyntheticObservations)
     w = batch.weights
     obs = batch.observations
     N = length(obs)
-    weighted_maps = Tuple(w[i] * transform_time_series(map, obs[i]) for i = 1:N)
+    weighted_maps = Tuple(w[i] * transform_dataset(map, obs[i]) for i = 1:N)
     return vcat(weighted_maps...)
 end
 
-observation_map(map::ConcatenatedOutputMap, observations) = transform_time_series(map, observations)
+observation_map(map::ConcatenatedOutputMap, observations) = transform_dataset(map, observations)
 
 const BatchedOrSingletonObservations = Union{SyntheticObservations,
                                              BatchedSyntheticObservations}
@@ -339,7 +355,7 @@ function transform_forward_map_output(map::ConcatenatedOutputMap,
     # transposed_output isa Vector{SyntheticObservations} where SyntheticObservations is Nx by Nz by Nt
     transposed_forward_map_output = transpose_model_output(time_series_collector, observations)
 
-    return transform_time_series(map, transposed_forward_map_output)
+    return transform_dataset(map, transposed_forward_map_output)
 end
 
 # Dispatch transpose_model_output based on collector grid
@@ -463,7 +479,7 @@ function observation_map_variance_across_time(map::ConcatenatedOutputMap, observ
 
     Nfields = length(forward_map_names(observation))
 
-    y = transform_time_series(map, observation)
+    y = transform_dataset(map, observation)
     @assert length(y) == Nx * Ny * Nz * Nt * Nfields # otherwise we're headed for trouble...
 
     y = transpose(y) # (Nx, Ny*Nz*Nt*Nfields)
