@@ -106,6 +106,81 @@ function Base.show(io::IO, ip::InverseProblem)
 end
 
 #####
+##### BatchedInverseProblem
+#####
+
+struct BatchedInverseProblem{I, P, W}
+    inverse_problems :: I
+    free_parameters :: P
+    weights :: W
+end
+
+"""
+    BatchedInverseProblem(batched_ip; weights)
+
+Return a collection of `observations` with `weights`, where
+`observations` is a `Vector` or `Tuple` of `SyntheticObservations`.
+`weights` are unity by default.
+"""
+function BatchedInverseProblem(batched_ip; weights=Tuple(1 for o in batched_ip))
+    tupled_batched_ip = tupleit(batched_ip)
+
+    # TODO: relax this assumption
+    free_parameters = tupled_batched_ip[1].free_parameters
+
+    # TODO: validate Nensemble for each child InverseProblem
+
+    return BatchedInverseProblem(tupled_batched_ip, free_parameters, weights)
+end
+
+# Convenience
+const IP = InverseProblem
+
+BatchedInverseProblem(first_ip::IP, second_ip::IP, other_ips...; kw...) =
+    BatchedInverseProblem(tuple(first_ip, second_ip, other_ips...); kw...)
+
+# TODO:
+# - forward_map
+# - forward_run
+# - utils: Nensemble, Nobservations...
+
+Base.first(batch::BatchedInverseProblem) = first(batch.inverse_problems)
+Base.lastindex(batch::BatchedInverseProblem) = lastindex(batch.inverse_problems)
+Base.getindex(batch::BatchedInverseProblem, i) = getindex(batch.inverse_problems, i)
+Base.length(batch::BatchedInverseProblem) = length(batch.inverse_problems)
+
+Nensemble(batched_ip::BatchedInverseProblem) = Nensemble(first(batched_ip.inverse_problems))
+
+function forward_map(batched_ip::BatchedInverseProblem, parameters; kw...)
+    outputs = Dict()
+
+    @sync begin
+        for (n, ip) in enumerate(batched_ip.inverse_problems)
+            @async begin
+                outputs[n] = batched_ip.weights[n] * forward_map(ip, parameters; kw...)
+            end
+        end
+    end
+
+    vectorized_outputs = [outputs[n] for n = 1:length(batched_ip)]
+
+    return vcat(vectorized_outputs...)
+end
+
+function observation_map(batched_ip::BatchedInverseProblem)
+    maps = []
+
+    for (n, ip) in enumerate(batched_ip.inverse_problems)
+        w = batched_ip.weights[n]
+        push!(maps, w * observation_map(ip))
+    end
+
+    return vcat(maps...)
+end
+
+
+
+#####
 ##### Core functionality: forward map evaluation
 #####
 
@@ -219,79 +294,6 @@ Transform and return `ip.observations` appropriate for `ip.output_map`.
 observation_map(ip::InverseProblem) = observation_map(ip.output_map, ip.observations)
 
 #####
-##### BatchedInverseProblem
-#####
-
-struct BatchedInverseProblem{I, P, W}
-    inverse_problems :: I
-    free_parameters :: P
-    weights :: W
-end
-
-"""
-    BatchedInverseProblem(batched_ip; weights)
-
-Return a collection of `observations` with `weights`, where
-`observations` is a `Vector` or `Tuple` of `SyntheticObservations`.
-`weights` are unity by default.
-"""
-function BatchedInverseProblem(batched_ip; weights=Tuple(1 for o in batched_ip))
-    tupled_batched_ip = tupleit(batched_ip)
-
-    # TODO: relax this assumption
-    free_parameters = tupled_batched_ip[1].free_parameters
-
-    # TODO: validate Nensemble for each child InverseProblem
-
-    return BatchedInverseProblem(tupled_batched_ip, free_parameters, weights)
-end
-
-# Convenience
-const IP = InverseProblem
-
-BatchedInverseProblem(first_ip::IP, second_ip::IP, other_ips...; kw...) =
-    BatchedInverseProblem(tuple(first_ip, second_ip, other_ips...); kw...)
-
-# TODO:
-# - forward_map
-# - forward_run
-# - utils: Nensemble, Nobservations...
-
-Base.first(batch::BatchedInverseProblem) = first(batch.inverse_problems)
-Base.lastindex(batch::BatchedInverseProblem) = lastindex(batch.inverse_problems)
-Base.getindex(batch::BatchedInverseProblem, i) = getindex(batch.inverse_problems, i)
-Base.length(batch::BatchedInverseProblem) = length(batch.inverse_problems)
-
-Nensemble(batched_ip::BatchedInverseProblem) = Nensemble(first(batched_ip.inverse_problems))
-
-function forward_map(batched_ip::BatchedInverseProblem, parameters; kw...)
-    outputs = Dict()
-
-    @sync begin
-        for (n, ip) in enumerate(batched_ip.inverse_problems)
-            @async begin
-                outputs[n] = batched_ip.weights[n] * forward_map(ip, parameters; kw...)
-            end
-        end
-    end
-
-    vectorized_outputs = [outputs[n] for n = 1:length(batched_ip)]
-
-    return vcat(vectorized_outputs...)
-end
-
-function observation_map(batched_ip::BatchedInverseProblem)
-    maps = []
-
-    for (n, ip) in enumerate(batched_ip.inverse_problems)
-        w = batched_ip.weights[n]
-        push!(maps, w * observation_map(ip))
-    end
-
-    return vcat(maps...)
-end
-
-#####
 ##### ConcatenatedOutputMap
 #####
 
@@ -313,7 +315,7 @@ Transforms, normalizes, and concatenates data for the set of FieldTimeSeries in 
 function transform_dataset(::ConcatenatedOutputMap, observations::SyntheticObservations)
     data_vector = []
 
-    for field_name in forward_map_names(observation)
+    for field_name in forward_map_names(observations)
         # Transform time series data observation-specified `transformation`
         field_time_series = observations.field_time_serieses[field_name]
         transformation = observations.transformation[field_name]
