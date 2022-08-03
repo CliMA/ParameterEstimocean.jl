@@ -2,7 +2,8 @@ using ..Parameters: transform_to_unconstrained, build_parameters_named_tuple
 
 using Oceananigans.Utils: prettysummary
 
-struct IterationSummary{P, M, C, V, E, O}
+struct IterationSummary{U, P, M, C, V, E, O}
+    unconstrained_parameters :: U
     parameters :: P     # constrained
     ensemble_mean :: M  # constrained
     ensemble_cov :: C   # constrained
@@ -34,25 +35,31 @@ inv(sqrt(Γ))`.
 When keyword argument `constrained` is provided with `true` then input `θ`
 is assumed to represent constrained parameters.
 """
-function eki_objective(eki, θ::AbstractVector, G::AbstractVector; constrained = false)
+function eki_objective(eki, θ::AbstractVector, G::AbstractVector; constrained = false, augmented = false)
     y = eki.mapped_observations
     Γy = eki.noise_covariance
+    inv_sqrt_Γy = eki.precomputed_arrays[:inv_sqrt_Γy]
+    inv_sqrt_Γθ = eki.precomputed_arrays[:inv_sqrt_Γθ]
+    μθ = eki.precomputed_arrays[:μθ]
 
-    fp = eki.inverse_problem.free_parameters
-    priors = fp.priors
-    unconstrained_priors = [unconstrained_prior(priors[name]) for name in fp.names]
-    μθ = getproperty.(unconstrained_priors, :μ)
-    Γθ = diagm( getproperty.(unconstrained_priors, :σ).^2 )
-
+    priors = eki.inverse_problem.free_parameters.priors
     if constrained
         θ = [transform_to_unconstrained(priors[name], θ[i])
                 for (i, name) in enumerate(keys(priors))]
     end
-    
+
+    if augmented
+        y = eki.precomputed_arrays[:y_augmented]
+        inv_sqrt_Σ = eki.precomputed_arrays[:inv_sqrt_Σ]
+        η_mean_augmented = eki.precomputed_arrays[:η_mean_augmented]
+        Φ₁ = (1/2) * norm(inv_sqrt_Σ * (y - G - η_mean_augmented))^2
+        return (Φ₁, 0)
+    end
+
     # Φ₁ = (1/2)*|| Γy^(-½) * (y - G) ||²
-    Φ₁ = (1/2) * norm(inv(sqrt(Γy)) * (y .- G))^2
+    Φ₁ = (1/2) * norm(inv_sqrt_Γy * (y .- G))^2
     # Φ₂ = (1/2)*|| Γθ^(-½) * (θ - μθ) ||² 
-    Φ₂ = (1/2) * norm(inv(sqrt(Γθ)) * (θ .- μθ))^2
+    Φ₂ = eki.tikhonov ? (1/2) * norm(inv_sqrt_Γθ * (θ .- μθ))^2 : 0
     return (Φ₁, Φ₂)
 end
 
@@ -88,7 +95,8 @@ function IterationSummary(eki, X, forward_map_output=nothing)
     # Vector of (Φ₁, Φ₂) pairs, one for each ensemble member at the current iteration
     objective_values = [eki_objective(eki, X[:, j], G[:, j]) for j in 1:size(G, 2)]
 
-    return IterationSummary(constrained_parameters,
+    return IterationSummary(X,
+                            constrained_parameters,
                             constrained_ensemble_mean,
                             constrained_ensemble_covariance,
                             constrained_ensemble_variance,

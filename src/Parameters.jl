@@ -226,7 +226,7 @@ transform_to_unconstrained(Π::ScaledLogitNormal, Y) =
 
 Transform an "unconstrained", normally-distributed variate `X`
 to "constrained" (physical) space via the map associated with
-the distribution `Π` of `Y`.
+the distribution `Π` of `Y`. 
 """
 transform_to_constrained(Π::Normal, X)    = X * Π.σ + Π.μ
 transform_to_constrained(Π::LogNormal, X) = exp(X * abs(Π.μ))
