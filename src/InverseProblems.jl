@@ -134,7 +134,7 @@ function BatchedInverseProblem(batched_ip; weights=Tuple(1 for o in batched_ip))
     # TODO: relax this assumption
     free_parameters = tupled_batched_ip[1].free_parameters
 
-    # TODO: validate Nensemble for each child InverseProblem
+    # TODO: validate Nensemble sameness for each batch member
 
     return BatchedInverseProblem(tupled_batched_ip, free_parameters, weights)
 end
@@ -144,11 +144,6 @@ const IP = InverseProblem
 
 BatchedInverseProblem(first_ip::IP, second_ip::IP, other_ips...; kw...) =
     BatchedInverseProblem(tuple(first_ip, second_ip, other_ips...); kw...)
-
-# TODO:
-# - forward_map
-# - forward_run
-# - utils: Nensemble, Nobservations...
 
 Base.first(batch::BatchedInverseProblem) = first(batch.batch)
 Base.lastindex(batch::BatchedInverseProblem) = lastindex(batch.batch)
@@ -194,8 +189,6 @@ function observation_map(batched_ip::BatchedInverseProblem)
 
     return vcat(maps...)
 end
-
-
 
 #####
 ##### Core functionality: forward map evaluation
