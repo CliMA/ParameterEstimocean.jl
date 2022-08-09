@@ -23,7 +23,7 @@ using EnsembleKalmanProcesses:
     EnsembleKalmanProcess
 
 using ..Parameters: unconstrained_prior, transform_to_constrained, inverse_covariance_transform
-using ..InverseProblems: Nensemble, observation_map, forward_map
+using ..InverseProblems: Nensemble, observation_map, forward_map, BatchedInverseProblem
 using ..InverseProblems: inverting_forward_map
 
 using Oceananigans.Utils: prettytime
@@ -44,18 +44,32 @@ mutable struct EnsembleKalmanInversion{E, I, M, O, S, R, X, G, C, F}
     mark_failed_particles :: F
 end
 
-Base.show(io::IO, eki::EnsembleKalmanInversion) =
-    print(io, "EnsembleKalmanInversion", '\n',
-              "├── inverse_problem: ", summary(eki.inverse_problem), '\n',
-              "├── ensemble_kalman_process: ", summary(eki.ensemble_kalman_process), '\n',
+function Base.show(io::IO, eki::EnsembleKalmanInversion)
+    print(io, "EnsembleKalmanInversion", '\n')
+
+    if eki.inverse_problem isa BatchedInverseProblem
+        print(io, "├── inverse_problem: ", summary(eki.inverse_problem), '\n')
+
+        Nip = length(eki.inverse_problem.batch)
+        for (n, ip) in enumerate(eki.inverse_problem.batch)
+            sim_str = "Simulation on $(summary(ip.simulation.model.grid)) with Δt=$(ip.simulation.Δt)"
+            print(io, "│   ($n) observations: ", summary(ip.observations), '\n',
+                      "│         simulation: ", sim_str, '\n')
+        end
+    else
+        print(io, "├── inverse_problem: ", summary(eki.inverse_problem), '\n')
+    end      
+
+    print(io, "├── ensemble_kalman_process: ", summary(eki.ensemble_kalman_process), '\n',
               "├── mapped_observations: ", summary(eki.mapped_observations), '\n',
               "├── noise_covariance: ", summary(eki.noise_covariance), '\n',
               "├── pseudo_stepping: $(eki.pseudo_stepping)", '\n',
               "├── iteration: $(eki.iteration)", '\n',
-              "├── resampler: $(summary(eki.resampler))",
+              "├── resampler: $(summary(eki.resampler))", '\n',
               "├── unconstrained_parameters: $(summary(eki.unconstrained_parameters))", '\n',
               "├── forward_map_output: $(summary(eki.forward_map_output))", '\n',
               "└── mark_failed_particles: $(summary(eki.mark_failed_particles))")
+end
 
 construct_noise_covariance(noise_covariance::AbstractMatrix, y) = noise_covariance
 

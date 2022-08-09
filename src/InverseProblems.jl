@@ -109,10 +109,16 @@ end
 ##### BatchedInverseProblem
 #####
 
-struct BatchedInverseProblem{I, P, W}
-    inverse_problems :: I
+struct BatchedInverseProblem{B, P, W}
+    batch :: B
     free_parameters :: P
     weights :: W
+end
+
+function Base.summary(bip::BatchedInverseProblem)
+    Nb = length(bip.batch)
+    return string("2 BatchedInverseProblems with weights $(bip.weights)",
+                  " and free parameters ", bip.free_parameters.names)
 end
 
 """
@@ -144,22 +150,33 @@ BatchedInverseProblem(first_ip::IP, second_ip::IP, other_ips...; kw...) =
 # - forward_run
 # - utils: Nensemble, Nobservations...
 
-Base.first(batch::BatchedInverseProblem) = first(batch.inverse_problems)
-Base.lastindex(batch::BatchedInverseProblem) = lastindex(batch.inverse_problems)
-Base.getindex(batch::BatchedInverseProblem, i) = getindex(batch.inverse_problems, i)
-Base.length(batch::BatchedInverseProblem) = length(batch.inverse_problems)
+Base.first(batch::BatchedInverseProblem) = first(batch.batch)
+Base.lastindex(batch::BatchedInverseProblem) = lastindex(batch.batch)
+Base.getindex(batch::BatchedInverseProblem, i) = getindex(batch.batch, i)
+Base.length(batch::BatchedInverseProblem) = length(batch.batch)
 
-Nensemble(batched_ip::BatchedInverseProblem) = Nensemble(first(batched_ip.inverse_problems))
+Nensemble(batched_ip::BatchedInverseProblem) = Nensemble(first(batched_ip.batch))
 
-function forward_map(batched_ip::BatchedInverseProblem, parameters; kw...)
-    outputs = Dict()
-
+function collect_forward_maps_asynchronously!(outputs, batched_ip, parameters; kw...)
     @sync begin
-        for (n, ip) in enumerate(batched_ip.inverse_problems)
+        for (n, ip) in enumerate(batched_ip.batch)
             @async begin
-                outputs[n] = batched_ip.weights[n] * forward_map(ip, parameters; kw...)
+                forward_map_output = forward_map(ip, parameters; suppress=false, kw...)
+                outputs[n] = batched_ip.weights[n] * forward_map_output
             end
         end
+    end
+
+    return outputs
+end
+
+function forward_map(batched_ip::BatchedInverseProblem, parameters; suppress=true, kw...)
+    outputs = Dict()
+
+    if suppress
+        @suppress collect_forward_maps_asynchronously!(outputs, batched_ip, parameters; kw...)
+    else
+        collect_forward_maps_asynchronously!(outputs, batched_ip, parameters; kw...)
     end
 
     vectorized_outputs = [outputs[n] for n = 1:length(batched_ip)]
@@ -170,7 +187,7 @@ end
 function observation_map(batched_ip::BatchedInverseProblem)
     maps = []
 
-    for (n, ip) in enumerate(batched_ip.inverse_problems)
+    for (n, ip) in enumerate(batched_ip.batch)
         w = batched_ip.weights[n]
         push!(maps, w * observation_map(ip))
     end
