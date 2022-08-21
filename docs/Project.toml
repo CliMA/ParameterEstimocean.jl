@@ -8,4 +8,4 @@ Literate = "98b081ad-f1c9-55d3-8b20-4c87d4299306"
 Oceananigans = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
 
 [compat]
-Oceananigans = "= 0.76.1"
+Oceananigans = "= 0.76.8"
