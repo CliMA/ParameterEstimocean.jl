@@ -81,7 +81,7 @@ function resample!(resampler::Resampler, X, G, eki)
               "    3. Evolving `InverseProblem.simulation` for less time \n" *
               "    4. Narrowing `FreeParameters` priors.")
 
-    elseif failed_fraction >= resampler.resample_failure_fraction || !(resampler.only_failed_particles)
+    elseif failed_fraction > resampler.resample_failure_fraction || !(resampler.only_failed_particles)
         # We are resampling!
 
         if resampler.only_failed_particles
@@ -95,7 +95,7 @@ function resample!(resampler::Resampler, X, G, eki)
 
         found_X, found_G = find_successful_particles(eki, X, G, Nsample)
 
-        @info "Replacing columns $replace_columns..."
+        @info "Replacing columns $replace_columns (failed fraction: $failed_fraction)..."
         view(X, :, replace_columns) .= found_X
         view(G, :, replace_columns) .= found_G
 

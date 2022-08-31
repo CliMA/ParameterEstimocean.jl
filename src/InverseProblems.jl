@@ -153,6 +153,7 @@ Base.length(batch::BatchedInverseProblem) = length(batch.batch)
 Nensemble(batched_ip::BatchedInverseProblem) = Nensemble(first(batched_ip.batch))
 
 function collect_forward_maps_asynchronously!(outputs, batched_ip, parameters; kw...)
+    #=
     @sync begin
         for (n, ip) in enumerate(batched_ip.batch)
             @async begin
@@ -160,6 +161,12 @@ function collect_forward_maps_asynchronously!(outputs, batched_ip, parameters; k
                 outputs[n] = batched_ip.weights[n] * forward_map_output
             end
         end
+    end
+    =#
+
+    for (n, ip) in enumerate(batched_ip.batch)
+        forward_map_output = forward_map(ip, parameters; suppress=false, kw...)
+        outputs[n] = batched_ip.weights[n] * forward_map_output
     end
 
     return outputs

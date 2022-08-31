@@ -2,6 +2,7 @@ module PseudoSteppingSchemes
 
 using Statistics
 using LinearAlgebra
+using Printf
 
 export ConstantConvergence
 
@@ -35,7 +36,11 @@ function adaptive_step_parameters(pseudo_stepping::ConstantConvergence, Xⁿ, G�
         iter += 1
     end
 
-    @info "Particles stepped adaptively with convergence ratio $r (target $convergence_ratio)"
+    # A nice message
+    intro_str       = "Adaptive step found for ConstantConvergence pseudostepping."
+    convergence_str = @sprintf("      ├─ convergence ratio: %.6f (target: %.2f)", r, convergence_ratio)
+    time_step_str   = @sprintf("      └─ psuedo time step: %.3e", Δt)
+    @info string(intro_str, '\n', convergence_str, '\n', time_step_str)
 
     return Xⁿ⁺¹, Δt
 end

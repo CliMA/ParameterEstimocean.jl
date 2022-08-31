@@ -253,7 +253,7 @@ function iterate!(eki::EnsembleKalmanInversion;
                   iterations = 1,
                   pseudo_Δt = eki.pseudo_Δt,
                   pseudo_stepping = eki.pseudo_stepping,
-                  show_progress = true)
+                  show_progress = false)
 
     iterator = show_progress ? ProgressBar(1:iterations) : 1:iterations
 
@@ -277,6 +277,11 @@ function iterate!(eki::EnsembleKalmanInversion;
     best_parameters = eki.iteration_summaries[end].ensemble_mean
 
     return best_parameters
+end
+
+function set_unconstrained_parameters!(eki, X)
+    eki.unconstrained_parameters = X
+    eki.forward_map_output = resampling_forward_map!(eki)
 end
 
 #####
