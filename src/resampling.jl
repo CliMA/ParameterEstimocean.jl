@@ -30,7 +30,8 @@ abstract type EnsembleDistribution end
 function ensemble_normal_distribution(X)
     μ = [mean(X, dims=2)...]
     Σ = cov(X, dims=2)
-    return MvNormal(μ, Σ)
+    Σᴴ = Matrix(Hermitian(Σ))
+    return MvNormal(μ, Σᴴ)
 end
 
 struct FullEnsembleDistribution <: EnsembleDistribution end

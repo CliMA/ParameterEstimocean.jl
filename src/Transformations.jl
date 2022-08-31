@@ -181,7 +181,7 @@ function ZScore(data)
 
     data = dropdims(data, dims=1)
     μ = mean(data)
-    σ = sqrt(cov(data; corrected=false))
+    σ = std(data; corrected=false)
 
     if σ == 0
         @warn "Your data has zero variance --- just sayin'! I'm setting ZScore σ = 1."
@@ -210,6 +210,19 @@ function normalize!(data, normalization::ZScore)
     return nothing
 end
 
+"""
+    denormalize!(data, normalization::ZScore)
+
+Given some `data` that has been normalized as specified by `normalization`,
+return the data to its original scale by performing the inverse of the 
+`normalize!` operation.
+"""
+function denormalize!(data, normalization::ZScore)
+    μ, σ = normalization.μ, normalization.σ
+    @. data = (data * σ) + μ
+    return nothing
+end
+
 #####
 ##### Like ZScore, but maybe less important
 #####
@@ -219,10 +232,10 @@ struct RescaledZScore{T, Z} <: AbstractNormalization
     zscore :: Z
 end
 
-RescaledZScore(scale) = RescaledZScore(scale, nothing)
+RescaledZScore(scale) = RescaledZScore(scale, ZScore())
 
 compute_normalization(r::RescaledZScore, transformation, fts) =
-    RescaledZScore(r.scale, compute_normalization(r.zscore, transformation, fts))
+    RescaledZScore(r.scale, compute_normalization(ZScore(), transformation, fts))
 
 function normalize!(data, normalization::RescaledZScore)
     normalize!(data, normalization.zscore)
