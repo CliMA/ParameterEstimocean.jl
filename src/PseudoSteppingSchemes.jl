@@ -146,18 +146,17 @@ Chada2021(; initial_step_size=1.0, β=0.0) = Chada2021(initial_step_size, β)
 
 struct Iglesias2021 <: AbstractSteppingScheme end
 
-"""
-    ConstantConvergence{T} <: AbstractSteppingScheme
-    
-- `convergence_ratio` (`Number`): The convergence rate for the EKI adaptive time stepping. Default value 0.7.
-                                 If a numerical value is given is 0.7 which implies that the parameter spread 
-                                 covariance is decreased to 70% of the parameter spread covariance at the previous
-                                 EKI iteration.
-"""
 struct ConstantConvergence{T} <: AbstractSteppingScheme
     convergence_ratio :: T
 end
 
+"""
+    ConstantConvergence(; convergence_ratio=0.7)
+    
+Returns the `ConstantConvergence` psuedo-stepping scheme with target `convergence_ratio`.
+With `ConstantConvergence`, the ensemble Kalman inversion (EKI) psuedo step size is adjusted
+such that the determinant of the parameter covariance is decreased by 70% after one EKI iteration.
+"""
 ConstantConvergence(; convergence_ratio=0.7) = ConstantConvergence(convergence_ratio)
 
 struct Kovachki2018{T} <: AbstractSteppingScheme
@@ -454,7 +453,8 @@ function eki_update(pseudo_scheme::ConstantConvergence, Xₙ, Gₙ, eki)
     # Start with Δtₙ = 1.0; `Δtₙ_first_guess` is the first time step in the sequence Δtₖ = (1/2)^k where k={0,1,2...}
     # such that |cov(Xₙ₊₁)|/|cov(Xₙ)| > pseudo_scheme.convergence_ratio (assuming the determinant ratio
     # is monotonically increasing as a function of k).
-    _, Δtₙ_first_guess = eki_update(ThresholdedConvergenceRatio(cov_threshold=pseudo_scheme.convergence_ratio), Xₙ, Gₙ, eki; initial_guess=1.0, report=false)
+    _, Δtₙ_first_guess = eki_update(ThresholdedConvergenceRatio(cov_threshold=pseudo_scheme.convergence_ratio),
+                                    Xₙ, Gₙ, eki; initial_guess=1.0, report=false)
 
     # `Δtₙ_first_guess` provides a reasonable initial guess for the time step. If we were to 
     # start the fixed point iteration algorithm below with an initial guess of 1.0, the initial volume 
@@ -483,8 +483,8 @@ function eki_update(pseudo_scheme::ConstantConvergence, Xₙ, Gₙ, eki)
 
     # A nice message
     intro_str       = "Pseudo time step found for ConstantConvergence pseudostepping."
-    convergence_str = @sprintf("      ├─ convergence ratio: %.6f (target: %.2f)", r, convergence_ratio)
-    time_step_str   = @sprintf("      └─ psuedo time step: %.3e", Δt)
+    convergence_str = @sprintf("      ├─ convergence ratio: %.6f (target: %.2f)", r, conv_rate)
+    time_step_str   = @sprintf("      └─ psuedo time step: %.3e", Δtₙ)
     @info string(intro_str, '\n', convergence_str, '\n', time_step_str)
 
     return Xₙ₊₁, Δtₙ
