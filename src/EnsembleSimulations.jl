@@ -46,10 +46,9 @@ function ensemble_column_model_simulation(observations;
 
     if isnothing(non_ensemble_closure)
         closure = closure_ensemble
-    elseif non_ensemble_closure isa Tuple
-        closure = (closure_ensemble, non_ensemble_closure...)
     else
-        closure = (closure_ensemble, non_ensemble_closure)
+        non_ensemble_closure = tupleit(non_ensemble_closure)
+        closure = (closure_ensemble, non_ensemble_closure...)
     end
 
     momentum_boundary_conditions =
