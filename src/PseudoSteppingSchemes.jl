@@ -9,14 +9,18 @@ using Printf
 using Distributions
 using GaussianProcesses
 
-export ConstantConvergence
-
 using ..EnsembleKalmanInversions: step_parameters
 using ParameterEstimocean.Transformations: ZScore, normalize!, denormalize!
 
 import ..EnsembleKalmanInversions: adaptive_step_parameters, eki_objective
 
-export ConstantPseudoTimeStep, ThresholdedConvergenceRatio, ConstantConvergence, Kovachki2018, Kovachki2018InitialConvergenceRatio, Iglesias2021, Chada2021
+export ConstantPseudoTimeStep
+export ThresholdedConvergenceRatio
+export ConstantConvergence
+export Kovachki2018
+export Kovachki2018InitialConvergenceRatio
+export Iglesias2021
+export Chada2021
 
 # If pseudo_stepping::Nothing, it's not adaptive; Δtₙ₊₁ = Δtₙ.
 eki_update(::Nothing, Xₙ, Gₙ, eki, Δtₙ) = eki_update(ConstantPseudoTimeStep(Δtₙ), Xₙ, Gₙ, eki)
@@ -92,7 +96,6 @@ end
 frobenius_norm(A) = sqrt(sum(A .^ 2))
 
 function compute_D(Xₙ, Gₙ, eki)
-
     y = observations(eki)
     Γy = obs_noise_covariance(eki)
     g̅ = mean(Gₙ, dims = 2)
@@ -105,9 +108,7 @@ function compute_D(Xₙ, Gₙ, eki)
 end
 
 function kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀=1.0, D=nothing)
-
     N_ens = size(Xₙ, 2)
-
     D = isnothing(D) ? compute_D(Xₙ, Gₙ, eki) : D
 
     # Calculate time step Δtₙ₋₁ = Δt₀ / (frobenius_norm(D(uₙ)) + ϵ)
@@ -119,9 +120,9 @@ function kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀=1.0, D=nothing)
     return Xₙ₊₁, Δtₙ
 end
 
-###
-### Fixed and adaptive time stepping schemes
-###
+#####
+##### Fixed and adaptive time stepping schemes
+#####
 
 abstract type AbstractSteppingScheme end
 
@@ -180,12 +181,9 @@ Implements an EKI update with a fixed time step given by `pseudo_scheme.step_siz
 """
 
 function eki_update(pseudo_scheme::ConstantPseudoTimeStep, Xₙ, Gₙ, eki)
-
     Δtₙ = pseudo_scheme.step_size
     Xₙ₊₁ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
-
     @info "Particles stepped with time step $Δtₙ"
-
     return Xₙ₊₁, Δtₙ
 end
 
