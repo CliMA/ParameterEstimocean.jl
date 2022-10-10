@@ -154,8 +154,8 @@ end
 """
     ConstantConvergence(; convergence_ratio=0.7)
     
-Returns the `ConstantConvergence` psuedo-stepping scheme with target `convergence_ratio`.
-With `ConstantConvergence`, the ensemble Kalman inversion (EKI) psuedo step size is adjusted
+Returns the `ConstantConvergence` pseudo-stepping scheme with target `convergence_ratio`.
+With `ConstantConvergence`, the ensemble Kalman inversion (EKI) pseudo step size is adjusted
 such that the determinant of the parameter covariance is decreased by 70% after one EKI iteration.
 """
 ConstantConvergence(; convergence_ratio=0.7) = ConstantConvergence(convergence_ratio)
@@ -482,7 +482,7 @@ function eki_update(pseudo_scheme::ConstantConvergence, Xₙ, Gₙ, eki)
     # A nice message
     intro_str       = "Pseudo time step found for ConstantConvergence pseudostepping."
     convergence_str = @sprintf("      ├─ convergence ratio: %.6f (target: %.2f)", r, conv_rate)
-    time_step_str   = @sprintf("      └─ psuedo time step: %.3e", Δtₙ)
+    time_step_str   = @sprintf("      └─ pseudo time step: %.3e", Δtₙ)
     @info string(intro_str, '\n', convergence_str, '\n', time_step_str)
 
     return Xₙ₊₁, Δtₙ
