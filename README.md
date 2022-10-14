@@ -25,7 +25,7 @@ julia>]
 (v1.6) pkg> instantiate
 ```
 
-Alternatively, if you'd like to be in the bleeding edge of the package's latest developments you may
+Alternatively, if you'd like to be in the cutting-edge of the package's latest developments you may
 install the version on the `#main` branch (or any other branch or commit), e.g.
 
 ```julia
