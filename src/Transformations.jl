@@ -232,7 +232,7 @@ struct RescaledZScore{T, Z} <: AbstractNormalization
     zscore :: Z
 end
 
-RescaledZScore(scale) = RescaledZScore(scale, nothing)
+RescaledZScore(scale) = RescaledZScore(scale, ZScore())
 
 compute_normalization(r::RescaledZScore, transformation, fts) =
     RescaledZScore(r.scale, compute_normalization(ZScore(), transformation, fts))

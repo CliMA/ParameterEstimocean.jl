@@ -27,7 +27,7 @@ to_be_literated = [
   "perfect_convective_adjustment_calibration.jl",
   "single_case_lesbrary_ri_based_calibration.jl",
   "multi_case_lesbrary_ri_based_calibration.jl",
-  # "perfect_baroclinic_adjustment_calibration.jl"
+  "perfect_baroclinic_adjustment_calibration.jl"
 ]
 
 for file in to_be_literated
@@ -61,7 +61,7 @@ pages = [
         "literated/perfect_convective_adjustment_calibration.md",
         "literated/single_case_lesbrary_ri_based_calibration.md",
         "literated/multi_case_lesbrary_ri_based_calibration.md",
-        # "literated/perfect_baroclinic_adjustment_calibration.md"
+        "literated/perfect_baroclinic_adjustment_calibration.md"
         ],
     
     "Library" => [ 
