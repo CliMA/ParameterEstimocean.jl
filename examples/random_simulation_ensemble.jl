@@ -6,17 +6,27 @@ using ParameterEstimocean
 using ParameterEstimocean.Observations: FieldTimeSeriesCollector
 using Statistics
 
-struct ConstantTracerDiffusivity <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, ThreeDimensionalFormulation}
-    κ :: Float64
+struct ConstantHorizontalTracerDiffusivity <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, HorizontalFormulation}
+    κh :: Float64
 end
 
-ConstantTracerDiffusivity(; κ=0.0) = ConstantTracerDiffusivity(κ)
+struct ConstantVerticalTracerDiffusivity <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, VerticalFormulation}
+    κz :: Float64
+end
 
-@inline viscosity(::ConstantTracerDiffusivity, args...) = 0.0
-@inline diffusivity(closure::ConstantTracerDiffusivity, args...) = closure.κ
+ConstantHorizontalTracerDiffusivity(; κh=0.0) = ConstantHorizontalTracerDiffusivity(κh)
+ConstantVerticalTracerDiffusivity(; κz=0.0) = ConstantVerticalTracerDiffusivity(κz)
+
+@inline viscosity(::ConstantHorizontalTracerDiffusivity, args...) = 0.0
+@inline diffusivity(closure::ConstantHorizontalTracerDiffusivity, args...) = closure.κh
+
+@inline viscosity(::ConstantVerticalTracerDiffusivity, args...) = 0.0
+@inline diffusivity(closure::ConstantVerticalTracerDiffusivity, args...) = closure.κz
 
 function random_simulation(size=(16, 16, 16))
     grid = RectilinearGrid(; size, extent=(2π, 2π, 2π), topology=(Periodic, Periodic, Periodic))
+
+    closure = (ConstantHorizontalTracerDiffusivity(1.0), ConstantVerticalTracerDiffusivity(0.5))
 
     model = HydrostaticFreeSurfaceModel(; grid,
                                         tracer_advection = nothing,
@@ -49,7 +59,10 @@ run!(test_simulation)
 
 simulation_ensemble = [random_simulation() for _ = 1:10]
 times = [0.0, time(test_simulation)]
-priors = (; c = ScaledLogitNormal(bounds=(0.0, 10.0)))
+
+priors = (κh = ScaledLogitNormal(bounds=(0.0, 10.0)),
+          κz = ScaledLogitNormal(bounds=(0.0, 10.0)))
+          
 free_parameters = FreeParameters(priors) 
 observations = SyntheticObservations("random_simulation_slices.jld2"; field_names=:c, times)
 
@@ -73,8 +86,7 @@ ip = InverseProblem(observations, simulation_ensemble, free_parameters;
                     initialize_with_observations = false,
                     initialize_simulation = initialize_simulation!)
 
-random_κ = [(; κ=10rand()) for sim in simulation_ensemble]
-
+random_κ = [(; κh=10rand(), κz=10rand()) for sim in simulation_ensemble]
 forward_run!(ip, random_κ)
 
 #eki = EnsembleKalmanInversion(ip; pseudo_stepping=ConstantConvergence(0.9))
