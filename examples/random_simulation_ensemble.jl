@@ -1,10 +1,12 @@
 using Oceananigans
-using Oceananigans.TurbulenceClosures: AbstractScalarDiffusivity, ExplicitTimeDiscretization, ThreeDimensionalFormulation
-import Oceananigans.TurbulenceClosures: viscosity, diffusivity
+using Oceananigans.TurbulenceClosures: AbstractScalarDiffusivity, ExplicitTimeDiscretization
+using Oceananigans.TurbulenceClosures: VerticalFormulation, HorizontalFormulation
 
 using ParameterEstimocean
 using ParameterEstimocean.Observations: FieldTimeSeriesCollector
 using Statistics
+
+import Oceananigans.TurbulenceClosures: viscosity, diffusivity
 
 struct ConstantHorizontalTracerDiffusivity <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, HorizontalFormulation}
     κh :: Float64
@@ -28,12 +30,11 @@ function random_simulation(size=(16, 16, 16))
 
     closure = (ConstantHorizontalTracerDiffusivity(1.0), ConstantVerticalTracerDiffusivity(0.5))
 
-    model = HydrostaticFreeSurfaceModel(; grid,
+    model = HydrostaticFreeSurfaceModel(; grid, closure,
                                         tracer_advection = nothing,
                                         velocities = PrescribedVelocityFields(),
                                         tracers = :c,
-                                        buoyancy = nothing,
-                                        closure = ConstantTracerDiffusivity(κ=1.0))
+                                        buoyancy = nothing)
 
     simulation = Simulation(model, Δt=1e-3, stop_iteration=10)
 
@@ -89,8 +90,7 @@ ip = InverseProblem(observations, simulation_ensemble, free_parameters;
 random_κ = [(; κh=10rand(), κz=10rand()) for sim in simulation_ensemble]
 forward_run!(ip, random_κ)
 
-#eki = EnsembleKalmanInversion(ip; pseudo_stepping=ConstantConvergence(0.9))
+eki = EnsembleKalmanInversion(ip; pseudo_stepping=ConstantConvergence(0.9))
 
-#cᵢ = rand(size(grid)...)
-#set!(model, c=cᵢ)
+iterate!(eki, iterations=10)
 
