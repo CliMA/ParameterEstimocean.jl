@@ -51,6 +51,7 @@ struct InverseProblem{F, O, S, T, P, I}
     free_parameters :: P
     output_map :: F
     initialize_simulation :: I
+    initialize_with_observations :: Bool
 end
 
 nothingfunction(args...) = nothing
@@ -70,7 +71,8 @@ Nensemble(ip::InverseProblem) = Nensemble(ip.simulation.model.grid)
                    free_parameters;
                    output_map = ConcatenatedOutputMap(),
                    time_series_collector = nothing,
-                   initialize_simulation = nothingfunction)
+                   initialize_simulation = nothingfunction,
+                   initialize_with_observations = true)
 
 Return an `InverseProblem`.
 """
@@ -79,7 +81,8 @@ function InverseProblem(observations,
                         free_parameters;
                         output_map = ConcatenatedOutputMap(),
                         time_series_collector = nothing,
-                        initialize_simulation = nothingfunction)
+                        initialize_simulation = nothingfunction,
+                        initialize_with_observations = true)
 
     if isnothing(time_series_collector) # attempt to construct automagically
         simulation_fields = fields(simulation.model)
@@ -87,7 +90,9 @@ function InverseProblem(observations,
         time_series_collector = FieldTimeSeriesCollector(collected_fields, observation_times(observations))
     end
 
-    return InverseProblem(observations, simulation, time_series_collector, free_parameters, output_map, initialize_simulation)
+    return InverseProblem(observations, simulation, time_series_collector,
+                          free_parameters, output_map, initialize_simulation,
+                          initialize_with_observations)
 end
 
 Base.summary(ip::InverseProblem) =
@@ -112,7 +117,8 @@ function InverseProblem(observations,
                         free_parameters;
                         output_map = ConcatenatedOutputMap(),
                         time_series_collector = nothing,
-                        initialize_simulation = nothingfunction)
+                        initialize_simulation = nothingfunction,
+                        initialize_with_observations = true)
 
     if isnothing(time_series_collector) # attempt to construct automagically
         time_series_collector_ensemble = []
@@ -127,14 +133,15 @@ function InverseProblem(observations,
     end
 
     return InverseProblem(observations, simulation_ensemble, time_series_collector_ensemble,
-                          free_parameters, output_map, initialize_simulation)
+                          free_parameters, output_map, initialize_simulation,
+                          initialize_with_observations)
 end
 
 const EnsembleSimulationInverseProblem = InverseProblem{<:Any, <:Any, <:Vector}
 
 Nensemble(ip::EnsembleSimulationInverseProblem) = length(ip.simulation)
 
-function Base.show(io::IO, ip::InverseProblem)
+function Base.show(io::IO, ip::EnsembleSimulationInverseProblem)
     print(io, "EnsembleSimulationInverseProblem")
 end
 
@@ -279,7 +286,8 @@ function forward_run!(ip::InverseProblem, parameters; suppress=false)
     # Set closure parameters
     simulation.model.closure = new_closure_ensemble(closures, θ, architecture(simulation.model.grid))
 
-    initialize_forward_run!(simulation, observations, ip.time_series_collector, ip.initialize_simulation, θ)
+    initialize_forward_run!(simulation, observations, ip.time_series_collector,
+                            ip.initialize_with_observations, ip.initialize_simulation, θ)
 
     if suppress
         @suppress run!(simulation)
@@ -294,7 +302,6 @@ function forward_run!(ip::EnsembleSimulationInverseProblem, parameters; suppress
     observations = ip.observations
     simulation_ensemble = ip.simulation
     time_series_collector_ensemble = ip.time_series_collector
-    closures = simulation.model.closure
     Nens = Nensemble(ip)
 
     # Ensure there are enough parameters for ensemble members in the simulation
@@ -309,10 +316,12 @@ function forward_run!(ip::EnsembleSimulationInverseProblem, parameters; suppress
 
         new_closure = closure_with_parameters(simulation.model.closure, θk)
         simulation.model.closure = new_closure
-        initialize_forward_run!(simulation, observations, time_series_collector, ip.initialize_simulation, θk)
+        initialize_forward_run!(simulation, observations, time_series_collector,
+                                ip.initialize_with_observations, ip.initialize_simulation, θk)
     end
 
     for k = 1:Nens
+        simulation = simulation_ensemble[k]
         if suppress
             @suppress run!(simulation)
         else

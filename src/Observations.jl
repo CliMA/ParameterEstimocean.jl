@@ -308,7 +308,7 @@ function set!(model, obs::SyntheticObservations, time_index=1)
         if field_name ∈ keys(obs.field_time_serieses)
             obs_field = obs.field_time_serieses[field_name][time_index]
             set!(model_field, obs_field)
-        else
+        elseif model_field isa Field
             fill!(parent(model_field), 0)
         end
     end
@@ -417,6 +417,7 @@ nothingfunction(simulation) = nothing
 function initialize_forward_run!(simulation,
                                  observations,
                                  time_series_collector,
+                                 initialize_with_observations,
                                  initialize_simulation!,
                                  parameters)
 
