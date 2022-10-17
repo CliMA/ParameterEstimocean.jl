@@ -254,9 +254,11 @@ function forward_map(ip::InverseProblem, parameters; suppress=true)
     forward_run!(ip, parameters; suppress)
 
     # Verify that data was collected properly
-    all(ip.time_series_collector.times .≈ ip.time_series_collector.collection_times) ||
-        error("FieldTimeSeriesCollector.collection_times does not match FieldTimeSeriesCollector.times. \n" *
-              "Field time series data may not have been properly collected")
+    if !(ip isa EnsembleSimulationInverseProblem)
+        all(ip.time_series_collector.times .≈ ip.time_series_collector.collection_times) ||
+            error("FieldTimeSeriesCollector.collection_times does not match FieldTimeSeriesCollector.times. \n" *
+                  "Field time series data may not have been properly collected")
+    end
 
     # Transform the model data according to `ip.output_map` into
     # the array format expected by EnsembleKalmanProcesses.jl
@@ -452,11 +454,21 @@ function transform_forward_map_output(map::ConcatenatedOutputMap,
     return transform_dataset(map, transposed_forward_map_output)
 end
 
+function transform_forward_map_output(map::ConcatenatedOutputMap,
+                                      observations::SyntheticObservations,
+                                      time_series_collector_ensemble::Vector{<:FieldTimeSeriesCollector})
+
+    transposed_outputs = [transpose_model_output(tsc.grid, tsc, observations) for tsc in time_series_collector_ensemble]
+    forward_maps = [transform_dataset(map, output) for output in transposed_outputs]
+
+    return hcat(forward_maps...)
+end
+
 # Dispatch transpose_model_output based on collector grid
 transpose_model_output(time_series_collector, observations) =
     transpose_model_output(time_series_collector.grid, time_series_collector, observations)
 
-transpose_model_output(collector_grid::YZSliceGrid, time_series_collector, observations) =
+transpose_model_output(collector_grid, time_series_collector, observations) =
     SyntheticObservations(time_series_collector.field_time_serieses,
                           observations.forward_map_names,
                           collector_grid,

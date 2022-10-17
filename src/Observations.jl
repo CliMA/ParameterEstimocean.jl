@@ -5,15 +5,18 @@ export SyntheticObservations, BatchedSyntheticObservations, observation_times
 using ..Utils: prettyvector, tupleit
 
 using Oceananigans
+using Oceananigans.Fields
+using Oceananigans.Architectures
+
 using Oceananigans: fields
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
 using Oceananigans.Grids: pop_flat_elements, topology, halo_size, on_architecture
 using Oceananigans.TimeSteppers: update_state!, reset!
-using Oceananigans.Fields
+using Oceananigans.Fields: indices
 using Oceananigans.Utils: SpecifiedTimes, prettytime
-using Oceananigans.Architectures
 using Oceananigans.Architectures: arch_array, architecture
+
 using JLD2
 
 import Oceananigans.Fields: set!
@@ -365,8 +368,9 @@ function FieldTimeSeriesCollector(collected_fields, times;
 
     for field_name in keys(collected_fields)
         field = collected_fields[field_name]
+        inds = indices(field)
         LX, LY, LZ = location(field)
-        field_time_series = FieldTimeSeries{LX, LY, LZ}(grid, times)
+        field_time_series = FieldTimeSeries{LX, LY, LZ}(grid, times; indices=inds)
         field_time_serieses[field_name] = field_time_series
     end
 
