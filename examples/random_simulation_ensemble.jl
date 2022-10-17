@@ -31,7 +31,7 @@ simulation_ensemble = [random_simulation() for _ = 1:10]
 times = [0.0, time(test_simulation)]
 priors = (; c = ScaledLogitNormal(bounds=(0.0, 10.0)))
 free_parameters = FreeParameters(priors) 
-observations = SyntheticObservations("random_simulation.jld2"; field_names=:c, times, free_parameters)
+observations = SyntheticObservations("random_simulation.jld2"; field_names=:c, times)
 ip = InverseProblem(observations, simulation_ensemble, free_parameters)
 
 #cᵢ = rand(size(grid)...)

@@ -126,12 +126,17 @@ function InverseProblem(observations,
         time_series_collector_ensemble = time_series_collector
     end
 
-    return InverseProblem(observations, simulation, time_series_collector, free_parameters, output_map, initialize_simulation)
+    return InverseProblem(observations, simulation_ensemble, time_series_collector_ensemble,
+                          free_parameters, output_map, initialize_simulation)
 end
 
 const EnsembleSimulationInverseProblem = InverseProblem{<:Any, <:Any, <:Vector}
 
 Nensemble(ip::EnsembleSimulationInverseProblem) = length(ip.simulation)
+
+function Base.show(io::IO, ip::InverseProblem)
+    print(io, "EnsembleSimulationInverseProblem")
+end
 
 #####
 ##### BatchedInverseProblem
