@@ -14,7 +14,8 @@ using Suppressor: @suppress
 
 using ..Utils: tupleit
 using ..Transformations: transform_field_time_series
-using ..Parameters: new_closure_ensemble, transform_to_constrained, build_parameters_named_tuple
+using ..Parameters: new_closure_ensemble, transform_to_constrained
+using ..Parameters: build_parameters_named_tuple, closure_with_parameters
 
 using ..Observations:
     SyntheticObservations,
@@ -104,6 +105,33 @@ function Base.show(io::IO, ip::InverseProblem)
 
     return nothing
 end
+
+# Ensemble simulations
+function InverseProblem(observations,
+                        simulation_ensemble::Vector,
+                        free_parameters;
+                        output_map = ConcatenatedOutputMap(),
+                        time_series_collector = nothing,
+                        initialize_simulation = nothingfunction)
+
+    if isnothing(time_series_collector) # attempt to construct automagically
+        time_series_collector_ensemble = []
+        for simulation in simulation_ensemble
+            simulation_fields = fields(simulation.model)
+            collected_fields = NamedTuple(name => simulation_fields[name] for name in forward_map_names(observations))
+            time_series_collector = FieldTimeSeriesCollector(collected_fields, observation_times(observations))
+            push!(time_series_collector_ensemble, time_series_collector)
+        end
+    else
+        time_series_collector_ensemble = time_series_collector
+    end
+
+    return InverseProblem(observations, simulation, time_series_collector, free_parameters, output_map, initialize_simulation)
+end
+
+const EnsembleSimulationInverseProblem = InverseProblem{<:Any, <:Any, <:Vector}
+
+Nensemble(ip::EnsembleSimulationInverseProblem) = length(ip.simulation)
 
 #####
 ##### BatchedInverseProblem
@@ -254,6 +282,39 @@ function forward_run!(ip::InverseProblem, parameters; suppress=false)
         run!(simulation)
     end
     
+    return nothing
+end
+
+function forward_run!(ip::EnsembleSimulationInverseProblem, parameters; suppress=false)
+    observations = ip.observations
+    simulation_ensemble = ip.simulation
+    time_series_collector_ensemble = ip.time_series_collector
+    closures = simulation.model.closure
+    Nens = Nensemble(ip)
+
+    # Ensure there are enough parameters for ensemble members in the simulation
+    θ = expand_parameters(ip, parameters)
+
+    # Broadcast parameter vector over simulation ensemble
+    for k = 1:Nens
+        # Extract the kᵗʰ ensemble member
+        simulation = simulation_ensemble[k]
+        time_series_collector = time_series_collector_ensemble[k]
+        θk = θ[k]
+
+        new_closure = closure_with_parameters(simulation.model.closure, θk)
+        simulation.model.closure = new_closure
+        initialize_forward_run!(simulation, observations, time_series_collector, ip.initialize_simulation, θk)
+    end
+
+    for k = 1:Nens
+        if suppress
+            @suppress run!(simulation)
+        else
+            run!(simulation)
+        end
+    end
+
     return nothing
 end
 
