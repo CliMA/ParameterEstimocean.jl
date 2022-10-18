@@ -452,16 +452,12 @@ function construct_object(specification_dict::OrderedDict, parameters; name=noth
 
     type = Constructor = specification_dict[:type]
 
+    # Recurisve construction
     if type === NamedTuple
-        @show specification_dict
-        @show type
         return NamedTuple(name => construct_object(specification_dict[name], parameters; name)
                           for name in keys(specification_dict) if name != :type)
     else
-        # Recursive
-        @show specification_dict
-        @show type type_parameters fieldnames(type)
-
+        
         # if name != :type]
         kwargs_vector = [construct_object(specification_dict[name], parameters; name) for name in fieldnames(type)]
     
