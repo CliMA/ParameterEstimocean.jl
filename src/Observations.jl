@@ -16,6 +16,7 @@ using Oceananigans.TimeSteppers: update_state!, reset!
 using Oceananigans.Fields: indices
 using Oceananigans.Utils: SpecifiedTimes, prettytime
 using Oceananigans.Architectures: arch_array, architecture
+using Oceananigans.OutputWriters: WindowedTimeAverage, AveragedSpecifiedTimes
 
 using JLD2
 
@@ -355,13 +356,17 @@ end
 
 """
     FieldTimeSeriesCollector(collected_fields, times;
-                             architecture = Architectures.architecture(first(collected_fields)))
+                             architecture = CPU(),
+                             averaging_window = nothing,
+                             averaging_stride = nothing)
 
 Return a `FieldTimeSeriesCollector` for `fields` of `simulation`.
 `fields` is a `NamedTuple` of `AbstractField`s that are to be collected.
 """
 function FieldTimeSeriesCollector(collected_fields, times;
-                                  architecture = Architectures.architecture(first(collected_fields)))
+                                  architecture = CPU(),
+                                  averaging_window = nothing,
+                                  averaging_stride = 1)
 
     grid = on_architecture(architecture, first(collected_fields).grid)
     field_time_serieses = Dict{Symbol, Any}()
@@ -379,9 +384,20 @@ function FieldTimeSeriesCollector(collected_fields, times;
 
     collection_times = similar(times)
 
-    return FieldTimeSeriesCollector(grid, times, field_time_serieses, collected_fields, collection_times)
+    # Wrap collected fields in WindowedTimeAverage if requested
+    if !isnothing(averaging_window)
+        schedule = AveragedSpecifiedTimes(times; window=averaging_window, stride=averaging_stride)
+        wrap(field) = WindowedTimeAverage(field; schedule, fetch_operand=false)
+        averaged_collected_fields = NamedTuple(name => wrap(collected_fields[name])
+                                               for name in keys(collected_fields))
+        collected_fields = averaged_collected_fields
+    end
+
+    return FieldTimeSeriesCollector(grid, times, field_time_serieses,
+                                    collected_fields, collection_times)
 end
 
+# For using in a Callback
 function (collector::FieldTimeSeriesCollector)(simulation)
     for field in collector.collected_fields
         compute!(field)
@@ -431,13 +447,11 @@ function initialize_forward_run!(simulation,
     initial_time = times[1]
     simulation.model.clock.time = initial_time
 
-    collected_fields = time_series_collector.collected_fields
-    arch = architecture(time_series_collector.grid)
-
     # Clear potential NaNs from timestepper data.
     # Particularly important for Adams-Bashforth timestepping scheme.
-    # Oceananigans ≤ v0.71 initializes the Adams-Bashforth scheme with an Euler step by *multiplying* the tendency
-    # at time-step n-1 by 0. Because 0 * NaN = NaN, this fails when the tendency at n-1 contains NaNs.
+    # Oceananigans ≤ v0.71 initializes the Adams-Bashforth scheme with an Euler step by
+    # *multiplying* the tendency at time-step n-1 by 0. Because 0 * NaN = NaN, this fails
+    # when the tendency at n-1 contains NaNs.
     timestepper = simulation.model.timestepper 
     for field in tuple(timestepper.Gⁿ..., timestepper.G⁻...)
         if !isnothing(field)
@@ -453,10 +467,28 @@ function initialize_forward_run!(simulation,
 
     :nan_checker ∈ keys(simulation.callbacks) && pop!(simulation.callbacks, :nan_checker)
     :data_collector ∈ keys(simulation.callbacks) && pop!(simulation.callbacks, :data_collector)
-    simulation.callbacks[:data_collector] = Callback(time_series_collector, SpecifiedTimes(times...))
+
+    collection_schedule = SpecifiedTimes(times...)
+    simulation.callbacks[:data_collector] = Callback(time_series_collector, collection_schedule)
     simulation.stop_time = times[end]
 
-    set!(simulation.model, observations, 1)
+    # Add Callback for computing time-averages if necessary
+    for name in keys(time_series_collector.collected_fields)
+        field = time_series_collector.collected_fields[name]
+        if field isa WindowedTimeAverage
+            # Replace averaging schedule
+            field.schedule = AveragedSpecifiedTimes(collection_schedule;
+                                                    window = field.schedule.window,
+                                                    stride = field.schedule.stride)
+            callback_name = Symbol(:time_average_, name)
+            callback_name ∈ keys(simulation.callbacks) && pop!(simulation.callbacks, callback_name)
+            simulation.callbacks[callback_name] = Callback(field)
+        end
+    end
+
+    if initialize_with_observations
+        set!(simulation.model, observations, 1)
+    end
 
     initialize_simulation!(simulation, parameters)
 
