@@ -38,7 +38,7 @@ function random_simulation(size=(16, 16, 16))
                                         tracers = :c,
                                         buoyancy = nothing)
 
-    simulation = Simulation(model, Δt=1e-3, stop_iteration=10)
+    simulation = Simulation(model, Δt=1e-3, stop_time=1e-1)
 
     return simulation
 end
@@ -47,20 +47,33 @@ test_simulation = random_simulation()
 
 model = test_simulation.model
 test_simulation.output_writers[:d3] = JLD2OutputWriter(model, model.tracers,
-                                                       schedule = IterationInterval(10),
+                                                       schedule = IterationInterval(100),
                                                        filename = "random_simulation_fields",
                                                        overwrite_existing = true)
 
 slice_indices = (1, :, :)
-test_simulation.output_writers[:d2] = JLD2OutputWriter(model, model.tracers,
-                                                       schedule = IterationInterval(10),
-                                                       filename = "random_simulation_slices",
-                                                       indices = slice_indices,
-                                                       overwrite_existing = true)
+test_simulation.output_writers[:slices] = JLD2OutputWriter(model, model.tracers,
+                                                           schedule = AveragedTimeInterval(1e-1),
+                                                           filename = "random_simulation_averaged_slices",
+                                                           indices = slice_indices,
+                                                           overwrite_existing = true)
+
+test_simulation.output_writers[:avg] = JLD2OutputWriter(model, model.tracers,
+                                                        schedule = TimeInterval(1e-1),
+                                                        filename = "random_simulation_slices",
+                                                        indices = slice_indices,
+                                                        overwrite_existing = true)
 
 cᵢ(x, y, z) = randn()
 set!(model, c=cᵢ)
 run!(test_simulation)
+
+c₀ = FieldTimeSeries("random_simulation_fields.jld2", "c")[1]
+c_slices = FieldTimeSeries("random_simulation_slices.jld2", "c")
+c_averaged_slices = FieldTimeSeries("random_simulation_averaged_slices.jld2", "c")
+
+@show c_slices[end]
+@show c_averaged_slices[end]
 
 simulation_ensemble = [random_simulation() for _ = 1:10]
 times = [0.0, time(test_simulation)]
@@ -69,7 +82,9 @@ priors = (κh = ScaledLogitNormal(bounds=(0.0, 2.0)),
           κz = ScaledLogitNormal(bounds=(0.0, 2.0)))
           
 free_parameters = FreeParameters(priors) 
-observations = SyntheticObservations("random_simulation_slices.jld2"; field_names=:c, times)
+#obspath = "random_simulation_slices.jld2"
+obspath = "random_simulation_averaged_slices.jld2"
+observations = SyntheticObservations(obspath; field_names=:c, times)
 
 # Initial condition
 c₀ = FieldTimeSeries("random_simulation_fields.jld2", "c")[1]
@@ -99,6 +114,9 @@ ip = InverseProblem(observations, simulation_ensemble, free_parameters;
 eki = EnsembleKalmanInversion(ip; pseudo_stepping=ConstantConvergence(0.2))
 iterate!(eki, iterations=10)
 
+@show eki.iteration_summaries[end]
+
+#=
 fig = Figure()
 ax = Axis(fig[1, 1])
 
@@ -112,4 +130,4 @@ end
 axislegend(ax)
 
 display(fig)
-
+=#
