@@ -79,7 +79,8 @@ function IterationSummary(eki, X, forward_map_output=nothing)
     constrained_ensemble_covariance = inverse_covariance_transform(values(priors), X, ensemble_covariance)
 
     constrained_ensemble_variance = build_parameters_named_tuple(eki.inverse_problem.free_parameters,
-                                                                 diag(constrained_ensemble_covariance))
+                                                                 diag(constrained_ensemble_covariance),
+                                                                 with_dependent_parameters = false)
 
     constrained_parameters = transform_to_constrained(priors, X)
 

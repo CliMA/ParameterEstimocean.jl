@@ -375,19 +375,23 @@ end
 
 Base.length(p::FreeParameters) = length(p.names)
 
-function build_parameters_named_tuple(p::FreeParameters, free_θ)
+function build_parameters_named_tuple(p::FreeParameters, free_θ; with_dependent_parameters=true)
     if free_θ isa Dict # convert to NamedTuple with
         free_θ = NamedTuple(name => free_θ[name] for name in p.names)
     elseif !(free_θ isa NamedTuple) # mostly likely a Vector: convert to NamedTuple with
         free_θ = NamedTuple{p.names}(Tuple(free_θ))
     end
 
-    # Compute dependent parameters
-    dependent_names = keys(p.dependent_parameters) 
-    maps = p.dependent_parameters
-    dependent_θ = NamedTuple(name => maps[name](free_θ) for name in dependent_names)
+    if with_dependent_parameters
+        # Compute dependent parameters
+        dependent_names = keys(p.dependent_parameters) 
+        maps = p.dependent_parameters
+        dependent_θ = NamedTuple(name => maps[name](free_θ) for name in dependent_names)
 
-    return merge(dependent_θ, free_θ) # prioritize free_θ
+        return merge(dependent_θ, free_θ) # prioritize free_θ
+    else
+        return free_θ
+    end
 end
 
 #####

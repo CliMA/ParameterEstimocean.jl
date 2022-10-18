@@ -156,7 +156,9 @@ end
     
 Returns the `ConstantConvergence` pseudo-stepping scheme with target `convergence_ratio`.
 With `ConstantConvergence`, the ensemble Kalman inversion (EKI) pseudo step size is adjusted
-such that the determinant of the parameter covariance is decreased by 70% after one EKI iteration.
+such that the `n`-th root of the determinant of the parameter covariance is decreased by
+`convergence_ratio` (e.g. for `convergence_ratio=0.7`, by 70%)
+after one EKI iteration, where `n` is the number of parameters.
 """
 ConstantConvergence(; convergence_ratio=0.7) = ConstantConvergence(convergence_ratio)
 
@@ -198,7 +200,11 @@ function eki_update(pseudo_scheme::Kovachki2018, Xₙ, Gₙ, eki)
     initial_step_size = pseudo_scheme.initial_step_size
     Xₙ₊₁, Δtₙ = kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀=initial_step_size)
 
-    @info "Particles stepped adaptively with time step $Δtₙ"
+    intro =          "Particles stepped adaptively with the Kovachki2018 pseudo-stepping scheme."
+    info1 = @sprintf("    ├─ iteration:   %d", eki.iteration)
+    info2 = @sprintf("    ├─ pseudo time: %.3e", eki.pseudotime)
+    info3 = @sprintf("    └─ pseudo step: %.3e", Δtₙ)
+    @info string(intro, '\n', info1, '\n', info2, '\n', info3)
 
     return Xₙ₊₁, Δtₙ
 end
@@ -442,15 +448,16 @@ covariance matrix determinants at consecutive iterations.
 function eki_update(pseudo_scheme::ConstantConvergence, Xₙ, Gₙ, eki)
 
     N_param, N_ensemble = size(Xₙ)
-    @assert N_ensemble > N_param "The number of parameters exceeds the ensemble size and so the ensemble covariance matrix
-                                  will be singular. Please increase the ensemble size to at least $N_param or choose an 
-                                  AbstractSteppingScheme that does not rely on inverting the ensemble convariance matrix."
+    N_ensemble > N_param || throw(ArgumentError(
+        "The number of parameters exceeds the ensemble size and so the ensemble covariance matrix
+        will be singular. Please increase the ensemble size to at least $N_param or choose an 
+        AbstractSteppingScheme that does not rely on inverting the ensemble convariance matrix."))
 
     conv_rate = pseudo_scheme.convergence_ratio
 
     # Start with Δtₙ = 1.0; `Δtₙ_first_guess` is the first time step in the sequence Δtₖ = (1/2)^k where k={0,1,2...}
-    # such that |cov(Xₙ₊₁)|/|cov(Xₙ)| > pseudo_scheme.convergence_ratio (assuming the determinant ratio
-    # is monotonically increasing as a function of k).
+    # such that |cov(Xₙ₊₁)|/|cov(Xₙ)|^(1/N) > pseudo_scheme.convergence_ratio, where `N` is the number of parameters
+    # (assuming the determinant ratio is monotonically increasing as a function of k).
     _, Δtₙ_first_guess = eki_update(ThresholdedConvergenceRatio(cov_threshold=pseudo_scheme.convergence_ratio),
                                     Xₙ, Gₙ, eki; initial_guess=1.0, report=false)
 
@@ -467,23 +474,27 @@ function eki_update(pseudo_scheme::ConstantConvergence, Xₙ, Gₙ, eki)
 
     # Test step forward
     Xₙ₊₁ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
-    r = det(cov(Xₙ₊₁, dims=2)) / det_cov_init
+    rᴺ = det(cov(Xₙ₊₁, dims=2)) / det_cov_init
+    r = rᴺ^(1/N_param)
 
     # "Accelerated" fixed point iteration to adjust step_size
     p = 1.1
     iter = 1
-    while !isapprox(r, conv_rate, atol=0.03, rtol=0.1) && iter < 10
+    while !isapprox(r, conv_rate, atol=0.03, rtol=0.1) && iter < 20
         Δtₙ *= (r / conv_rate)^p
         Xₙ₊₁ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
-        r = det(cov(Xₙ₊₁, dims=2)) / det_cov_init
+        rᴺ = det(cov(Xₙ₊₁, dims=2)) / det_cov_init
+        r = rᴺ^(1/N_param)
         iter += 1
     end
 
     # A nice message
-    intro_str       = "Pseudo time step found for ConstantConvergence pseudostepping."
-    convergence_str = @sprintf("      ├─ convergence ratio: %.6f (target: %.2f)", r, conv_rate)
-    time_step_str   = @sprintf("      └─ pseudo time step: %.3e", Δtₙ)
-    @info string(intro_str, '\n', convergence_str, '\n', time_step_str)
+    intro_str       =          "Pseudo time step found for ConstantConvergence pseudo-stepping."
+    convergence_str = @sprintf("    ├─ convergence ratio: %.6f (target: %.2f)", r, conv_rate)
+    iteration_str   = @sprintf("    ├─ iteration:   %d", eki.iteration)
+    time_str        = @sprintf("    ├─ pseudo time: %.3e", eki.pseudotime)
+    time_step_str   = @sprintf("    └─ pseudo step: %.3e", Δtₙ)
+    @info string(intro_str, '\n', convergence_str, '\n', iteration_str, '\n', time_str, '\n', time_step_str)
 
     return Xₙ₊₁, Δtₙ
 end
@@ -509,7 +520,7 @@ function eki_update(pseudo_scheme::Iglesias2021, Xₙ, Gₙ, eki)
     Δtₙ = minimum([qₙ, 1-tₙ])
     Xₙ₊₁ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
 
-    @info "Pseudo time step $Δtₙ found for the Iglesias2021 pseudostepping."
+    @info "Pseudo time step $Δtₙ found for Iglesias2021 pseudo-stepping."
 
     return Xₙ₊₁, Δtₙ
 end
