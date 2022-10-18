@@ -291,7 +291,7 @@ julia> priors = (ν = Normal(1e-4, 1e-5), κ = Normal(1e-3, 1e-5))
 (ν = Normal{Float64}(μ=0.0001, σ=1.0e-5), κ = Normal{Float64}(μ=0.001, σ=1.0e-5))
 
 julia> free_parameters = FreeParameters(priors)
-FreeParameters with 2 parameters
+FreeParameters with 2 free parameters and 0 dependent parameteres
 ├── names: (:ν, :κ)
 ├── priors: Dict{Symbol, Any}
 │   ├── ν => Normal{Float64}(μ=0.0001, σ=1.0e-5)
@@ -302,12 +302,12 @@ julia> c(p) = p.ν + p.κ # compute a third dependent parameter `c` as a functio
 c (generic function with 1 method)
 
 julia> free_parameters_with_a_dependent = FreeParameters(priors, dependent_parameters=(; c))
-FreeParameters with 2 parameters and 1 dependent parameter
+FreeParameters with 2 free parameters and 1 dependent parameter
 ├── names: (:ν, :κ)
-├── priors: Dict{Symbol, Any}
+├── priors:
 │   ├── ν => Normal{Float64}(μ=0.0001, σ=1.0e-5)
 │   └── κ => Normal{Float64}(μ=0.001, σ=1.0e-5)
-└── dependent parameters: Dict{Symbol, Any}
+└── dependent parameters:
     └── c => c (generic function with 1 method)
 ```
 """
@@ -326,41 +326,44 @@ end
 
 function dependent_parameter_show(io, dependent_parameters, name, prefix, width)
     print(io, @sprintf("%s %s => ", prefix, lpad(name, width, " ")))
-    print(io, prettysummary(dependent_parameters[Symbol(name)]))
+    print(io, prettysummary(dependent_parameters[name]))
     return nothing
 end
 
-parameter_str(N) = N>1 ? "parameters" : "parameter"
+parameter_str(N) = N == 1 ? "parameter" : "parameters"
 
 function Base.show(io::IO, p::FreeParameters)
     Np, Nd = length(p), length(p.dependent_parameters)
 
-    free_parameters_summary = "FreeParameters with $Np " * parameter_str(Np)
+    free_parameters_summary = "$Np free " * parameter_str(Np)
+    dependent_parameters_summary = "$Nd dependent " * parameter_str(Np)
 
-    title = Nd > 0 ?
-            free_parameters_summary * " and $Nd dependent " * parameter_str(Nd) : 
-            free_parameters_summary
+    title = "FreeParameters with " * free_parameters_summary * 
+            " and " * dependent_parameters_summary
+
+    Nd = length(p.dependent_parameters)
+    prefix = Nd > 0 ? "├" : "└"
 
     print(io, title, '\n',
               "├── names: $(p.names)", '\n',
-              "├── priors: Dict{Symbol, Any}")
+              prefix * "── priors: ")
 
     maximum_name_length = maximum([length(string(name)) for name in p.names]) 
 
-    for (i, name) in enumerate(p.names)
+    for (i, name) in enumerate(p.names[1:end-1])
+        bufferprefixprefix = Nd
         prefix = i == length(p.names) ? "│   └──" : "│   ├──"
         print(io, '\n')
         prior_show(io, p.priors, name, prefix, maximum_name_length)
     end
     
-    print(io, '\n')
-
-    print(io, "└── dependent parameters: Dict{Symbol, Any}")
-
     if !isempty(p.dependent_parameters)
+        print(io, '\n')
+        print(io, "└── dependent parameters: ")
+
         maximum_name_length = maximum([length(string(name)) for name in p.dependent_parameters]) 
 
-        for (i, name) in enumerate(p.dependent_parameters)
+        for (i, name) in enumerate(propertynames(p.dependent_parameters))
             prefix = i == length(p.dependent_parameters) ? "    └──" : "    ├──"
             print(io, '\n')
             dependent_parameter_show(io, p.dependent_parameters, name, prefix, maximum_name_length)
@@ -372,19 +375,23 @@ end
 
 Base.length(p::FreeParameters) = length(p.names)
 
-function build_parameters_named_tuple(p::FreeParameters, free_θ)
+function build_parameters_named_tuple(p::FreeParameters, free_θ; with_dependent_parameters=true)
     if free_θ isa Dict # convert to NamedTuple with
         free_θ = NamedTuple(name => free_θ[name] for name in p.names)
     elseif !(free_θ isa NamedTuple) # mostly likely a Vector: convert to NamedTuple with
         free_θ = NamedTuple{p.names}(Tuple(free_θ))
     end
 
-    # Compute dependent parameters
-    dependent_names = keys(p.dependent_parameters) 
-    maps = values(p.dependent_parameters)
-    dependent_θ = NamedTuple(name => maps[name](free_θ) for name in dependent_names)
+    if with_dependent_parameters
+        # Compute dependent parameters
+        dependent_names = keys(p.dependent_parameters) 
+        maps = p.dependent_parameters
+        dependent_θ = NamedTuple(name => maps[name](free_θ) for name in dependent_names)
 
-    return merge(dependent_θ, free_θ) # prioritize free_θ
+        return merge(dependent_θ, free_θ) # prioritize free_θ
+    else
+        return free_θ
+    end
 end
 
 #####

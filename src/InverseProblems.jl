@@ -9,7 +9,7 @@ export
     observation_map_variance_across_time,
     ConcatenatedOutputMap
 
-using OffsetArrays, Statistics, OrderedCollections
+using OffsetArrays, Statistics, OrderedCollections, BlockDiagonals
 using Suppressor: @suppress
 
 using ..Utils: tupleit
@@ -39,6 +39,8 @@ using Oceananigans.Grids: Flat, Bounded,
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SingleColumnGrid, YZSliceGrid, ColumnEnsembleSize
 
 import ..Transformations: normalize!
+
+import Statistics: cov
 
 #####
 ##### InverseProblems
@@ -606,5 +608,35 @@ observation_map_variance_across_time(map::ConcatenatedOutputMap, observations::V
     hcat(Tuple(observation_map_variance_across_time(map, observation) for observation in observations)...)
 
 observation_map_variance_across_time(ip::InverseProblem) = observation_map_variance_across_time(ip.output_map, ip.observations)
+
+function Statistics.cov(realizations::Vector{<:SyntheticObservations}; corrected=true, output_map=ConcatenatedOutputMap())
+    length(realizations) > 2 || throw(ArgumentError("Input length must be > 2 or covariance will singular."))
+    maps = [observation_map(output_map, obs) for obs in realizations]
+    Y = transpose(hcat(maps...))
+    return cov(Y; corrected)
+end
+
+function Statistics.cov(realizations::Vector{<:BatchedSyntheticObservations};
+                        corrected=true, output_map=ConcatenatedOutputMap())
+
+    Ncases = length(first(realizations))
+
+    all(Ncases == length(batched_obs) for batched_obs in realizations) ||
+        throw(ArgumentError("Every BatchedObservation must have the same number of cases."))
+
+    # "Transpose" the vector of Batched to a vector (representing the batch) of vectors
+    Γ = []
+    for c in 1:Ncases
+        case_realizations = [batched.observations[c] for batched in realizations]
+
+        Γi = cov(case_realizations; corrected, output_map)
+        push!(Γ, Γi)
+    end
+
+    # Γ has to be concretely typed, because of a limitation in BlockDiagonals
+    Γ = [Γi for Γi in Γ]
+
+    return Matrix(BlockDiagonal(Γ))
+end
 
 end # module

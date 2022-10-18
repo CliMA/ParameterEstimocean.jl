@@ -5,6 +5,7 @@ authors = ["Climate Modeling Alliance and contributors"]
 version = "0.13.2"
 
 [deps]
+BlockDiagonals = "0a1fb500-61f7-11e9-3c65-f5ef3456f9f0"
 DataDeps = "124859b0-ceae-595e-8997-d05f6a7a8dfe"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"

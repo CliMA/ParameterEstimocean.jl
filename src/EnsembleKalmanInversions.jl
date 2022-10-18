@@ -394,7 +394,9 @@ function (mrn::NormExceedsMedian)(G)
 
     G_norm = mapslices(norm, G, dims=1)
     finite_G_norm = filter(!isnan, G_norm)
-    median_norm = median(finite_G_norm)
+
+    # If all particles fail, median_norm cannot be computed, so we set to 0.
+    median_norm = length(finite_G_norm) == 0 ? zero(eltype(finite_G_norm)) : median(finite_G_norm)
     failed(column) = any(isnan.(column)) || norm(column) > ϵ * median_norm
 
     return vec(mapslices(failed, G; dims=1))
@@ -409,7 +411,11 @@ end
 # Default pseudo_stepping::Nothing --- it's not adaptive
 adaptive_step_parameters(::Nothing, Xⁿ, Gⁿ, y, Γy, process; Δt) = step_parameters(Xⁿ, Gⁿ, y, Γy, process; Δt), Δt
 
-function step_parameters(eki::EnsembleKalmanInversion, pseudo_stepping; Δt=1.0, covariance_inflation=0.0, momentum_parameter=0.0)
+function step_parameters(eki::EnsembleKalmanInversion, pseudo_stepping;
+                         Δt = 1.0,
+                         covariance_inflation = 0.0,
+                         momentum_parameter = 0.0)
+
     process = eki.ensemble_kalman_process
     Gⁿ = eki.forward_map_output
     Xⁿ = eki.unconstrained_parameters
