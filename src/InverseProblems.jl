@@ -140,7 +140,6 @@ function InverseProblem(observations,
 end
 
 const EnsembleSimulationInverseProblem = InverseProblem{<:Any, <:Any, <:Vector}
-
 Nensemble(ip::EnsembleSimulationInverseProblem) = length(ip.simulation)
 
 function Base.show(io::IO, ip::EnsembleSimulationInverseProblem)
@@ -365,12 +364,11 @@ If `length(θ)` is less the the number of ensemble members in `ip.simulation`, t
 last parameter set is copied to fill the parameter set ensemble.
 """
 function expand_parameters(ip, θ::Vector)
-    Nfewer = Nensemble(ip) - length(θ)
-    Nfewer < 0 && throw(ArgumentError("There are $(-Nfewer) more parameter sets than ensemble members!"))
-
     θ = [build_parameters_named_tuple(ip.free_parameters, θi) for θi in θ]
 
     # Fill out parameter set ensemble
+    Nfewer = Nensemble(ip) - length(θ)
+    Nfewer < 0 && throw(ArgumentError("There are $(-Nfewer) more parameter sets than ensemble members!"))
     Nfewer > 0 && append!(θ, [θ[end] for _ = 1:Nfewer])
 
     return θ
