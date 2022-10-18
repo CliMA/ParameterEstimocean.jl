@@ -71,14 +71,13 @@ priors = (κh = ScaledLogitNormal(bounds=(0.0, 2.0)),
 free_parameters = FreeParameters(priors) 
 observations = SyntheticObservations("random_simulation_slices.jld2"; field_names=:c, times)
 
+# Initial condition
 c₀ = FieldTimeSeries("random_simulation_fields.jld2", "c")[1]
 
 function initialize_simulation!(sim, parameters)
     c = sim.model.tracers.c
     set!(c, c₀)
-
-
-    return 
+    return nothing
 end
 
 function slice_collector(sim)
