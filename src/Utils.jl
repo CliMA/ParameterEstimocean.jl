@@ -1,6 +1,7 @@
 module Utils
 
 using CUDA
+using MPI
 
 tupleit(t) = try
     Tuple(t)
@@ -56,10 +57,10 @@ maps one rank to one GPU by leveraging the CUDA.device!(d::Int) function.
 function map_gpus_to_ranks!(; comm = MPI.COMM_WORLD)   
     rank = MPI.Comm_rank(comm)
     name = MPI.Get_processor_name()
-    hash = name_to_hash(node_name)
+    hash = name_to_hash(name)
 
-    node_comm =  MPI.Comm_split(comm, hash, nrank)
-    node_rank =  MPI.Comm_rank(node_rank)
+    node_comm =  MPI.Comm_split(comm, Int32(hash), rank)
+    node_rank =  MPI.Comm_rank(node_comm)
     # Check that there are enough GPUs to ranks in every node
     node_rank > length(CUDA.devices()) - 1 && 
         throw(ArgumentError("Not enough GPUs per ranks in a node. Reduce the number of processes per node"))
@@ -67,9 +68,9 @@ function map_gpus_to_ranks!(; comm = MPI.COMM_WORLD)
 end
 
 function name_to_hash(node)
-    hash = Int64(0)
+    hash = 0
     for i=1:length(node)
-        hash = hash + (Int(node[i])+1)*10^i
+        hash = hash + (Int(node[i])+1)*2^i
     end
     return hash
 end 
