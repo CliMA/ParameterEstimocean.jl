@@ -98,7 +98,8 @@ end
 function slice_collector(sim)
     c = sim.model.tracers.c
     c_slice = Field(c; indices=slice_indices)
-    return FieldTimeSeriesCollector((; c=c_slice), times)
+    #return FieldTimeSeriesCollector((; c=c_slice), times)
+    return FieldTimeSeriesCollector((; c=c_slice), times, averaging_window=1e-1)
 end
 
 time_series_collector_ensemble = [slice_collector(sim) for sim in simulation_ensemble]
@@ -111,16 +112,15 @@ ip = InverseProblem(observations, simulation_ensemble, free_parameters;
 #random_κ = [(; κh=10rand(), κz=10rand()) for sim in simulation_ensemble]
 #G = forward_map(ip, random_κ, suppress=false)
 
-eki = EnsembleKalmanInversion(ip; pseudo_stepping=ConstantConvergence(0.2))
+eki = EnsembleKalmanInversion(ip; pseudo_stepping=ConstantConvergence(0.3))
 iterate!(eki, iterations=10)
 
 @show eki.iteration_summaries[end]
 
-#=
 fig = Figure()
 ax = Axis(fig[1, 1])
 
-for iter in [0, 1, 4, 10]
+for iter in 0:10
     summary = eki.iteration_summaries[iter]
     κh = map(θ -> θ.κh, summary.parameters)
     κz = map(θ -> θ.κz, summary.parameters)
@@ -130,4 +130,4 @@ end
 axislegend(ax)
 
 display(fig)
-=#
+
