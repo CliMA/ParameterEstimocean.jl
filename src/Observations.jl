@@ -465,14 +465,11 @@ function initialize_forward_run!(simulation,
         parent(time_series) .= 0
     end
 
-    :nan_checker ∈ keys(simulation.callbacks) && pop!(simulation.callbacks, :nan_checker)
-    :data_collector ∈ keys(simulation.callbacks) && pop!(simulation.callbacks, :data_collector)
-
-    collection_schedule = SpecifiedTimes(times...)
-    simulation.callbacks[:data_collector] = Callback(time_series_collector, collection_schedule)
-    simulation.stop_time = times[end]
-
     # Add Callback for computing time-averages if necessary
+    collection_schedule = SpecifiedTimes(times...)
+
+    # Note that callbacks for computing time-averages must be added _before_ callbacks
+    # for data collection
     for name in keys(time_series_collector.collected_fields)
         field = time_series_collector.collected_fields[name]
         if field isa WindowedTimeAverage
@@ -481,10 +478,13 @@ function initialize_forward_run!(simulation,
                                                     window = field.schedule.window,
                                                     stride = field.schedule.stride)
             callback_name = Symbol(:time_average_, name)
-            callback_name ∈ keys(simulation.callbacks) && pop!(simulation.callbacks, callback_name)
             simulation.callbacks[callback_name] = Callback(field)
         end
     end
+
+    :nan_checker ∈ keys(simulation.callbacks) && pop!(simulation.callbacks, :nan_checker)
+    simulation.callbacks[:data_collector] = Callback(time_series_collector, collection_schedule)
+    simulation.stop_time = times[end]
 
     if initialize_with_observations
         set!(simulation.model, observations, 1)
