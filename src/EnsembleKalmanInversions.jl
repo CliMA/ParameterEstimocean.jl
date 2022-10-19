@@ -146,6 +146,7 @@ function EnsembleKalmanInversion(inverse_problem;
                                  forward_map_output = nothing,
                                  mark_failed_particles = NormExceedsMedian(1e9),
                                  ensemble_kalman_process = Inversion(),
+                                 Nensemble = Nensemble(inverse_problem),
                                  tikhonov = false)
 
     if ensemble_kalman_process isa Sampler && !isnothing(pseudo_stepping)
@@ -156,7 +157,7 @@ function EnsembleKalmanInversion(inverse_problem;
     free_parameters = inverse_problem.free_parameters
     priors = free_parameters.priors
     Nθ = length(priors)
-    Nens = Nensemble(inverse_problem)
+    Nens = Nensemble
 
     # Generate an initial sample of parameters
     unconstrained_priors = NamedTuple(name => unconstrained_prior(priors[name])
@@ -289,6 +290,13 @@ function iterate!(eki::EnsembleKalmanInversion;
 
     for _ in iterator
         pseudo_step!(eki; kwargs...)
+
+        # Forward map
+        eki.forward_map_output = resampling_forward_map!(eki)
+        summary = IterationSummary(eki, eki.unconstrained_parameters, eki.forward_map_output)
+        push!(eki.iteration_summaries, summary)
+
+        ensemble_mean = eki.iteration_summaries[end].ensemble_mean
     end
 
     # Return ensemble mean (best guess for optimal parameters)
@@ -305,10 +313,11 @@ end
 
 """
     pseudo_step!(eki::EnsembleKalmanInversion;
-                pseudo_Δt = eki.pseudo_Δt,
-                pseudo_stepping = eki.pseudo_stepping)
+                 pseudo_Δt = eki.pseudo_Δt,
+                 pseudo_stepping = eki.pseudo_stepping)
 
-Iterate the ensemble Kalman inversion dynamic forward by one iteration given current state `eki`.
+Step forward `X = eki.unconstrained_parameters` using
+`y = eki.mapped_observations`, `Γy = eki.noise_covariance`, and G = `eki.forward_map_output`.
 
 Keyword arguments
 =================
@@ -320,11 +329,6 @@ Keyword arguments
 
 - `pseudo_stepping` (`Float64`): Scheme for selecting a time step if `pseudo_Δt` is `nothing`.
                                  (Default: `eki.pseudo_stepping`)
-
-Return
-======
-
-- `ensemble_mean`: the ensemble mean following the step.
 """
 function pseudo_step!(eki::EnsembleKalmanInversion; 
                       pseudo_Δt = nothing,
@@ -359,14 +363,7 @@ function pseudo_step!(eki::EnsembleKalmanInversion;
     eki.pseudotime += adaptive_Δt
     eki.pseudo_Δt = adaptive_Δt
 
-    # Forward map
-    eki.forward_map_output = resampling_forward_map!(eki)
-    summary = IterationSummary(eki, eki.unconstrained_parameters, eki.forward_map_output)
-    push!(eki.iteration_summaries, summary)
-
-    ensemble_mean = eki.iteration_summaries[end].ensemble_mean
-
-    return ensemble_mean
+    return nothing
 end
 
 #####

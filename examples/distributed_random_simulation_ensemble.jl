@@ -5,6 +5,7 @@ using LinearAlgebra
 
 using ParameterEstimocean
 using ParameterEstimocean.Observations: FieldTimeSeriesCollector
+using ParameterEstimocean.Parameters: random_unconstrained_parameters
 
 using Statistics
 #using GLMakie
@@ -122,11 +123,8 @@ ip = InverseProblem(observations, [simulation], free_parameters;
                     initialize_with_observations = false,
                     initialize_simulation = initialize_simulation!)
 
-#random_κ = [(; κh=10rand(), κz=10rand()) for sim in simulation_ensemble]
-θ = [(; κh=10rand(), κz=10rand())]
-X = transform_to_unconstrained(ip.free_parameters.priors, θ)
-#θ = transform_to_constrained(ip.free_parameters.priors, X)
-G = inverting_forward_map(ip, X, suppress=false)
+# θ = [(; κh=10rand(), κz=10rand())]
+# G = forward_map(ip, θ, suppress=false)
 
 #####
 ##### Next...
@@ -137,8 +135,17 @@ y = observation_map(ip)
 Nobs = length(y)
 Γy = Matrix(I, Nobs, Nobs)
 
-# 2. Create random parameters X on every rank. size(X) = (Nparams, Nranks)
-X = random_unconstrained_parameters(ip.free_parameters, Nranks)
+# 2. Create the EKI object
+
+Nranks = 10
+unconstrained_parameters = random_unconstrained_parameters(ip.free_parameters, Nranks)
+forward_map_output = global_G = zeros(length(y), Nranks)
+pseudo_stepping = ConstantConvergence(0.2)
+eki = EnsembleKalmanInversion(ip;
+                              pseudo_stepping,
+                              forward_map_output,
+                              unconstrained_parameters,
+                              Nensemble=Nranks)
 
 # 3. Compute G for every rank with inverting_forward_map(ip, X[rank:rank, :])
 #
