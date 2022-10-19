@@ -1,4 +1,0 @@
-[MPIPreferences]
-__clear__ = ["libmpi", "abi", "mpiexec"]
-_format = "1.0"
-binary = "MPICH_jll"
