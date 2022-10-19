@@ -5,6 +5,7 @@ using Oceananigans.TurbulenceClosures: VerticalFormulation, HorizontalFormulatio
 using ParameterEstimocean
 using ParameterEstimocean.Observations: FieldTimeSeriesCollector
 
+using Random
 using Statistics
 using GLMakie
 
@@ -109,9 +110,10 @@ ip = InverseProblem(observations, simulation_ensemble, free_parameters;
                     initialize_with_observations = false,
                     initialize_simulation = initialize_simulation!)
 
-#random_κ = [(; κh=10rand(), κz=10rand()) for sim in simulation_ensemble]
-#G = forward_map(ip, random_κ, suppress=false)
+#θ = [(; κh=10rand(), κz=10rand()) for sim in simulation_ensemble]
+#G = forward_map(ip, θ, suppress=false)
 
+Random.seed!(123)
 eki = EnsembleKalmanInversion(ip; pseudo_stepping=ConstantConvergence(0.3))
 iterate!(eki, iterations=10)
 

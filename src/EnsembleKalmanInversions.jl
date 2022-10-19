@@ -28,6 +28,9 @@ using ..InverseProblems: Nensemble, observation_map, forward_map, BatchedInverse
 using ..InverseProblems: inverting_forward_map
 
 using Oceananigans.Utils: prettytime
+using MPI
+
+#const DistributedEnsembleKalmanInversion = EnsembleKalmanInversion{E, <:DistributedInverseProblem}
 
 mutable struct EnsembleKalmanInversion{E, I, M, O, S, R, X, G, C, P, T, F}
     inverse_problem :: I

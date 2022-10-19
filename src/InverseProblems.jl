@@ -3,6 +3,7 @@ module InverseProblems
 export
     InverseProblem,
     BatchedInverseProblem,
+    DistributedInverseProblem,
     forward_map,
     forward_run!,
     observation_map,
@@ -11,6 +12,7 @@ export
 
 using OffsetArrays, Statistics, OrderedCollections, BlockDiagonals
 using Suppressor: @suppress
+using MPI
 
 using ..Utils: tupleit
 using ..Transformations: transform_field_time_series
@@ -25,6 +27,8 @@ using ..Observations:
     batch,
     observation_times,
     forward_map_names
+
+import ..Parameters: closure_with_parameters
 
 using Oceananigans: run!, fields, FieldTimeSeries, CPU
 using Oceananigans.Architectures: architecture
@@ -46,7 +50,9 @@ import Statistics: cov
 ##### InverseProblems
 #####
 
-struct InverseProblem{F, O, S, T, P, I}
+abstract type AbstractInverseProblem end
+
+struct InverseProblem{F, O, S, T, P, I} <: AbstractInverseProblem
     observations :: O
     simulation :: S
     time_series_collector :: T
@@ -61,9 +67,7 @@ nothingfunction(args...) = nothing
 const OneDimensionalEnsembleGrid = RectilinearGrid{<:Any, Flat, Flat, Bounded}
 const TwoDimensionalEnsembleGrid = RectilinearGrid{<:Any, Flat, Bounded, Bounded}
 
-Nobservations(grid::OneDimensionalEnsembleGrid) = grid.Ny
-Nobservations(grid::TwoDimensionalEnsembleGrid) = 1
-
+Nensemble(grid) = 1
 Nensemble(grid::Union{OneDimensionalEnsembleGrid, TwoDimensionalEnsembleGrid}) = grid.Nx
 Nensemble(ip::InverseProblem) = Nensemble(ip.simulation.model.grid)
 
@@ -147,10 +151,139 @@ function Base.show(io::IO, ip::EnsembleSimulationInverseProblem)
 end
 
 #####
+##### Core functionality: forward map evaluation
+#####
+
+"""
+    forward_map(ip, parameters)
+
+Run `ip.simulation` forward with `parameters` and return the data,
+transformed into an array format expected by `EnsembleKalmanProcesses.jl`.
+"""
+function forward_map(ip::InverseProblem, parameters; suppress=true)
+
+    # Run the simulation forward and populate the time series collector
+    # with model data.
+    forward_run!(ip, parameters; suppress)
+
+    # Verify that data was collected properly
+    if !(ip isa EnsembleSimulationInverseProblem)
+        all(ip.time_series_collector.times .≈ ip.time_series_collector.collection_times) ||
+            error("FieldTimeSeriesCollector.collection_times does not match FieldTimeSeriesCollector.times. \n" *
+                  "Field time series data may not have been properly collected")
+    end
+
+    # Transform the model data according to `ip.output_map` into
+    # the array format expected by EnsembleKalmanProcesses.jl
+    # The result has `size(output) = (output_size, ensemble_capacity)`,
+    # where `output_size` is determined by both the `output_map` and the
+    # data collection dictated by `ip.observations`.
+    output = transform_forward_map_output(ip.output_map, ip.observations, ip.time_series_collector)
+
+    # (Nobservations, Nensemble)
+    return output
+end
+
+# Permit "single simulation, single closure" case.
+EnsembleClosureGrid = Union{SingleColumnGrid, YZSliceGrid}
+closure_with_parameters(grid::EnsembleClosureGrid, closure, θ) = new_closure_ensemble(closure, θ, architecture(grid))
+closure_with_parameters(grid, closure, θ) = closure_with_parameters(closure, θ)
+
+"""
+    forward_run!(ip, parameters)
+
+Initialize `ip.simulation` with `parameters` and run it forward. Output is stored
+in `ip.time_series_collector`.
+"""
+function forward_run!(ip::InverseProblem, parameters; suppress=false)
+    # Ensure there are enough parameters for ensemble members in the simulation
+    θ = expand_parameters(ip, parameters)
+    _forward_run!(ip, θ, ip.simulation, ip.time_series_collector; suppress)
+    return nothing
+end
+
+function _forward_run!(ip::InverseProblem, θ, simulation, time_series_collector; suppress=false)
+    observations = ip.observations
+    closure = simulation.model.closure
+    grid = simulation.model.grid
+
+    # Set closure parameters
+    simulation.model.closure = closure_with_parameters(grid, closure, θ)
+
+    initialize_forward_run!(simulation, observations, time_series_collector,
+                            ip.initialize_with_observations, ip.initialize_simulation, θ)
+
+    if suppress
+        @suppress run!(simulation)
+    else
+        run!(simulation)
+    end
+    
+    return nothing
+end
+
+function forward_run!(ip::EnsembleSimulationInverseProblem, parameters; suppress=false)
+    # Ensure there are enough parameters for ensemble members in the simulation
+    θ = expand_parameters(ip, parameters)
+
+    # Broadcast parameter vector over simulation ensemble
+    for k = 1:Nensemble(ip)
+        # Extract the kᵗʰ ensemble member
+        simulation = ip.simulation[k]
+        time_series_collector = ip.time_series_collector[k]
+        θk = θ[k]
+
+        _forward_run!(ip, θk, simulation, time_series_collector; suppress)
+    end
+
+    return nothing
+end
+
+#####
+##### DistributedInverseProblem
+#####
+
+struct DistributedInverseProblem{L, F, C} <: AbstractInverseProblem
+    local_inverse_problem :: L
+    free_parameters :: F
+    comm :: C
+end
+
+DistributedInverseProblem(local_inverse_problem; comm=MPI.COMM_WORLD) =
+    DistributedInverseProblem(local_inverse_problem, local_inverse_problem.free_parameters, comm)
+
+Nensemble(dip::DistributedInverseProblem) = MPI.Comm_size(dip.comm)
+
+function forward_map(dip::DistributedInverseProblem, θ; suppress=true)
+    rank = MPI.Comm_rank(dip.comm)
+    local_θ = θ[rank+1]
+    local_G = forward_map(dip.local_inverse_problem, local_θ; suppress)
+    MPI.Barrier(dip.comm)
+
+    Nobs = length(local_G)
+    Nens = Nensemble(dip)
+    
+    # If Allgather
+    global_G = MPI.Allgather(local_G, dip.comm)
+    global_G = reshape(global_G, Nobs, Nens)
+
+    #=
+    # If only rank 0
+    global_G = MPI.Gather(local_G, 0, dip.comm)
+
+    if rank == 0
+        global_G = reshape(global_G, Nobs, Nens)
+    end
+    =#
+
+    return global_G
+end
+
+#####
 ##### BatchedInverseProblem
 #####
 
-struct BatchedInverseProblem{B, P, W}
+struct BatchedInverseProblem{B, P, W} <: AbstractInverseProblem
     batch :: B
     free_parameters :: P
     weights :: W
@@ -238,110 +371,13 @@ function observation_map(batched_ip::BatchedInverseProblem)
     return vcat(maps...)
 end
 
-#####
-##### Core functionality: forward map evaluation
-#####
-
-"""
-    forward_map(ip, parameters)
-
-Run `ip.simulation` forward with `parameters` and return the data,
-transformed into an array format expected by `EnsembleKalmanProcesses.jl`.
-"""
-function forward_map(ip::InverseProblem, parameters; suppress=true)
-
-    # Run the simulation forward and populate the time series collector
-    # with model data.
-    forward_run!(ip, parameters; suppress)
-
-    # Verify that data was collected properly
-    if !(ip isa EnsembleSimulationInverseProblem)
-        all(ip.time_series_collector.times .≈ ip.time_series_collector.collection_times) ||
-            error("FieldTimeSeriesCollector.collection_times does not match FieldTimeSeriesCollector.times. \n" *
-                  "Field time series data may not have been properly collected")
-    end
-
-    # Transform the model data according to `ip.output_map` into
-    # the array format expected by EnsembleKalmanProcesses.jl
-    # The result has `size(output) = (output_size, ensemble_capacity)`,
-    # where `output_size` is determined by both the `output_map` and the
-    # data collection dictated by `ip.observations`.
-    output = transform_forward_map_output(ip.output_map, ip.observations, ip.time_series_collector)
-
-    # (Nobservations, Nensemble)
-    return output
-end
-
-"""
-    forward_run!(ip, parameters)
-
-Initialize `ip.simulation` with `parameters` and run it forward. Output is stored
-in `ip.time_series_collector`.
-"""
-function forward_run!(ip::InverseProblem, parameters; suppress=false)
-    observations = ip.observations
-    simulation = ip.simulation
-    closures = simulation.model.closure
-
-    # Ensure there are enough parameters for ensemble members in the simulation
-    θ = expand_parameters(ip, parameters)
-
-    # Set closure parameters
-    simulation.model.closure = new_closure_ensemble(closures, θ, architecture(simulation.model.grid))
-
-    initialize_forward_run!(simulation, observations, ip.time_series_collector,
-                            ip.initialize_with_observations, ip.initialize_simulation, θ)
-
-    if suppress
-        @suppress run!(simulation)
-    else
-        run!(simulation)
-    end
-    
-    return nothing
-end
-
-function forward_run!(ip::EnsembleSimulationInverseProblem, parameters; suppress=false)
-    observations = ip.observations
-    simulation_ensemble = ip.simulation
-    time_series_collector_ensemble = ip.time_series_collector
-    Nens = Nensemble(ip)
-
-    # Ensure there are enough parameters for ensemble members in the simulation
-    θ = expand_parameters(ip, parameters)
-
-    # Broadcast parameter vector over simulation ensemble
-    for k = 1:Nens
-        # Extract the kᵗʰ ensemble member
-        simulation = simulation_ensemble[k]
-        time_series_collector = time_series_collector_ensemble[k]
-        θk = θ[k]
-
-        new_closure = closure_with_parameters(simulation.model.closure, θk)
-        simulation.model.closure = new_closure
-        initialize_forward_run!(simulation, observations, time_series_collector,
-                                ip.initialize_with_observations, ip.initialize_simulation, θk)
-    end
-
-    for k = 1:Nens
-        simulation = simulation_ensemble[k]
-        if suppress
-            @suppress run!(simulation)
-        else
-            run!(simulation)
-        end
-    end
-
-    return nothing
-end
-
 """
     inverting_forward_map(ip::InverseProblem, X)
 
 Transform unconstrained parameters `X` into constrained,
 physical-space parameters `θ` and execute `forward_map(ip, θ)`.
 """
-function inverting_forward_map(ip::Union{InverseProblem, BatchedInverseProblem}, X; suppress=true)
+function inverting_forward_map(ip::AbstractInverseProblem, X; suppress=true)
     θ = transform_to_constrained(ip.free_parameters.priors, X)
     return forward_map(ip, θ; suppress)
 end
@@ -386,6 +422,7 @@ expand_parameters(ip, θ::Matrix) = expand_parameters(ip, [θ[:, k] for k = 1:si
 Transform and return `ip.observations` appropriate for `ip.output_map`. 
 """
 observation_map(ip::InverseProblem) = observation_map(ip.output_map, ip.observations)
+observation_map(dip::DistributedInverseProblem) = observation_map(dip.local_inverse_problem)
 
 #####
 ##### ConcatenatedOutputMap

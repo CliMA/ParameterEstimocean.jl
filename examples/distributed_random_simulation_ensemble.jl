@@ -6,11 +6,14 @@ using LinearAlgebra
 using ParameterEstimocean
 using ParameterEstimocean.Observations: FieldTimeSeriesCollector
 using ParameterEstimocean.Parameters: random_unconstrained_parameters
+using ParameterEstimocean.InverseProblems: Nensemble
 
 using Statistics
 using MPI
 
 import Oceananigans.TurbulenceClosures: viscosity, diffusivity
+
+using Random
 
 MPI.Init()
 comm = MPI.COMM_WORLD
@@ -58,6 +61,7 @@ end
 #####
 ##### On rank 0
 #####
+
 if rank == 0
     test_simulation = random_simulation()
 
@@ -124,12 +128,32 @@ end
 simulation = random_simulation()
 time_series_collector = slice_collector(simulation)
 
-ip = InverseProblem(observations, [simulation], free_parameters;
-                    time_series_collector = [time_series_collector],
+ip = InverseProblem(observations, simulation, free_parameters;
+                    time_series_collector = time_series_collector,
                     initialize_with_observations = false,
                     initialize_simulation = initialize_simulation!)
 
+#random_parameters = (κh=rand(), κz=rand())
+#G = forward_map(ip, random_parameters; suppress=false)
 
+dip = DistributedInverseProblem(ip)
+
+Random.seed!(123)
+eki = EnsembleKalmanInversion(dip; pseudo_stepping=ConstantConvergence(0.3))
+iterate!(eki; iterations=3)
+
+#=
+random_parameters = [(κh=rand(), κz=rand()) for i = 1:Nensemble(dip)]
+@show random_parameters
+
+G = forward_map(dip, random_parameters; suppress=false)
+
+if rank == 0
+    @show size(G) G
+end
+=#
+
+#=
 #####
 ##### Next...
 #####
@@ -209,4 +233,5 @@ end
 axislegend(ax)
 
 display(fig)
+=#
 =#

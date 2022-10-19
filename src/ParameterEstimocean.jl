@@ -8,6 +8,7 @@ export
     SyntheticObservations,
     BatchedSyntheticObservations,
     InverseProblem,
+    DistributedInverseProblem,
     BatchedInverseProblem,
     FreeParameters,
     Transformation,
