@@ -4,6 +4,7 @@ using Oceananigans.TurbulenceClosures: VerticalFormulation, HorizontalFormulatio
 using LinearAlgebra
 
 using ParameterEstimocean
+using ParameterEstimocean.Utils: map_gpus_to_ranks!
 using ParameterEstimocean.Observations: FieldTimeSeriesCollector
 using ParameterEstimocean.Parameters: random_unconstrained_parameters
 using ParameterEstimocean.InverseProblems: Nensemble
@@ -20,6 +21,12 @@ comm = MPI.COMM_WORLD
 
 rank  = MPI.Comm_rank(comm)
 nproc = MPI.Comm_size(comm)
+
+arch = GPU()
+
+if arch isa GPU
+    map_gpus_to_ranks!()
+end
 
 @show rank nproc
 
@@ -42,8 +49,8 @@ ConstantVerticalTracerDiffusivity(; κz=0.0) = ConstantVerticalTracerDiffusivity
 
 stop_time = 1e-1
 
-function random_simulation(size=(4, 4, 4))
-    grid = RectilinearGrid(; size, extent=(2π, 2π, 2π), topology=(Periodic, Periodic, Periodic))
+function random_simulation(arch; size=(4, 4, 4))
+    grid = RectilinearGrid(arch; size, extent=(2π, 2π, 2π), topology=(Periodic, Periodic, Periodic))
 
     closure = (ConstantHorizontalTracerDiffusivity(1.0), ConstantVerticalTracerDiffusivity(0.5))
 
@@ -63,7 +70,7 @@ end
 #####
 
 if rank == 0
-    test_simulation = random_simulation()
+    test_simulation = random_simulation(arch)
 
     model = test_simulation.model
     test_simulation.output_writers[:d3] = JLD2OutputWriter(model, model.tracers,
@@ -125,7 +132,7 @@ function slice_collector(sim)
     return FieldTimeSeriesCollector((; c=c_slice), times, averaging_window=1e-1)
 end
 
-simulation = random_simulation()
+simulation = random_simulation(arch)
 time_series_collector = slice_collector(simulation)
 
 ip = InverseProblem(observations, simulation, free_parameters;
@@ -140,8 +147,10 @@ eki = EnsembleKalmanInversion(dip; pseudo_stepping=ConstantConvergence(0.3))
 
 iterate!(eki; iterations=10)
 
-@show eki.unconstrained_parameters
-@show eki.forward_map_output
+θ̅(iteration) = [eki.iteration_summaries[iteration].ensemble_mean...]
+varθ(iteration) = eki.iteration_summaries[iteration].ensemble_var
+
+@show θ̅(9) varθ(9)
 
 #=
 #####

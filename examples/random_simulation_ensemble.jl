@@ -109,10 +109,10 @@ ip = InverseProblem(observations, simulation_ensemble, free_parameters;
                     initialize_with_observations = false,
                     initialize_simulation = initialize_simulation!)
 
-#θ = [(; κh=10rand(), κz=10rand()) for sim in simulation_ensemble]
-#G = forward_map(ip, θ, suppress=false)
-
 Random.seed!(123)
 eki = EnsembleKalmanInversion(ip; pseudo_stepping=ConstantConvergence(0.3))
-@show eki.unconstrained_parameters
-@show eki.forward_map_output
+
+θ̅(iteration) = [eki.iteration_summaries[iteration].ensemble_mean...]
+varθ(iteration) = eki.iteration_summaries[iteration].ensemble_var
+
+@show θ̅(9) varθ(9)
