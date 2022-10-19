@@ -144,6 +144,7 @@ function InverseProblem(observations,
 end
 
 const EnsembleSimulationInverseProblem = InverseProblem{<:Any, <:Any, <:Vector}
+
 Nensemble(ip::EnsembleSimulationInverseProblem) = length(ip.simulation)
 
 function Base.show(io::IO, ip::EnsembleSimulationInverseProblem)
@@ -198,6 +199,7 @@ in `ip.time_series_collector`.
 function forward_run!(ip::InverseProblem, parameters; suppress=false)
     # Ensure there are enough parameters for ensemble members in the simulation
     θ = expand_parameters(ip, parameters)
+
     _forward_run!(ip, θ, ip.simulation, ip.time_series_collector; suppress)
     return nothing
 end
@@ -255,8 +257,10 @@ DistributedInverseProblem(local_inverse_problem; comm=MPI.COMM_WORLD) =
 Nensemble(dip::DistributedInverseProblem) = MPI.Comm_size(dip.comm)
 
 function forward_map(dip::DistributedInverseProblem, θ; suppress=true)
+    
     rank = MPI.Comm_rank(dip.comm)
     local_θ = θ[rank+1]
+
     local_G = forward_map(dip.local_inverse_problem, local_θ; suppress)
     MPI.Barrier(dip.comm)
 
@@ -411,7 +415,8 @@ function expand_parameters(ip, θ::Vector)
 end
 
 # Expand single parameter set
-expand_parameters(ip, θ::Union{NamedTuple, Vector{<:Number}}) = expand_parameters(ip, [θ])
+expand_parameters(ip, θ::Vector{<:Number}) = expand_parameters(ip, [θ])
+expand_parameters(ip, θ::NamedTuple)       = θ 
 
 # Convert matrix to vector of vectors
 expand_parameters(ip, θ::Matrix) = expand_parameters(ip, [θ[:, k] for k = 1:size(θ, 2)])

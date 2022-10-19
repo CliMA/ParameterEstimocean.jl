@@ -7,7 +7,6 @@ using ParameterEstimocean.Observations: FieldTimeSeriesCollector
 
 using Random
 using Statistics
-using GLMakie
 
 import Oceananigans.TurbulenceClosures: viscosity, diffusivity
 
@@ -28,7 +27,7 @@ ConstantVerticalTracerDiffusivity(; κz=0.0) = ConstantVerticalTracerDiffusivity
 @inline viscosity(::ConstantVerticalTracerDiffusivity, args...) = 0.0
 @inline diffusivity(closure::ConstantVerticalTracerDiffusivity, args...) = closure.κz
 
-function random_simulation(size=(16, 16, 16))
+function random_simulation(size=(4, 4, 4))
     grid = RectilinearGrid(; size, extent=(2π, 2π, 2π), topology=(Periodic, Periodic, Periodic))
 
     closure = (ConstantHorizontalTracerDiffusivity(1.0), ConstantVerticalTracerDiffusivity(0.5))
@@ -76,7 +75,7 @@ c_averaged_slices = FieldTimeSeries("random_simulation_averaged_slices.jld2", "c
 @show c_slices[end]
 @show c_averaged_slices[end]
 
-simulation_ensemble = [random_simulation() for _ = 1:10]
+simulation_ensemble = [random_simulation() for _ = 1:4]
 times = [0.0, time(test_simulation)]
 
 priors = (κh = ScaledLogitNormal(bounds=(0.0, 2.0)),
@@ -115,21 +114,5 @@ ip = InverseProblem(observations, simulation_ensemble, free_parameters;
 
 Random.seed!(123)
 eki = EnsembleKalmanInversion(ip; pseudo_stepping=ConstantConvergence(0.3))
-iterate!(eki, iterations=10)
-
-@show eki.iteration_summaries[end]
-
-fig = Figure()
-ax = Axis(fig[1, 1])
-
-for iter in 0:10
-    summary = eki.iteration_summaries[iter]
-    κh = map(θ -> θ.κh, summary.parameters)
-    κz = map(θ -> θ.κz, summary.parameters)
-    scatter!(ax, κh, κz, label="Iteration $iter")
-end
-
-axislegend(ax)
-
-display(fig)
-
+@show eki.unconstrained_parameters
+@show eki.forward_map_output
