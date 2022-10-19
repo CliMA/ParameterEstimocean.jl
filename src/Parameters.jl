@@ -253,6 +253,19 @@ covariance_transform_diagonal(::LogNormal, X) = exp(X)
 covariance_transform_diagonal(::Normal, X)    = 1
 covariance_transform_diagonal(Π::ScaledLogitNormal, X) = - (Π.upper_bound - Π.lower_bound) * exp(X) / (1 + exp(X))^2
 
+# TODO: add docstring
+# TODO: Also use in EKI constructor?
+function random_unconstrained_parameters(free_parameters, Nens)
+    priors = free_parameters.priors
+    Nθ = length(free_parameters.names)
+    unconstrained_priors = NamedTuple(name => unconstrained_prior(priors[name])
+                                      for name in free_parameters.names)
+
+    X = [rand(unconstrained_priors[i]) for i=1:Nθ, k=1:Nens]
+
+    return X
+end
+
 #####
 ##### Free parameters
 #####

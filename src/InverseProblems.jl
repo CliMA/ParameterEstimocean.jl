@@ -341,9 +341,9 @@ end
 Transform unconstrained parameters `X` into constrained,
 physical-space parameters `θ` and execute `forward_map(ip, θ)`.
 """
-function inverting_forward_map(ip::Union{InverseProblem, BatchedInverseProblem}, X)
+function inverting_forward_map(ip::Union{InverseProblem, BatchedInverseProblem}, X; suppress=true)
     θ = transform_to_constrained(ip.free_parameters.priors, X)
-    return forward_map(ip, θ)
+    return forward_map(ip, θ; suppress)
 end
 
 """
