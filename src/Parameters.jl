@@ -263,7 +263,7 @@ function random_unconstrained_parameters(free_parameters, Nens)
 
     X = [rand(unconstrained_priors[i]) for i=1:Nθ, k=1:Nens]
 
-    return X
+    return X[:]
 end
 
 #####

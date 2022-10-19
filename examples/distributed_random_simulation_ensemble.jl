@@ -8,9 +8,17 @@ using ParameterEstimocean.Observations: FieldTimeSeriesCollector
 using ParameterEstimocean.Parameters: random_unconstrained_parameters
 
 using Statistics
-#using GLMakie
+using MPI
 
 import Oceananigans.TurbulenceClosures: viscosity, diffusivity
+
+MPI.Init()
+comm = MPI.COMM_WORLD
+
+rank  = MPI.Comm_rank(comm)
+nproc = MPI.Comm_size(comm)
+
+@show rank nproc
 
 struct ConstantHorizontalTracerDiffusivity <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, HorizontalFormulation}
     κh :: Float64
@@ -50,44 +58,43 @@ end
 #####
 ##### On rank 0
 #####
+if rank == 0
+    test_simulation = random_simulation()
 
-test_simulation = random_simulation()
-
-model = test_simulation.model
-test_simulation.output_writers[:d3] = JLD2OutputWriter(model, model.tracers,
-                                                       schedule = IterationInterval(100),
-                                                       filename = "random_simulation_fields",
-                                                       overwrite_existing = true)
-
-slice_indices = (1, :, :)
-test_simulation.output_writers[:slices] = JLD2OutputWriter(model, model.tracers,
-                                                           schedule = AveragedTimeInterval(1e-1),
-                                                           filename = "random_simulation_averaged_slices",
-                                                           indices = slice_indices,
-                                                           overwrite_existing = true)
-
-test_simulation.output_writers[:avg] = JLD2OutputWriter(model, model.tracers,
-                                                        schedule = TimeInterval(1e-1),
-                                                        filename = "random_simulation_slices",
-                                                        indices = slice_indices,
+    model = test_simulation.model
+    test_simulation.output_writers[:d3] = JLD2OutputWriter(model, model.tracers,
+                                                        schedule = IterationInterval(100),
+                                                        filename = "random_simulation_fields",
                                                         overwrite_existing = true)
 
-cᵢ(x, y, z) = randn()
-set!(model, c=cᵢ)
-run!(test_simulation)
+    slice_indices = (1, :, :)
+    test_simulation.output_writers[:slices] = JLD2OutputWriter(model, model.tracers,
+                                                            schedule = AveragedTimeInterval(1e-1),
+                                                            filename = "random_simulation_averaged_slices",
+                                                            indices = slice_indices,
+                                                            overwrite_existing = true)
 
-#=
-c₀ = FieldTimeSeries("random_simulation_fields.jld2", "c")[1]
-c_slices = FieldTimeSeries("random_simulation_slices.jld2", "c")
-c_averaged_slices = FieldTimeSeries("random_simulation_averaged_slices.jld2", "c")
+    test_simulation.output_writers[:avg] = JLD2OutputWriter(model, model.tracers,
+                                                            schedule = TimeInterval(1e-1),
+                                                            filename = "random_simulation_slices",
+                                                            indices = slice_indices,
+                                                            overwrite_existing = true)
 
-@show c_slices[end]
-@show c_averaged_slices[end]
-=#
+    cᵢ(x, y, z) = randn()
+    set!(model, c=cᵢ)
+    run!(test_simulation)
+end
+
+# Finished simulation, wait rank 0
+MPI.Barrier(comm)
+
+@show rank
 
 #####
 ##### On all ranks
 #####
+
+slice_indices = (1, :, :)
 
 times = [0.0, stop_time]
 
@@ -111,7 +118,6 @@ end
 function slice_collector(sim)
     c = sim.model.tracers.c
     c_slice = Field(c; indices=slice_indices)
-    #return FieldTimeSeriesCollector((; c=c_slice), times)
     return FieldTimeSeriesCollector((; c=c_slice), times, averaging_window=1e-1)
 end
 
@@ -123,8 +129,6 @@ ip = InverseProblem(observations, [simulation], free_parameters;
                     initialize_with_observations = false,
                     initialize_simulation = initialize_simulation!)
 
-# θ = [(; κh=10rand(), κz=10rand())]
-# G = forward_map(ip, θ, suppress=false)
 
 #####
 ##### Next...
@@ -135,17 +139,48 @@ y = observation_map(ip)
 Nobs = length(y)
 Γy = Matrix(I, Nobs, Nobs)
 
-# 2. Create the EKI object
+Nθ = length(ip.free_parameters.names)
 
-Nranks = 10
-unconstrained_parameters = random_unconstrained_parameters(ip.free_parameters, Nranks)
-forward_map_output = global_G = zeros(length(y), Nranks)
-pseudo_stepping = ConstantConvergence(0.2)
-eki = EnsembleKalmanInversion(ip;
-                              pseudo_stepping,
-                              forward_map_output,
-                              unconstrained_parameters,
-                              Nensemble=Nranks)
+# 2. Create parameters on rank 0
+if rank == 0
+    unconstrained_parameters = random_unconstrained_parameters(ip.free_parameters, nproc)
+else
+    unconstrained_parameters = Float64[]
+end
+
+MPI.Barrier(comm)
+
+# 3. Scatter parameters
+local_parameters = MPI.Scatter(unconstrained_parameters, Nθ, 0, comm)
+@show rank, unconstrained_parameters, local_parameters
+
+# 4. Compute local G
+G = forward_map(ip, local_parameters, suppress=false)
+
+# 5. Gather G to global_G on rank 0
+global_G = MPI.Gather(G, 0, comm)
+MPI.Barrier(comm)
+
+@show global_G
+
+# EKI step on rank 0
+# if rank == 0
+    # global_G = reshape(global_G, Nobs, nproc)
+    # I don't know how to do the EKI step
+    # unconstrained_parameters = eki_step
+# end
+
+# go back to step 3.
+
+
+MPI.Finalize()
+# forward_map_output = global_G = zeros(length(y), Nranks)
+# pseudo_stepping = ConstantConvergence(0.2)
+# eki = EnsembleKalmanInversion(ip;
+#                               pseudo_stepping,
+#                               forward_map_output,
+#                               unconstrained_parameters,
+#                               Nensemble=Nranks)
 
 # 3. Compute G for every rank with inverting_forward_map(ip, X[rank:rank, :])
 #
