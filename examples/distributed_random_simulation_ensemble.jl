@@ -11,6 +11,7 @@ using ParameterEstimocean.InverseProblems: Nensemble
 
 using Statistics
 using MPI
+using CUDA
 
 import Oceananigans.TurbulenceClosures: viscosity, diffusivity
 
@@ -27,8 +28,6 @@ arch = GPU()
 if arch isa GPU
     map_gpus_to_ranks!()
 end
-
-@show rank nproc
 
 struct ConstantHorizontalTracerDiffusivity <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, HorizontalFormulation}
     κh :: Float64
@@ -97,9 +96,12 @@ if rank == 0
 end
 
 # Finished simulation, wait rank 0
-MPI.Barrier(comm)
-
-@show rank
+for r in 0:nproc
+    if rank == r
+        @info "rank $rank on device $(CUDA.device())"
+        MPI.Barrier(comm)
+    end
+end
 
 #####
 ##### On all ranks
@@ -113,7 +115,7 @@ priors = (κh = ScaledLogitNormal(bounds=(0.0, 2.0)),
           κz = ScaledLogitNormal(bounds=(0.0, 2.0)))
           
 free_parameters = FreeParameters(priors) 
-#obspath = "random_simulation_slices.jld2"
+# obspath = "random_simulation_slices.jld2"
 obspath = "random_simulation_averaged_slices.jld2"
 observations = SyntheticObservations(obspath; field_names=:c, times)
 
@@ -122,7 +124,14 @@ observations = SyntheticObservations(obspath; field_names=:c, times)
 function initialize_simulation!(sim, parameters)
     c₀ = FieldTimeSeries("random_simulation_fields.jld2", "c")[1]
     c = sim.model.tracers.c
-    set!(c, c₀)
+    
+    # We have to set it like this because set! is not compatible 
+    # between FieldTimeSeries[idx] and Field on a GPU (issue #2783 in Oceananigans) 
+    i_parent = parent(c₀)
+    i_parent isa SubArray && (i_parent = Array(i_parent))
+    
+    set!(c, i_parent)
+
     return nothing
 end
 
@@ -150,7 +159,8 @@ iterate!(eki; iterations=10)
 θ̅(iteration) = [eki.iteration_summaries[iteration].ensemble_mean...]
 varθ(iteration) = eki.iteration_summaries[iteration].ensemble_var
 
-@show θ̅(9) varθ(9)
+@show eki.iteration_summaries[end].ensemble_mean
+@show eki.iteration_summaries[end].ensemble_var
 
 #=
 #####
