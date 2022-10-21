@@ -415,13 +415,13 @@ function (criterion::MadsAboveObjectiveLoss)(X, G, eki)
     inv_sqrt_Γy = eki.precomputed_arrays[:inv_sqrt_Γy]
     y = eki.mapped_observations
 
-    Nens, Nobs = size(G)
-    objective_loss = [1/2 * norm(inv_sqrt_Γy * (y .- G[k, :]))^2 for k = 1:Nens]
+    Nobs, Nens = size(G)
+    objective_loss = [1/2 * norm(inv_sqrt_Γy * (y .- G[:, k]))^2 for k = 1:Nens]
     baseline = criterion.baseline(objective_loss)
-    mad = median(abs.(objective_loss - baseline)) # median absolute deviation
+    mads = median(abs.(objective_loss .- baseline)) # median absolute deviation
     n = criterion.mads_above
 
-    failed(loss) = loss > stat + n * mads
+    failed(loss) = loss > baseline + n * mads
 
     return vec(map(failed, objective_loss))
 end
