@@ -7,6 +7,7 @@ export
     Resampler,
     FullEnsembleDistribution,
     NormExceedsMedian,
+    MadsAboveObjectiveLoss,
     SuccessfulEnsembleDistribution
 
 using OffsetArrays
@@ -450,7 +451,7 @@ function step_parameters(eki::EnsembleKalmanInversion, pseudo_stepping;
     Xⁿ⁺¹ = similar(Xⁿ)
 
     # Handle failed particles
-    particle_failure = eki.mark_failed_particles(Gⁿ)
+    particle_failure = eki.mark_failed_particles(Xⁿ, Gⁿ, eki)
     failures = findall(particle_failure) # indices of columns (particles) with `NaN`s
     successes = findall(.!particle_failure)
     some_failures = length(failures) > 0
