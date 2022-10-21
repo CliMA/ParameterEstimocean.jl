@@ -53,7 +53,7 @@ Resamples the parameters `X` of the `eki` process based on the number of failed 
 """
 function resample!(resampler::Resampler, X, G, eki)
     # `Nensemble` vector of bits indicating whether an ensemble member has failed.
-    particle_failure = eki.mark_failed_particles(G)
+    particle_failure = eki.mark_failed_particles(X, G, eki)
     failures = findall(particle_failure) # indices of failed particles
     Nfailures = length(failures)
     failed_fraction = Nfailures / size(X, 2)

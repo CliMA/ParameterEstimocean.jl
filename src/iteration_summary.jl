@@ -42,10 +42,9 @@ function eki_objective(eki, θ::AbstractVector, G::AbstractVector; constrained =
     inv_sqrt_Γθ = eki.precomputed_arrays[:inv_sqrt_Γθ]
     μθ = eki.precomputed_arrays[:μθ]
 
-    priors = eki.inverse_problem.free_parameters.priors
     if constrained
-        θ = [transform_to_unconstrained(priors[name], θ[i])
-                for (i, name) in enumerate(keys(priors))]
+        priors = eki.inverse_problem.free_parameters.priors
+        θ = [transform_to_unconstrained(priors[name], θ[i]) for (i, name) in enumerate(keys(priors))]
     end
 
     if augmented

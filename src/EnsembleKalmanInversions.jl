@@ -370,7 +370,7 @@ function pseudo_step!(eki::EnsembleKalmanInversion;
 end
 
 #####
-##### Failure condition, stepping, and adaptive stepping
+##### Failure conditions
 #####
 
 """
@@ -389,7 +389,7 @@ end
 
 """ Return a BitVector indicating whether the norm of the forward map
 for a given particle exceeds the median by `mrn.minimum_relative_norm`."""
-function (mrn::NormExceedsMedian)(G)
+function (mrn::NormExceedsMedian)(X, G, eki)
     ϵ = mrn.minimum_relative_norm
 
     G_norm = mapslices(norm, G, dims=1)
@@ -401,6 +401,34 @@ function (mrn::NormExceedsMedian)(G)
 
     return vec(mapslices(failed, G; dims=1))
 end
+
+struct MadsAboveObjectiveLoss{T, S}
+    mads_above :: T
+    baseline :: S
+end
+
+MadsAboveObjectiveLoss(mads_above=4; baseline=median) =
+    MadsAboveObjectiveLoss(mads_above, baseline)
+
+function (criterion::MadsAboveObjectiveLoss)(X, G, eki)
+    inv_sqrt_Γy = eki.precomputed_arrays[:inv_sqrt_Γy]
+    y = eki.mapped_observations
+
+    Nens, Nobs = size(G)
+    objective_loss = [1/2 * norm(inv_sqrt_Γy * (y .- G[k, :]))^2 for k = 1:Nens]
+    baseline = criterion.baseline(objective_loss)
+    mad = median(abs.(objective_loss - baseline)) # median absolute deviation
+    n = criterion.mads_above
+
+    failed(loss) = loss > stat + n * mads
+
+    return vec(map(failed, objective_loss))
+end
+
+#####
+##### Adaptive stepping
+#####
+
 
 function step_parameters(X, G, y, Γy, process; Δt=1.0)
     ekp = EnsembleKalmanProcess(X, y, Γy, process; Δt)
