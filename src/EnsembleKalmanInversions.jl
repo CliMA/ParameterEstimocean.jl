@@ -7,6 +7,7 @@ export
     Resampler,
     FullEnsembleDistribution,
     NormExceedsMedian,
+    ObjectiveLossThreshold,
     SuccessfulEnsembleDistribution
 
 using OffsetArrays
@@ -24,10 +25,13 @@ using EnsembleKalmanProcesses:
     EnsembleKalmanProcess
 
 using ..Parameters: unconstrained_prior, transform_to_constrained, inverse_covariance_transform
-using ..InverseProblems: Nensemble, observation_map, forward_map
+using ..InverseProblems: Nensemble, observation_map, forward_map, BatchedInverseProblem
 using ..InverseProblems: inverting_forward_map
 
 using Oceananigans.Utils: prettytime
+using MPI
+
+#const DistributedEnsembleKalmanInversion = EnsembleKalmanInversion{E, <:DistributedInverseProblem}
 
 mutable struct EnsembleKalmanInversion{E, I, M, O, S, R, X, G, C, P, T, F}
     inverse_problem :: I
@@ -47,18 +51,32 @@ mutable struct EnsembleKalmanInversion{E, I, M, O, S, R, X, G, C, P, T, F}
     mark_failed_particles :: F
 end
 
-Base.show(io::IO, eki::EnsembleKalmanInversion) =
-    print(io, "EnsembleKalmanInversion", '\n',
-              "├── inverse_problem: ", summary(eki.inverse_problem), '\n',
-              "├── ensemble_kalman_process: ", summary(eki.ensemble_kalman_process), '\n',
+function Base.show(io::IO, eki::EnsembleKalmanInversion)
+    print(io, "EnsembleKalmanInversion", '\n')
+
+    if eki.inverse_problem isa BatchedInverseProblem
+        print(io, "├── inverse_problem: ", summary(eki.inverse_problem), '\n')
+
+        Nip = length(eki.inverse_problem.batch)
+        for (n, ip) in enumerate(eki.inverse_problem.batch)
+            sim_str = "Simulation on $(summary(ip.simulation.model.grid)) with Δt=$(ip.simulation.Δt)"
+            print(io, "│   ($n) observations: ", summary(ip.observations), '\n',
+                      "│         simulation: ", sim_str, '\n')
+        end
+    else
+        print(io, "├── inverse_problem: ", summary(eki.inverse_problem), '\n')
+    end      
+
+    print(io, "├── ensemble_kalman_process: ", summary(eki.ensemble_kalman_process), '\n',
               "├── mapped_observations: ", summary(eki.mapped_observations), '\n',
               "├── noise_covariance: ", summary(eki.noise_covariance), '\n',
               "├── pseudo_stepping: $(eki.pseudo_stepping)", '\n',
               "├── iteration: $(eki.iteration)", '\n',
-              "├── resampler: $(summary(eki.resampler))",
+              "├── resampler: $(summary(eki.resampler))", '\n',
               "├── unconstrained_parameters: $(summary(eki.unconstrained_parameters))", '\n',
               "├── forward_map_output: $(summary(eki.forward_map_output))", '\n',
               "└── mark_failed_particles: $(summary(eki.mark_failed_particles))")
+end
 
 construct_noise_covariance(noise_covariance::AbstractMatrix, y) = noise_covariance
 
@@ -132,6 +150,7 @@ function EnsembleKalmanInversion(inverse_problem;
                                  forward_map_output = nothing,
                                  mark_failed_particles = NormExceedsMedian(1e9),
                                  ensemble_kalman_process = Inversion(),
+                                 Nensemble = Nensemble(inverse_problem),
                                  tikhonov = false)
 
     if ensemble_kalman_process isa Sampler && !isnothing(pseudo_stepping)
@@ -142,7 +161,7 @@ function EnsembleKalmanInversion(inverse_problem;
     free_parameters = inverse_problem.free_parameters
     priors = free_parameters.priors
     Nθ = length(priors)
-    Nens = Nensemble(inverse_problem)
+    Nens = Nensemble
 
     # Generate an initial sample of parameters
     unconstrained_priors = NamedTuple(name => unconstrained_prior(priors[name])
@@ -266,14 +285,22 @@ Return
 """
 function iterate!(eki::EnsembleKalmanInversion;
                   iterations = 1,
-                  show_progress = true,
+                  pseudo_Δt = eki.pseudo_Δt,
+                  pseudo_stepping = eki.pseudo_stepping,
+                  show_progress = false,
                   kwargs...)
 
     iterator = show_progress ? ProgressBar(1:iterations) : 1:iterations
 
     for _ in iterator
-
         pseudo_step!(eki; kwargs...)
+
+        # Forward map
+        eki.forward_map_output = resampling_forward_map!(eki)
+        summary = IterationSummary(eki, eki.unconstrained_parameters, eki.forward_map_output)
+        push!(eki.iteration_summaries, summary)
+
+        ensemble_mean = eki.iteration_summaries[end].ensemble_mean
     end
 
     # Return ensemble mean (best guess for optimal parameters)
@@ -282,12 +309,19 @@ function iterate!(eki::EnsembleKalmanInversion;
     return best_parameters
 end
 
+function set_unconstrained_parameters!(eki, X)
+    eki.unconstrained_parameters = X
+    eki.forward_map_output = resampling_forward_map!(eki)
+    return nothing
+end
+
 """
     pseudo_step!(eki::EnsembleKalmanInversion;
-                pseudo_Δt = eki.pseudo_Δt,
-                pseudo_stepping = eki.pseudo_stepping)
+                 pseudo_Δt = eki.pseudo_Δt,
+                 pseudo_stepping = eki.pseudo_stepping)
 
-Iterate the ensemble Kalman inversion dynamic forward by one iteration given current state `eki`.
+Step forward `X = eki.unconstrained_parameters` using
+`y = eki.mapped_observations`, `Γy = eki.noise_covariance`, and G = `eki.forward_map_output`.
 
 Keyword arguments
 =================
@@ -299,22 +333,16 @@ Keyword arguments
 
 - `pseudo_stepping` (`Float64`): Scheme for selecting a time step if `pseudo_Δt` is `nothing`.
                                  (Default: `eki.pseudo_stepping`)
-
-Return
-======
-
-- `ensemble_mean`: the ensemble mean following the step.
 """
 function pseudo_step!(eki::EnsembleKalmanInversion; 
-                          pseudo_Δt = nothing,
-                          pseudo_stepping = eki.pseudo_stepping,
-                          covariance_inflation = 0.0,
-                          momentum_parameter = 0.0)
+                      pseudo_Δt = nothing,
+                      pseudo_stepping = nothing,
+                      covariance_inflation = 0.0,
+                      momentum_parameter = 0.0)
 
     if isnothing(pseudo_Δt)
         pseudo_Δt = eki.pseudo_Δt
-    else
-        pseudo_stepping = nothing
+        pseudo_stepping = eki.pseudo_stepping
     end
 
     eki.unconstrained_parameters, adaptive_Δt = step_parameters(eki, pseudo_stepping; 
@@ -339,17 +367,11 @@ function pseudo_step!(eki::EnsembleKalmanInversion;
     eki.pseudotime += adaptive_Δt
     eki.pseudo_Δt = adaptive_Δt
 
-    # Forward map
-    eki.forward_map_output = resampling_forward_map!(eki)
-    summary = IterationSummary(eki, eki.unconstrained_parameters, eki.forward_map_output)
-    push!(eki.iteration_summaries, summary)
-
-    ensemble_mean = eki.iteration_summaries[end].ensemble_mean
-    return ensemble_mean
+    return nothing
 end
 
 #####
-##### Failure condition, stepping, and adaptive stepping
+##### Failure conditions
 #####
 
 """
@@ -368,16 +390,77 @@ end
 
 """ Return a BitVector indicating whether the norm of the forward map
 for a given particle exceeds the median by `mrn.minimum_relative_norm`."""
-function (mrn::NormExceedsMedian)(G)
+function (mrn::NormExceedsMedian)(X, G, eki)
     ϵ = mrn.minimum_relative_norm
 
     G_norm = mapslices(norm, G, dims=1)
     finite_G_norm = filter(!isnan, G_norm)
-    median_norm = median(finite_G_norm)
+
+    # If all particles fail, median_norm cannot be computed, so we set to 0.
+    median_norm = length(finite_G_norm) == 0 ? zero(eltype(finite_G_norm)) : median(finite_G_norm)
     failed(column) = any(isnan.(column)) || norm(column) > ϵ * median_norm
 
     return vec(mapslices(failed, G; dims=1))
 end
+
+struct ObjectiveLossThreshold{T, S, D}
+    multiple :: T
+    baseline :: S
+    distance :: D
+end
+
+median_absolute_deviation(X, x₀) = median(abs.(X .- x₀))
+
+function best_next_best(X, x₀)
+    I = sortperm(X)
+    i₁, i₂ = I[1:2]
+    return X[i₂] - X[i₁]
+end
+
+nanmedian(X) = median(filter(!isnan, X))
+nanminimum(X) = minimum(filter(!isnan, X))
+
+"""
+    ObjectiveLossThreshold(multiple = 4.0; baseline = median,
+                           distance = median_absolute_deviation)
+
+Returns a failure criterion that defines failure for particle `k` as
+
+```math
+Φₖ > baseline(Φ) + multiple * distance(Φ)
+```
+
+where `Φ` is the objective loss function.
+
+By default, `baseline = median`, the `distance` is the 
+median absolute deviation, and `multiple = 4.0`.
+"""
+function ObjectiveLossThreshold(multiple = 4.0;
+                                baseline = nanmedian,
+                                distance = median_absolute_deviation)
+
+    return ObjectiveLossThreshold(multiple, baseline, distance)
+end
+
+function (criterion::ObjectiveLossThreshold)(X, G, eki)
+    inv_sqrt_Γy = eki.precomputed_arrays[:inv_sqrt_Γy]
+    y = eki.mapped_observations
+
+    Nobs, Nens = size(G)
+    objective_loss = [1/2 * norm(inv_sqrt_Γy * (y .- G[:, k]))^2 for k = 1:Nens]
+    baseline = criterion.baseline(objective_loss)
+    distance = criterion.distance(objective_loss, baseline)
+    n = criterion.multiple
+
+    failed(loss) = loss > baseline + n * distance
+
+    return vec(map(failed, objective_loss))
+end
+
+#####
+##### Adaptive stepping
+#####
+
 
 function step_parameters(X, G, y, Γy, process; Δt=1.0)
     ekp = EnsembleKalmanProcess(X, y, Γy, process; Δt)
@@ -388,14 +471,18 @@ end
 # Default pseudo_stepping::Nothing --- it's not adaptive
 adaptive_step_parameters(::Nothing, Xⁿ, Gⁿ, y, Γy, process; Δt) = step_parameters(Xⁿ, Gⁿ, y, Γy, process; Δt), Δt
 
-function step_parameters(eki::EnsembleKalmanInversion, pseudo_stepping; Δt=1.0, covariance_inflation=0.0, momentum_parameter=0.0)
+function step_parameters(eki::EnsembleKalmanInversion, pseudo_stepping;
+                         Δt = 1.0,
+                         covariance_inflation = 0.0,
+                         momentum_parameter = 0.0)
+
     process = eki.ensemble_kalman_process
     Gⁿ = eki.forward_map_output
     Xⁿ = eki.unconstrained_parameters
     Xⁿ⁺¹ = similar(Xⁿ)
 
     # Handle failed particles
-    particle_failure = eki.mark_failed_particles(Gⁿ)
+    particle_failure = eki.mark_failed_particles(Xⁿ, Gⁿ, eki)
     failures = findall(particle_failure) # indices of columns (particles) with `NaN`s
     successes = findall(.!particle_failure)
     some_failures = length(failures) > 0

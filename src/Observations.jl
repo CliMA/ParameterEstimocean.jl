@@ -2,18 +2,22 @@ module Observations
 
 export SyntheticObservations, BatchedSyntheticObservations, observation_times
 
-using ..Utils: prettyvector
+using ..Utils: prettyvector, tupleit
 
 using Oceananigans
+using Oceananigans.Fields
+using Oceananigans.Architectures
+
 using Oceananigans: fields
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
 using Oceananigans.Grids: pop_flat_elements, topology, halo_size, on_architecture
 using Oceananigans.TimeSteppers: update_state!, reset!
-using Oceananigans.Fields
+using Oceananigans.Fields: indices
 using Oceananigans.Utils: SpecifiedTimes, prettytime
-using Oceananigans.Architectures
 using Oceananigans.Architectures: arch_array, architecture
+using Oceananigans.OutputWriters: WindowedTimeAverage, AveragedSpecifiedTimes
+
 using JLD2
 
 import Oceananigans.Fields: set!
@@ -152,20 +156,6 @@ observation_times(observation::SyntheticObservations) = observation.times
 struct BatchedSyntheticObservations{O, W}
     observations :: O
     weights :: W
-
-    function BatchedSyntheticObservations(obs, weights)
-        length(obs) == length(weights) ||
-            throw(ArgumentError("Must have the same number of weights and observations!"))
-
-        # Tuple stuff 
-        tupled_obs = Tuple(o for o in obs)
-        tupled_weights = Tuple(w for w in weights)
-
-        O = typeof(tupled_obs)
-        W = typeof(tupled_weights)
-
-        return new{O, W}(tupled_obs, tupled_weights)
-    end
 end
 
 """
@@ -175,8 +165,21 @@ Return a collection of `observations` with `weights`, where
 `observations` is a `Vector` or `Tuple` of `SyntheticObservations`.
 `weights` are unity by default.
 """
-BatchedSyntheticObservations(batched_obs; weights=Tuple(1 for o in batched_obs)) =
-    BatchedSyntheticObservations(batched_obs, weights)
+function BatchedSyntheticObservations(batched_obs; weights=Tuple(1 for o in batched_obs))
+    length(batched_obs) == length(weights) ||
+        throw(ArgumentError("Must have the same number of weights and observations!"))
+
+    tupled_batched_obs = tupleit(batched_obs)
+    tupled_weights = tupleit(weights)
+
+    return BatchedSyntheticObservations(tupled_batched_obs, tupled_weights)
+end
+
+# Convenience
+const SO = SyntheticObservations
+
+BatchedSyntheticObservations(first_obs::SO, second_obs::SO, other_obs...; kw...) =
+    BatchedSyntheticObservations(tuple(first_obs, second_obs, other_obs...); kw...)
 
 batch(b::BatchedSyntheticObservations) = b
 batch(obs::SyntheticObservations) = BatchedSyntheticObservations([obs])
@@ -221,12 +224,6 @@ end
 #####
 ##### Utilities for building SyntheticObservations
 #####
-
-tupleit(t) = try
-    Tuple(t)
-catch
-    tuple(t)
-end
 
 const not_metadata_names = ("serialized", "timeseries")
 
@@ -315,7 +312,7 @@ function set!(model, obs::SyntheticObservations, time_index=1)
         if field_name ∈ keys(obs.field_time_serieses)
             obs_field = obs.field_time_serieses[field_name][time_index]
             set!(model_field, obs_field)
-        else
+        elseif model_field isa Field
             fill!(parent(model_field), 0)
         end
     end
@@ -359,21 +356,26 @@ end
 
 """
     FieldTimeSeriesCollector(collected_fields, times;
-                             architecture = Architectures.architecture(first(collected_fields)))
+                             architecture = CPU(),
+                             averaging_window = nothing,
+                             averaging_stride = nothing)
 
 Return a `FieldTimeSeriesCollector` for `fields` of `simulation`.
 `fields` is a `NamedTuple` of `AbstractField`s that are to be collected.
 """
 function FieldTimeSeriesCollector(collected_fields, times;
-                                  architecture = Architectures.architecture(first(collected_fields)))
+                                  architecture = CPU(),
+                                  averaging_window = nothing,
+                                  averaging_stride = 1)
 
     grid = on_architecture(architecture, first(collected_fields).grid)
     field_time_serieses = Dict{Symbol, Any}()
 
     for field_name in keys(collected_fields)
         field = collected_fields[field_name]
+        inds = indices(field)
         LX, LY, LZ = location(field)
-        field_time_series = FieldTimeSeries{LX, LY, LZ}(grid, times)
+        field_time_series = FieldTimeSeries{LX, LY, LZ}(grid, times; indices=inds)
         field_time_serieses[field_name] = field_time_series
     end
 
@@ -382,9 +384,20 @@ function FieldTimeSeriesCollector(collected_fields, times;
 
     collection_times = similar(times)
 
-    return FieldTimeSeriesCollector(grid, times, field_time_serieses, collected_fields, collection_times)
+    # Wrap collected fields in WindowedTimeAverage if requested
+    if !isnothing(averaging_window)
+        schedule = AveragedSpecifiedTimes(times; window=averaging_window, stride=averaging_stride)
+        wrap(field) = WindowedTimeAverage(field; schedule, fetch_operand=false)
+        averaged_collected_fields = NamedTuple(name => wrap(collected_fields[name])
+                                               for name in keys(collected_fields))
+        collected_fields = averaged_collected_fields
+    end
+
+    return FieldTimeSeriesCollector(grid, times, field_time_serieses,
+                                    collected_fields, collection_times)
 end
 
+# For using in a Callback
 function (collector::FieldTimeSeriesCollector)(simulation)
     for field in collector.collected_fields
         compute!(field)
@@ -424,7 +437,9 @@ nothingfunction(simulation) = nothing
 function initialize_forward_run!(simulation,
                                  observations,
                                  time_series_collector,
-                                 initialize_simulation! = nothingfunction)
+                                 initialize_with_observations,
+                                 initialize_simulation!,
+                                 parameters)
 
     reset!(simulation)
 
@@ -432,13 +447,11 @@ function initialize_forward_run!(simulation,
     initial_time = times[1]
     simulation.model.clock.time = initial_time
 
-    collected_fields = time_series_collector.collected_fields
-    arch = architecture(time_series_collector.grid)
-
     # Clear potential NaNs from timestepper data.
     # Particularly important for Adams-Bashforth timestepping scheme.
-    # Oceananigans ≤ v0.71 initializes the Adams-Bashforth scheme with an Euler step by *multiplying* the tendency
-    # at time-step n-1 by 0. Because 0 * NaN = NaN, this fails when the tendency at n-1 contains NaNs.
+    # Oceananigans ≤ v0.71 initializes the Adams-Bashforth scheme with an Euler step by
+    # *multiplying* the tendency at time-step n-1 by 0. Because 0 * NaN = NaN, this fails
+    # when the tendency at n-1 contains NaNs.
     timestepper = simulation.model.timestepper 
     for field in tuple(timestepper.Gⁿ..., timestepper.G⁻...)
         if !isnothing(field)
@@ -452,14 +465,32 @@ function initialize_forward_run!(simulation,
         parent(time_series) .= 0
     end
 
+    # Add Callback for computing time-averages if necessary
+    collection_schedule = SpecifiedTimes(times...)
+
+    # Note that callbacks for computing time-averages must be added _before_ callbacks
+    # for data collection
+    for name in keys(time_series_collector.collected_fields)
+        field = time_series_collector.collected_fields[name]
+        if field isa WindowedTimeAverage
+            # Replace averaging schedule
+            field.schedule = AveragedSpecifiedTimes(collection_schedule;
+                                                    window = field.schedule.window,
+                                                    stride = field.schedule.stride)
+            callback_name = Symbol(:time_average_, name)
+            simulation.callbacks[callback_name] = Callback(field)
+        end
+    end
+
     :nan_checker ∈ keys(simulation.callbacks) && pop!(simulation.callbacks, :nan_checker)
-    :data_collector ∈ keys(simulation.callbacks) && pop!(simulation.callbacks, :data_collector)
-    simulation.callbacks[:data_collector] = Callback(time_series_collector, SpecifiedTimes(times...))
+    simulation.callbacks[:data_collector] = Callback(time_series_collector, collection_schedule)
     simulation.stop_time = times[end]
 
-    set!(simulation.model, observations, 1)
+    if initialize_with_observations
+        set!(simulation.model, observations, 1)
+    end
 
-    initialize_simulation!(simulation)
+    initialize_simulation!(simulation, parameters)
 
     return nothing
 end

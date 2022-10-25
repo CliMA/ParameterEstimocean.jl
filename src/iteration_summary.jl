@@ -42,10 +42,9 @@ function eki_objective(eki, θ::AbstractVector, G::AbstractVector; constrained =
     inv_sqrt_Γθ = eki.precomputed_arrays[:inv_sqrt_Γθ]
     μθ = eki.precomputed_arrays[:μθ]
 
-    priors = eki.inverse_problem.free_parameters.priors
     if constrained
-        θ = [transform_to_unconstrained(priors[name], θ[i])
-                for (i, name) in enumerate(keys(priors))]
+        priors = eki.inverse_problem.free_parameters.priors
+        θ = [transform_to_unconstrained(priors[name], θ[i]) for (i, name) in enumerate(keys(priors))]
     end
 
     if augmented
@@ -79,7 +78,8 @@ function IterationSummary(eki, X, forward_map_output=nothing)
     constrained_ensemble_covariance = inverse_covariance_transform(values(priors), X, ensemble_covariance)
 
     constrained_ensemble_variance = build_parameters_named_tuple(eki.inverse_problem.free_parameters,
-                                                                 diag(constrained_ensemble_covariance))
+                                                                 diag(constrained_ensemble_covariance),
+                                                                 with_dependent_parameters = false)
 
     constrained_parameters = transform_to_constrained(priors, X)
 
