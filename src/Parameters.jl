@@ -380,9 +380,7 @@ function build_parameters_named_tuple(p::FreeParameters, free_θ)
     end
 
     # Compute dependent parameters
-    dependent_names = keys(p.dependent_parameters) 
-    maps = values(p.dependent_parameters)
-    dependent_θ = NamedTuple(name => maps[name](free_θ) for name in dependent_names)
+    dependent_θ = NamedTuple(name => value(free_θ) for (name, value) in pairs(p.dependent_parameters))
 
     return merge(dependent_θ, free_θ) # prioritize free_θ
 end
