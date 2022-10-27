@@ -7,7 +7,7 @@ export
     Resampler,
     FullEnsembleDistribution,
     NormExceedsMedian,
-    MadsAboveObjectiveLoss,
+    ObjectiveLossThreshold,
     SuccessfulEnsembleDistribution
 
 using OffsetArrays
@@ -403,25 +403,56 @@ function (mrn::NormExceedsMedian)(X, G, eki)
     return vec(mapslices(failed, G; dims=1))
 end
 
-struct MadsAboveObjectiveLoss{T, S}
-    mads_above :: T
+struct ObjectiveLossThreshold{T, S, D}
+    multiple :: T
     baseline :: S
+    distance :: D
 end
 
-MadsAboveObjectiveLoss(mads_above=4; baseline=median) =
-    MadsAboveObjectiveLoss(mads_above, baseline)
+median_absolute_deviation(X, x₀) = median(abs.(X .- x₀))
 
-function (criterion::MadsAboveObjectiveLoss)(X, G, eki)
+function best_next_best(X, x₀)
+    I = sortperm(X)
+    i₁, i₂ = I[1:2]
+    return X[i₂] - X[i₁]
+end
+
+nanmedian(X) = median(filter(!isnan, X))
+nanminimum(X) = minimum(filter(!isnan, X))
+
+"""
+    ObjectiveLossThreshold(multiple = 4.0; baseline = median,
+                           distance = median_absolute_deviation)
+
+Returns a failure criterion that defines failure for particle `k` as
+
+```math
+Φₖ > baseline(Φ) + multiple * distance(Φ)
+```
+
+where `Φ` is the objective loss function.
+
+By default, `baseline = median`, the `distance` is the 
+median absolute deviation, and `multiple = 4.0`.
+"""
+function ObjectiveLossThreshold(multiple = 4.0;
+                                baseline = nanmedian,
+                                distance = median_absolute_deviation)
+
+    return ObjectiveLossThreshold(multiple, baseline, distance)
+end
+
+function (criterion::ObjectiveLossThreshold)(X, G, eki)
     inv_sqrt_Γy = eki.precomputed_arrays[:inv_sqrt_Γy]
     y = eki.mapped_observations
 
-    Nens, Nobs = size(G)
-    objective_loss = [1/2 * norm(inv_sqrt_Γy * (y .- G[k, :]))^2 for k = 1:Nens]
+    Nobs, Nens = size(G)
+    objective_loss = [1/2 * norm(inv_sqrt_Γy * (y .- G[:, k]))^2 for k = 1:Nens]
     baseline = criterion.baseline(objective_loss)
-    mad = median(abs.(objective_loss - baseline)) # median absolute deviation
-    n = criterion.mads_above
+    distance = criterion.distance(objective_loss, baseline)
+    n = criterion.multiple
 
-    failed(loss) = loss > stat + n * mads
+    failed(loss) = loss > baseline + n * distance
 
     return vec(map(failed, objective_loss))
 end

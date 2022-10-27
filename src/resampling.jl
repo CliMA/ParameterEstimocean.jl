@@ -144,7 +144,7 @@ function find_successful_particles(eki, X, G, Nsample)
     found_G = zeros(Noutput, 0)
 
     mark_failed_particles = eki.mark_failed_particles
-    particle_failure = mark_failed_particles(G)
+    particle_failure = mark_failed_particles(X, G, eki)
     successful_particles = findall(.!particle_failure)
     existing_sample_distribution = eki.resampler.distribution(X, G, successful_particles)
 
@@ -158,7 +158,7 @@ function find_successful_particles(eki, X, G, Nsample)
 
         G_sample = inverting_forward_map(eki.inverse_problem, X_sample)
 
-        particle_failure = mark_failed_particles(G_sample)
+        particle_failure = mark_failed_particles(X_sample, G_sample, eki)
         success_columns = findall(.!particle_failure)
         @info "    ... found $(length(success_columns)) successful particles."
 

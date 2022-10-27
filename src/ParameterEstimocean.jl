@@ -32,7 +32,7 @@ export
     EnsembleKalmanInversion,
     Resampler,
     NormExceedsMedian,
-    MadsAboveObjectiveLoss,
+    ObjectiveLossThreshold,
     FullEnsembleDistribution,
     SuccessfulEnsembleDistribution,
     ConstantConvergence
