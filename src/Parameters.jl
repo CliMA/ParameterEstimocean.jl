@@ -396,8 +396,9 @@ function build_parameters_named_tuple(p::FreeParameters, free_θ; with_dependent
         free_θ = NamedTuple{p.names}(Tuple(free_θ))
     end
 
-    # Compute dependent parameters
-    dependent_θ = NamedTuple(name => value(free_θ) for (name, value) in pairs(p.dependent_parameters))
+    if with_dependent_parameters
+        # Compute dependent parameters
+        dependent_θ = NamedTuple(name => value(free_θ) for (name, value) in pairs(p.dependent_parameters))
 
         return merge(dependent_θ, free_θ) # prioritize free_θ
     else

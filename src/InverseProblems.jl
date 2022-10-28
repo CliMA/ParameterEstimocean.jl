@@ -222,7 +222,7 @@ function _forward_run!(ip::InverseProblem, θ, simulation, time_series_collector
     end
     
     return nothing
-end
+end 
 
 function forward_run!(ip::EnsembleSimulationInverseProblem, parameters; suppress=false)
     # Ensure there are enough parameters for ensemble members in the simulation
@@ -313,7 +313,6 @@ function BatchedInverseProblem(batched_ip; weights=Tuple(1 for o in batched_ip))
     free_parameters = tupled_batched_ip[1].free_parameters
 
     # TODO: validate Nensemble sameness for each batch member
-
     return BatchedInverseProblem(tupled_batched_ip, free_parameters, weights)
 end
 

@@ -350,6 +350,7 @@ function pseudo_step!(eki::EnsembleKalmanInversion;
                                                                 covariance_inflation,
                                                                 momentum_parameter)
 
+    # Update iteration summary with time step
     last_summary = eki.iteration_summaries[end]
     eki.iteration_summaries[end] = IterationSummary(last_summary.unconstrained_parameters,
                                                     last_summary.parameters,
