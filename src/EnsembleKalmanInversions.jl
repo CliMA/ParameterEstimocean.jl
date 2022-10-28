@@ -449,6 +449,14 @@ function (criterion::ObjectiveLossThreshold)(X, G, eki)
 
     Nobs, Nens = size(G)
     objective_loss = [1/2 * norm(inv_sqrt_Γy * (y .- G[:, k]))^2 for k = 1:Nens]
+
+    finite_loss = filter(!isnan, objective_loss)
+
+    # Short-circuit if all particles NaN.
+    if length(finite_loss) == 0
+        return [true for k in finite_loss]
+    end
+
     baseline = criterion.baseline(objective_loss)
     distance = criterion.distance(objective_loss, baseline)
     n = criterion.multiple
