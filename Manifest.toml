@@ -1,8 +1,8 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.8.0"
+julia_version = "1.8.2"
 manifest_format = "2.0"
-project_hash = "ca87465985a0b14cb09c01b5b3491d1d13d66b25"
+project_hash = "cbef512b2a907f7754c59988f4f15cb3c616fa70"
 
 [[deps.AMD]]
 deps = ["Libdl", "LinearAlgebra", "SparseArrays", "Test"]
@@ -57,18 +57,12 @@ version = "6.0.23"
 
 [[deps.ArrayInterfaceCore]]
 deps = ["LinearAlgebra", "SparseArrays", "SuiteSparse"]
-git-tree-sha1 = "e9f7992287edfc27b3cbe0046c544bace004ca5b"
+git-tree-sha1 = "e6cba4aadba7e8a7574ab2ba2fcfb307b4c4b02a"
 uuid = "30b0a656-2188-435a-8636-2ec0e6a096e2"
-version = "0.1.22"
+version = "0.1.23"
 
 [[deps.Artifacts]]
 uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
-
-[[deps.Atomix]]
-deps = ["UnsafeAtomics"]
-git-tree-sha1 = "c06a868224ecba914baa6942988e2f2aade419be"
-uuid = "a9b6321e-bd34-4604-b9c9-b65b8de01458"
-version = "0.1.0"
 
 [[deps.BFloat16s]]
 deps = ["LinearAlgebra", "Printf", "Random", "Test"]
@@ -126,10 +120,10 @@ uuid = "052768ef-5323-5732-b1bb-66c8b64840ba"
 version = "3.12.0"
 
 [[deps.CUDAKernels]]
-deps = ["Adapt", "CUDA", "KernelAbstractions", "StaticArrays", "UnsafeAtomicsLLVM"]
-git-tree-sha1 = "bbab4d1a4001ec322c384dfff0889cec4118da93"
+deps = ["Adapt", "CUDA", "Cassette", "KernelAbstractions", "SpecialFunctions", "StaticArrays"]
+git-tree-sha1 = "f35bc730e2b0cc4400835d32cd90b7ebb1ad6e81"
 uuid = "72cfdca4-0801-4ab0-bf6a-d52aa10adc57"
-version = "0.4.3"
+version = "0.3.3"
 
 [[deps.CUDA_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -137,11 +131,10 @@ git-tree-sha1 = "108e3ee33d8614b96c2ea43a621b0e8396d8a273"
 uuid = "e9e359dc-d701-5aa8-82ae-09bbf812ea83"
 version = "10.0.130+3"
 
-[[deps.Calculus]]
-deps = ["LinearAlgebra"]
-git-tree-sha1 = "f641eb0a4f00c343bbc32346e1217b86f3ce9dad"
-uuid = "49dc2e85-a5d0-5ad3-a950-438e2897f1b9"
-version = "0.5.1"
+[[deps.Cassette]]
+git-tree-sha1 = "063b2e77c5537a548c5bf2f44161f1d3e1ab3227"
+uuid = "7057c7e9-c182-5462-911a-8362d720325c"
+version = "0.3.10"
 
 [[deps.ChainRulesCore]]
 deps = ["Compat", "LinearAlgebra", "SparseArrays"]
@@ -168,9 +161,9 @@ uuid = "944b1d66-785c-5afd-91f1-9de20f533193"
 version = "0.7.0"
 
 [[deps.CommonSolve]]
-git-tree-sha1 = "332a332c97c7071600984b3c31d9067e1a4e6e25"
+git-tree-sha1 = "9441451ee712d1aec22edad62db1a9af3dc8d852"
 uuid = "38540f10-b2f7-11e9-35d8-d573e4eb0ff2"
-version = "0.2.1"
+version = "0.2.3"
 
 [[deps.CommonSubexpressions]]
 deps = ["MacroTools", "Test"]
@@ -252,9 +245,9 @@ version = "1.1.0"
 
 [[deps.DiffRules]]
 deps = ["IrrationalConstants", "LogExpFunctions", "NaNMath", "Random", "SpecialFunctions"]
-git-tree-sha1 = "992a23afdb109d0d2f8802a30cf5ae4b1fe7ea68"
+git-tree-sha1 = "8b7a4d23e22f5d44883671da70865ca98f2ebf9d"
 uuid = "b552c78f-8df3-52c6-915a-8e097449b14b"
-version = "1.11.1"
+version = "1.12.0"
 
 [[deps.Distances]]
 deps = ["LinearAlgebra", "SparseArrays", "Statistics", "StatsAPI"]
@@ -282,12 +275,6 @@ version = "0.8.6"
 deps = ["ArgTools", "FileWatching", "LibCURL", "NetworkOptions"]
 uuid = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
 version = "1.6.0"
-
-[[deps.DualNumbers]]
-deps = ["Calculus", "NaNMath", "SpecialFunctions"]
-git-tree-sha1 = "5837a837389fccf076445fce071c8ddaea35a566"
-uuid = "fa6b7ba4-c1ee-5f82-b5fc-ecf0adba8f74"
-version = "0.6.8"
 
 [[deps.ElasticArrays]]
 deps = ["Adapt"]
@@ -386,9 +373,9 @@ version = "0.1.2"
 
 [[deps.GPUCompiler]]
 deps = ["ExprTools", "InteractiveUtils", "LLVM", "Libdl", "Logging", "TimerOutputs", "UUIDs"]
-git-tree-sha1 = "ebb892e1df16040a845e1d11087e4fbfe10323a8"
+git-tree-sha1 = "323949b0bbdf38c93d2ea1f7d3e68ff163c3f081"
 uuid = "61eb1bfa-7361-4325-ad38-22787b887f55"
-version = "0.16.4"
+version = "0.16.5"
 
 [[deps.GaussianProcesses]]
 deps = ["Distances", "Distributions", "ElasticArrays", "ElasticPDMats", "FastGaussQuadrature", "ForwardDiff", "LinearAlgebra", "Optim", "PDMats", "Printf", "ProgressMeter", "Random", "RecipesBase", "ScikitLearnBase", "SpecialFunctions", "StaticArrays", "Statistics", "StatsFuns"]
@@ -409,9 +396,9 @@ version = "1.12.2+2"
 
 [[deps.HTTP]]
 deps = ["Base64", "CodecZlib", "Dates", "IniFile", "Logging", "LoggingExtras", "MbedTLS", "NetworkOptions", "OpenSSL", "Random", "SimpleBufferStream", "Sockets", "URIs", "UUIDs"]
-git-tree-sha1 = "3cdd8948c55d8b53b5323f23c9581555dc2e30e1"
+git-tree-sha1 = "a97d47758e933cd5fe5ea181d178936a9fc60427"
 uuid = "cd3eb016-35fb-5094-929b-558a96fad6f3"
-version = "1.5.0"
+version = "1.5.1"
 
 [[deps.IfElse]]
 git-tree-sha1 = "debdd00ffef04665ccbb3e150747a77560e8fad1"
@@ -480,16 +467,16 @@ uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 version = "0.21.3"
 
 [[deps.JSON3]]
-deps = ["Dates", "Mmap", "Parsers", "StructTypes", "UUIDs"]
-git-tree-sha1 = "f1572de22c866dc92aea032bc89c2b137cbddd6a"
+deps = ["Dates", "Mmap", "Parsers", "SnoopPrecompile", "StructTypes", "UUIDs"]
+git-tree-sha1 = "65edf3850efb9cb4ca3b0bf488e29c6c38a23d2d"
 uuid = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
-version = "1.10.0"
+version = "1.11.1"
 
 [[deps.KernelAbstractions]]
-deps = ["Adapt", "Atomix", "InteractiveUtils", "LinearAlgebra", "MacroTools", "SparseArrays", "StaticArrays", "UUIDs", "UnsafeAtomics", "UnsafeAtomicsLLVM"]
-git-tree-sha1 = "eed4743b01ca88d23be3663bac121374940b475b"
+deps = ["Adapt", "Cassette", "InteractiveUtils", "MacroTools", "SpecialFunctions", "StaticArrays", "UUIDs"]
+git-tree-sha1 = "cb7d8b805413025a5bc866fc036b426223ffc059"
 uuid = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
-version = "0.8.4"
+version = "0.7.2"
 
 [[deps.LDLFactorizations]]
 deps = ["AMD", "LinearAlgebra", "SparseArrays", "Test"]
@@ -574,9 +561,9 @@ version = "2022.2.0+0"
 
 [[deps.MPI]]
 deps = ["Distributed", "DocStringExtensions", "Libdl", "MPICH_jll", "MPIPreferences", "MPItrampoline_jll", "MicrosoftMPI_jll", "OpenMPI_jll", "Requires", "Serialization", "Sockets"]
-git-tree-sha1 = "a330c3fc517b52723645283a1d18569c58f703dd"
+git-tree-sha1 = "067fd6ff731c8b414b5c1f3de723d8aed3b4198f"
 uuid = "da04e1cc-30fd-572f-bb4f-1f8673147195"
-version = "0.20.2"
+version = "0.20.3"
 
 [[deps.MPICH_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "MPIPreferences", "Pkg", "TOML"]
@@ -614,9 +601,9 @@ version = "0.10.9"
 
 [[deps.MbedTLS]]
 deps = ["Dates", "MbedTLS_jll", "MozillaCACerts_jll", "Random", "Sockets"]
-git-tree-sha1 = "6872f9594ff273da6d13c7c1a1545d5a8c7d0c1c"
+git-tree-sha1 = "03a9b9718f5682ecb107ac9f7308991db4ce395b"
 uuid = "739be429-bea8-5141-9913-cc70e7f3736d"
-version = "1.1.6"
+version = "1.1.7"
 
 [[deps.MbedTLS_jll]]
 deps = ["Artifacts", "Libdl"]
@@ -678,11 +665,11 @@ version = "1.2.0"
 
 [[deps.Oceananigans]]
 deps = ["AMGX", "Adapt", "AlgebraicMultigrid", "CUDA", "CUDAKernels", "Crayons", "CubedSphere", "Dates", "DocStringExtensions", "FFTW", "Glob", "IncompleteLU", "InteractiveUtils", "IterativeSolvers", "JLD2", "KernelAbstractions", "LinearAlgebra", "Logging", "MPI", "NCDatasets", "OffsetArrays", "OrderedCollections", "PencilArrays", "PencilFFTs", "Pkg", "Printf", "Random", "Rotations", "SeawaterPolynomials", "SparseArrays", "Statistics", "StructArrays", "Tullio"]
-git-tree-sha1 = "87e7cb2d6203afdcf288c1a9f63543a5808c3212"
+git-tree-sha1 = "d16d46d978ec46a35910c2f31b4ef20d0e0bdeb8"
 repo-rev = "glw/catke-plus-gm"
 repo-url = "https://github.com/CliMA/Oceananigans.jl.git"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
-version = "0.77.5"
+version = "0.78.1"
 
 [[deps.OffsetArrays]]
 deps = ["Adapt"]
@@ -804,15 +791,15 @@ version = "1.7.2"
 
 [[deps.QuadGK]]
 deps = ["DataStructures", "LinearAlgebra"]
-git-tree-sha1 = "3c009334f45dfd546a16a57960a821a1a023d241"
+git-tree-sha1 = "97aa253e65b784fd13e83774cadc95b38011d734"
 uuid = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
-version = "2.5.0"
+version = "2.6.0"
 
 [[deps.Quaternions]]
-deps = ["DualNumbers", "LinearAlgebra", "Random"]
-git-tree-sha1 = "4ab19353944c46d65a10a75289d426ef57b0a40c"
+deps = ["LinearAlgebra", "Random"]
+git-tree-sha1 = "fcebf40de9a04c58da5073ec09c1c1e95944c79b"
 uuid = "94ee1d12-ae83-5a48-8b1c-48b8ff168ae0"
-version = "0.5.7"
+version = "0.6.1"
 
 [[deps.REPL]]
 deps = ["InteractiveUtils", "Markdown", "Sockets", "Unicode"]
@@ -836,9 +823,9 @@ version = "1.5.3"
 
 [[deps.RecipesBase]]
 deps = ["SnoopPrecompile"]
-git-tree-sha1 = "612a4d76ad98e9722c8ba387614539155a59e30c"
+git-tree-sha1 = "d12e612bba40d189cead6ff857ddb67bd2e6a387"
 uuid = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
-version = "1.3.0"
+version = "1.3.1"
 
 [[deps.Reexport]]
 git-tree-sha1 = "45e428421666073eab6f2da5c9d310d99bb12f9b"
@@ -871,9 +858,9 @@ version = "0.3.0+0"
 
 [[deps.Rotations]]
 deps = ["LinearAlgebra", "Quaternions", "Random", "StaticArrays", "Statistics"]
-git-tree-sha1 = "3d52be96f2ff8a4591a9e2440036d4339ac9a2f7"
+git-tree-sha1 = "793b6ef92f9e96167ddbbd2d9685009e200eb84f"
 uuid = "6038ab10-8711-5258-84ad-4b1120ba62dc"
-version = "1.3.2"
+version = "1.3.3"
 
 [[deps.SCS]]
 deps = ["BinaryProvider", "Libdl", "LinearAlgebra", "MathOptInterface", "Requires", "SCS_GPU_jll", "SCS_jll", "SparseArrays"]
@@ -998,9 +985,9 @@ version = "1.2.3"
 
 [[deps.StructArrays]]
 deps = ["Adapt", "DataAPI", "StaticArraysCore", "Tables"]
-git-tree-sha1 = "8c6ac65ec9ab781af05b08ff305ddc727c25f680"
+git-tree-sha1 = "13237798b407150a6d2e2bce5d793d7d9576e99e"
 uuid = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
-version = "0.6.12"
+version = "0.6.13"
 
 [[deps.StructTypes]]
 deps = ["Dates", "UUIDs"]
@@ -1037,7 +1024,7 @@ version = "1.10.0"
 [[deps.Tar]]
 deps = ["ArgTools", "SHA"]
 uuid = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
-version = "1.10.0"
+version = "1.10.1"
 
 [[deps.TaylorSeries]]
 deps = ["InteractiveUtils", "LinearAlgebra", "Markdown", "Requires", "SparseArrays"]
@@ -1088,17 +1075,6 @@ version = "1.0.2"
 
 [[deps.Unicode]]
 uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
-
-[[deps.UnsafeAtomics]]
-git-tree-sha1 = "6331ac3440856ea1988316b46045303bef658278"
-uuid = "013be700-e6cd-48c3-b4a1-df204f14c38f"
-version = "0.2.1"
-
-[[deps.UnsafeAtomicsLLVM]]
-deps = ["LLVM", "UnsafeAtomics"]
-git-tree-sha1 = "33af9d2031d0dc09e2be9a0d4beefec4466def8e"
-uuid = "d80eeb9a-aca5-4d75-85e5-170c8b632249"
-version = "0.1.0"
 
 [[deps.VersionParsing]]
 git-tree-sha1 = "58d6e80b4ee071f5efd07fda82cb9fbe17200868"
