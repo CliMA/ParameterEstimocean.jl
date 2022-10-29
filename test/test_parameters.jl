@@ -3,7 +3,7 @@ using ParameterEstimocean
 using Oceananigans
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
-using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity, MixingLength, SurfaceTKEFlux
+using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity, MixingLength
 using Suppressor: @suppress
 
 using ParameterEstimocean.Parameters: closure_with_parameters, update_closure_ensemble_member!
@@ -28,9 +28,9 @@ const CATKE = CATKEVerticalDiffusivity
 
     @info "Testing closure_with_parameters on CATKEVerticalDiffusivity"
     catke_closure = @suppress CATKE()
-    new_Cᴷuʳ = 1e3
-    new_catke_closure = closure_with_parameters(catke_closure, (; Cᴷuʳ = new_Cᴷuʳ))
-    @test new_catke_closure.mixing_length.Cᴷuʳ == new_Cᴷuʳ
+    new_Cᴷu⁺ = 1.3
+    new_catke_closure = closure_with_parameters(catke_closure, (; Cᴷu⁺ = new_Cᴷu⁺))
+    @test new_catke_closure.mixing_length.Cᴷu⁺ == new_Cᴷu⁺
 
     @info "Testing update_closure_ensemble_member! on ConvectiveAdjustmentVerticalDiffusivity"
     new_background_κz, new_convective_νz = 100.0, 10.0
@@ -61,14 +61,14 @@ const CATKE = CATKEVerticalDiffusivity
 
     @info "Testing closure_with_parameters on (CAVD, CATKE)"
     
-    new_Cᴷuʳ = 1e3
+    new_Cᴷu⁺ = 2.3
 
     closures = tuple(
-        closure_with_parameters(catke_closure, (; Cᴷuʳ = new_Cᴷuʳ)),
+        closure_with_parameters(catke_closure, (; Cᴷu⁺ = new_Cᴷu⁺)),
         closure_with_parameters(CAVD(), (; background_κz = 1.4))
     )
 
-    @test closures[1].mixing_length.Cᴷuʳ == new_Cᴷuʳ
+    @test closures[1].mixing_length.Cᴷu⁺ == new_Cᴷu⁺
     @test closures[2].background_κz == 1.4
 
     @info "Testing closure_with_parameters on (CAVD, [CATKE, CATKE])"

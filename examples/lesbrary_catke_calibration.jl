@@ -82,8 +82,7 @@ save("lesbrary_synthetic_observations.svg", fig); nothing # hide
 # adjustment and with constant (rather than Richardson-number-dependent)
 # diffusivity parameters.
 
-catke_mixing_length = MixingLength(Cᴷcʳ=0.0, Cᴷuʳ=0.0, Cᴷeʳ=0.0)
-catke = CATKEVerticalDiffusivity(mixing_length=catke_mixing_length)
+catke = CATKEVerticalDiffusivity()
 
 simulation = ensemble_column_model_simulation(observations;
                                               Nensemble = 30,
@@ -107,9 +106,11 @@ N² .= observations.metadata.parameters.N²_deep
 # We identify a subset of the CATKE parameters to calibrate by specifying
 # parameter names and prior distributions:
 
-priors = (Cᴰ   = lognormal(mean=0.02, std=0.005),
-          Cᵂu★ = lognormal(mean=1.5,  std=0.25),
-          Cᴸᵇ  = lognormal(mean=0.01, std=0.005),
+priors = (Cᴰ⁻  = lognormal(mean=0.02, std=0.005),
+          Cᵂu★ = lognormal(mean=2.0,  std=0.25),
+          Cᵇc  = lognormal(mean=0.01, std=0.005),
+          Cᵇu  = lognormal(mean=0.01, std=0.005),
+          Cᵇe  = lognormal(mean=0.01, std=0.005),
           Cᴷu⁻ = ScaledLogitNormal(bounds=(0, 4)),
           Cᴷc⁻ = ScaledLogitNormal(bounds=(0, 1)),
           Cᴷe⁻ = ScaledLogitNormal(bounds=(0, 3)))
