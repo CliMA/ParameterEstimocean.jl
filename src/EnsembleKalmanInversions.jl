@@ -453,14 +453,14 @@ function (criterion::ObjectiveLossThreshold)(X, G, eki)
 
     # Short-circuit if all particles NaN.
     if length(finite_loss) == 0
-        return [true for k in finite_loss]
+        return [true for k in 1:Nens]
     end
 
     baseline = criterion.baseline(objective_loss)
     distance = criterion.distance(objective_loss, baseline)
     n = criterion.multiple
 
-    failed(loss) = loss > baseline + n * distance
+    failed(loss) = isnan(loss) || loss > baseline + n * distance
 
     return vec(map(failed, objective_loss))
 end

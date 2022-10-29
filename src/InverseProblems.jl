@@ -199,12 +199,11 @@ in `ip.time_series_collector`.
 function forward_run!(ip::InverseProblem, parameters; suppress=false)
     # Ensure there are enough parameters for ensemble members in the simulation
     θ = expand_parameters(ip, parameters)
-
     _forward_run!(ip, θ, ip.simulation, ip.time_series_collector; suppress)
     return nothing
 end
 
-function _forward_run!(ip::InverseProblem, θ, simulation, time_series_collector; suppress=false)
+function _forward_run!(ip, θ, simulation, time_series_collector; suppress=false)
     observations = ip.observations
     closure = simulation.model.closure
     grid = simulation.model.grid
@@ -234,7 +233,6 @@ function forward_run!(ip::EnsembleSimulationInverseProblem, parameters; suppress
         simulation = ip.simulation[k]
         time_series_collector = ip.time_series_collector[k]
         θk = θ[k]
-
         _forward_run!(ip, θk, simulation, time_series_collector; suppress)
     end
 

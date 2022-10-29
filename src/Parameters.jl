@@ -595,6 +595,7 @@ function new_closure_ensemble(closures::AbstractArray, θ, arch)
 
     return arch_array(arch, cpu_closures)
 end
+
 new_closure_ensemble(closures::Tuple, θ, arch) = 
     Tuple(new_closure_ensemble(closure, θ, arch) for closure in closures)
 
