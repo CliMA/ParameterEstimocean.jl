@@ -361,9 +361,13 @@ function Base.show(io::IO, p::FreeParameters)
 
     maximum_name_length = maximum([length(string(name)) for name in p.names]) 
 
-    for (i, name) in enumerate(p.names[1:end-1])
+    for (i, name) in enumerate(p.names[1:end])
         bufferprefixprefix = Nd
-        prefix = i == length(p.names) ? "│   └──" : "│   ├──"
+        if isempty(p.dependent_parameters)
+            prefix = i == length(p.names) ? "    └──" : "    ├──"
+        else !isempty(p.dependent_parameters)
+            prefix = i == length(p.names) ? "│   └──" : "│   ├──"
+        end
         print(io, '\n')
         prior_show(io, p.priors, name, prefix, maximum_name_length)
     end
