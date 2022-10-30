@@ -314,7 +314,7 @@ julia> c(p) = p.ν + p.κ # compute a third dependent parameter `c` as a functio
 c (generic function with 1 method)
 
 julia> free_parameters_with_a_dependent = FreeParameters(priors, dependent_parameters=(; c))
-FreeParameters with 2 free parameters and 1 dependent parameters
+FreeParameters with 2 free parameters and 1 dependent parameter
 ├── names: (:ν, :κ)
 ├── priors:
 │   ├── ν => Normal{Float64}(μ=0.0001, σ=1.0e-5)
@@ -347,7 +347,7 @@ function Base.show(io::IO, p::FreeParameters)
     Np, Nd = length(p), length(p.dependent_parameters)
 
     free_parameters_summary = "$Np free " * parameter_str(Np)
-    dependent_parameters_summary = "$Nd dependent " * parameter_str(Np)
+    dependent_parameters_summary = "$Nd dependent " * parameter_str(Nd)
 
     title = "FreeParameters with " * free_parameters_summary * 
             " and " * dependent_parameters_summary
