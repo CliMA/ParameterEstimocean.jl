@@ -305,22 +305,19 @@ julia> priors = (ν = Normal(1e-4, 1e-5), κ = Normal(1e-3, 1e-5))
 (ν = Normal{Float64}(μ=0.0001, σ=1.0e-5), κ = Normal{Float64}(μ=0.001, σ=1.0e-5))
 
 julia> free_parameters = FreeParameters(priors)
-FreeParameters with 2 free parameters and 0 dependent parameteres
+FreeParameters with 2 free parameters and 0 dependent parameters
 ├── names: (:ν, :κ)
-├── priors: Dict{Symbol, Any}
+└── priors:
 │   ├── ν => Normal{Float64}(μ=0.0001, σ=1.0e-5)
-│   └── κ => Normal{Float64}(μ=0.001, σ=1.0e-5)
-└── dependent parameters: Dict{Symbol, Any}
 
 julia> c(p) = p.ν + p.κ # compute a third dependent parameter `c` as a function of `ν` and `κ`
 c (generic function with 1 method)
 
 julia> free_parameters_with_a_dependent = FreeParameters(priors, dependent_parameters=(; c))
-FreeParameters with 2 free parameters and 1 dependent parameter
+FreeParameters with 2 free parameters and 1 dependent parameters
 ├── names: (:ν, :κ)
 ├── priors:
 │   ├── ν => Normal{Float64}(μ=0.0001, σ=1.0e-5)
-│   └── κ => Normal{Float64}(μ=0.001, σ=1.0e-5)
 └── dependent parameters:
     └── c => c (generic function with 1 method)
 ```
