@@ -191,12 +191,14 @@ closure_with_parameters(grid::EnsembleClosureGrid, closure, θ) = new_closure_en
 closure_with_parameters(grid, closure, θ) = closure_with_parameters(closure, θ)
 
 """
-    forward_run!(ip, parameters)
+    forward_run!(ip::InverseProblem, parameters; suppress = false)
 
 Initialize `ip.simulation` with `parameters` and run it forward. Output is stored
 in `ip.time_series_collector`.
+
+Keyword `suppress` (boolean; default: `false`) suppresses any warnings.
 """
-function forward_run!(ip::InverseProblem, parameters; suppress=false)
+function forward_run!(ip::InverseProblem, parameters; suppress = false)
     # Ensure there are enough parameters for ensemble members in the simulation
     θ = expand_parameters(ip, parameters)
     _forward_run!(ip, θ, ip.simulation, ip.time_series_collector; suppress)
@@ -291,14 +293,17 @@ struct BatchedInverseProblem{B, P, W} <: AbstractInverseProblem
     weights :: W
 end
 
+one_or_many(N) = N == 1 ? "" : "s"
+
 function Base.summary(bip::BatchedInverseProblem)
     Nb = length(bip.batch)
-    return string("2 BatchedInverseProblems with weights $(bip.weights)",
+    s = one_or_many(Nb)
+    return string("$Nb BatchedInverseProblem$s with weights $(bip.weights)",
                   " and free parameters ", bip.free_parameters.names)
 end
 
 """
-    BatchedInverseProblem(batched_ip; weights)
+    BatchedInverseProblem(batched_ip; weights=Tuple(1 for o in batched_ip))
 
 Return a collection of `observations` with `weights`, where
 `observations` is a `Vector` or `Tuple` of `SyntheticObservations`.
@@ -374,10 +379,12 @@ function observation_map(batched_ip::BatchedInverseProblem)
 end
 
 """
-    inverting_forward_map(ip::InverseProblem, X)
+    inverting_forward_map(ip::AbstractInverseProblem, X; suppress=true)
 
 Transform unconstrained parameters `X` into constrained,
 physical-space parameters `θ` and execute `forward_map(ip, θ)`.
+
+Keyword `suppress` (boolean; default: `false`) suppresses any warnings.
 """
 function inverting_forward_map(ip::AbstractInverseProblem, X; suppress=true)
     θ = transform_to_constrained(ip.free_parameters.priors, X)
@@ -444,7 +451,7 @@ output_map_str(::ConcatenatedOutputMap) = "ConcatenatedOutputMap"
 """
     transform_dataset(::ConcatenatedOutputMap, observation::SyntheticObservations)
 
-Transforms, normalizes, and concatenates data for the set of FieldTimeSeries in `observations`.
+Transform, normalize, and concatenate data for the set of `FieldTimeSeries` in `observations`.
 """
 function transform_dataset(::ConcatenatedOutputMap, observations::SyntheticObservations)
     data_vector = []
