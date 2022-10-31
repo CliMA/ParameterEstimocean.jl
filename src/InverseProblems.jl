@@ -34,8 +34,8 @@ using Oceananigans.Grids: Flat, Bounded,
                           Face, Center,
                           RectilinearGrid, offset_data,
                           topology, halo_size,
-                          interior_parent_indices
-
+                          interior_parent_indices,
+                          cpu_face_constructor_z
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SingleColumnGrid, YZSliceGrid, ColumnEnsembleSize
 
 import ..Transformations: normalize!
@@ -535,7 +535,7 @@ end
 function drop_y_dimension(grid::SingleColumnGrid)
     new_size = ColumnEnsembleSize(Nz=grid.Nz, ensemble=(grid.Nx, 1), Hz=grid.Hz)
     new_halo_size = ColumnEnsembleSize(Nz=1, Hz=grid.Hz)
-    z_domain = (grid.zᵃᵃᶠ[1], grid.zᵃᵃᶠ[grid.Nz])
+    z_domain = cpu_face_constructor_z(grid)
     new_grid = RectilinearGrid(size=new_size, halo=new_halo_size, z=z_domain, topology=(Flat, Flat, Bounded))
     return new_grid
 end
