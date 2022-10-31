@@ -187,34 +187,37 @@ end
 
 # Permit "single simulation, single closure" case.
 EnsembleClosureGrid = Union{SingleColumnGrid, YZSliceGrid}
-closure_with_parameters(grid::EnsembleClosureGrid, closure, θ) = new_closure_ensemble(closure, θ, architecture(grid))
-closure_with_parameters(grid, closure, θ) = closure_with_parameters(closure, θ)
+
+closure_with_parameters(grid::EnsembleClosureGrid, closure, parameter_ensemble) =
+    new_closure_ensemble(closure, parameter_ensemble, architecture(grid))
+
+closure_with_parameters(grid, closure, parameter_ensemble) = closure_with_parameters(closure, parameter_ensemble)
 
 """
-    forward_run!(ip::InverseProblem, parameters; suppress = false)
+    forward_run!(ip::InverseProblem, parameter_ensemble; suppress = false)
 
-Initialize `ip.simulation` with `parameters` and run it forward. Output is stored
-in `ip.time_series_collector`.
+Initialize `ip.simulation` with `parameter_ensemble` and run it forward. Output is stored
+in `ip.time_series_collector`. `forward_run` can also be called with one parameter set.
 
 Keyword `suppress` (boolean; default: `false`) suppresses any warnings.
 """
-function forward_run!(ip::InverseProblem, parameters; suppress = false)
+function forward_run!(ip::InverseProblem, maybe_parameter_ensemble; suppress = false)
     # Ensure there are enough parameters for ensemble members in the simulation
-    θ = expand_parameters(ip, parameters)
-    _forward_run!(ip, θ, ip.simulation, ip.time_series_collector; suppress)
+    parameter_ensemble = expand_parameter_ensemble(ip, maybe_parameter_ensemble)
+    _forward_run!(ip, parameter_ensemble, ip.simulation, ip.time_series_collector; suppress)
     return nothing
 end
 
-function _forward_run!(ip, θ, simulation, time_series_collector; suppress=false)
+function _forward_run!(ip, parameter_ensemble, simulation, time_series_collector; suppress=false)
     observations = ip.observations
     closure = simulation.model.closure
     grid = simulation.model.grid
 
     # Set closure parameters
-    simulation.model.closure = closure_with_parameters(grid, closure, θ)
+    simulation.model.closure = closure_with_parameters(grid, closure, parameter_ensemble)
 
     initialize_forward_run!(simulation, observations, time_series_collector,
-                            ip.initialize_with_observations, ip.initialize_simulation, θ)
+                            ip.initialize_with_observations, ip.initialize_simulation, parameter_ensemble)
 
     if suppress
         @suppress run!(simulation)
@@ -225,17 +228,17 @@ function _forward_run!(ip, θ, simulation, time_series_collector; suppress=false
     return nothing
 end
 
-function forward_run!(ip::EnsembleSimulationInverseProblem, parameters; suppress=false)
+function forward_run!(ip::EnsembleSimulationInverseProblem, maybe_parameter_ensemble; suppress=false)
     # Ensure there are enough parameters for ensemble members in the simulation
-    θ = expand_parameters(ip, parameters)
+    parameter_ensemble = expand_parameter_ensemble(ip, maybe_parameter_ensemble)
 
     # Broadcast parameter vector over simulation ensemble
     for k = 1:Nensemble(ip)
         # Extract the kᵗʰ ensemble member
         simulation = ip.simulation[k]
         time_series_collector = ip.time_series_collector[k]
-        θk = θ[k]
-        _forward_run!(ip, θk, simulation, time_series_collector; suppress)
+        θₖ = parameter_ensemble[k]
+        _forward_run!(ip, θₖ, simulation, time_series_collector; suppress)
     end
 
     return nothing
@@ -256,10 +259,10 @@ DistributedInverseProblem(local_inverse_problem; comm=MPI.COMM_WORLD) =
 
 Nensemble(dip::DistributedInverseProblem) = MPI.Comm_size(dip.comm)
 
-function forward_map(dip::DistributedInverseProblem, θ; suppress=true)
+function forward_map(dip::DistributedInverseProblem, parameter_ensemble; suppress=true)
     
     rank = MPI.Comm_rank(dip.comm)
-    local_θ = θ[rank+1]
+    local_θ = parameter_ensemble[rank+1]
 
     local_G = forward_map(dip.local_inverse_problem, local_θ; suppress)
     MPI.Barrier(dip.comm)
@@ -382,17 +385,17 @@ end
     inverting_forward_map(ip::AbstractInverseProblem, X; suppress=true)
 
 Transform unconstrained parameters `X` into constrained,
-physical-space parameters `θ` and execute `forward_map(ip, θ)`.
+physical-space parameters `θ` and execute `forward_map(ip, parameter_ensemble)`.
 
 Keyword `suppress` (boolean; default: `false`) suppresses any warnings.
 """
 function inverting_forward_map(ip::AbstractInverseProblem, X; suppress=true)
-    θ = transform_to_constrained(ip.free_parameters.priors, X)
-    return forward_map(ip, θ; suppress)
+    parameter_ensemble = transform_to_constrained(ip.free_parameters.priors, X)
+    return forward_map(ip, parameter_ensemble; suppress)
 end
 
 """
-    expand_parameters(ip, θ::Vector)
+    expand_parameter_ensemble(ip, user_parameter_ensemble::Vector)
 
 Convert parameters `θ` to `Vector{<:NamedTuple}`, where the elements
 correspond to `ip.free_parameters`.
@@ -408,23 +411,24 @@ or a single parameter set if `θ::Vector{<:Number}`.
 If `length(θ)` is less the the number of ensemble members in `ip.simulation`, the
 last parameter set is copied to fill the parameter set ensemble.
 """
-function expand_parameters(ip, θ::Vector)
-    θ = [build_parameters_named_tuple(ip.free_parameters, θi) for θi in θ]
+function expand_parameter_ensemble(ip, user_parameter_ensemble::Vector)
+    parameter_ensemble = [build_parameters_named_tuple(ip.free_parameters, θₖ)
+                          for θₖ in user_parameter_ensemble]
 
     # Fill out parameter set ensemble
-    Nfewer = Nensemble(ip) - length(θ)
+    Nfewer = Nensemble(ip) - length(parameter_ensemble)
     Nfewer < 0 && throw(ArgumentError("There are $(-Nfewer) more parameter sets than ensemble members!"))
-    Nfewer > 0 && append!(θ, [θ[end] for _ = 1:Nfewer])
+    Nfewer > 0 && append!(parameter_ensemble, [parameter_ensemble[end] for _ = 1:Nfewer])
 
-    return θ
+    return parameter_ensemble
 end
 
 # Expand single parameter set
-expand_parameters(ip, θ::Vector{<:Number}) = expand_parameters(ip, [θ])
-expand_parameters(ip, θ::NamedTuple)       = θ 
+expand_parameter_ensemble(ip, θ::Vector{<:Number}) = expand_parameter_ensemble(ip, [θ])
+expand_parameter_ensemble(ip, θ::NamedTuple)       = [θ] 
 
 # Convert matrix to vector of vectors
-expand_parameters(ip, θ::Matrix) = expand_parameters(ip, [θ[:, k] for k = 1:size(θ, 2)])
+expand_parameter_ensemble(ip, θ::Matrix) = expand_parameter_ensemble(ip, [θ[:, k] for k = 1:size(θ, 2)])
 
 """
     observation_map(ip::InverseProblem)
