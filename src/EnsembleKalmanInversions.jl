@@ -263,7 +263,9 @@ end
 """
     iterate!(eki::EnsembleKalmanInversion;
              iterations = 1,
-             show_progress = true,
+             pseudo_Δt = eki.pseudo_Δt,
+             pseudo_stepping = eki.pseudo_stepping,
+             show_progress = false,
              kwargs...)
 
 Convenience function for running `pseudo_step!` multiple times with the same argument.
@@ -316,9 +318,11 @@ function set_unconstrained_parameters!(eki, X)
 end
 
 """
-    pseudo_step!(eki::EnsembleKalmanInversion;
-                 pseudo_Δt = eki.pseudo_Δt,
-                 pseudo_stepping = eki.pseudo_stepping)
+    pseudo_step!(eki::EnsembleKalmanInversion; 
+                 pseudo_Δt = nothing,
+                 pseudo_stepping = nothing,
+                 covariance_inflation = 0.0,
+                 momentum_parameter = 0.0)
 
 Step forward `X = eki.unconstrained_parameters` using
 `y = eki.mapped_observations`, `Γy = eki.noise_covariance`, and G = `eki.forward_map_output`.
@@ -375,7 +379,7 @@ end
 #####
 
 """
-    NormExceedsMedian(minimum_relative_norm = 1e9)
+    struct NormExceedsMedian{T}
 
 The particle failure condition. A particle is marked "failed" if the forward map norm is
 larger than `minimum_relative_norm` times more than the median value of the ensemble.
@@ -421,18 +425,19 @@ nanmedian(X) = median(filter(!isnan, X))
 nanminimum(X) = minimum(filter(!isnan, X))
 
 """
-    ObjectiveLossThreshold(multiple = 4.0; baseline = median,
+    ObjectiveLossThreshold(multiple = 4.0;
+                           baseline = nanmedian,
                            distance = median_absolute_deviation)
 
 Returns a failure criterion that defines failure for particle `k` as
 
-```math
+```
 Φₖ > baseline(Φ) + multiple * distance(Φ)
 ```
 
 where `Φ` is the objective loss function.
 
-By default, `baseline = median`, the `distance` is the 
+By default, `baseline = nanmedian`, the `distance` is the 
 median absolute deviation, and `multiple = 4.0`.
 """
 function ObjectiveLossThreshold(multiple = 4.0;
@@ -468,7 +473,6 @@ end
 #####
 ##### Adaptive stepping
 #####
-
 
 function step_parameters(X, G, y, Γy, process; Δt=1.0)
     ekp = EnsembleKalmanProcess(X, y, Γy, process; Δt)

@@ -397,18 +397,18 @@ end
 """
     expand_parameter_ensemble(ip, user_parameter_ensemble::Vector)
 
-Convert parameters `θ` to `Vector{<:NamedTuple}`, where the elements
+Convert parameters `user_parameter_ensemble` to `Vector{<:NamedTuple}`, where the elements
 correspond to `ip.free_parameters`.
 
-`θ` may represent an ensemble of parameter sets via:
+`user_parameter_ensemble` may represent an ensemble of parameter sets via:
 
-* `θ::Vector{<:Vector}` (caution: parameters must be ordered correctly!)
-* `θ::Matrix` (caution: parameters must be ordered correctly!)
-* `θ::Vector{<:NamedTuple}` 
+* `user_parameter_ensemble::Vector{<:Vector}` (caution: parameters must be ordered correctly!)
+* `user_parameter_ensemble::Matrix` (caution: parameters must be ordered correctly!)
+* `user_parameter_ensemble::Vector{<:NamedTuple}` 
 
-or a single parameter set if `θ::Vector{<:Number}`.
+or a single parameter set if `user_parameter_ensemble::Vector{<:Number}`.
 
-If `length(θ)` is less the the number of ensemble members in `ip.simulation`, the
+If `length(user_parameter_ensemble)` is less the the number of ensemble members in `ip.simulation`, the
 last parameter set is copied to fill the parameter set ensemble.
 """
 function expand_parameter_ensemble(ip, user_parameter_ensemble::Vector)
@@ -599,7 +599,7 @@ end
     ConcatenatedVectorNormMap()
 
 Forward map transformation of simulation output to a scalar by
-taking a naive `norm` of the difference between concatenated vectors of the
+taking a naïve `norm` of the difference between concatenated vectors of the
 observations and simulation output.
 """
 struct ConcatenatedVectorNormMap end
