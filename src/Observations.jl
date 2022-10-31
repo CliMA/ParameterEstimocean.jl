@@ -235,7 +235,7 @@ using Oceananigans.Grids: ZRegRectilinearGrid
 function with_size(new_size, old_grid)
 
     old_grid isa ZRegRectilinearGrid ||
-        error("Cannot remake stretched grid \n $grid \n with a new size!")
+        error("Cannot remake stretched grid \n $old_grid \n with a new size!")
 
     topo = topology(old_grid)
 
