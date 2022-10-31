@@ -5,7 +5,6 @@ using LinearAlgebra
 
 using Oceananigans
 using Oceananigans.Units
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 using Oceananigans: fields
 
 using ParameterEstimocean
@@ -55,9 +54,9 @@ architecture = CPU()
     lower_bound, upper_bound = bounds = [0.9, 1.1]
     priors = (convective_κz = ScaledLogitNormal(; bounds),
               background_κz = ScaledLogitNormal(bounds=(5e-5, 2e-4)))
-    
+
     Nparams = length(priors)
-    
+
     free_parameters = FreeParameters(priors)
     calibration = InverseProblem(observation, simulation, free_parameters)
     batched_calibration = InverseProblem(batched_observations, batched_simulation, free_parameters)
@@ -230,4 +229,3 @@ architecture = CPU()
         end
     end
 end
-
