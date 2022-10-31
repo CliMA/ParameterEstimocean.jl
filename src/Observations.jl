@@ -432,14 +432,14 @@ end
 ##### Initializing simulations
 #####
 
-nothingfunction(simulation) = nothing
+nothingfunction(args...) = nothing
 
 function initialize_forward_run!(simulation,
                                  observations,
                                  time_series_collector,
-                                 initialize_with_observations,
-                                 initialize_simulation!,
-                                 parameters)
+                                 initialize_with_observations = true,
+                                 initialize_simulation! = nothingfunction,
+                                 parameters = nothing)
 
     reset!(simulation)
 

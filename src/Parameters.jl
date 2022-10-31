@@ -305,12 +305,10 @@ julia> priors = (ν = Normal(1e-4, 1e-5), κ = Normal(1e-3, 1e-5))
 (ν = Normal{Float64}(μ=0.0001, σ=1.0e-5), κ = Normal{Float64}(μ=0.001, σ=1.0e-5))
 
 julia> free_parameters = FreeParameters(priors)
-FreeParameters with 2 free parameters and 0 dependent parameteres
+FreeParameters with 2 free parameters and 0 dependent parameters
 ├── names: (:ν, :κ)
-├── priors: Dict{Symbol, Any}
+└── priors:
 │   ├── ν => Normal{Float64}(μ=0.0001, σ=1.0e-5)
-│   └── κ => Normal{Float64}(μ=0.001, σ=1.0e-5)
-└── dependent parameters: Dict{Symbol, Any}
 
 julia> c(p) = p.ν + p.κ # compute a third dependent parameter `c` as a function of `ν` and `κ`
 c (generic function with 1 method)
@@ -320,7 +318,6 @@ FreeParameters with 2 free parameters and 1 dependent parameter
 ├── names: (:ν, :κ)
 ├── priors:
 │   ├── ν => Normal{Float64}(μ=0.0001, σ=1.0e-5)
-│   └── κ => Normal{Float64}(μ=0.001, σ=1.0e-5)
 └── dependent parameters:
     └── c => c (generic function with 1 method)
 ```
@@ -350,7 +347,7 @@ function Base.show(io::IO, p::FreeParameters)
     Np, Nd = length(p), length(p.dependent_parameters)
 
     free_parameters_summary = "$Np free " * parameter_str(Np)
-    dependent_parameters_summary = "$Nd dependent " * parameter_str(Np)
+    dependent_parameters_summary = "$Nd dependent " * parameter_str(Nd)
 
     title = "FreeParameters with " * free_parameters_summary * 
             " and " * dependent_parameters_summary
@@ -364,9 +361,13 @@ function Base.show(io::IO, p::FreeParameters)
 
     maximum_name_length = maximum([length(string(name)) for name in p.names]) 
 
-    for (i, name) in enumerate(p.names[1:end-1])
+    for (i, name) in enumerate(p.names[1:end])
         bufferprefixprefix = Nd
-        prefix = i == length(p.names) ? "│   └──" : "│   ├──"
+        if isempty(p.dependent_parameters)
+            prefix = i == length(p.names) ? "    └──" : "    ├──"
+        else !isempty(p.dependent_parameters)
+            prefix = i == length(p.names) ? "│   └──" : "│   ├──"
+        end
         print(io, '\n')
         prior_show(io, p.priors, name, prefix, maximum_name_length)
     end
@@ -550,33 +551,33 @@ closure_with_parameters(closures::Tuple, parameters) =
     Tuple(closure_with_parameters(closure, parameters) for closure in closures)
 
 """
-    update_closure_ensemble_member!(closures, p_ensemble, parameters)
+    update_closure_ensemble_member!(closures, k, θₖ)
 
-Use `parameters` to update the `p_ensemble`-th closure from and array of `closures`.
-The `p_ensemble`-th closure corresponds to ensemble member `p_ensemble`.
+Use `parameters` to update the `k`-th closure from and array of `closures`.
+The `k`-th closure corresponds to ensemble member `k`.
 """
-update_closure_ensemble_member!(closure, p_ensemble, parameters) = nothing
+update_closure_ensemble_member!(closure, k, θₖ) = nothing
 
-update_closure_ensemble_member!(closures::AbstractVector, p_ensemble, parameters) =
-    closures[p_ensemble] = closure_with_parameters(closures[p_ensemble], parameters)
+update_closure_ensemble_member!(closures::AbstractVector, k, θₖ) =
+    closures[k] = closure_with_parameters(closures[k], θₖ)
 
-function update_closure_ensemble_member!(closures::AbstractMatrix, p_ensemble, parameters)
+function update_closure_ensemble_member!(closures::AbstractMatrix, k, θₖ)
     for j in 1:size(closures, 2) # Assume that ensemble varies along first dimension
-        closures[p_ensemble, j] = closure_with_parameters(closures[p_ensemble, j], parameters)
+        closures[k, j] = closure_with_parameters(closures[k, j], θₖ)
     end
     
     return nothing
 end
 
-function update_closure_ensemble_member!(closure_tuple::Tuple, p_ensemble, parameters)
+function update_closure_ensemble_member!(closure_tuple::Tuple, k, θₖ)
     for closure in closure_tuple
-        update_closure_ensemble_member!(closure, p_ensemble, parameters)
+        update_closure_ensemble_member!(closure, k, θₖ)
     end
     return nothing
 end
 
 """
-    new_closure_ensemble(closures, θ, arch=CPU())
+    new_closure_ensemble(closures, parameter_ensemble, arch=CPU())
 
 Return a new set of `closures` in which all closures that have free parameters are updated.
 Closures with free parameters are expected as `AbstractArray` of `TurbulenceClosures`, and
@@ -584,18 +585,19 @@ this allows `new_closure_ensemble` to go through all closures in `closures` and 
 the parameters for the any closure that is of type `AbstractArray`. The `arch`itecture
 (`CPU()` or `GPU()`) defines whethere `Array` or `CuArray` is returned.
 """
-function new_closure_ensemble(closures::AbstractArray, θ, arch)
+function new_closure_ensemble(closures::AbstractArray, parameter_ensemble, arch)
     cpu_closures = arch_array(CPU(), closures)
 
-    for (p, θp) in enumerate(θ)
-        update_closure_ensemble_member!(cpu_closures, p, θp)
+    for (k, θₖ) in enumerate(parameter_ensemble)
+        update_closure_ensemble_member!(cpu_closures, k, θₖ)
     end
 
     return arch_array(arch, cpu_closures)
 end
-new_closure_ensemble(closures::Tuple, θ, arch) = 
-    Tuple(new_closure_ensemble(closure, θ, arch) for closure in closures)
 
-new_closure_ensemble(closure, θ, arch) = closure
+new_closure_ensemble(closures::Tuple, parameter_ensemble, arch) = 
+    Tuple(new_closure_ensemble(closure, parameter_ensemble, arch) for closure in closures)
+
+new_closure_ensemble(closure, parameter_ensemble, arch) = closure
 
 end # module

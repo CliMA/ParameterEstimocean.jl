@@ -5,6 +5,7 @@ using
   Literate,
   CairoMakie,  # so that Literate.jl does not capture precompilation output or warnings
   Distributions,
+  Glob,
   ParameterEstimocean
 
 # Gotta set this environment variable when using the GR run-time on CI machines.
@@ -25,8 +26,8 @@ to_be_literated = [
   "intro_to_inverse_problems.jl",
   "exploring_priors.jl",
   "perfect_convective_adjustment_calibration.jl",
-  "single_case_lesbrary_ri_based_calibration.jl",
-  "multi_case_lesbrary_ri_based_calibration.jl",
+  # "single_case_lesbrary_ri_based_calibration.jl",
+  # "multi_case_lesbrary_ri_based_calibration.jl",
   "perfect_baroclinic_adjustment_calibration.jl"
 ]
 
@@ -59,8 +60,8 @@ pages = [
 
     "Examples" => [ 
         "literated/perfect_convective_adjustment_calibration.md",
-        "literated/single_case_lesbrary_ri_based_calibration.md",
-        "literated/multi_case_lesbrary_ri_based_calibration.md",
+        # "literated/single_case_lesbrary_ri_based_calibration.md",
+        # "literated/multi_case_lesbrary_ri_based_calibration.md",
         "literated/perfect_baroclinic_adjustment_calibration.md"
         ],
     
@@ -82,6 +83,12 @@ makedocs(
       clean = true,
   checkdocs = :exports
 )
+
+@info "Cleaning up temporary .jld2 and .nc files created by doctests..."
+
+for file in vcat(glob("docs/*.jld2"), glob("docs/*.nc"))
+    rm(file)
+end
 
 withenv("GITHUB_REPOSITORY" => "CliMA/ParameterEstimoceanDocumentation") do
     deploydocs(        repo = "github.com/CliMA/ParameterEstimoceanDocumentation.git",
