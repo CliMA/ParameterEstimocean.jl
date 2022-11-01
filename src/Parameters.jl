@@ -307,7 +307,8 @@ julia> free_parameters = FreeParameters(priors)
 FreeParameters with 2 free parameters and 0 dependent parameters
 ├── names: (:ν, :κ)
 └── priors:
-│   ├── ν => Normal{Float64}(μ=0.0001, σ=1.0e-5)
+    ├── ν => Normal{Float64}(μ=0.0001, σ=1.0e-5)
+    └── κ => Normal{Float64}(μ=0.001, σ=1.0e-5)
 
 julia> c(p) = p.ν + p.κ # compute a third dependent parameter `c` as a function of `ν` and `κ`
 c (generic function with 1 method)
@@ -317,6 +318,7 @@ FreeParameters with 2 free parameters and 1 dependent parameter
 ├── names: (:ν, :κ)
 ├── priors:
 │   ├── ν => Normal{Float64}(μ=0.0001, σ=1.0e-5)
+│   └── κ => Normal{Float64}(μ=0.001, σ=1.0e-5)
 └── dependent parameters:
     └── c => c (generic function with 1 method)
 ```
