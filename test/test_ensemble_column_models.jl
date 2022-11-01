@@ -99,22 +99,13 @@ end
         @info "Testing Coriolis ensemble member ($i, $j) with $(coriolises()[i, j])..."
         @test ensemble_model.coriolis[i, j] == coriolises()[i, j]
 
-        # @show parent(ensemble_model.velocities.u)[i, j, :]
-        # @show parent(models[i, j].velocities.u)[1, 1, :]
+        @show parent(ensemble_model.velocities.u)[i, j, :]
+        @show parent(models[i, j].velocities.u)[1, 1, :]
+        @test parent(ensemble_model.velocities.u)[i, j, :] == parent(models[i, j].velocities.u)[1, 1, :]
 
-        u = parent(ensemble_model.velocities.u)[i, 1, :]
-        v = parent(ensemble_model.velocities.v)[i, 1, :]
-        @show @. u^2 + v^2
-
-        u = parent(models[i, j].velocities.u)[i, 1, :]
-        v = parent(models[i, j].velocities.v)[i, 1, :]
-        @show @. u^2 + v^2
-
-        # @test parent(ensemble_model.velocities.u)[i, j, :] == parent(models[i, j].velocities.u)[1, 1, :]
-
-        # @show parent(ensemble_model.velocities.v)[i, j, :]
-        # @show parent(models[i, j].velocities.v)[1, 1, :]
-        # @test parent(ensemble_model.velocities.v)[i, j, :] == parent(models[i, j].velocities.v)[1, 1, :]
+        @show parent(ensemble_model.velocities.v)[i, j, :]
+        @show parent(models[i, j].velocities.v)[1, 1, :]
+        @test parent(ensemble_model.velocities.v)[i, j, :] == parent(models[i, j].velocities.v)[1, 1, :]
     end
 
 end
