@@ -218,7 +218,6 @@ and the inverse trasnform is the natural logarithm ``f^{-1} ≡ \\log``,
 """
 transform_to_unconstrained(Π::Normal,    Y) = (Y - Π.μ) / Π.σ
 transform_to_unconstrained(Π::LogNormal, Y) = log(Y^(1 / abs(Π.μ))) # log(Y) / abs(Π.μ)
-
 transform_to_unconstrained(Π::ScaledLogitNormal, Y) =
     scaled_logit_normal_to_normal(Π.lower_bound, Π.upper_bound, Y)
 
@@ -288,7 +287,7 @@ struct FreeParameters{N, P, D}
 end
 
 """
-    FreeParameters(priors; names = Symbol.(keys(priors)), dependent_parameters=NamedTuple())
+    FreeParameters(priors; names = Symbol.(keys(priors)), dependent_parameters = NamedTuple())
 
 Return named `FreeParameters` with priors. Free parameter `names` are inferred from
 the keys of `priors` if not provided. Optionally, `dependent_parameters` are prescribed
@@ -322,7 +321,7 @@ FreeParameters with 2 free parameters and 1 dependent parameter
     └── c => c (generic function with 1 method)
 ```
 """
-function FreeParameters(priors; names = Symbol.(keys(priors)), dependent_parameters=NamedTuple())
+function FreeParameters(priors; names = Symbol.(keys(priors)), dependent_parameters = NamedTuple())
     priors = NamedTuple(name => priors[name] for name in names)
     return FreeParameters(Tuple(names), priors, dependent_parameters)
 end
