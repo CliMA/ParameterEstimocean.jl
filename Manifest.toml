@@ -2,7 +2,7 @@
 
 julia_version = "1.8.2"
 manifest_format = "2.0"
-project_hash = "9b5810965966ec8ce53f527336f5089f776371f5"
+project_hash = "b568dffd0539d1ed39e3c3e1053a0991c260f127"
 
 [[deps.AMD]]
 deps = ["Libdl", "LinearAlgebra", "SparseArrays", "Test"]
@@ -86,9 +86,9 @@ version = "0.1.5"
 
 [[deps.BlockDiagonals]]
 deps = ["ChainRulesCore", "FillArrays", "FiniteDifferences", "LinearAlgebra"]
-git-tree-sha1 = "350372f249eb57922c44f6a4e762d6bcb75ef92a"
+git-tree-sha1 = "c70a29b23e304581a020c42f66d1d9d0ee5e40a9"
 uuid = "0a1fb500-61f7-11e9-3c65-f5ef3456f9f0"
-version = "0.1.36"
+version = "0.1.37"
 
 [[deps.Bzip2_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -659,8 +659,8 @@ version = "1.2.0"
 
 [[deps.Oceananigans]]
 deps = ["AMGX", "Adapt", "AlgebraicMultigrid", "CUDA", "CUDAKernels", "Crayons", "CubedSphere", "Dates", "DocStringExtensions", "FFTW", "Glob", "IncompleteLU", "InteractiveUtils", "IterativeSolvers", "JLD2", "KernelAbstractions", "LinearAlgebra", "Logging", "MPI", "NCDatasets", "OffsetArrays", "OrderedCollections", "PencilArrays", "PencilFFTs", "Pkg", "Printf", "Random", "Rotations", "SeawaterPolynomials", "SparseArrays", "Statistics", "StructArrays", "Tullio"]
-git-tree-sha1 = "dfc9cf6b3bddd1ae65f19ffb311f65cf5ebe5622"
-repo-rev = "568adce58720caefc3152d9dae57bd2bcab5afe8"
+git-tree-sha1 = "3c91f5a0fd7a8a71bc8eccd3f353556eaac77b20"
+repo-rev = "glw/catke-plus-gm"
 repo-url = "https://github.com/CliMA/Oceananigans.jl.git"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
 version = "0.78.1"
