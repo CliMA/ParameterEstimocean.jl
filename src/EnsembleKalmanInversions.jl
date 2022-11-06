@@ -488,7 +488,6 @@ function step_parameters(eki::EnsembleKalmanInversion, pseudo_stepping;
                          covariance_inflation = 0.0,
                          momentum_parameter = 0.0)
 
-    process = eki.ensemble_kalman_process
     Gⁿ = eki.forward_map_output
     Xⁿ = eki.unconstrained_parameters
     Xⁿ⁺¹ = similar(Xⁿ)
