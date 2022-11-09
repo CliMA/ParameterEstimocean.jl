@@ -69,6 +69,7 @@ architecture = CPU()
                 EnsembleKalmanInversion(batched_calibration; pseudo_stepping=ConstantConvergence(0.9))]
 
         batch_str = string("(Nbatch = ", size(eki.inverse_problem.simulation.model.grid, 2), ")")
+        
         @testset "EnsembleKalmanInversions construction and iteration tests $batch_str" begin
             @info "  Testing EnsembleKalmanInversion construction and basic iteration $batch_str..."
 
@@ -107,6 +108,8 @@ architecture = CPU()
 
     for eki in [EnsembleKalmanInversion(calibration; pseudo_stepping=Kovachki2018InitialConvergenceRatio()),
                 EnsembleKalmanInversion(batched_calibration; pseudo_stepping=Kovachki2018InitialConvergenceRatio())]
+
+        batch_str = string("(Nbatch = ", size(eki.inverse_problem.simulation.model.grid, 2), ")")
 
         @testset "PseudoSteppingSchemes tests" begin
             @info "  Testing pseudo-stepping schemes with default hyperparameters"
