@@ -211,9 +211,9 @@ function eki_update(pseudo_scheme::Kovachki2018, Xₙ, Gₙ, eki)
 end
 
 function eki_update(pseudo_scheme::Kovachki2018InitialConvergenceRatio, Xₙ, Gₙ, eki)
-
+    @show "hi"
     if pseudo_scheme.initial_step_size == 0
-
+        @show "hi again"
         target = pseudo_scheme.initial_convergence_ratio
 
         D = compute_D(Xₙ, Gₙ, eki)
