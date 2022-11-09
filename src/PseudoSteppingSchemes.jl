@@ -98,7 +98,6 @@ frobenius_norm(A) = sqrt(sum(A .^ 2))
 
 function compute_D(Xₙ, Gₙ, eki)
     y = observations(eki)
-    Γy = obs_noise_covariance(eki)
     g̅ = mean(Gₙ, dims = 2)
     Γy⁻¹ = inv_obs_noise_covariance(eki)
 
@@ -157,9 +156,9 @@ end
     
 Return the `ConstantConvergence` pseudo-stepping scheme with target `convergence_ratio`.
 With `ConstantConvergence`, the ensemble Kalman inversion (EKI) pseudo step size is adjusted
-such that the `n`-th root of the determinant of the parameter covariance is decreased by
-`convergence_ratio` (e.g. for `convergence_ratio=0.7`, by 70%)
-after one EKI iteration, where `n` is the number of parameters.
+such that the ``n``-th root of the determinant of the parameter covariance is decreased by
+`convergence_ratio` (e.g., for `convergence_ratio = 0.7`, by 70%)
+after one EKI iteration, where ``n`` is the number of parameters.
 """
 ConstantConvergence(; convergence_ratio=0.7) = ConstantConvergence(convergence_ratio)
 
@@ -193,7 +192,7 @@ end
 """
     eki_update(pseudo_scheme::Kovachki2018, Xₙ, Gₙ, eki)
 
-Implement an EKI update with an adaptive time step estimated as suggested in Kovachki et al.
+Implement an EKI update with an adaptive time step estimated as suggested by Kovachki et al.
 "Ensemble Kalman Inversion: A Derivative-Free Technique For Machine Learning Tasks" (2018).
 """
 function eki_update(pseudo_scheme::Kovachki2018, Xₙ, Gₙ, eki)
@@ -286,7 +285,7 @@ end
     eki_update(pseudo_scheme::ThresholdedConvergenceRatio, Xₙ, Gₙ, eki; initial_guess=nothing)
 
 Implement an EKI update with an adaptive time step estimated as suggested by Chada, Neil and Tong, Xin 
-"Convergence Acceleration of Ensemble Kalman Inversion in Nonlinear Settings," Math. Comp. 91 (2022).
+"Convergence Aacceleration of Ensemble Kalman Inversion in Nonlinear Settings," Math. Comp. 91 (2022).
 """
 function eki_update(pseudo_scheme::Chada2021, Xₙ, Gₙ, eki)
 
@@ -304,8 +303,8 @@ end
     eki_update(pseudo_scheme::ThresholdedConvergenceRatio, Xₙ, Gₙ, eki; initial_guess=nothing, report=true)
 
 Implement an EKI update with an adaptive time step estimated by finding the first step size
-in the sequence `Δtₖ = Δtₙ₋₁(1/2)^k` with `k = {0, 1, 2, ...}` that satisfies 
-`|cov(Xₙ₊₁)|/|cov(Xₙ)| > pseudo_scheme.cov_threshold`, assuming the determinant ratio
+in the sequence `Δtₖ = Δtₙ₋₁ * (1/2)^k` with `k = {0, 1, 2, ...}` that satisfies 
+`|cov(Xₙ₊₁)| / |cov(Xₙ)| > pseudo_scheme.cov_threshold`, assuming the determinant ratio
 is a monotonically increasing function of `k`. If an `initial_guess` is provided,
 `Δtₙ₋₁` in the above sequence is replaced with `initial_guess`. If an `initial_guess`
 is not provided, the time step can only decrease or stay the same at future iterations
@@ -350,24 +349,24 @@ end
 """
     trained_gp_predict_function(X, y; standardize_X=true, zscore_limit=nothing, kernel=nothing)
 
-Return a trained Gaussian Process given inputs `X` and outputs `y`.
+Return a trained Gaussian Process (GP) given inputs `X` and outputs `y`.
 
 Arguments
 =========
 
-- `X` (AbstractArray): size `(N_param, N_train)` array of training points.
-- `y` (Vector): size `(N_train,)` array of training outputs.
+- `X` (`AbstractArray`): size `(N_param, N_train)` array of training points.
+- `y` (`Vector`): size `(N_train,)` array of training outputs.
 
 Keyword Arguments
 =================
 
-- `standardize_X` (Bool): whether to standardize the inputs for GP training and prediction.
+- `standardize_X` (`Bool`): whether to standardize the inputs for GP training and prediction.
 
-- `zscore_limit` (Int): specifies the number of standard deviations outside of which 
-  a ll output entries and their corresponding inputs should be removed from the training data
+- `zscore_limit` (`Int`): specifies the number of standard deviations outside of which 
+  all output entries and their corresponding inputs should be removed from the training data
   in an initial filtering step.
 
-- `kernel` (GaussianProcesses.Kernel): kernel to be optimized and used in the GP.
+- `kernel` (`GaussianProcesses.Kernel`): kernel to be optimized and used in the GP.
 
 Return
 ======
