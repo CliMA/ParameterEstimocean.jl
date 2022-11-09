@@ -90,11 +90,14 @@ end
     EnsembleKalmanInversion(inverse_problem;
                             noise_covariance = 1,
                             pseudo_stepping = nothing,
+                            pseudo_Δt = 1.0,
                             resampler = Resampler(),
                             unconstrained_parameters = nothing,
                             forward_map_output = nothing,
                             mark_failed_particles = NormExceedsMedian(1e9),
-                            ensemble_kalman_process = Inversion())
+                            ensemble_kalman_process = Inversion(),
+                            Nensemble = Nensemble(inverse_problem),
+                            tikhonov = false)
 
 Return an object that finds local minima of the inverse problem:
 
@@ -126,19 +129,21 @@ Keyword Arguments
 
 - `pseudo_stepping`: The pseudo time-stepping scheme for stepping EKI forward.
 
+- `pseudo_Δt`: The pseudo time-step; Default: 1.0.
+
 - `resampler`: controls particle resampling procedure. See `Resampler`.
 
 - `unconstrained_parameters`: Default: `nothing`.
 
 - `forward_map_output`: Default: `nothing`.
 
-- `process`: The Ensemble Kalman process. Default: `Inversion().
+- `mark_failed_particles`: The particle failure condition. Default: `NormExceedsMedian(1e9)`.
+
+- `ensemble_kalman_process`: The Ensemble Kalman process. Default: `Inversion()`.
 
 - `tikhonov`: Whether to incorporate prior information in the EKI objective via Tikhonov regularization.
-    See Chada et al. "Tikhonov Regularization Within Ensemble Kalman Inversion." SIAM J. Numer. Anal. 2020.
+  See Chada et al. "Tikhonov Regularization Within Ensemble Kalman Inversion." SIAM J. Numer. Anal. 2020.
 
-- `ensemble_kalman_process`: Process type defined by `EnsembleKalmanProcesses.jl`.
-    Default: `Inversion()`.
 
 """
 function EnsembleKalmanInversion(inverse_problem;
@@ -243,7 +248,7 @@ function EnsembleKalmanInversion(inverse_problem;
                                   eki′.precomputed_arrays,
                                   eki′.tikhonov,
                                   eki′.mark_failed_particles)
-    
+
     return eki
 end
 
@@ -324,8 +329,8 @@ end
                  covariance_inflation = 0.0,
                  momentum_parameter = 0.0)
 
-Step forward `X = eki.unconstrained_parameters` using
-`y = eki.mapped_observations`, `Γy = eki.noise_covariance`, and G = `eki.forward_map_output`.
+Step forward `X = eki.unconstrained_parameters` using `y = eki.mapped_observations`,
+`Γy = eki.noise_covariance`, and G = `eki.forward_map_output`.
 
 Keyword arguments
 =================
@@ -337,6 +342,9 @@ Keyword arguments
 
 - `pseudo_stepping` (`Float64`): Scheme for selecting a time step if `pseudo_Δt` is `nothing`.
                                  (Default: `eki.pseudo_stepping`)
+- `covariance_inflation`: (Default: 0.)
+
+- `momentum_parameter`: (Default: 0.)
 """
 function pseudo_step!(eki::EnsembleKalmanInversion; 
                       pseudo_Δt = nothing,
@@ -429,7 +437,7 @@ nanminimum(X) = minimum(filter(!isnan, X))
                            baseline = nanmedian,
                            distance = median_absolute_deviation)
 
-Returns a failure criterion that defines failure for particle `k` as
+Return a failure criterion that defines failure for particle `k` as
 
 ```
 Φₖ > baseline(Φ) + multiple * distance(Φ)
