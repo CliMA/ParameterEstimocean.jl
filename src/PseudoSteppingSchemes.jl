@@ -40,9 +40,10 @@ obs_noise_covariance(eki) = eki.tikhonov ? eki.precomputed_arrays[:Σ] : eki.noi
 inv_obs_noise_covariance(eki) = eki.tikhonov ? eki.precomputed_arrays[:inv_Σ] : 
                                                eki.precomputed_arrays[:inv_Γy]
 
-function adaptive_step_parameters(pseudo_scheme, Xₙ, Gₙ, eki; Δt=1.0, 
-                                    covariance_inflation = 0.0,
-                                    momentum_parameter = 0.0)
+function adaptive_step_parameters(pseudo_scheme, Xₙ, Gₙ, eki;
+                                  Δt = 1.0, 
+                                  covariance_inflation = 0.0,
+                                  momentum_parameter = 0.0)
 
     N_param, N_ens = size(Xₙ)
     X̅ = mean(Xₙ, dims=2)
@@ -154,7 +155,7 @@ end
 """
     ConstantConvergence(; convergence_ratio=0.7)
     
-Returns the `ConstantConvergence` pseudo-stepping scheme with target `convergence_ratio`.
+Return the `ConstantConvergence` pseudo-stepping scheme with target `convergence_ratio`.
 With `ConstantConvergence`, the ensemble Kalman inversion (EKI) pseudo step size is adjusted
 such that the `n`-th root of the determinant of the parameter covariance is decreased by
 `convergence_ratio` (e.g. for `convergence_ratio=0.7`, by 70%)
@@ -179,7 +180,7 @@ Kovachki2018InitialConvergenceRatio(; initial_convergence_ratio=0.7) =
 """
     eki_update(pseudo_scheme::ConstantPseudoTimeStep, Xₙ, Gₙ, eki)
 
-Implements an EKI update with a fixed time step given by `pseudo_scheme.step_size`.
+Implement an EKI update with a fixed time step given by `pseudo_scheme.step_size`.
 """
 
 function eki_update(pseudo_scheme::ConstantPseudoTimeStep, Xₙ, Gₙ, eki)
@@ -192,7 +193,7 @@ end
 """
     eki_update(pseudo_scheme::Kovachki2018, Xₙ, Gₙ, eki)
 
-Implements an EKI update with an adaptive time step estimated as suggested in Kovachki et al.
+Implement an EKI update with an adaptive time step estimated as suggested in Kovachki et al.
 "Ensemble Kalman Inversion: A Derivative-Free Technique For Machine Learning Tasks" (2018).
 """
 function eki_update(pseudo_scheme::Kovachki2018, Xₙ, Gₙ, eki)
@@ -286,7 +287,7 @@ end
 """
     eki_update(pseudo_scheme::ThresholdedConvergenceRatio, Xₙ, Gₙ, eki; initial_guess=nothing)
 
-Implements an EKI update with an adaptive time step estimated as suggested in Chada, Neil and Tong, Xin 
+Implement an EKI update with an adaptive time step estimated as suggested by Chada, Neil and Tong, Xin 
 "Convergence Acceleration of Ensemble Kalman Inversion in Nonlinear Settings," Math. Comp. 91 (2022).
 """
 function eki_update(pseudo_scheme::Chada2021, Xₙ, Gₙ, eki)
@@ -302,12 +303,12 @@ function eki_update(pseudo_scheme::Chada2021, Xₙ, Gₙ, eki)
 end
 
 """
-    eki_update(pseudo_scheme::ThresholdedConvergenceRatio, Xₙ, Gₙ, eki; initial_guess=nothing)
+    eki_update(pseudo_scheme::ThresholdedConvergenceRatio, Xₙ, Gₙ, eki; initial_guess=nothing, report=true)
 
-Implements an EKI update with an adaptive time step estimated by finding the first step size
-in the sequence Δtₖ = Δtₙ₋₁(1/2)^k with k = {0,1,2,...} that satisfies 
-|cov(Xₙ₊₁)|/|cov(Xₙ)| > pseudo_scheme.cov_threshold, assuming the determinant ratio
-is a monotonically increasing function of k. If an `initial_guess` is provided,
+Implement an EKI update with an adaptive time step estimated by finding the first step size
+in the sequence `Δtₖ = Δtₙ₋₁(1/2)^k` with `k = {0, 1, 2, ...}` that satisfies 
+`|cov(Xₙ₊₁)|/|cov(Xₙ)| > pseudo_scheme.cov_threshold`, assuming the determinant ratio
+is a monotonically increasing function of `k`. If an `initial_guess` is provided,
 `Δtₙ₋₁` in the above sequence is replaced with `initial_guess`. If an `initial_guess`
 is not provided, the time step can only decrease or stay the same at future iterations
 with this time stepping scheme.
@@ -351,20 +352,31 @@ end
 """
     trained_gp_predict_function(X, y; standardize_X=true, zscore_limit=nothing, kernel=nothing)
 
-Return a trained Gaussian Process given inputs X and outputs y.
-# Arguments
+Return a trained Gaussian Process given inputs `X` and outputs `y`.
+
+Arguments
+=========
+
 - `X` (AbstractArray): size `(N_param, N_train)` array of training points.
 - `y` (Vector): size `(N_train,)` array of training outputs.
-# Keyword Arguments
+
+Keyword Arguments
+=================
+
 - `standardize_X` (Bool): whether to standardize the inputs for GP training and prediction.
+
 - `zscore_limit` (Int): specifies the number of standard deviations outside of which 
-all output entries and their corresponding inputs should be removed from the training data
-in an initial filtering step.
+  a ll output entries and their corresponding inputs should be removed from the training data
+  in an initial filtering step.
+
 - `kernel` (GaussianProcesses.Kernel): kernel to be optimized and used in the GP.
-# Returns
+
+Return
+======
+
 - `predict` (Function): a function that maps size-`(N_param, N_test)` inputs to `(μ, Γgp)`, 
-where `μ` is an `(N_test,)` array of corresponding mean predictions and `Γgp` is the 
-prediction covariance matrix.
+  where `μ` is an `(N_test,)` array of corresponding mean predictions and `Γgp` is the 
+  prediction covariance matrix.
 """
 function trained_gp_predict_function(X, y; standardize_X=true, zscore_limit=nothing, kernel=nothing)
 
@@ -441,7 +453,7 @@ ensemble_array(eki, iter) = eki.iteration_summaries[iter].unconstrained_paramete
 """
     eki_update(pseudo_scheme::ConstantConvergence, Xₙ, Gₙ, eki)
 
-Implements an EKI update with an adaptive time step estimated to encourage a prescribed
+Implement an EKI update with an adaptive time step estimated to encourage a prescribed
 rate of ensemble collapse as measured by the ratio of the ensemble 
 covariance matrix determinants at consecutive iterations.
 """
@@ -502,7 +514,7 @@ end
 """
     eki_update(pseudo_scheme::Iglesias2021, Xₙ, Gₙ, eki)
 
-Implements an EKI update with an adaptive time step based on Iglesias et al. "Adaptive 
+Implement an EKI update with an adaptive time step based on Iglesias et al. "Adaptive 
 Regularization for Ensemble Kalman Inversion," Inverse Problems, 2021.
 """
 function eki_update(pseudo_scheme::Iglesias2021, Xₙ, Gₙ, eki)
