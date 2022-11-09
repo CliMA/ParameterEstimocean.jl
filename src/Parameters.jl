@@ -4,13 +4,14 @@ export FreeParameters, lognormal, ScaledLogitNormal
 
 using Oceananigans.Architectures: CPU, arch_array, architecture
 using Oceananigans.Utils: prettysummary
-using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
+using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, ScalarDiffusivity
 using Oceananigans.TurbulenceClosures: AbstractTimeDiscretization, ExplicitTimeDiscretization
 
 using Printf
 using Distributions
 using DocStringExtensions
 using LinearAlgebra
+using OrderedCollections
 
 using SpecialFunctions: erfinv
 using Distributions: AbstractRNG, ContinuousUnivariateDistribution
@@ -217,7 +218,6 @@ and the inverse trasnform is the natural logarithm ``f^{-1} ≡ \\log``,
 """
 transform_to_unconstrained(Π::Normal,    Y) = (Y - Π.μ) / Π.σ
 transform_to_unconstrained(Π::LogNormal, Y) = log(Y^(1 / abs(Π.μ))) # log(Y) / abs(Π.μ)
-
 transform_to_unconstrained(Π::ScaledLogitNormal, Y) =
     scaled_logit_normal_to_normal(Π.lower_bound, Π.upper_bound, Y)
 
@@ -252,6 +252,19 @@ covariance_transform_diagonal(::LogNormal, X) = exp(X)
 covariance_transform_diagonal(::Normal, X)    = 1
 covariance_transform_diagonal(Π::ScaledLogitNormal, X) = - (Π.upper_bound - Π.lower_bound) * exp(X) / (1 + exp(X))^2
 
+# TODO: add docstring
+# TODO: Also use in EKI constructor?
+function random_unconstrained_parameters(free_parameters, Nens)
+    priors = free_parameters.priors
+    Nθ = length(free_parameters.names)
+    unconstrained_priors = NamedTuple(name => unconstrained_prior(priors[name])
+                                      for name in free_parameters.names)
+
+    X = [rand(unconstrained_priors[i]) for i=1:Nθ, k=1:Nens]
+
+    return X[:]
+end
+
 #####
 ##### Free parameters
 #####
@@ -274,7 +287,7 @@ struct FreeParameters{N, P, D}
 end
 
 """
-    FreeParameters(priors; names = Symbol.(keys(priors)), dependent_parameters=NamedTuple())
+    FreeParameters(priors; names = Symbol.(keys(priors)), dependent_parameters = NamedTuple())
 
 Return named `FreeParameters` with priors. Free parameter `names` are inferred from
 the keys of `priors` if not provided. Optionally, `dependent_parameters` are prescribed
@@ -291,27 +304,26 @@ julia> priors = (ν = Normal(1e-4, 1e-5), κ = Normal(1e-3, 1e-5))
 (ν = Normal{Float64}(μ=0.0001, σ=1.0e-5), κ = Normal{Float64}(μ=0.001, σ=1.0e-5))
 
 julia> free_parameters = FreeParameters(priors)
-FreeParameters with 2 parameters
+FreeParameters with 2 free parameters and 0 dependent parameters
 ├── names: (:ν, :κ)
-├── priors: Dict{Symbol, Any}
-│   ├── ν => Normal{Float64}(μ=0.0001, σ=1.0e-5)
-│   └── κ => Normal{Float64}(μ=0.001, σ=1.0e-5)
-└── dependent parameters: Dict{Symbol, Any}
+└── priors:
+    ├── ν => Normal{Float64}(μ=0.0001, σ=1.0e-5)
+    └── κ => Normal{Float64}(μ=0.001, σ=1.0e-5)
 
 julia> c(p) = p.ν + p.κ # compute a third dependent parameter `c` as a function of `ν` and `κ`
 c (generic function with 1 method)
 
 julia> free_parameters_with_a_dependent = FreeParameters(priors, dependent_parameters=(; c))
-FreeParameters with 2 parameters and 1 dependent parameter
+FreeParameters with 2 free parameters and 1 dependent parameter
 ├── names: (:ν, :κ)
-├── priors: Dict{Symbol, Any}
+├── priors:
 │   ├── ν => Normal{Float64}(μ=0.0001, σ=1.0e-5)
 │   └── κ => Normal{Float64}(μ=0.001, σ=1.0e-5)
-└── dependent parameters: Dict{Symbol, Any}
+└── dependent parameters:
     └── c => c (generic function with 1 method)
 ```
 """
-function FreeParameters(priors; names = Symbol.(keys(priors)), dependent_parameters=NamedTuple())
+function FreeParameters(priors; names = Symbol.(keys(priors)), dependent_parameters = NamedTuple())
     priors = NamedTuple(name => priors[name] for name in names)
     return FreeParameters(Tuple(names), priors, dependent_parameters)
 end
@@ -326,41 +338,48 @@ end
 
 function dependent_parameter_show(io, dependent_parameters, name, prefix, width)
     print(io, @sprintf("%s %s => ", prefix, lpad(name, width, " ")))
-    print(io, prettysummary(dependent_parameters[Symbol(name)]))
+    print(io, prettysummary(dependent_parameters[name]))
     return nothing
 end
 
-parameter_str(N) = N>1 ? "parameters" : "parameter"
+parameter_str(N) = N == 1 ? "parameter" : "parameters"
 
 function Base.show(io::IO, p::FreeParameters)
     Np, Nd = length(p), length(p.dependent_parameters)
 
-    free_parameters_summary = "FreeParameters with $Np " * parameter_str(Np)
+    free_parameters_summary = "$Np free " * parameter_str(Np)
+    dependent_parameters_summary = "$Nd dependent " * parameter_str(Nd)
 
-    title = Nd > 0 ?
-            free_parameters_summary * " and $Nd dependent " * parameter_str(Nd) : 
-            free_parameters_summary
+    title = "FreeParameters with " * free_parameters_summary * 
+            " and " * dependent_parameters_summary
+
+    Nd = length(p.dependent_parameters)
+    prefix = Nd > 0 ? "├" : "└"
 
     print(io, title, '\n',
               "├── names: $(p.names)", '\n',
-              "├── priors: Dict{Symbol, Any}")
+              prefix * "── priors: ")
 
     maximum_name_length = maximum([length(string(name)) for name in p.names]) 
 
-    for (i, name) in enumerate(p.names)
-        prefix = i == length(p.names) ? "│   └──" : "│   ├──"
+    for (i, name) in enumerate(p.names[1:end])
+        bufferprefixprefix = Nd
+        if isempty(p.dependent_parameters)
+            prefix = i == length(p.names) ? "    └──" : "    ├──"
+        else !isempty(p.dependent_parameters)
+            prefix = i == length(p.names) ? "│   └──" : "│   ├──"
+        end
         print(io, '\n')
         prior_show(io, p.priors, name, prefix, maximum_name_length)
     end
     
-    print(io, '\n')
-
-    print(io, "└── dependent parameters: Dict{Symbol, Any}")
-
     if !isempty(p.dependent_parameters)
+        print(io, '\n')
+        print(io, "└── dependent parameters: ")
+
         maximum_name_length = maximum([length(string(name)) for name in p.dependent_parameters]) 
 
-        for (i, name) in enumerate(p.dependent_parameters)
+        for (i, name) in enumerate(propertynames(p.dependent_parameters))
             prefix = i == length(p.dependent_parameters) ? "    └──" : "    ├──"
             print(io, '\n')
             dependent_parameter_show(io, p.dependent_parameters, name, prefix, maximum_name_length)
@@ -372,19 +391,23 @@ end
 
 Base.length(p::FreeParameters) = length(p.names)
 
-function build_parameters_named_tuple(p::FreeParameters, free_θ)
+function build_parameters_named_tuple(p::FreeParameters, free_θ; with_dependent_parameters=true)
     if free_θ isa Dict # convert to NamedTuple with
         free_θ = NamedTuple(name => free_θ[name] for name in p.names)
     elseif !(free_θ isa NamedTuple) # mostly likely a Vector: convert to NamedTuple with
         free_θ = NamedTuple{p.names}(Tuple(free_θ))
     end
 
-    # Compute dependent parameters
-    dependent_names = keys(p.dependent_parameters) 
-    maps = values(p.dependent_parameters)
-    dependent_θ = NamedTuple(name => maps[name](free_θ) for name in dependent_names)
+    if with_dependent_parameters
+        # Compute dependent parameters
+        dependent_names = keys(p.dependent_parameters) 
+        maps = p.dependent_parameters
+        dependent_θ = NamedTuple(name => maps[name](free_θ) for name in dependent_names)
 
-    return merge(dependent_θ, free_θ) # prioritize free_θ
+        return merge(dependent_θ, free_θ) # prioritize free_θ
+    else
+        return free_θ
+    end
 end
 
 #####
@@ -394,7 +417,7 @@ end
 const ParameterValue = Union{Number, AbstractArray}
 
 """
-    construct_object(specification_dict, parameters; name=nothing, type_parameter=nothing)
+    construct_object(specification_dict, parameters; name=nothing, type_parameters=nothing)
     
     construct_object(d::ParameterValue, parameters; name=nothing)
 
@@ -436,18 +459,25 @@ julia> another_new_closure = construct_object(specification_dict, (b=π, c=2π))
 Closure(ClosureSubModel(1, π), 6.283185307179586)
 ```
 """
+construct_object(d, parameters; name=nothing) = d # fallback
 construct_object(d::ParameterValue, parameters; name=nothing) =
-    name ∈ keys(parameters) ? getproperty(parameters, name) : d
+    name ∈ keys(parameters) ? getproperty(parameters, name) : d # replace parameter values with new ones
 
-function construct_object(specification_dict, parameters;
-                          name=nothing, type_parameter=nothing)
+function construct_object(specification_dict::OrderedDict, parameters; name=nothing, type_parameters=nothing)
 
     type = Constructor = specification_dict[:type]
-    kwargs_vector = [construct_object(specification_dict[name], parameters; name)
-                        for name in fieldnames(type) if name != :type]
 
-    return isnothing(type_parameter) ? Constructor(kwargs_vector...) : 
-                                       Constructor{type_parameter}(kwargs_vector...)
+    # Recurisve construction
+    if type === NamedTuple
+        return NamedTuple(name => construct_object(specification_dict[name], parameters; name)
+                          for name in keys(specification_dict) if name != :type)
+    else
+        
+        # if name != :type]
+        kwargs_vector = [construct_object(specification_dict[name], parameters; name) for name in fieldnames(type)]
+    
+        return isnothing(type_parameters) ? Constructor(kwargs_vector...) : Constructor{type_parameters...}(kwargs_vector...)
+   end
 end
 
 """
@@ -460,13 +490,14 @@ property returning a dictionary with all properties of that composite type. Recu
 ends when properties of type `ParameterValue` are found.
 """
 function dict_properties(object)
-    p = Dict{Symbol, Any}(n => dict_properties(getproperty(object, n)) for n in propertynames(object))
+    p = OrderedDict{Symbol, Any}(n => dict_properties(getproperty(object, n)) for n in propertynames(object))
     p[:type] = typeof(object).name.wrapper
-
     return p
 end
 
 dict_properties(object::ParameterValue) = object
+dict_properties(object::NamedTuple) = object
+dict_properties(object::Function) = object
 
 """
     closure_with_parameters(closure, parameters)
@@ -511,42 +542,45 @@ Closure(ClosureSubModel(12, 2), 3)
 closure_with_parameters(closure, parameters) = construct_object(dict_properties(closure), parameters)
 
 closure_with_parameters(closure::AbstractTurbulenceClosure{ExplicitTimeDiscretization}, parameters) =
-    construct_object(dict_properties(closure), parameters, type_parameter=nothing)
+    construct_object(dict_properties(closure), parameters, type_parameters=nothing)
 
 closure_with_parameters(closure::AbstractTurbulenceClosure{TD}, parameters) where {TD <: AbstractTimeDiscretization} =
-    construct_object(dict_properties(closure), parameters; type_parameter=TD)
+    construct_object(dict_properties(closure), parameters; type_parameters=tuple(TD))
+
+closure_with_parameters(closure::ScalarDiffusivity{TD, F}, parameters) where {TD, F} =
+    construct_object(dict_properties(closure), parameters; type_parameters=(TD, F))
 
 closure_with_parameters(closures::Tuple, parameters) =
     Tuple(closure_with_parameters(closure, parameters) for closure in closures)
 
 """
-    update_closure_ensemble_member!(closures, p_ensemble, parameters)
+    update_closure_ensemble_member!(closures, k, θₖ)
 
-Use `parameters` to update the `p_ensemble`-th closure from and array of `closures`.
-The `p_ensemble`-th closure corresponds to ensemble member `p_ensemble`.
+Use `parameters` to update the `k`-th closure from and array of `closures`.
+The `k`-th closure corresponds to ensemble member `k`.
 """
-update_closure_ensemble_member!(closure, p_ensemble, parameters) = nothing
+update_closure_ensemble_member!(closure, k, θₖ) = nothing
 
-update_closure_ensemble_member!(closures::AbstractVector, p_ensemble, parameters) =
-    closures[p_ensemble] = closure_with_parameters(closures[p_ensemble], parameters)
+update_closure_ensemble_member!(closures::AbstractVector, k, θₖ) =
+    closures[k] = closure_with_parameters(closures[k], θₖ)
 
-function update_closure_ensemble_member!(closures::AbstractMatrix, p_ensemble, parameters)
+function update_closure_ensemble_member!(closures::AbstractMatrix, k, θₖ)
     for j in 1:size(closures, 2) # Assume that ensemble varies along first dimension
-        closures[p_ensemble, j] = closure_with_parameters(closures[p_ensemble, j], parameters)
+        closures[k, j] = closure_with_parameters(closures[k, j], θₖ)
     end
     
     return nothing
 end
 
-function update_closure_ensemble_member!(closure_tuple::Tuple, p_ensemble, parameters)
+function update_closure_ensemble_member!(closure_tuple::Tuple, k, θₖ)
     for closure in closure_tuple
-        update_closure_ensemble_member!(closure, p_ensemble, parameters)
+        update_closure_ensemble_member!(closure, k, θₖ)
     end
     return nothing
 end
 
 """
-    new_closure_ensemble(closures, θ, arch=CPU())
+    new_closure_ensemble(closures, parameter_ensemble, arch=CPU())
 
 Return a new set of `closures` in which all closures that have free parameters are updated.
 Closures with free parameters are expected as `AbstractArray` of `TurbulenceClosures`, and
@@ -554,18 +588,19 @@ this allows `new_closure_ensemble` to go through all closures in `closures` and 
 the parameters for the any closure that is of type `AbstractArray`. The `arch`itecture
 (`CPU()` or `GPU()`) defines whethere `Array` or `CuArray` is returned.
 """
-function new_closure_ensemble(closures::AbstractArray, θ, arch)
+function new_closure_ensemble(closures::AbstractArray, parameter_ensemble, arch)
     cpu_closures = arch_array(CPU(), closures)
 
-    for (p, θp) in enumerate(θ)
-        update_closure_ensemble_member!(cpu_closures, p, θp)
+    for (k, θₖ) in enumerate(parameter_ensemble)
+        update_closure_ensemble_member!(cpu_closures, k, θₖ)
     end
 
     return arch_array(arch, cpu_closures)
 end
-new_closure_ensemble(closures::Tuple, θ, arch) = 
-    Tuple(new_closure_ensemble(closure, θ, arch) for closure in closures)
 
-new_closure_ensemble(closure, θ, arch) = closure
+new_closure_ensemble(closures::Tuple, parameter_ensemble, arch) = 
+    Tuple(new_closure_ensemble(closure, parameter_ensemble, arch) for closure in closures)
+
+new_closure_ensemble(closure, parameter_ensemble, arch) = closure
 
 end # module

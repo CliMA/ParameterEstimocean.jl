@@ -53,7 +53,7 @@ Resamples the parameters `X` of the `eki` process based on the number of failed 
 """
 function resample!(resampler::Resampler, X, G, eki)
     # `Nensemble` vector of bits indicating whether an ensemble member has failed.
-    particle_failure = eki.mark_failed_particles(G)
+    particle_failure = eki.mark_failed_particles(X, G, eki)
     failures = findall(particle_failure) # indices of failed particles
     Nfailures = length(failures)
     failed_fraction = Nfailures / size(X, 2)
@@ -82,7 +82,7 @@ function resample!(resampler::Resampler, X, G, eki)
               "    3. Evolving `InverseProblem.simulation` for less time \n" *
               "    4. Narrowing `FreeParameters` priors.")
 
-    elseif failed_fraction >= resampler.resample_failure_fraction || !(resampler.only_failed_particles)
+    elseif failed_fraction > resampler.resample_failure_fraction || !(resampler.only_failed_particles)
         # We are resampling!
 
         if resampler.only_failed_particles
@@ -96,7 +96,7 @@ function resample!(resampler::Resampler, X, G, eki)
 
         found_X, found_G = find_successful_particles(eki, X, G, Nsample)
 
-        @info "Replacing columns $replace_columns..."
+        @info "Replacing columns $replace_columns (failed fraction: $failed_fraction)..."
         view(X, :, replace_columns) .= found_X
         view(G, :, replace_columns) .= found_G
 
@@ -144,7 +144,7 @@ function find_successful_particles(eki, X, G, Nsample)
     found_G = zeros(Noutput, 0)
 
     mark_failed_particles = eki.mark_failed_particles
-    particle_failure = mark_failed_particles(G)
+    particle_failure = mark_failed_particles(X, G, eki)
     successful_particles = findall(.!particle_failure)
     existing_sample_distribution = eki.resampler.distribution(X, G, successful_particles)
 
@@ -158,7 +158,7 @@ function find_successful_particles(eki, X, G, Nsample)
 
         G_sample = inverting_forward_map(eki.inverse_problem, X_sample)
 
-        particle_failure = mark_failed_particles(G_sample)
+        particle_failure = mark_failed_particles(X_sample, G_sample, eki)
         success_columns = findall(.!particle_failure)
         @info "    ... found $(length(success_columns)) successful particles."
 

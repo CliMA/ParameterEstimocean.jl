@@ -2,17 +2,22 @@ module InverseProblems
 
 export
     InverseProblem,
+    BatchedInverseProblem,
+    DistributedInverseProblem,
     forward_map,
     forward_run!,
     observation_map,
     observation_map_variance_across_time,
     ConcatenatedOutputMap
 
-using OffsetArrays, Statistics, OrderedCollections
+using OffsetArrays, Statistics, OrderedCollections, BlockDiagonals
 using Suppressor: @suppress
+using MPI
 
+using ..Utils: tupleit
 using ..Transformations: transform_field_time_series
-using ..Parameters: new_closure_ensemble, transform_to_constrained, build_parameters_named_tuple
+using ..Parameters: new_closure_ensemble, transform_to_constrained
+using ..Parameters: build_parameters_named_tuple, closure_with_parameters
 
 using ..Observations:
     SyntheticObservations,
@@ -22,6 +27,8 @@ using ..Observations:
     batch,
     observation_times,
     forward_map_names
+
+import ..Parameters: closure_with_parameters
 
 using Oceananigans: run!, fields, FieldTimeSeries, CPU
 using Oceananigans.Architectures: architecture
@@ -37,36 +44,32 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: SingleColumnGrid, YZSlic
 
 import ..Transformations: normalize!
 
-#####
-##### Output maps (maps from simulation output to observation space)
-#####
-
-output_map_type(fp) = output_map_str(fp)
-
-"""
-    struct ConcatenatedOutputMap
-
-Forward map transformation of simulation output to the concatenated
-vectors of the simulation output.
-"""
-struct ConcatenatedOutputMap end
-    
-output_map_str(::ConcatenatedOutputMap) = "ConcatenatedOutputMap"
+import Statistics: cov
 
 #####
 ##### InverseProblems
 #####
 
-struct InverseProblem{F, O, S, T, P, I}
+abstract type AbstractInverseProblem end
+
+struct InverseProblem{F, O, S, T, P, I} <: AbstractInverseProblem
     observations :: O
     simulation :: S
     time_series_collector :: T
     free_parameters :: P
     output_map :: F
     initialize_simulation :: I
+    initialize_with_observations :: Bool
 end
 
-nothingfunction(simulation) = nothing
+nothingfunction(args...) = nothing
+
+const OneDimensionalEnsembleGrid = RectilinearGrid{<:Any, Flat, Flat, Bounded}
+const TwoDimensionalEnsembleGrid = RectilinearGrid{<:Any, Flat, Bounded, Bounded}
+
+Nensemble(grid) = 1
+Nensemble(grid::Union{OneDimensionalEnsembleGrid, TwoDimensionalEnsembleGrid}) = grid.Nx
+Nensemble(ip::InverseProblem) = Nensemble(ip.simulation.model.grid)
 
 """
     InverseProblem(observations,
@@ -74,7 +77,8 @@ nothingfunction(simulation) = nothing
                    free_parameters;
                    output_map = ConcatenatedOutputMap(),
                    time_series_collector = nothing,
-                   initialize_simulation = nothingfunction)
+                   initialize_simulation = nothingfunction,
+                   initialize_with_observations = true)
 
 Return an `InverseProblem`.
 """
@@ -83,7 +87,8 @@ function InverseProblem(observations,
                         free_parameters;
                         output_map = ConcatenatedOutputMap(),
                         time_series_collector = nothing,
-                        initialize_simulation = nothingfunction)
+                        initialize_simulation = nothingfunction,
+                        initialize_with_observations = true)
 
     if isnothing(time_series_collector) # attempt to construct automagically
         simulation_fields = fields(simulation.model)
@@ -91,7 +96,9 @@ function InverseProblem(observations,
         time_series_collector = FieldTimeSeriesCollector(collected_fields, observation_times(observations))
     end
 
-    return InverseProblem(observations, simulation, time_series_collector, free_parameters, output_map, initialize_simulation)
+    return InverseProblem(observations, simulation, time_series_collector,
+                          free_parameters, output_map, initialize_simulation,
+                          initialize_with_observations)
 end
 
 Base.summary(ip::InverseProblem) =
@@ -110,89 +117,43 @@ function Base.show(io::IO, ip::InverseProblem)
     return nothing
 end
 
-"""
-    expand_parameters(ip, θ::Vector)
+# Ensemble simulations
+function InverseProblem(observations,
+                        simulation_ensemble::Vector,
+                        free_parameters;
+                        output_map = ConcatenatedOutputMap(),
+                        time_series_collector = nothing,
+                        initialize_simulation = nothingfunction,
+                        initialize_with_observations = true)
 
-Convert parameters `θ` to `Vector{<:NamedTuple}`, where the elements
-correspond to `ip.free_parameters`.
-
-`θ` may represent an ensemble of parameter sets via:
-
-* `θ::Vector{<:Vector}` (caution: parameters must be ordered correctly!)
-* `θ::Matrix` (caution: parameters must be ordered correctly!)
-* `θ::Vector{<:NamedTuple}` 
-
-or a single parameter set if `θ::Vector{<:Number}`.
-
-If `length(θ)` is less the the number of ensemble members in `ip.simulation`, the
-last parameter set is copied to fill the parameter set ensemble.
-"""
-function expand_parameters(ip, θ::Vector)
-    Nfewer = Nensemble(ip) - length(θ)
-    Nfewer < 0 && throw(ArgumentError("There are $(-Nfewer) more parameter sets than ensemble members!"))
-
-    θ = [build_parameters_named_tuple(ip.free_parameters, θi) for θi in θ]
-
-    # Fill out parameter set ensemble
-    Nfewer > 0 && append!(θ, [θ[end] for _ = 1:Nfewer])
-
-    return θ
-end
-
-# Expand single parameter set
-expand_parameters(ip, θ::Union{NamedTuple, Vector{<:Number}}) = expand_parameters(ip, [θ])
-
-# Convert matrix to vector of vectors
-expand_parameters(ip, θ::Matrix) = expand_parameters(ip, [θ[:, k] for k = 1:size(θ, 2)])
-
-#####
-##### Forward map evaluation given vector-of-vector (one parameter vector for each ensemble member)
-#####
-
-const OneDimensionalEnsembleGrid = RectilinearGrid{<:Any, Flat, Flat, Bounded}
-const TwoDimensionalEnsembleGrid = RectilinearGrid{<:Any, Flat, Bounded, Bounded}
-
-Nobservations(grid::OneDimensionalEnsembleGrid) = grid.Ny
-Nobservations(grid::TwoDimensionalEnsembleGrid) = 1
-
-Nensemble(grid::Union{OneDimensionalEnsembleGrid, TwoDimensionalEnsembleGrid}) = grid.Nx
-Nensemble(ip::InverseProblem) = Nensemble(ip.simulation.model.grid)
-
-"""
-    observation_map(ip::InverseProblem)
-
-Transform and return `ip.observations` appropriate for `ip.output_map`. 
-"""
-observation_map(ip::InverseProblem) = observation_map(ip.output_map, ip.observations)
-observation_map(map::ConcatenatedOutputMap, observations) = transform_time_series(map, observations)
-
-"""
-    forward_run!(ip, parameters)
-
-Initialize `ip.simulation` with `parameters` and run it forward. Output is stored
-in `ip.time_series_collector`.
-"""
-function forward_run!(ip::InverseProblem, parameters; suppress=false)
-    observations = ip.observations
-    simulation = ip.simulation
-    closures = simulation.model.closure
-
-    # Ensure there are enough parameters for ensemble members in the simulation
-    θ = expand_parameters(ip, parameters)
-
-    # Set closure parameters
-    simulation.model.closure = new_closure_ensemble(closures, θ, architecture(simulation.model.grid))
-
-    initialize_forward_run!(simulation, observations, ip.time_series_collector, ip.initialize_simulation)
-
-    if suppress
-        @suppress run!(simulation)
+    if isnothing(time_series_collector) # attempt to construct automagically
+        time_series_collector_ensemble = []
+        for simulation in simulation_ensemble
+            simulation_fields = fields(simulation.model)
+            collected_fields = NamedTuple(name => simulation_fields[name] for name in forward_map_names(observations))
+            time_series_collector = FieldTimeSeriesCollector(collected_fields, observation_times(observations))
+            push!(time_series_collector_ensemble, time_series_collector)
+        end
     else
-        run!(simulation)
+        time_series_collector_ensemble = time_series_collector
     end
-    
-    return nothing
+
+    return InverseProblem(observations, simulation_ensemble, time_series_collector_ensemble,
+                          free_parameters, output_map, initialize_simulation,
+                          initialize_with_observations)
 end
+
+const EnsembleSimulationInverseProblem = InverseProblem{<:Any, <:Any, <:Vector}
+
+Nensemble(ip::EnsembleSimulationInverseProblem) = length(ip.simulation)
+
+function Base.show(io::IO, ip::EnsembleSimulationInverseProblem)
+    print(io, "EnsembleSimulationInverseProblem")
+end
+
+#####
+##### Core functionality: forward map evaluation
+#####
 
 """
     forward_map(ip, parameters)
@@ -200,16 +161,18 @@ end
 Run `ip.simulation` forward with `parameters` and return the data,
 transformed into an array format expected by `EnsembleKalmanProcesses.jl`.
 """
-function forward_map(ip, parameters; suppress=true)
+function forward_map(ip::InverseProblem, parameters; suppress=true)
 
     # Run the simulation forward and populate the time series collector
     # with model data.
     forward_run!(ip, parameters; suppress)
 
     # Verify that data was collected properly
-    all(ip.time_series_collector.times .≈ ip.time_series_collector.collection_times) ||
-        error("FieldTimeSeriesCollector.collection_times does not match FieldTimeSeriesCollector.times. \n" *
-              "Field time series data may not have been properly collected")
+    if !(ip isa EnsembleSimulationInverseProblem)
+        all(ip.time_series_collector.times .≈ ip.time_series_collector.collection_times) ||
+            error("FieldTimeSeriesCollector.collection_times does not match FieldTimeSeriesCollector.times. \n" *
+                  "Field time series data may not have been properly collected")
+    end
 
     # Transform the model data according to `ip.output_map` into
     # the array format expected by EnsembleKalmanProcesses.jl
@@ -222,35 +185,285 @@ function forward_map(ip, parameters; suppress=true)
     return output
 end
 
-(ip::InverseProblem)(θ) = forward_map(ip, θ)
+# Permit "single simulation, single closure" case.
+EnsembleClosureGrid = Union{SingleColumnGrid, YZSliceGrid}
+
+closure_with_parameters(grid::EnsembleClosureGrid, closure, parameter_ensemble) =
+    new_closure_ensemble(closure, parameter_ensemble, architecture(grid))
+
+closure_with_parameters(grid, closure, parameter_ensemble) = closure_with_parameters(closure, parameter_ensemble)
 
 """
-    inverting_forward_map(ip::InverseProblem, X)
+    forward_run!(ip::InverseProblem, parameter_ensemble; suppress = false)
+
+Initialize `ip.simulation` with `parameter_ensemble` and run it forward. Output is stored
+in `ip.time_series_collector`. `forward_run` can also be called with one parameter set.
+
+Keyword `suppress` (boolean; default: `false`) suppresses any warnings.
+"""
+function forward_run!(ip::InverseProblem, maybe_parameter_ensemble; suppress = false)
+    # Ensure there are enough parameters for ensemble members in the simulation
+    parameter_ensemble = expand_parameter_ensemble(ip, maybe_parameter_ensemble)
+    _forward_run!(ip, parameter_ensemble, ip.simulation, ip.time_series_collector; suppress)
+    return nothing
+end
+
+function _forward_run!(ip, parameter_ensemble, simulation, time_series_collector; suppress=false)
+    observations = ip.observations
+    closure = simulation.model.closure
+    grid = simulation.model.grid
+
+    # Set closure parameters
+    simulation.model.closure = closure_with_parameters(grid, closure, parameter_ensemble)
+
+    initialize_forward_run!(simulation, observations, time_series_collector,
+                            ip.initialize_with_observations, ip.initialize_simulation, parameter_ensemble)
+
+    if suppress
+        @suppress run!(simulation)
+    else
+        run!(simulation)
+    end
+    
+    return nothing
+end
+
+function forward_run!(ip::EnsembleSimulationInverseProblem, maybe_parameter_ensemble; suppress=false)
+    # Ensure there are enough parameters for ensemble members in the simulation
+    parameter_ensemble = expand_parameter_ensemble(ip, maybe_parameter_ensemble)
+
+    # Broadcast parameter vector over simulation ensemble
+    for k = 1:Nensemble(ip)
+        # Extract the kᵗʰ ensemble member
+        simulation = ip.simulation[k]
+        time_series_collector = ip.time_series_collector[k]
+        θₖ = parameter_ensemble[k]
+        _forward_run!(ip, θₖ, simulation, time_series_collector; suppress)
+    end
+
+    return nothing
+end
+
+#####
+##### DistributedInverseProblem
+#####
+
+struct DistributedInverseProblem{L, F, C} <: AbstractInverseProblem
+    local_inverse_problem :: L
+    free_parameters :: F
+    comm :: C
+end
+
+DistributedInverseProblem(local_inverse_problem; comm=MPI.COMM_WORLD) =
+    DistributedInverseProblem(local_inverse_problem, local_inverse_problem.free_parameters, comm)
+
+Nensemble(dip::DistributedInverseProblem) = MPI.Comm_size(dip.comm)
+
+function forward_map(dip::DistributedInverseProblem, parameter_ensemble; suppress=true)
+    
+    rank = MPI.Comm_rank(dip.comm)
+    local_θ = parameter_ensemble[rank+1]
+
+    local_G = forward_map(dip.local_inverse_problem, local_θ; suppress)
+    MPI.Barrier(dip.comm)
+
+    Nobs = length(local_G)
+    Nens = Nensemble(dip)
+    
+    # If Allgather
+    global_G = MPI.Allgather(local_G, dip.comm)
+    global_G = reshape(global_G, Nobs, Nens)
+
+    #=
+    # If only rank 0
+    global_G = MPI.Gather(local_G, 0, dip.comm)
+
+    if rank == 0
+        global_G = reshape(global_G, Nobs, Nens)
+    end
+    =#
+
+    return global_G
+end
+
+#####
+##### BatchedInverseProblem
+#####
+
+struct BatchedInverseProblem{B, P, W} <: AbstractInverseProblem
+    batch :: B
+    free_parameters :: P
+    weights :: W
+end
+
+one_or_many(N) = N == 1 ? "" : "s"
+
+function Base.summary(bip::BatchedInverseProblem)
+    Nb = length(bip.batch)
+    s = one_or_many(Nb)
+    return string("$Nb BatchedInverseProblem$s with weights $(bip.weights)",
+                  " and free parameters ", bip.free_parameters.names)
+end
+
+"""
+    BatchedInverseProblem(batched_ip; weights=Tuple(1 for o in batched_ip))
+
+Return a collection of `observations` with `weights`, where
+`observations` is a `Vector` or `Tuple` of `SyntheticObservations`.
+`weights` are unity by default.
+"""
+function BatchedInverseProblem(batched_ip; weights=Tuple(1 for o in batched_ip))
+    tupled_batched_ip = tupleit(batched_ip)
+
+    # TODO: relax this assumption
+    free_parameters = tupled_batched_ip[1].free_parameters
+
+    # TODO: validate Nensemble sameness for each batch member
+
+    return BatchedInverseProblem(tupled_batched_ip, free_parameters, weights)
+end
+
+# Convenience
+const IP = InverseProblem
+
+BatchedInverseProblem(first_ip::IP, second_ip::IP, other_ips...; kw...) =
+    BatchedInverseProblem(tuple(first_ip, second_ip, other_ips...); kw...)
+
+Base.first(batch::BatchedInverseProblem) = first(batch.batch)
+Base.lastindex(batch::BatchedInverseProblem) = lastindex(batch.batch)
+Base.getindex(batch::BatchedInverseProblem, i) = getindex(batch.batch, i)
+Base.length(batch::BatchedInverseProblem) = length(batch.batch)
+
+Nensemble(batched_ip::BatchedInverseProblem) = Nensemble(first(batched_ip.batch))
+
+function collect_forward_maps_asynchronously!(outputs, batched_ip, parameters; kw...)
+    #=
+    @sync begin
+        for (n, ip) in enumerate(batched_ip.batch)
+            @async begin
+                forward_map_output = forward_map(ip, parameters; suppress=false, kw...)
+                outputs[n] = batched_ip.weights[n] * forward_map_output
+            end
+        end
+    end
+    =#
+
+    for (n, ip) in enumerate(batched_ip.batch)
+        forward_map_output = forward_map(ip, parameters; suppress=false, kw...)
+        outputs[n] = batched_ip.weights[n] * forward_map_output
+    end
+
+    return outputs
+end
+
+function forward_map(batched_ip::BatchedInverseProblem, parameters; suppress=true, kw...)
+    outputs = Dict()
+
+    if suppress
+        @suppress collect_forward_maps_asynchronously!(outputs, batched_ip, parameters; kw...)
+    else
+        collect_forward_maps_asynchronously!(outputs, batched_ip, parameters; kw...)
+    end
+
+    vectorized_outputs = [outputs[n] for n = 1:length(batched_ip)]
+
+    return vcat(vectorized_outputs...)
+end
+
+function observation_map(batched_ip::BatchedInverseProblem)
+    maps = []
+
+    for (n, ip) in enumerate(batched_ip.batch)
+        w = batched_ip.weights[n]
+        push!(maps, w * observation_map(ip))
+    end
+
+    return vcat(maps...)
+end
+
+"""
+    inverting_forward_map(ip::AbstractInverseProblem, X; suppress=true)
 
 Transform unconstrained parameters `X` into constrained,
-physical-space parameters `θ` and execute `forward_map(ip, θ)`.
+physical-space parameters `θ` and execute `forward_map(ip, parameter_ensemble)`.
+
+Keyword `suppress` (boolean; default: `false`) suppresses any warnings.
 """
-function inverting_forward_map(ip::InverseProblem, X)
-    θ = transform_to_constrained(ip.free_parameters.priors, X)
-    return forward_map(ip, θ)
+function inverting_forward_map(ip::AbstractInverseProblem, X; suppress=true)
+    parameter_ensemble = transform_to_constrained(ip.free_parameters.priors, X)
+    return forward_map(ip, parameter_ensemble; suppress)
 end
+
+"""
+    expand_parameter_ensemble(ip, user_parameter_ensemble::Vector)
+
+Convert parameters `user_parameter_ensemble` to `Vector{<:NamedTuple}`, where the elements
+correspond to `ip.free_parameters`.
+
+`user_parameter_ensemble` may represent an ensemble of parameter sets via:
+
+* `user_parameter_ensemble::Vector{<:Vector}` (caution: parameters must be ordered correctly!)
+* `user_parameter_ensemble::Matrix` (caution: parameters must be ordered correctly!)
+* `user_parameter_ensemble::Vector{<:NamedTuple}` 
+
+or a single parameter set if `user_parameter_ensemble::Vector{<:Number}`.
+
+If `length(user_parameter_ensemble)` is less the the number of ensemble members in `ip.simulation`, the
+last parameter set is copied to fill the parameter set ensemble.
+"""
+function expand_parameter_ensemble(ip, user_parameter_ensemble::Vector)
+    parameter_ensemble = [build_parameters_named_tuple(ip.free_parameters, θₖ)
+                          for θₖ in user_parameter_ensemble]
+
+    # Fill out parameter set ensemble
+    Nfewer = Nensemble(ip) - length(parameter_ensemble)
+    Nfewer < 0 && throw(ArgumentError("There are $(-Nfewer) more parameter sets than ensemble members!"))
+    Nfewer > 0 && append!(parameter_ensemble, [parameter_ensemble[end] for _ = 1:Nfewer])
+
+    return parameter_ensemble
+end
+
+# Expand single parameter set
+expand_parameter_ensemble(ip, θ::Vector{<:Number}) = expand_parameter_ensemble(ip, [θ])
+expand_parameter_ensemble(ip, θ::NamedTuple)       = [θ] 
+
+# Convert matrix to vector of vectors
+expand_parameter_ensemble(ip, θ::Matrix) = expand_parameter_ensemble(ip, [θ[:, k] for k = 1:size(θ, 2)])
+
+"""
+    observation_map(ip::InverseProblem)
+
+Transform and return `ip.observations` appropriate for `ip.output_map`. 
+"""
+observation_map(ip::InverseProblem) = observation_map(ip.output_map, ip.observations)
+observation_map(dip::DistributedInverseProblem) = observation_map(dip.local_inverse_problem)
 
 #####
 ##### ConcatenatedOutputMap
 #####
 
 """
-    transform_time_series(::ConcatenatedOutputMap, observation::SyntheticObservations)
+    struct ConcatenatedOutputMap
 
-Transforms, normalizes, and concatenates data for field time series in `observation`.
+Forward map transformation of simulation output to the concatenated
+vectors of the simulation output.
 """
-function transform_time_series(::ConcatenatedOutputMap, observation::SyntheticObservations)
+struct ConcatenatedOutputMap end
+    
+output_map_str(::ConcatenatedOutputMap) = "ConcatenatedOutputMap"
+
+"""
+    transform_dataset(::ConcatenatedOutputMap, observation::SyntheticObservations)
+
+Transform, normalize, and concatenate data for the set of `FieldTimeSeries` in `observations`.
+"""
+function transform_dataset(::ConcatenatedOutputMap, observations::SyntheticObservations)
     data_vector = []
 
-    for field_name in forward_map_names(observation)
+    for field_name in forward_map_names(observations)
         # Transform time series data observation-specified `transformation`
-        field_time_series = observation.field_time_serieses[field_name]
-        transformation = observation.transformation[field_name]
+        field_time_series = observations.field_time_serieses[field_name]
+        transformation = observations.transformation[field_name]
         transformed_datum = transform_field_time_series(transformation, field_time_series)
 
         # Build out array
@@ -264,18 +477,20 @@ function transform_time_series(::ConcatenatedOutputMap, observation::SyntheticOb
 end
 
 """
-    transform_time_series(map, batch::BatchedSyntheticObservations)
+    transform_dataset(map, batch::BatchedSyntheticObservations)
 
-Concatenate the output of `transform_time_series` of each observation
+Concatenate the output of `transform_dataset` of each observation
 in `batched_observations`.
 """
-function transform_time_series(map, batch::BatchedSyntheticObservations)
+function transform_dataset(map, batch::BatchedSyntheticObservations)
     w = batch.weights
     obs = batch.observations
     N = length(obs)
-    weighted_maps = Tuple(w[i] * transform_time_series(map, obs[i]) for i = 1:N)
+    weighted_maps = Tuple(w[i] * transform_dataset(map, obs[i]) for i = 1:N)
     return vcat(weighted_maps...)
 end
+
+observation_map(map::ConcatenatedOutputMap, observations) = transform_dataset(map, observations)
 
 const BatchedOrSingletonObservations = Union{SyntheticObservations,
                                              BatchedSyntheticObservations}
@@ -287,14 +502,24 @@ function transform_forward_map_output(map::ConcatenatedOutputMap,
     # transposed_output isa Vector{SyntheticObservations} where SyntheticObservations is Nx by Nz by Nt
     transposed_forward_map_output = transpose_model_output(time_series_collector, observations)
 
-    return transform_time_series(map, transposed_forward_map_output)
+    return transform_dataset(map, transposed_forward_map_output)
+end
+
+function transform_forward_map_output(map::ConcatenatedOutputMap,
+                                      observations::SyntheticObservations,
+                                      time_series_collector_ensemble::Vector{<:FieldTimeSeriesCollector})
+
+    transposed_outputs = [transpose_model_output(tsc.grid, tsc, observations) for tsc in time_series_collector_ensemble]
+    forward_maps = [transform_dataset(map, output) for output in transposed_outputs]
+
+    return hcat(forward_maps...)
 end
 
 # Dispatch transpose_model_output based on collector grid
 transpose_model_output(time_series_collector, observations) =
     transpose_model_output(time_series_collector.grid, time_series_collector, observations)
 
-transpose_model_output(collector_grid::YZSliceGrid, time_series_collector, observations) =
+transpose_model_output(collector_grid, time_series_collector, observations) =
     SyntheticObservations(time_series_collector.field_time_serieses,
                           observations.forward_map_names,
                           collector_grid,
@@ -372,8 +597,9 @@ end
 
 """
     ConcatenatedVectorNormMap()
+
 Forward map transformation of simulation output to a scalar by
-taking a naive `norm` of the difference between concatenated vectors of the
+taking a naïve `norm` of the difference between concatenated vectors of the
 observations and simulation output.
 """
 struct ConcatenatedVectorNormMap end
@@ -410,7 +636,7 @@ function observation_map_variance_across_time(map::ConcatenatedOutputMap, observ
 
     Nfields = length(forward_map_names(observation))
 
-    y = transform_time_series(map, observation)
+    y = transform_dataset(map, observation)
     @assert length(y) == Nx * Ny * Nz * Nt * Nfields # otherwise we're headed for trouble...
 
     y = transpose(y) # (Nx, Ny*Nz*Nt*Nfields)
@@ -431,5 +657,35 @@ observation_map_variance_across_time(map::ConcatenatedOutputMap, observations::V
     hcat(Tuple(observation_map_variance_across_time(map, observation) for observation in observations)...)
 
 observation_map_variance_across_time(ip::InverseProblem) = observation_map_variance_across_time(ip.output_map, ip.observations)
+
+function Statistics.cov(realizations::Vector{<:SyntheticObservations}; corrected=true, output_map=ConcatenatedOutputMap())
+    length(realizations) > 2 || throw(ArgumentError("Input length must be > 2 or covariance will singular."))
+    maps = [observation_map(output_map, obs) for obs in realizations]
+    Y = transpose(hcat(maps...))
+    return cov(Y; corrected)
+end
+
+function Statistics.cov(realizations::Vector{<:BatchedSyntheticObservations};
+                        corrected=true, output_map=ConcatenatedOutputMap())
+
+    Ncases = length(first(realizations))
+
+    all(Ncases == length(batched_obs) for batched_obs in realizations) ||
+        throw(ArgumentError("Every BatchedObservation must have the same number of cases."))
+
+    # "Transpose" the vector of Batched to a vector (representing the batch) of vectors
+    Γ = []
+    for c in 1:Ncases
+        case_realizations = [batched.observations[c] for batched in realizations]
+
+        Γi = cov(case_realizations; corrected, output_map)
+        push!(Γ, Γi)
+    end
+
+    # Γ has to be concretely typed, because of a limitation in BlockDiagonals
+    Γ = [Γi for Γi in Γ]
+
+    return Matrix(BlockDiagonal(Γ))
+end
 
 end # module

@@ -32,15 +32,18 @@ default_closure = ConvectiveAdjustmentVerticalDiffusivity(; convective_κz = 1.0
 function generate_synthetic_observations(name = "convective_adjustment"; Nz = 32, Lz = 64,
                                          Qᵇ = +1e-8, Qᵘ = -1e-5, f₀ = 1e-4, N² = 1e-6,
                                          Δt = 10.0, stop_time = 12hours, overwrite=false,
+                                         output_schedule = TimeInterval(stop_time/3),
                                          tracers = :b, closure = default_closure)
 
     data_path = name * ".jld2"
   
-    if isfile(data_path)
+    if isfile(data_path) && !overwrite
         @warn("Using existing data at $data_path. " *
               "Please delete this file if you wish to generate new data.")
 
         return data_path
+    else
+        overwrite_existing = true
     end
     
     grid = RectilinearGrid(size=Nz, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
@@ -56,13 +59,13 @@ function generate_synthetic_observations(name = "convective_adjustment"; Nz = 32
     simulation = Simulation(model; Δt, stop_time)
     init_with_parameters(file, model) = file["parameters"] = (; Qᵇ, Qᵘ, Δt, N², tracers=keys(model.tracers))
     
-    simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
-                                                          schedule = TimeInterval(stop_time/3),
+    simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers);
+                                                          schedule = output_schedule,
                                                           filename = name,
                                                           array_type = Array{Float64},
                                                           with_halos = true,
                                                           init = init_with_parameters,
-                                                          overwrite_existing = true)
+                                                          overwrite_existing)
 
     run!(simulation)
 

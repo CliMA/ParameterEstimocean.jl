@@ -78,7 +78,7 @@ end
     data_path = experiment_name * ".jld2"
     observations = SyntheticObservations(data_path, field_names = (:u, :b),
                                          transformation = (u=RescaledZScore(0.1), b=ZScore()))
-    
+
     #####
     ##### Make model data
     #####
@@ -107,7 +107,9 @@ end
         test_simulation.stop_iteration = Inf
         initialize_forward_run!(test_simulation, observations, time_series_collector)
 
-        @test all(test_v .== 0)
+        @test all(test_u .== observations.field_time_serieses.u[1])
+        @test all(test_b .== observations.field_time_serieses.b[1])
+        @test all(test_v .== 0) # because v is not included in observations
 
         run!(test_simulation)
 

@@ -5,7 +5,6 @@ using LinearAlgebra
 
 using Oceananigans
 using Oceananigans.Units
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 using Oceananigans: fields
 
 using ParameterEstimocean
@@ -55,9 +54,9 @@ architecture = CPU()
     lower_bound, upper_bound = bounds = [0.9, 1.1]
     priors = (convective_κz = ScaledLogitNormal(; bounds),
               background_κz = ScaledLogitNormal(bounds=(5e-5, 2e-4)))
-    
+
     Nparams = length(priors)
-    
+
     free_parameters = FreeParameters(priors)
     calibration = InverseProblem(observation, simulation, free_parameters)
     batched_calibration = InverseProblem(batched_observations, batched_simulation, free_parameters)
@@ -97,7 +96,7 @@ architecture = CPU()
             pseudo_step!(eki; pseudo_Δt=nothing)
             @test eki.pseudo_Δt != 0.01
 
-            @test length(eki.iteration_summaries) == iterations + 3
+            @test length(eki.iteration_summaries) == iterations + 1
             @test eki.iteration == iterations + 2
         end
 
@@ -135,14 +134,14 @@ architecture = CPU()
             view(G, :, 2) .= NaN
             @test any(isnan.(G)) == true
 
-            @test sum(norm_exceeds_median(G)) == 1
-            @test norm_exceeds_median(G)[1] == false
-            @test norm_exceeds_median(G)[2] == true
-            @test norm_exceeds_median(G)[3] == false
+            @test sum(norm_exceeds_median(nothing, G, nothing)) == 1
+            @test norm_exceeds_median(nothing, G, nothing)[1] == false
+            @test norm_exceeds_median(nothing, G, nothing)[2] == true
+            @test norm_exceeds_median(nothing, G, nothing)[3] == false
 
             resample!(resampler, θ, G, eki)
 
-            @test sum(norm_exceeds_median(G)) == 0
+            @test sum(norm_exceeds_median(nothing, G, nothing)) == 0
 
             @test any(isnan.(G)) == false
             @test θ[:, 1] == θ1
@@ -158,7 +157,7 @@ architecture = CPU()
             time_series_collector = eki.inverse_problem.time_series_collector
 
             # Fill one batch...
-            for field_name in keys(fields(model))
+            for field_name in keys(time_series_collector.field_time_serieses)
                 field = fields(model)[field_name]
                 collector = time_series_collector.field_time_serieses[field_name]
 
@@ -216,10 +215,10 @@ architecture = CPU()
             view(G, :, 1) .= NaN
             view(G, :, 2) .= NaN
 
-            @test sum(norm_exceeds_median(G)) == 2
-            @test norm_exceeds_median(G)[1]
-            @test norm_exceeds_median(G)[2]
-            @test !(norm_exceeds_median(G)[3])
+            @test sum(norm_exceeds_median(nothing, G, nothing)) == 2
+            @test norm_exceeds_median(nothing, G, nothing)[1]
+            @test norm_exceeds_median(nothing, G, nothing)[2]
+            @test !(norm_exceeds_median(nothing, G, nothing)[3])
 
             resample!(resampler, θ, G, eki)
 
@@ -230,4 +229,3 @@ architecture = CPU()
         end
     end
 end
-

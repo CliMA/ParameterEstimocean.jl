@@ -4,6 +4,7 @@ export ensemble_column_model_simulation
 
 using DataDeps
 
+using ..Utils: tupleit
 using ..Observations: SyntheticObservations, batch, tupleit
 
 using Oceananigans
@@ -17,6 +18,7 @@ function ensemble_column_model_simulation(observations;
                                           architecture = CPU(),
                                           tracers = :b,
                                           buoyancy = BuoyancyTracer(),
+                                          non_ensemble_closure = nothing,
                                           kwargs...)
 
     observations = batch(observations)
@@ -42,6 +44,13 @@ function ensemble_column_model_simulation(observations;
     closure_ensemble = [deepcopy(closure) for i = 1:Nensemble, j=1:Nbatch]
     closure_ensemble = arch_array(architecture, closure_ensemble)
 
+    if isnothing(non_ensemble_closure)
+        closure = closure_ensemble
+    else
+        non_ensemble_closure = tupleit(non_ensemble_closure)
+        closure = (closure_ensemble, non_ensemble_closure...)
+    end
+
     momentum_boundary_conditions =
         (; u = FieldBoundaryConditions(top = FluxBoundaryCondition(zeros(grid, Nensemble, Nbatch))))
 
@@ -53,9 +62,8 @@ function ensemble_column_model_simulation(observations;
 
     boundary_conditions = merge(momentum_boundary_conditions, tracer_boundary_conditions)
 
-    ensemble_model = HydrostaticFreeSurfaceModel(; grid, tracers, buoyancy, boundary_conditions,
+    ensemble_model = HydrostaticFreeSurfaceModel(; grid, tracers, buoyancy, boundary_conditions, closure,
                                                  coriolis = coriolis_ensemble,
-                                                 closure = closure_ensemble,
                                                  kwargs...)
 
     ensemble_simulation = Simulation(ensemble_model; Δt, stop_time=first(observations).times[end])
