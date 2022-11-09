@@ -31,7 +31,8 @@ using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
     background_νz = 1e-5
 
     grid = RectilinearGrid(size=Nz, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
-    closure = ConvectiveAdjustmentVerticalDiffusivity(; convective_κz, background_κz, convective_νz, background_νz)
+    closure = (ConvectiveAdjustmentVerticalDiffusivity(; convective_κz, background_κz, convective_νz, background_νz),
+               VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(); ν = 1e-3))
     coriolis = FPlane(f=f₀)
 
     u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))

@@ -35,6 +35,7 @@ architecture = CPU()
                                                   Nensemble,
                                                   architecture,
                                                   closure,
+                                                  non_ensemble_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(); ν = 1e-3),
                                                   tracers = :b)
 
     batched_observations = BatchedSyntheticObservations([observation, observation], weights=[0.5, 1.0])
@@ -42,6 +43,7 @@ architecture = CPU()
                                                           Nensemble,
                                                           architecture,
                                                           closure,
+                                                          non_ensemble_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(); ν = 1e-3),
                                                           tracers = :b)
 
     for sim in [simulation, batched_simulation]
