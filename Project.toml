@@ -2,7 +2,7 @@ name = "ParameterEstimocean"
 uuid = "eca81dc5-87a6-4430-aec8-c76695404a43"
 license = "MIT"
 authors = ["Climate Modeling Alliance and contributors"]
-version = "0.14.0"
+version = "0.14.1"
 
 [deps]
 BlockDiagonals = "0a1fb500-61f7-11e9-3c65-f5ef3456f9f0"
@@ -37,7 +37,7 @@ GaussianProcesses = "0.12"
 JLD2 = "0.4"
 LineSearches = "7"
 MPI = "0.20"
-Oceananigans = "0.78.1"
+Oceananigans = "0.78.2"
 OffsetArrays = "1"
 OrderedCollections = "1"
 ProgressBars = "1"
