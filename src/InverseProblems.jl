@@ -337,7 +337,8 @@ Base.length(batch::BatchedInverseProblem) = length(batch.batch)
 Nensemble(batched_ip::BatchedInverseProblem) = Nensemble(first(batched_ip.batch))
 
 function collect_forward_maps_asynchronously!(outputs, batched_ip, parameters; kw...)
-    #=
+    start_time = time_ns()
+
     @sync begin
         for (n, ip) in enumerate(batched_ip.batch)
             @async begin
@@ -346,24 +347,30 @@ function collect_forward_maps_asynchronously!(outputs, batched_ip, parameters; k
             end
         end
     end
-    =#
 
+    #=
     for (n, ip) in enumerate(batched_ip.batch)
         forward_map_output = forward_map(ip, parameters; suppress=false, kw...)
         outputs[n] = batched_ip.weights[n] * forward_map_output
     end
+    =#
 
-    return outputs
+    end_time = time_ns()
+    elapsed = 1e-9 * (end_time - start_time)
+
+    return elapsed
 end
 
 function forward_map(batched_ip::BatchedInverseProblem, parameters; suppress=true, kw...)
     outputs = Dict()
 
     if suppress
-        @suppress collect_forward_maps_asynchronously!(outputs, batched_ip, parameters; kw...)
+        @suppress elapsed = collect_forward_maps_asynchronously!(outputs, batched_ip, parameters; kw...)
     else
-        collect_forward_maps_asynchronously!(outputs, batched_ip, parameters; kw...)
+        elapsed = collect_forward_maps_asynchronously!(outputs, batched_ip, parameters; kw...)
     end
+
+    @info "Forward map collection took " * prettytime(elapsed)
 
     vectorized_outputs = [outputs[n] for n = 1:length(batched_ip)]
 
