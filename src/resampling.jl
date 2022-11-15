@@ -56,7 +56,8 @@ function resample!(resampler::Resampler, X, G, eki)
     particle_failure = eki.mark_failed_particles(X, G, eki)
     failures = findall(particle_failure) # indices of failed particles
     Nfailures = length(failures)
-    failed_fraction = Nfailures / size(X, 2)
+    Nens = size(X, 2)
+    failed_fraction = Nfailures / Nens
 
     if failed_fraction > 0
         # Print a nice message
@@ -86,8 +87,11 @@ function resample!(resampler::Resampler, X, G, eki)
         # We are resampling!
 
         if resampler.only_failed_particles
-            Nsample = Nfailures
-            replace_columns = failures
+            # Resample enough particles to satisfy resampler criterion
+            Nneeded = ceil(Int, Nens * (1 - resampler.resample_failure_fraction))
+            Nsuccessful = Nens - Nfailures
+            Nsample = Nneeded - Nsuccessful
+            replace_columns = failures[1:Nsample]
 
         else # resample everything
             Nsample = size(G, 2)
@@ -124,7 +128,7 @@ function resample!(resampler::Resampler, X, G, eki)
 end
 
 """
-     find_successful_particles(eki, X, G, Nsample)
+    find_successful_particles(eki, X, G, Nsample)
 
 Generate `Nsample` new particles sampled from a multivariate Normal distribution parameterized 
 by the ensemble mean and covariance computed based on the `Nθ` × `Nensemble` ensemble 
