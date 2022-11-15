@@ -30,7 +30,7 @@ using ..Observations:
 
 import ..Parameters: closure_with_parameters
 
-using Oceananigans: run!, fields, FieldTimeSeries, CPU
+using Oceananigans: run!, fields, FieldTimeSeries, CPU, prettytime
 using Oceananigans.Architectures: architecture
 using Oceananigans.OutputReaders: InMemory
 using Oceananigans.Fields: interior, location
@@ -161,7 +161,7 @@ end
 Run `ip.simulation` forward with `parameters` and return the data,
 transformed into an array format expected by `EnsembleKalmanProcesses.jl`.
 """
-function forward_map(ip::InverseProblem, parameters; suppress=true)
+function forward_map(ip::InverseProblem, parameters; suppress=false)
 
     # Run the simulation forward and populate the time series collector
     # with model data.
@@ -194,14 +194,14 @@ closure_with_parameters(grid::EnsembleClosureGrid, closure, parameter_ensemble) 
 closure_with_parameters(grid, closure, parameter_ensemble) = closure_with_parameters(closure, parameter_ensemble)
 
 """
-    forward_run!(ip::InverseProblem, parameter_ensemble; suppress = false)
+    forward_run!(ip::InverseProblem, parameter_ensemble; suppress=false)
 
 Initialize `ip.simulation` with `parameter_ensemble` and run it forward. Output is stored
 in `ip.time_series_collector`. `forward_run` can also be called with one parameter set.
 
 Keyword `suppress` (boolean; default: `false`) suppresses any warnings.
 """
-function forward_run!(ip::InverseProblem, maybe_parameter_ensemble; suppress = false)
+function forward_run!(ip::InverseProblem, maybe_parameter_ensemble; suppress=false)
     # Ensure there are enough parameters for ensemble members in the simulation
     parameter_ensemble = expand_parameter_ensemble(ip, maybe_parameter_ensemble)
     _forward_run!(ip, parameter_ensemble, ip.simulation, ip.time_series_collector; suppress)
@@ -259,7 +259,7 @@ DistributedInverseProblem(local_inverse_problem; comm=MPI.COMM_WORLD) =
 
 Nensemble(dip::DistributedInverseProblem) = MPI.Comm_size(dip.comm)
 
-function forward_map(dip::DistributedInverseProblem, parameter_ensemble; suppress=true)
+function forward_map(dip::DistributedInverseProblem, parameter_ensemble; suppress=false)
     
     rank = MPI.Comm_rank(dip.comm)
     local_θ = parameter_ensemble[rank+1]
@@ -342,7 +342,7 @@ function collect_forward_maps_asynchronously!(outputs, batched_ip, parameters; k
     @sync begin
         for (n, ip) in enumerate(batched_ip.batch)
             @async begin
-                forward_map_output = forward_map(ip, parameters; suppress=false, kw...)
+                forward_map_output = forward_map(ip, parameters; kw...)
                 outputs[n] = batched_ip.weights[n] * forward_map_output
             end
         end
@@ -350,7 +350,7 @@ function collect_forward_maps_asynchronously!(outputs, batched_ip, parameters; k
 
     #=
     for (n, ip) in enumerate(batched_ip.batch)
-        forward_map_output = forward_map(ip, parameters; suppress=false, kw...)
+        forward_map_output = forward_map(ip, parameters; kw...)
         outputs[n] = batched_ip.weights[n] * forward_map_output
     end
     =#
@@ -361,7 +361,7 @@ function collect_forward_maps_asynchronously!(outputs, batched_ip, parameters; k
     return elapsed
 end
 
-function forward_map(batched_ip::BatchedInverseProblem, parameters; suppress=true, kw...)
+function forward_map(batched_ip::BatchedInverseProblem, parameters; suppress=false, kw...)
     outputs = Dict()
 
     if suppress
@@ -389,14 +389,14 @@ function observation_map(batched_ip::BatchedInverseProblem)
 end
 
 """
-    inverting_forward_map(ip::AbstractInverseProblem, X; suppress=true)
+    inverting_forward_map(ip::AbstractInverseProblem, X; suppress=false)
 
 Transform unconstrained parameters `X` into constrained,
 physical-space parameters `θ` and execute `forward_map(ip, parameter_ensemble)`.
 
 Keyword `suppress` (boolean; default: `false`) suppresses any warnings.
 """
-function inverting_forward_map(ip::AbstractInverseProblem, X; suppress=true)
+function inverting_forward_map(ip::AbstractInverseProblem, X; suppress=false)
     parameter_ensemble = transform_to_constrained(ip.free_parameters.priors, X)
     return forward_map(ip, parameter_ensemble; suppress)
 end
