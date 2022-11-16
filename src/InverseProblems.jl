@@ -13,6 +13,7 @@ export
 using OffsetArrays, Statistics, OrderedCollections, BlockDiagonals
 using Suppressor: @suppress
 using MPI
+using Printf
 
 using ..Utils: tupleit
 using ..Transformations: transform_field_time_series
@@ -34,6 +35,7 @@ using Oceananigans: run!, fields, FieldTimeSeries, CPU
 using Oceananigans.Architectures: architecture
 using Oceananigans.OutputReaders: InMemory
 using Oceananigans.Fields: interior, location
+using Oceananigans.Utils: prettysummary
 using Oceananigans.Grids: Flat, Bounded,
                           Face, Center,
                           RectilinearGrid, offset_data,
@@ -301,8 +303,32 @@ one_or_many(N) = N == 1 ? "" : "s"
 function Base.summary(bip::BatchedInverseProblem)
     Nb = length(bip.batch)
     s = one_or_many(Nb)
-    return string("$Nb BatchedInverseProblem$s with weights $(bip.weights)",
-                  " and free parameters ", bip.free_parameters.names)
+    return string("BatchedInverseProblem of $Nb InverseProblem$s")
+end
+    #$s with weights $(bip.weights)", " and free parameters ", bip.free_parameters.names)
+
+function Base.show(io::IO, ip::BatchedInverseProblem)
+    print(io, summary(ip), '\n')
+    print(io, "├── free_parameters: ", summary(ip.free_parameters), '\n')
+    print(io, "├── weights: ", ip.weights, '\n')
+    print(io, "└── batch: ", '\n')
+
+    Nb = length(ip.batch)
+
+    for (n, bip) in enumerate(ip.batch)
+        sim_str = "Simulation on $(summary(bip.simulation.model.grid)) with Δt=$(bip.simulation.Δt)"
+
+        L = n == Nb ? "└" : "├"
+        I = n == Nb ? " " : "│"
+
+        nstr = @sprintf("%-8d", n)
+
+        print(io, "    $(L)─ $(nstr) weight: ", prettysummary(ip.weights[n]), '\n',
+                  "    $I  ├─ observations: ", summary(bip.observations), '\n',
+                  "    $I  └─── simulation: ", sim_str, '\n')
+    end
+
+    return nothing
 end
 
 """

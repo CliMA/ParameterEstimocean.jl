@@ -54,15 +54,26 @@ end
 function Base.show(io::IO, eki::EnsembleKalmanInversion)
     print(io, "EnsembleKalmanInversion", '\n')
 
-    if eki.inverse_problem isa BatchedInverseProblem
-        print(io, "├── inverse_problem: ", summary(eki.inverse_problem), '\n')
+    ip = eki.inverse_problem
+    if ip isa BatchedInverseProblem
+        print(io, "├── inverse_problem: ", summary(ip), '\n',
+                  "│   ├── free_parameters: $(summary(ip.free_parameters))", '\n',
+                  "│   ├── weights: ", ip.weights, '\n')
 
-        Nip = length(eki.inverse_problem.batch)
-        for (n, ip) in enumerate(eki.inverse_problem.batch)
-            sim_str = "Simulation on $(summary(ip.simulation.model.grid)) with Δt=$(ip.simulation.Δt)"
-            print(io, "│   ($n) observations: ", summary(ip.observations), '\n',
-                      "│         simulation: ", sim_str, '\n')
+        Nb = length(ip.batch)
+        for (n, bip) in enumerate(ip.batch)
+            sim_str = "Simulation on $(summary(bip.simulation.model.grid)) with Δt=$(bip.simulation.Δt)"
+
+            L = n == Nb ? "└" : "├"
+            I = n == Nb ? " " : "│"
+
+            nstr = @sprintf("%-8d", n)
+
+            print(io, "│   $(L)─ $(nstr) weight: ", prettysummary(ip.weights[n]), '\n',
+                      "│   $I  ├─ observations: ", summary(bip.observations), '\n',
+                      "│   $I  └─── simulation: ", sim_str, '\n')
         end
+        print(io, "│", '\n')
     else
         print(io, "├── inverse_problem: ", summary(eki.inverse_problem), '\n')
     end      
