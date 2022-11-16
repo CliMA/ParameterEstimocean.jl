@@ -28,7 +28,7 @@ using ..Parameters: unconstrained_prior, transform_to_constrained, inverse_covar
 using ..InverseProblems: Nensemble, observation_map, forward_map, BatchedInverseProblem
 using ..InverseProblems: inverting_forward_map
 
-using Oceananigans.Utils: prettytime
+using Oceananigans.Utils: prettytime, prettysummary
 using MPI
 
 #const DistributedEnsembleKalmanInversion = EnsembleKalmanInversion{E, <:DistributedInverseProblem}
