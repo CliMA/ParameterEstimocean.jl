@@ -35,7 +35,7 @@ inv(sqrt(Γ))`.
 When keyword argument `constrained` is provided with `true` then input `θ`
 is assumed to represent constrained parameters.
 """
-function eki_objective(eki, θ::AbstractVector, G::AbstractVector; constrained = false, augmented = false)
+function eki_objective(eki, θ, G::AbstractVector; constrained = false, augmented = false)
     y = eki.mapped_observations
     Γy = eki.noise_covariance
     inv_sqrt_Γy = eki.precomputed_arrays[:inv_sqrt_Γy]
@@ -57,8 +57,10 @@ function eki_objective(eki, θ::AbstractVector, G::AbstractVector; constrained =
 
     # Φ₁ = (1/2)*|| Γy^(-½) * (y - G) ||²
     Φ₁ = (1/2) * norm(inv_sqrt_Γy * (y .- G))^2
+
     # Φ₂ = (1/2)*|| Γθ^(-½) * (θ - μθ) ||² 
     Φ₂ = eki.tikhonov ? (1/2) * norm(inv_sqrt_Γθ * (θ .- μθ))^2 : 0
+
     return (Φ₁, Φ₂)
 end
 
