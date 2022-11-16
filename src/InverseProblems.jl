@@ -203,7 +203,7 @@ in `ip.time_series_collector`. `forward_run` can also be called with one paramet
 
 Keyword `suppress` (boolean; default: `false`) suppresses any warnings.
 """
-function forward_run!(ip::InverseProblem, maybe_parameter_ensemble; suppress = false)
+function forward_run!(ip::InverseProblem, maybe_parameter_ensemble; suppress=false)
     # Ensure there are enough parameters for ensemble members in the simulation
     parameter_ensemble = expand_parameter_ensemble(ip, maybe_parameter_ensemble)
     _forward_run!(ip, parameter_ensemble, ip.simulation, ip.time_series_collector; suppress)
@@ -363,7 +363,6 @@ Base.length(batch::BatchedInverseProblem) = length(batch.batch)
 Nensemble(batched_ip::BatchedInverseProblem) = Nensemble(first(batched_ip.batch))
 
 function collect_forward_maps_asynchronously!(outputs, batched_ip, parameters; kw...)
-    #=
     @sync begin
         for (n, ip) in enumerate(batched_ip.batch)
             @async begin
@@ -372,17 +371,39 @@ function collect_forward_maps_asynchronously!(outputs, batched_ip, parameters; k
             end
         end
     end
-    =#
 
+    #=
     for (n, ip) in enumerate(batched_ip.batch)
         forward_map_output = forward_map(ip, parameters; suppress=false, kw...)
         outputs[n] = batched_ip.weights[n] * forward_map_output
     end
+    =#
 
     return outputs
 end
 
-function forward_map(batched_ip::BatchedInverseProblem, parameters; suppress=true, kw...)
+function forward_run_asynchronously!(batched_ip::BatchedInverseProblem, parameters; suppress=false, kw...)
+    @sync begin
+        for ip in batched_ip.batch
+            @async begin
+                forward_run!(ip, parameters; suppress=false, kw...)
+            end
+        end
+    end
+    return nothing
+end
+
+function forward_run!(batched_ip::BatchedInverseProblem, parameters; suppress=false, kw...)
+    if suppress
+        @suppress forward_run_asynchronously!(batched_ip, parameters; kw...)
+    else
+        forward_run_asynchronously!(batched_ip, parameters; kw...)
+    end
+
+    return nothing
+end
+
+function forward_map(batched_ip::BatchedInverseProblem, parameters; suppress=false, kw...)
     outputs = Dict()
 
     if suppress
