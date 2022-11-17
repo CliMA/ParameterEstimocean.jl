@@ -363,32 +363,30 @@ Base.length(batch::BatchedInverseProblem) = length(batch.batch)
 Nensemble(batched_ip::BatchedInverseProblem) = Nensemble(first(batched_ip.batch))
 
 function collect_forward_maps_asynchronously!(outputs, batched_ip, parameters; kw...)
+    #=
     @sync begin
         for (n, ip) in enumerate(batched_ip.batch)
             @async begin
-                forward_map_output = forward_map(ip, parameters; suppress=false, kw...)
+                forward_map_output = forward_map(ip, parameters; kw...)
                 outputs[n] = batched_ip.weights[n] * forward_map_output
             end
         end
     end
+    =#
 
-    #=
-    for (n, ip) in enumerate(batched_ip.batch)
+    Threads.@threads for n = 1:length(batched_ip)
+        ip = batched_ip[n]
         forward_map_output = forward_map(ip, parameters; suppress=false, kw...)
         outputs[n] = batched_ip.weights[n] * forward_map_output
     end
-    =#
 
     return outputs
 end
 
-function forward_run_asynchronously!(batched_ip::BatchedInverseProblem, parameters; suppress=false, kw...)
-    @sync begin
-        for ip in batched_ip.batch
-            @async begin
-                forward_run!(ip, parameters; suppress=false, kw...)
-            end
-        end
+function forward_run_asynchronously!(batched_ip::BatchedInverseProblem, parameters; kw...)
+    Threads.@threads for n = 1:length(batched_ip)
+        ip = batched_ip[n]
+        forward_run!(ip, parameters; kw...)
     end
     return nothing
 end
@@ -397,7 +395,7 @@ function forward_run!(batched_ip::BatchedInverseProblem, parameters; suppress=fa
     if suppress
         @suppress forward_run_asynchronously!(batched_ip, parameters; kw...)
     else
-        forward_run_asynchronously!(batched_ip, parameters; kw...)
+        forward_run_asynchronously!(batched_ip, parameters; suppress, kw...)
     end
 
     return nothing
@@ -406,14 +404,16 @@ end
 function forward_map(batched_ip::BatchedInverseProblem, parameters; suppress=false, kw...)
     outputs = Dict()
 
+    #=
     if suppress
         @suppress collect_forward_maps_asynchronously!(outputs, batched_ip, parameters; kw...)
     else
         collect_forward_maps_asynchronously!(outputs, batched_ip, parameters; kw...)
     end
+    =#
 
+    collect_forward_maps_asynchronously!(outputs, batched_ip, parameters; kw...)
     vectorized_outputs = [outputs[n] for n = 1:length(batched_ip)]
-
     return vcat(vectorized_outputs...)
 end
 
