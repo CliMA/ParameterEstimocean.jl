@@ -97,6 +97,8 @@ function construct_noise_covariance(noise_covariance::Number, y)
     return Matrix(η * I, Nobs, Nobs)
 end
 
+struct UninitializedForwardMapOutput end
+
 """
     EnsembleKalmanInversion(inverse_problem;
                             noise_covariance = 1,
@@ -179,8 +181,8 @@ function EnsembleKalmanInversion(inverse_problem;
                                       for name in free_parameters.names)
 
     if isnothing(unconstrained_parameters)
-        isnothing(forward_map_output) ||
-            throw(ArgumentError("Cannot provide forward_map_output without unconstrained_parameters."))
+        isnothing(forward_map_output) || forward_map_output isa UninitializedForwardMapOutput ||
+            @warn("iterate! may not succeed when forward_map_output is provided without accompanying unconstrained_parameters.")
 
         unconstrained_parameters = [rand(unconstrained_priors[i]) for i=1:Nθ, k=1:Nens]
     end
@@ -234,6 +236,10 @@ function EnsembleKalmanInversion(inverse_problem;
         forward_map_output = resampling_forward_map!(eki′, Xᵢ)
         elapsed_time = (time_ns() - start_time) * 1e-9
         @info "    ... done ($(prettytime(elapsed_time)))."
+    elseif forward_map_output isa UninitializedForwardMapOutput 
+        # size(forward_map_output) = (Nobs, Nensemble)
+        Nobs = length(y)
+        forward_map_output = zeros(Nobs, Nens)
     end
 
     summary = IterationSummary(eki′, Xᵢ, forward_map_output)

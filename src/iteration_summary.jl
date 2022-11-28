@@ -109,18 +109,21 @@ function IterationSummary(eki, X, forward_map_output=nothing)
                             eki.pseudo_Δt)
 end
 
-function finitefind(a, val, find)
-    finite_a = deepcopy(a)
-    finite_a[.!isfinite.(a)] .= val
-    return find(finite_a)
+function finitefind(f, a, val, find)
+    fa = f.(a)
+    finite_fa = f.(a)
+    finite_fa[.!isfinite.(fa)] .= val
+    return find(finite_fa)
 end
 
-finitefindmin(a) = finitefind(a, Inf, findmin)
-finitefindmax(a) = finitefind(a, -Inf, findmax)
+finitefindmin(a) = finitefind(identity, a, Inf, findmin)
+finitefindmax(a) = finitefind(identity, a, -Inf, findmax)
+finitefindmin(f, a) = finitefind(f, a, Inf, findmin)
+finitefindmax(f, a) = finitefind(f, a, -Inf, findmax)
 
 function Base.show(io::IO, is::IterationSummary)
-    max_error, imax = finitefindmax(is.mean_square_errors)
-    min_error, imin = finitefindmin(is.mean_square_errors)
+    max_error, imax = finitefindmax(o -> o[1] + o[2], is.objective_values)
+    min_error, imin = finitefindmin(o -> o[1] + o[2], is.objective_values)
 
     names = keys(is.ensemble_mean)
     parameter_matrix = [is.parameters[k][name] for name in names, k = 1:length(is.parameters)]
@@ -131,8 +134,8 @@ function Base.show(io::IO, is::IterationSummary)
 
     print(io, "                      ", param_str.(keys(is.ensemble_mean))..., '\n',
               "       ensemble_mean: ", param_str.(values(is.ensemble_mean))..., '\n',
-              particle_str("best", is.mean_square_errors[imin], is.parameters[imin]), '\n',
-              particle_str("worst", is.mean_square_errors[imax], is.parameters[imax]), '\n',
+              particle_str("best",  sum(is.objective_values[imin]), is.parameters[imin]), '\n',
+              particle_str("worst", sum(is.objective_values[imax]), is.parameters[imax]), '\n',
               "             minimum: ", param_str.(min_parameters)..., '\n',
               "             maximum: ", param_str.(max_parameters)..., '\n',
               "   ensemble_variance: ", param_str.(values(is.ensemble_var))...)
@@ -156,7 +159,8 @@ end
 
 param_str(p::Number) = @sprintf("% -1.3e | ", p)
 
-particle_str(particle, error, parameters) =
+particle_str(particle, ΣΦ, parameters) =
     @sprintf("% 11s particle: ", particle) *
     string(param_str.(values(parameters))...) *
-    @sprintf("error = %.6e", error)
+    @sprintf("objective = %.6e", ΣΦ)
+

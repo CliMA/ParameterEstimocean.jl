@@ -11,7 +11,6 @@ export
     ConcatenatedOutputMap
 
 using OffsetArrays, Statistics, OrderedCollections, BlockDiagonals
-using Suppressor: @suppress
 using MPI
 using Printf
 
@@ -163,11 +162,11 @@ end
 Run `ip.simulation` forward with `parameters` and return the data,
 transformed into an array format expected by `EnsembleKalmanProcesses.jl`.
 """
-function forward_map(ip::InverseProblem, parameters; suppress=true)
+function forward_map(ip::InverseProblem, parameters)
 
     # Run the simulation forward and populate the time series collector
     # with model data.
-    forward_run!(ip, parameters; suppress)
+    forward_run!(ip, parameters)
 
     # Verify that data was collected properly
     if !(ip isa EnsembleSimulationInverseProblem)
@@ -196,21 +195,19 @@ closure_with_parameters(grid::EnsembleClosureGrid, closure, parameter_ensemble) 
 closure_with_parameters(grid, closure, parameter_ensemble) = closure_with_parameters(closure, parameter_ensemble)
 
 """
-    forward_run!(ip::InverseProblem, parameter_ensemble; suppress = false)
+    forward_run!(ip::InverseProblem, parameter_ensemble)
 
 Initialize `ip.simulation` with `parameter_ensemble` and run it forward. Output is stored
 in `ip.time_series_collector`. `forward_run` can also be called with one parameter set.
-
-Keyword `suppress` (boolean; default: `false`) suppresses any warnings.
 """
-function forward_run!(ip::InverseProblem, maybe_parameter_ensemble; suppress=false)
+function forward_run!(ip::InverseProblem, maybe_parameter_ensemble)
     # Ensure there are enough parameters for ensemble members in the simulation
     parameter_ensemble = expand_parameter_ensemble(ip, maybe_parameter_ensemble)
-    _forward_run!(ip, parameter_ensemble, ip.simulation, ip.time_series_collector; suppress)
+    _forward_run!(ip, parameter_ensemble, ip.simulation, ip.time_series_collector)
     return nothing
 end
 
-function _forward_run!(ip, parameter_ensemble, simulation, time_series_collector; suppress=false)
+function _forward_run!(ip, parameter_ensemble, simulation, time_series_collector)
     observations = ip.observations
     closure = simulation.model.closure
     grid = simulation.model.grid
@@ -221,16 +218,12 @@ function _forward_run!(ip, parameter_ensemble, simulation, time_series_collector
     initialize_forward_run!(simulation, observations, time_series_collector,
                             ip.initialize_with_observations, ip.initialize_simulation, parameter_ensemble)
 
-    if suppress
-        @suppress run!(simulation)
-    else
-        run!(simulation)
-    end
+    run!(simulation)
     
     return nothing
 end
 
-function forward_run!(ip::EnsembleSimulationInverseProblem, maybe_parameter_ensemble; suppress=false)
+function forward_run!(ip::EnsembleSimulationInverseProblem, maybe_parameter_ensemble)
     # Ensure there are enough parameters for ensemble members in the simulation
     parameter_ensemble = expand_parameter_ensemble(ip, maybe_parameter_ensemble)
 
@@ -240,7 +233,7 @@ function forward_run!(ip::EnsembleSimulationInverseProblem, maybe_parameter_ense
         simulation = ip.simulation[k]
         time_series_collector = ip.time_series_collector[k]
         θₖ = parameter_ensemble[k]
-        _forward_run!(ip, θₖ, simulation, time_series_collector; suppress)
+        _forward_run!(ip, θₖ, simulation, time_series_collector)
     end
 
     return nothing
@@ -261,12 +254,12 @@ DistributedInverseProblem(local_inverse_problem; comm=MPI.COMM_WORLD) =
 
 Nensemble(dip::DistributedInverseProblem) = MPI.Comm_size(dip.comm)
 
-function forward_map(dip::DistributedInverseProblem, parameter_ensemble; suppress=true)
+function forward_map(dip::DistributedInverseProblem, parameter_ensemble)
     
     rank = MPI.Comm_rank(dip.comm)
     local_θ = parameter_ensemble[rank+1]
 
-    local_G = forward_map(dip.local_inverse_problem, local_θ; suppress)
+    local_G = forward_map(dip.local_inverse_problem, local_θ)
     MPI.Barrier(dip.comm)
 
     Nobs = length(local_G)
@@ -341,10 +334,9 @@ Return a collection of `observations` with `weights`, where
 function BatchedInverseProblem(batched_ip; weights=Tuple(1 for o in batched_ip))
     tupled_batched_ip = tupleit(batched_ip)
 
+    # TODO: validate Nensemble sameness for each batch member
     # TODO: relax this assumption
     free_parameters = tupled_batched_ip[1].free_parameters
-
-    # TODO: validate Nensemble sameness for each batch member
 
     return BatchedInverseProblem(tupled_batched_ip, free_parameters, weights)
 end
@@ -363,20 +355,10 @@ Base.length(batch::BatchedInverseProblem) = length(batch.batch)
 Nensemble(batched_ip::BatchedInverseProblem) = Nensemble(first(batched_ip.batch))
 
 function collect_forward_maps_asynchronously!(outputs, batched_ip, parameters; kw...)
-    #=
-    @sync begin
-        for (n, ip) in enumerate(batched_ip.batch)
-            @async begin
-                forward_map_output = forward_map(ip, parameters; kw...)
-                outputs[n] = batched_ip.weights[n] * forward_map_output
-            end
-        end
-    end
-    =#
-
-    Threads.@threads for n = 1:length(batched_ip)
+    #asyncmap(1:length(batched_ip), ntasks=10) do n
+    for n = 1:length(batched_ip)
         ip = batched_ip[n]
-        forward_map_output = forward_map(ip, parameters; suppress=false, kw...)
+        forward_map_output = forward_map(ip, parameters; kw...)
         outputs[n] = batched_ip.weights[n] * forward_map_output
     end
 
@@ -391,27 +373,11 @@ function forward_run_asynchronously!(batched_ip::BatchedInverseProblem, paramete
     return nothing
 end
 
-function forward_run!(batched_ip::BatchedInverseProblem, parameters; suppress=false, kw...)
-    if suppress
-        @suppress forward_run_asynchronously!(batched_ip, parameters; kw...)
-    else
-        forward_run_asynchronously!(batched_ip, parameters; suppress, kw...)
-    end
+forward_run!(batched_ip::BatchedInverseProblem, parameters; kw...) =
+    forward_run_asynchronously!(batched_ip, parameters; kw...)
 
-    return nothing
-end
-
-function forward_map(batched_ip::BatchedInverseProblem, parameters; suppress=false, kw...)
+function forward_map(batched_ip::BatchedInverseProblem, parameters; kw...)
     outputs = Dict()
-
-    #=
-    if suppress
-        @suppress collect_forward_maps_asynchronously!(outputs, batched_ip, parameters; kw...)
-    else
-        collect_forward_maps_asynchronously!(outputs, batched_ip, parameters; kw...)
-    end
-    =#
-
     collect_forward_maps_asynchronously!(outputs, batched_ip, parameters; kw...)
     vectorized_outputs = [outputs[n] for n = 1:length(batched_ip)]
     return vcat(vectorized_outputs...)
@@ -429,16 +395,14 @@ function observation_map(batched_ip::BatchedInverseProblem)
 end
 
 """
-    inverting_forward_map(ip::AbstractInverseProblem, X; suppress=true)
+    inverting_forward_map(ip::AbstractInverseProblem, X)
 
 Transform unconstrained parameters `X` into constrained,
 physical-space parameters `θ` and execute `forward_map(ip, parameter_ensemble)`.
-
-Keyword `suppress` (boolean; default: `false`) suppresses any warnings.
 """
-function inverting_forward_map(ip::AbstractInverseProblem, X; suppress=true)
+function inverting_forward_map(ip::AbstractInverseProblem, X)
     parameter_ensemble = transform_to_constrained(ip.free_parameters.priors, X)
-    return forward_map(ip, parameter_ensemble; suppress)
+    return forward_map(ip, parameter_ensemble)
 end
 
 """
