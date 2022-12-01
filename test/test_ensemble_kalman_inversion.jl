@@ -69,6 +69,7 @@ architecture = CPU()
                 EnsembleKalmanInversion(batched_calibration; pseudo_stepping=ConstantConvergence(0.9))]
 
         batch_str = string("(Nbatch = ", size(eki.inverse_problem.simulation.model.grid, 2), ")")
+
         @testset "EnsembleKalmanInversions construction and iteration tests $batch_str" begin
             @info "  Testing EnsembleKalmanInversion construction and basic iteration $batch_str..."
 
@@ -99,15 +100,21 @@ architecture = CPU()
             @test length(eki.iteration_summaries) == iterations + 1
             @test eki.iteration == iterations + 2
         end
+    end
 
         #####
         ##### Test PseudoSteppingSchemes
         #####
 
+    for eki in [EnsembleKalmanInversion(calibration; pseudo_stepping=Kovachki2018InitialConvergenceRatio()),
+                EnsembleKalmanInversion(batched_calibration; pseudo_stepping=Kovachki2018InitialConvergenceRatio())]
+
+        batch_str = string("(Nbatch = ", size(eki.inverse_problem.simulation.model.grid, 2), ")")
+
         @testset "PseudoSteppingSchemes tests" begin
             @info "  Testing pseudo-stepping schemes with default hyperparameters"
 
-            for pseudo_stepping in [ConstantPseudoTimeStep, ThresholdedConvergenceRatio, Chada2021, ConstantConvergence, Kovachki2018, Kovachki2018InitialConvergenceRatio, Iglesias2021]
+            for pseudo_stepping in [Kovachki2018InitialConvergenceRatio, ConstantPseudoTimeStep, ThresholdedConvergenceRatio, Chada2021, ConstantConvergence, Kovachki2018, Iglesias2021]
                 iterate!(eki; iterations = 1, show_progress=false, pseudo_stepping = pseudo_stepping())
             end
         end
@@ -227,5 +234,6 @@ architecture = CPU()
             @test θ[:, 2] != θ3
             @test θ[:, 3] != θ3
         end
+
     end
 end
