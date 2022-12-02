@@ -298,7 +298,6 @@ function Base.summary(bip::BatchedInverseProblem)
     s = one_or_many(Nb)
     return string("BatchedInverseProblem of $Nb InverseProblem$s")
 end
-    #$s with weights $(bip.weights)", " and free parameters ", bip.free_parameters.names)
 
 function Base.show(io::IO, ip::BatchedInverseProblem)
     print(io, summary(ip), '\n')
@@ -355,8 +354,7 @@ Base.length(batch::BatchedInverseProblem) = length(batch.batch)
 Nensemble(batched_ip::BatchedInverseProblem) = Nensemble(first(batched_ip.batch))
 
 function collect_forward_maps_asynchronously!(outputs, batched_ip, parameters; kw...)
-    #asyncmap(1:length(batched_ip), ntasks=10) do n
-    for n = 1:length(batched_ip)
+    asyncmap(1:length(batched_ip), ntasks=10) do n
         ip = batched_ip[n]
         forward_map_output = forward_map(ip, parameters; kw...)
         outputs[n] = batched_ip.weights[n] * forward_map_output
@@ -366,7 +364,7 @@ function collect_forward_maps_asynchronously!(outputs, batched_ip, parameters; k
 end
 
 function forward_run_asynchronously!(batched_ip::BatchedInverseProblem, parameters; kw...)
-    Threads.@threads for n = 1:length(batched_ip)
+    asyncmap(1:length(batched_ip), ntasks=10) do n
         ip = batched_ip[n]
         forward_run!(ip, parameters; kw...)
     end
