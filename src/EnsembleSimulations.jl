@@ -15,6 +15,7 @@ function ensemble_column_model_simulation(observations;
                                           closure,
                                           Nensemble,
                                           Δt = 1.0,
+                                          verbose = true,
                                           architecture = CPU(),
                                           tracers = :b,
                                           buoyancy = BuoyancyTracer(),
@@ -66,7 +67,7 @@ function ensemble_column_model_simulation(observations;
                                                  coriolis = coriolis_ensemble,
                                                  kwargs...)
 
-    ensemble_simulation = Simulation(ensemble_model; Δt, stop_time=first(observations).times[end])
+    ensemble_simulation = Simulation(ensemble_model; Δt, verbose, stop_time=first(observations).times[end])
 
     return ensemble_simulation
 end

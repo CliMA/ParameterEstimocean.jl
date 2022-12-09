@@ -28,7 +28,7 @@ using ..Parameters: unconstrained_prior, transform_to_constrained, inverse_covar
 using ..InverseProblems: Nensemble, observation_map, forward_map, BatchedInverseProblem
 using ..InverseProblems: inverting_forward_map
 
-using Oceananigans.Utils: prettytime
+using Oceananigans.Utils: prettytime, prettysummary
 using MPI
 
 #const DistributedEnsembleKalmanInversion = EnsembleKalmanInversion{E, <:DistributedInverseProblem}
@@ -54,15 +54,26 @@ end
 function Base.show(io::IO, eki::EnsembleKalmanInversion)
     print(io, "EnsembleKalmanInversion", '\n')
 
-    if eki.inverse_problem isa BatchedInverseProblem
-        print(io, "├── inverse_problem: ", summary(eki.inverse_problem), '\n')
+    ip = eki.inverse_problem
+    if ip isa BatchedInverseProblem
+        print(io, "├── inverse_problem: ", summary(ip), '\n',
+                  "│   ├── free_parameters: $(summary(ip.free_parameters))", '\n',
+                  "│   ├── weights: ", ip.weights, '\n')
 
-        Nip = length(eki.inverse_problem.batch)
-        for (n, ip) in enumerate(eki.inverse_problem.batch)
-            sim_str = "Simulation on $(summary(ip.simulation.model.grid)) with Δt=$(ip.simulation.Δt)"
-            print(io, "│   ($n) observations: ", summary(ip.observations), '\n',
-                      "│         simulation: ", sim_str, '\n')
+        Nb = length(ip.batch)
+        for (n, bip) in enumerate(ip.batch)
+            sim_str = "Simulation on $(summary(bip.simulation.model.grid)) with Δt=$(bip.simulation.Δt)"
+
+            L = n == Nb ? "└" : "├"
+            I = n == Nb ? " " : "│"
+
+            nstr = @sprintf("%-8d", n)
+
+            print(io, "│   $(L)─ $(nstr) weight: ", prettysummary(ip.weights[n]), '\n',
+                      "│   $I  ├─ observations: ", summary(bip.observations), '\n',
+                      "│   $I  └─── simulation: ", sim_str, '\n')
         end
+        print(io, "│", '\n')
     else
         print(io, "├── inverse_problem: ", summary(eki.inverse_problem), '\n')
     end      
@@ -85,6 +96,8 @@ function construct_noise_covariance(noise_covariance::Number, y)
     Nobs = length(y)
     return Matrix(η * I, Nobs, Nobs)
 end
+
+struct UninitializedForwardMapOutput end
 
 """
     EnsembleKalmanInversion(inverse_problem;
@@ -173,8 +186,8 @@ function EnsembleKalmanInversion(inverse_problem;
                                       for name in free_parameters.names)
 
     if isnothing(unconstrained_parameters)
-        isnothing(forward_map_output) ||
-            throw(ArgumentError("Cannot provide forward_map_output without unconstrained_parameters."))
+        isnothing(forward_map_output) || forward_map_output isa UninitializedForwardMapOutput ||
+            @warn("iterate! may not succeed when forward_map_output is provided without accompanying unconstrained_parameters.")
 
         unconstrained_parameters = [rand(unconstrained_priors[i]) for i=1:Nθ, k=1:Nens]
     end
@@ -228,6 +241,10 @@ function EnsembleKalmanInversion(inverse_problem;
         forward_map_output = resampling_forward_map!(eki′, Xᵢ)
         elapsed_time = (time_ns() - start_time) * 1e-9
         @info "    ... done ($(prettytime(elapsed_time)))."
+    elseif forward_map_output isa UninitializedForwardMapOutput 
+        # size(forward_map_output) = (Nobs, Nensemble)
+        Nobs = length(y)
+        forward_map_output = zeros(Nobs, Nens)
     end
 
     summary = IterationSummary(eki′, Xᵢ, forward_map_output)

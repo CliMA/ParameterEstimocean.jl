@@ -56,7 +56,8 @@ function resample!(resampler::Resampler, X, G, eki)
     particle_failure = eki.mark_failed_particles(X, G, eki)
     failures = findall(particle_failure) # indices of failed particles
     Nfailures = length(failures)
-    failed_fraction = Nfailures / size(X, 2)
+    Nens = size(X, 2)
+    failed_fraction = Nfailures / Nens
 
     if failed_fraction > 0
         # Print a nice message
@@ -86,8 +87,13 @@ function resample!(resampler::Resampler, X, G, eki)
         # We are resampling!
 
         if resampler.only_failed_particles
-            Nsample = Nfailures
-            replace_columns = failures
+            #Nsample = Nfailures
+            #replace_columns = failures
+
+            Nneed = ceil(Int, (1 - resampler.resample_failure_fraction) * Nens)
+            Nsuccesses = Nens - Nfailures
+            Nsample = Nneed - Nsuccesses
+            replace_columns = failures[1:Nsample]
 
         else # resample everything
             Nsample = size(G, 2)
@@ -155,7 +161,6 @@ function find_successful_particles(eki, X, G, Nsample)
         # Note that eki.inverse_problem.simulation
         # must run `Nensemble` particles no matter what.
         X_sample = rand(existing_sample_distribution, Nensemble)
-
         G_sample = inverting_forward_map(eki.inverse_problem, X_sample)
 
         particle_failure = mark_failed_particles(X_sample, G_sample, eki)
