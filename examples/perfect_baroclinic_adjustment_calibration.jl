@@ -77,12 +77,11 @@ if force_generate_observations || !(isfile(data_path))
 
     closures = (gent_mcwilliams_diffusivity, horizontal_diffusivity, vertical_diffusivity)
     
-    model = HydrostaticFreeSurfaceModel(grid = grid,
+    model = HydrostaticFreeSurfaceModel(; grid,
                                         tracers = (:b, :c),
                                         buoyancy = BuoyancyTracer(),
-                                        coriolis = BetaPlane(latitude=-45),
-                                        closure = closures,
-                                        free_surface = ImplicitFreeSurface())
+                                        coriolis = BetaPlane(latitude = -45),
+                                        closure = closures)
     
     @info "Built $model."
 
@@ -161,9 +160,8 @@ closures = (gm_ensemble, horizontal_diffusivity, vertical_diffusivity)
 @show ensemble_model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
                                                    tracers = (:b, :c),
                                                    buoyancy = BuoyancyTracer(),
-                                                   coriolis = BetaPlane(latitude=-45),
-                                                   closure = closures,
-                                                   free_surface = ImplicitFreeSurface())
+                                                   coriolis = BetaPlane(latitude = -45),
+                                                   closure = closures)
 
 # and then we create an ensemble simulation: 
 

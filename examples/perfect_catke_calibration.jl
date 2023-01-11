@@ -10,7 +10,8 @@
 using ParameterEstimocean, LinearAlgebra, CairoMakie
 
 using ParameterEstimocean.Transformations: Transformation
-using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity, MixingLength, SurfaceTKEFlux
+using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities:
+    CATKEVerticalDiffusivity, MixingLength, TurbulentKineticEnergyEquation
 
 # # Perfect observations of CATKE-driven mixing
 #
@@ -26,26 +27,31 @@ using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalD
 examples_path = joinpath(pathof(ParameterEstimocean), "..", "..", "examples")
 include(joinpath(examples_path, "intro_to_inverse_problems.jl"))
 
-mixing_length = MixingLength(Cᴬu  = 0.0,
-                             Cᴬc  = 1.0,
-                             Cᴬe  = 0.0,
-                             Cᴷu⁻ = 0.1,
-                             Cᴷc⁻ = 0.1,
-                             Cᴷe⁻ = 0.1,
-                             Cᴷuʳ = 0.0,
-                             Cᴷcʳ = 0.0,
-                             Cᴷeʳ = 0.0)
+mixing_length = MixingLength(Cᴬc  = 0.5,
+                             Cᴬe  = 0.5,
+                             Cᵇu  = 0.5,
+                             Cᵇc  = 0.5,
+                             Cᵇe  = 0.5,
+                             Cᴷu⁻ = 0.5,
+                             Cᴷc⁻ = 0.5,
+                             Cᴷe⁻ = 0.5)
 
-catke = CATKEVerticalDiffusivity(mixing_length=mixing_length)
+turbulent_kinetic_energy_equation = TurbulentKineticEnergyEquation(CᴰRiʷ=0.5, Cᵂu★=0.5, CᵂwΔ=0.5, Cᴰ⁻=0.5)
+
+catke = CATKEVerticalDiffusivity(; mixing_length, turbulent_kinetic_energy_equation)
+
+@show catke
 
 ## Specify both wind mixing and convection:
+Δt = 1e-16
 data_path = generate_synthetic_observations("catke",
                                             closure = catke,
                                             tracers = (:b, :e),
                                             Nz = 32,
                                             Lz = 64,
-                                            Δt = 10.0,
-                                            stop_time = 12hours,
+                                            Δt = Δt,
+                                            output_schedule = IterationInterval(1),
+                                            stop_time = Δt,
                                             overwrite = true,
                                             Qᵘ = -1e-4,
                                             Qᵇ = 1e-8,
@@ -70,7 +76,8 @@ z = znodes(Center, observations.grid)
 
 colorcycle = [:black, :red, :blue, :orange, :pink]
 
-for i = 1:length(observations.times)
+#for i = 1:length(observations.times)
+i = 2
     b = observations.field_time_serieses.b[i]
     e = observations.field_time_serieses.e[i]
     u = observations.field_time_serieses.u[i]
@@ -85,14 +92,15 @@ for i = 1:length(observations.times)
     lines!(ax_u, 1e2 * interior(u)[1, 1, :], z; linestyle=:solid, color=colorcycle[i], label=u_label)
     lines!(ax_u, 1e2 * interior(v)[1, 1, :], z; linestyle=:dash, color=colorcycle[i], label=v_label)
     lines!(ax_e, 1e4 * interior(e)[1, 1, :], z; label, color=colorcycle[i])
-end
+#end
 
 axislegend(ax_b, position=:rb)
 axislegend(ax_u, position=:lb, merge=true)
 axislegend(ax_e, position=:rb)
 
-##display(fig)
+display(fig)
 
+#=
 save("synthetic_catke_observations.svg", fig); nothing # hide
 
 # ![](synthetic_catke_observations.svg)
@@ -109,9 +117,9 @@ ensemble_simulation, closure★ = build_ensemble_simulation(observations, archit
 
 # We choose to calibrate a subset of the CATKE parameters,
 
-priors = (Cᴬu = lognormal(mean=0.05, std=0.05),
-          Cᴬc = lognormal(mean=0.8,  std=0.1),
-          Cᴬe = lognormal(mean=0.1,  std=0.05))
+priors = (Cᴬu = lognormal(mean=0.5, std=0.1),
+          Cᴬc = lognormal(mean=0.5, std=0.1),
+          Cᴬe = lognormal(mean=0.5, std=0.1))
 
 free_parameters = FreeParameters(priors)
 
@@ -304,3 +312,4 @@ save("perfect_catke_calibration_parameter_distributions.svg", fig); nothing # hi
 # Hint: if using a REPL or notebook, try
 # `using Pkg; Pkg.add("ElectronDisplay"); using ElectronDisplay; display(fig)`
 # To see the figure in a window.
+=#

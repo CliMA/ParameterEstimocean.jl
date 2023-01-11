@@ -99,12 +99,12 @@ N² .= observations.metadata.parameters.N²_deep
 # We identify a subset of the closure parameters to calibrate by specifying
 # parameter names and prior distributions:
 
-priors = (ν₀   = lognormal(mean=0.01, std=0.005),
-          κ₀   = lognormal(mean=0.1,  std=0.05),
-          Ri₀ν = Normal(-0.5, 1.0),
-          Ri₀κ = Normal(-0.5, 1.0),
-          Riᵟν = lognormal(mean=1.0,  std=0.5),
-          Riᵟκ = lognormal(mean=1.0,  std=0.5))
+priors = (ν₀  = lognormal(mean=0.01, std=0.005),
+          κ₀  = lognormal(mean=0.1,  std=0.05),
+          κᶜ  = lognormal(mean=0.1,  std=0.05),
+          Cᵉ  = lognormal(mean=0.1,  std=0.05),
+          Ri₀ = Normal(-0.5, 1.0),
+          Riᵟ = Normal(-0.5, 1.0))
 
 free_parameters = FreeParameters(priors)
 

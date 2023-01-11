@@ -124,7 +124,6 @@ struct SpaceIndices{X, Y, Z}
     z :: Z
 end
 
-
 function SpaceIndices(; x=:, y=:, z=:)
     x isa Colon || throw(ArgumentError("Cannot transform in x because x is reserved for the ensemble dimension."))
     x = int_to_range(x)

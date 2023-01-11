@@ -8,6 +8,8 @@ export
     SyntheticObservations,
     BatchedSyntheticObservations,
     InverseProblem,
+    DistributedInverseProblem,
+    BatchedInverseProblem,
     FreeParameters,
     Transformation,
     SpaceIndices,
@@ -30,6 +32,7 @@ export
     EnsembleKalmanInversion,
     Resampler,
     NormExceedsMedian,
+    ObjectiveLossThreshold,
     FullEnsembleDistribution,
     SuccessfulEnsembleDistribution,
     ConstantConvergence
