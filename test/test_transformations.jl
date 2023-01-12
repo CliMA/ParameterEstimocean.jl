@@ -50,7 +50,7 @@ using Statistics
     sliced_raw_observations = reshape(sliced_raw_observations, (ny * nz, 1))
 
     # normalize
-    μ, σ =  mean(sliced_raw_observations), sqrt(cov(sliced_raw_observations; corrected=false))
+    μ, σ =  mean(sliced_raw_observations), sqrt(cov(sliced_raw_observations; corrected=true))
     @. sliced_raw_observations = (sliced_raw_observations - μ) / σ
 
     @test parent(observation_map(map, observations)) ≈ parent(sliced_raw_observations)
