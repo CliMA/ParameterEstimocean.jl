@@ -540,6 +540,7 @@ Closure(ClosureSubModel(12, 2), 3)
 ```
 """
 closure_with_parameters(closure, parameters) = construct_object(dict_properties(closure), parameters)
+closure_with_parameters(closure, ::Nothing) = nothing
 
 closure_with_parameters(closure::AbstractTurbulenceClosure{ExplicitTimeDiscretization}, parameters) =
     construct_object(dict_properties(closure), parameters, type_parameters=nothing)
@@ -601,6 +602,8 @@ end
 new_closure_ensemble(closures::Tuple, parameter_ensemble, arch) = 
     Tuple(new_closure_ensemble(closure, parameter_ensemble, arch) for closure in closures)
 
+# Don't change closure if parameters=nothing
+new_closure_ensemble(closure::Union{Tuple, AbstractArray}, ::Nothing, arch) = closure
 new_closure_ensemble(closure, parameter_ensemble, arch) = closure
 
 end # module

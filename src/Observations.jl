@@ -8,7 +8,7 @@ using Oceananigans
 using Oceananigans.Fields
 using Oceananigans.Architectures
 
-using Oceananigans: fields
+using Oceananigans: prognostic_fields
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
 using Oceananigans.Grids: pop_flat_elements, topology, halo_size, on_architecture
@@ -306,8 +306,8 @@ function column_ensemble_interior(batch::BatchedSyntheticObservations,
 end
 
 function set!(model, obs::SyntheticObservations, time_index=1)
-    for field_name in keys(fields(model))
-        model_field = fields(model)[field_name]
+    for field_name in keys(prognostic_fields(model))
+        model_field = prognostic_fields(model)[field_name]
 
         if field_name ∈ keys(obs.field_time_serieses)
             obs_field = obs.field_time_serieses[field_name][time_index]
@@ -323,8 +323,8 @@ function set!(model, obs::SyntheticObservations, time_index=1)
 end
 
 function set!(model, observations::BatchedSyntheticObservations, time_index=1)
-    for field_name in keys(fields(model))
-        model_field = fields(model)[field_name]
+    for field_name in keys(prognostic_fields(model))
+        model_field = prognostic_fields(model)[field_name]
         model_field_size = size(model_field)
         Nensemble = model.grid.Nx
 
