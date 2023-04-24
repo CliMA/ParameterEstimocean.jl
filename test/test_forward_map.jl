@@ -7,6 +7,7 @@ using Oceananigans.Units
 using Oceananigans.Grids: halo_size
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
+using Oceananigans: prognostic_fields
 
 using ParameterEstimocean.Observations: FieldTimeSeriesCollector, initialize_forward_run!, observation_times
 using ParameterEstimocean.InverseProblems: transpose_model_output, forward_run!, drop_y_dimension
@@ -93,7 +94,7 @@ end
         @info "  Testing initialize_forward_run!..."
         random_initial_condition(x, y, z) = rand()
 
-        for field in fields(test_simulation.model)
+        for field in prognostic_fields(test_simulation.model)
             set!(field, random_initial_condition)
         end
 
