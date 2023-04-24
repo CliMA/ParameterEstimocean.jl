@@ -643,9 +643,7 @@ version = "1.2.0"
 
 [[deps.Oceananigans]]
 deps = ["Adapt", "CUDA", "Crayons", "CubedSphere", "Dates", "DocStringExtensions", "FFTW", "Glob", "IncompleteLU", "InteractiveUtils", "IterativeSolvers", "JLD2", "KernelAbstractions", "LinearAlgebra", "Logging", "MPI", "NCDatasets", "OffsetArrays", "OrderedCollections", "PencilArrays", "PencilFFTs", "Pkg", "Printf", "Random", "Rotations", "SeawaterPolynomials", "SparseArrays", "Statistics", "StructArrays"]
-git-tree-sha1 = "a04872d382dcc53b060a982c9ea5e276da33e5a5"
-repo-rev = "glw/max-mixing-length"
-repo-url = "https://github.com/CliMA/Oceananigans.jl.git"
+path = "/Users/gregorywagner/Projects/Oceananigans.jl"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
 version = "0.81.0"
 
