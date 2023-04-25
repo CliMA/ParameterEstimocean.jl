@@ -72,7 +72,7 @@ ax_b = Axis(fig[1, 1], xlabel = "Buoyancy\n[10⁻⁴ m s⁻²]", ylabel = "z [m]
 ax_u = Axis(fig[1, 2], xlabel = "Velocities\n[cm s⁻¹]")
 ax_e = Axis(fig[1, 3], xlabel = "Turbulent kinetic energy\n[cm² s⁻²]")
 
-z = znodes(Center, observations.grid)
+z = znodes(observations.grid, Center())
 
 colorcycle = [:black, :red, :blue, :orange, :pink]
 

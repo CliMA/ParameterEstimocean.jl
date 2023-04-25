@@ -112,7 +112,7 @@ fig = Figure()
 ax_b = Axis(fig[1, 1], xlabel = "Buoyancy [m s⁻²]", ylabel = "z [m]")
 ax_u = Axis(fig[1, 2], xlabel = "Velocities [m s⁻¹]", ylabel = "z [m]")
 
-z = znodes(Center, observations.grid)
+z = znodes(observations.grid, Center())
 
 colorcycle = [:black, :red, :blue, :orange, :pink]
 
