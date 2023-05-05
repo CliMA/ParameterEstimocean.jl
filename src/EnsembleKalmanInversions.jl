@@ -156,8 +156,6 @@ Keyword Arguments
 
 - `tikhonov`: Whether to incorporate prior information in the EKI objective via Tikhonov regularization.
   See Chada et al. "Tikhonov Regularization Within Ensemble Kalman Inversion." SIAM J. Numer. Anal. 2020.
-
-
 """
 function EnsembleKalmanInversion(inverse_problem;
                                  noise_covariance = 1,
@@ -546,6 +544,9 @@ function step_parameters(eki::EnsembleKalmanInversion, pseudo_stepping;
         sampled_Xⁿ⁺¹ = rand(new_X_distribution, length(failures))
         Xⁿ⁺¹[:, failures] .= sampled_Xⁿ⁺¹
     end
+
+    intro = @sprintf("Particles stepped adaptively. Iteration: %d, pseudotime: %.3e, pseudostep: %.3e",
+                     eki.iteration, eki.pseudotime, Δt)
 
     return Xⁿ⁺¹, Δt
 end

@@ -70,7 +70,7 @@ function resample!(resampler::Resampler, X, G, eki)
             failed_parameters_message = string("               ",  param_str.(keys(priors))..., '\n',
                                                (failed_particle_str(θ, k) for k in failures)...)
 
-            @warn("""
+            @info("""
                   The forward map for $Nfailures $particles ($(100failed_fraction)%) failed.
                   The failed particles are:
                   $failed_parameters_message
@@ -100,9 +100,10 @@ function resample!(resampler::Resampler, X, G, eki)
             replace_columns = Colon()
         end
 
+        @info "Searching for $Nsample successful particles..."
         found_X, found_G = find_successful_particles(eki, X, G, Nsample)
 
-        @info "Replacing columns $replace_columns (failed fraction: $failed_fraction)..."
+        @info "Replacing columns $replace_columns (failed fraction: $failed_fraction)."
         view(X, :, replace_columns) .= found_X
         view(G, :, replace_columns) .= found_G
 
