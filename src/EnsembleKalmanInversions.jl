@@ -521,10 +521,6 @@ function step_parameters(eki::EnsembleKalmanInversion, pseudo_stepping;
     successes = findall(.!particle_failure)
     some_failures = length(failures) > 0
 
-    some_failures && @info string(length(failures), " particles failed. ",
-                                  "Performing ensemble update with statistics from ",
-                                  length(successes), " successful particles.")
-
     successful_Gⁿ = Gⁿ[:, successes]
     successful_Xⁿ = Xⁿ[:, successes]
 
@@ -544,9 +540,15 @@ function step_parameters(eki::EnsembleKalmanInversion, pseudo_stepping;
         sampled_Xⁿ⁺¹ = rand(new_X_distribution, length(failures))
         Xⁿ⁺¹[:, failures] .= sampled_Xⁿ⁺¹
     end
+    
+    msg = @sprintf("Particles stepped adaptively. Iteration: %d, pseudotime: %.3e, pseudostep: %.3e",
+                   eki.iteration, eki.pseudotime, Δt)
 
-    intro = @sprintf("Particles stepped adaptively. Iteration: %d, pseudotime: %.3e, pseudostep: %.3e",
-                     eki.iteration, eki.pseudotime, Δt)
+    if some_failures
+        msg *= string(" (", length(failures), " failed, ", length(successes), " successful particles)")
+    end
+
+    @info msg
 
     return Xⁿ⁺¹, Δt
 end
