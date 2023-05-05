@@ -521,7 +521,7 @@ function step_parameters(eki::EnsembleKalmanInversion, pseudo_stepping;
     successes = findall(.!particle_failure)
     some_failures = length(failures) > 0
 
-    some_failures && @warn string(length(failures), " particles failed. ",
+    some_failures && @info string(length(failures), " particles failed. ",
                                   "Performing ensemble update with statistics from ",
                                   length(successes), " successful particles.")
 
