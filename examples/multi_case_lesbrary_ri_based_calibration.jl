@@ -56,7 +56,7 @@ function make_figure_axes(n=1)
 end
 
 function plot_fields!(axs, b, u, v, label, color, grid=first(batch).grid)
-    z = znodes(Center, grid)
+    z = znodes(grid, Center())
     ## Note unit conversions below, eg m s⁻² -> cm s⁻²:
     lines!(axs[1], 1e2 * b, z; color, label)
     lines!(axs[2], 1e2 * u, z; color, label)

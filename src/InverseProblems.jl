@@ -200,7 +200,7 @@ closure_with_parameters(grid, closure, parameter_ensemble) = closure_with_parame
 Initialize `ip.simulation` with `parameter_ensemble` and run it forward. Output is stored
 in `ip.time_series_collector`. `forward_run` can also be called with one parameter set.
 """
-function forward_run!(ip::InverseProblem, maybe_parameter_ensemble)
+function forward_run!(ip::InverseProblem, maybe_parameter_ensemble=nothing)
     # Ensure there are enough parameters for ensemble members in the simulation
     parameter_ensemble = expand_parameter_ensemble(ip, maybe_parameter_ensemble)
     _forward_run!(ip, parameter_ensemble, ip.simulation, ip.time_series_collector)
@@ -354,13 +354,20 @@ Base.length(batch::BatchedInverseProblem) = length(batch.batch)
 Nensemble(batched_ip::BatchedInverseProblem) = Nensemble(first(batched_ip.batch))
 
 function collect_forward_maps_asynchronously!(outputs, batched_ip, parameters; kw...)
-    asyncmap(1:length(batched_ip), ntasks=10) do n
+    for n = 1:length(batched_ip)
         ip = batched_ip[n]
         forward_map_output = forward_map(ip, parameters; kw...)
         outputs[n] = batched_ip.weights[n] * forward_map_output
     end
 
     return outputs
+end
+
+function forward_map(batched_ip::BatchedInverseProblem, parameters; kw...)
+    outputs = Dict()
+    collect_forward_maps_asynchronously!(outputs, batched_ip, parameters; kw...)
+    vectorized_outputs = [outputs[n] for n = 1:length(batched_ip)]
+    return vcat(vectorized_outputs...)
 end
 
 function forward_run_asynchronously!(batched_ip::BatchedInverseProblem, parameters; kw...)
@@ -371,15 +378,8 @@ function forward_run_asynchronously!(batched_ip::BatchedInverseProblem, paramete
     return nothing
 end
 
-forward_run!(batched_ip::BatchedInverseProblem, parameters; kw...) =
+forward_run!(batched_ip::BatchedInverseProblem, parameters=nothing; kw...) =
     forward_run_asynchronously!(batched_ip, parameters; kw...)
-
-function forward_map(batched_ip::BatchedInverseProblem, parameters; kw...)
-    outputs = Dict()
-    collect_forward_maps_asynchronously!(outputs, batched_ip, parameters; kw...)
-    vectorized_outputs = [outputs[n] for n = 1:length(batched_ip)]
-    return vcat(vectorized_outputs...)
-end
 
 function observation_map(batched_ip::BatchedInverseProblem)
     maps = []
@@ -438,6 +438,7 @@ expand_parameter_ensemble(ip, θ::NamedTuple)       = [θ]
 
 # Convert matrix to vector of vectors
 expand_parameter_ensemble(ip, θ::Matrix) = expand_parameter_ensemble(ip, [θ[:, k] for k = 1:size(θ, 2)])
+expand_parameter_ensemble(ip, ::Nothing) = nothing
 
 """
     observation_map(ip::InverseProblem)
