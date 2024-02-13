@@ -32,7 +32,7 @@ import ..Parameters: closure_with_parameters
 
 using Oceananigans: run!, fields, FieldTimeSeries, CPU
 using Oceananigans.Architectures: architecture
-using Oceananigans.OutputReaders: InMemory
+using Oceananigans.OutputReaders: InMemory, Linear
 using Oceananigans.Fields: interior, location
 using Oceananigans.Utils: prettysummary
 using Oceananigans.Grids: Flat, Bounded,
@@ -572,7 +572,8 @@ function transpose_model_output(collector_grid::SingleColumnGrid, time_series_co
             raw_data = parent(field_time_series.data)
             data = OffsetArray(view(raw_data, :, j:j, :, :), 0, 0, -Hz, 0)
 
-            time_series = FieldTimeSeries{LX, LY, LZ, InMemory}(data, grid, nothing, times, indices)
+            time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, InMemory(), nothing,
+                                                      indices, times, nothing, nothing, Linear())
             time_serieses[name] = time_series
         end
 
