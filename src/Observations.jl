@@ -230,11 +230,11 @@ const not_metadata_names = ("serialized", "timeseries")
 read_group(group::JLD2.Group) = NamedTuple(Symbol(subgroup) => read_group(group[subgroup]) for subgroup in keys(group))
 read_group(group) = group
 
-using Oceananigans.Grids: ZRegRectilinearGrid
+using Oceananigans.Grids: ZRegularRG
 
 function with_size(new_size, old_grid)
 
-    old_grid isa ZRegRectilinearGrid ||
+    old_grid isa ZRegularRG ||
         error("Cannot remake stretched grid \n $old_grid \n with a new size!")
 
     topo = topology(old_grid)
@@ -392,6 +392,8 @@ function FieldTimeSeriesCollector(collected_fields, times;
                                                for name in keys(collected_fields))
         collected_fields = averaged_collected_fields
     end
+
+    times = collect(times)
 
     return FieldTimeSeriesCollector(grid, times, field_time_serieses,
                                     collected_fields, collection_times)
