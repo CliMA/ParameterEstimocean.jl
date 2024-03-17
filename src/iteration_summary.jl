@@ -51,15 +51,21 @@ function eki_objective(eki, θ, G::AbstractVector; constrained = false, augmente
         y = eki.precomputed_arrays[:y_augmented]
         inv_sqrt_Σ = eki.precomputed_arrays[:inv_sqrt_Σ]
         η_mean_augmented = eki.precomputed_arrays[:η_mean_augmented]
-        Φ₁ = (1/2) * norm(inv_sqrt_Σ * (y - G - η_mean_augmented))^2
+        Φ₁ = 1/2 * norm(inv_sqrt_Σ * (y - G - η_mean_augmented))^2
         return (Φ₁, 0)
     end
 
-    # Φ₁ = (1/2)*|| Γy^(-½) * (y - G) ||²
-    Φ₁ = (1/2) * norm(inv_sqrt_Γy * (y .- G))^2
+    # Φ₁ = 1/2 * || Γy^(-½) * (y - G) ||²
+    error = inv_sqrt_Γy * (y - G)
+    Φ₁ = 1/2 * norm(error)^2
 
-    # Φ₂ = (1/2)*|| Γθ^(-½) * (θ - μθ) ||² 
-    Φ₂ = eki.tikhonov ? (1/2) * norm(inv_sqrt_Γθ * (θ .- μθ))^2 : 0
+    # Φ₂ = 1/2 * || Γθ^(-½) * (θ - μθ) ||² 
+    if eki.tikhonov
+        parameter_variance = inv_sqrt_Γθ * (θ - μθ)
+        Φ₂ = 1/2 * norm(parameter_variance)
+    else
+        Φ₂ = 0
+    end
 
     return (Φ₁, Φ₂)
 end
