@@ -75,46 +75,60 @@ function iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ=1.0, perturb_observation=f
     # Scale noise Γy using Δt. 
     Δt⁻¹Γy = Γy / Δtₙ
 
-    y_perturbed = zeros(length(y), N_ens)
-    y_perturbed .= y
+
     if perturb_observation
+        ỹ = zeros(length(y), N_ens)
+        ỹ .= y
+
         Δt⁻¹Γyᴴ = Matrix(Hermitian(Δt⁻¹Γy))
         @assert Δt⁻¹Γyᴴ ≈ Δt⁻¹Γy
+
         ξₙ = rand(MvNormal(μ_noise, Δt⁻¹Γyᴴ), N_ens)
-        y_perturbed .+= ξₙ # [N_obs x N_ens]
+        ỹ .+= ξₙ # [N_obs x N_ens]
+    else
+        ỹ = y
     end
 
     Cᶿᵍ = cov(Xₙ, Gₙ, dims = 2, corrected = false) # [N_par × N_obs]
     Cᵍᵍ = cov(Gₙ, Gₙ, dims = 2, corrected = false) # [N_obs × N_obs]
 
     # EKI update: θ ← θ + Cᶿᵍ(Cᵍᵍ + h⁻¹Γy)⁻¹(y + ξₙ - g)
-    tmp = (Cᵍᵍ + Δt⁻¹Γy) \ (y_perturbed - Gₙ) # [N_obs × N_ens]
+    tmp = (Cᵍᵍ + Δt⁻¹Γy) \ (ỹ - Gₙ) # [N_obs × N_ens]
     Xₙ₊₁ = Xₙ + (Cᶿᵍ * tmp) # [N_par × N_ens]
 
     return Xₙ₊₁
 end
 
-frobenius_norm(A) = sqrt(sum(A .^ 2))
-
 function compute_D(Xₙ, Gₙ, eki)
     y = observations(eki)
-    g̅ = mean(Gₙ, dims = 2)
+    g̅ = mean(Gₙ, dims=2)
     Γy⁻¹ = inv_obs_noise_covariance(eki)
 
     # Transformation matrix (D(uₙ))ᵢⱼ = ⟨ G(u⁽ʲ⁾) - g̅, Γy⁻¹(G(u⁽ⁱ⁾) - y) ⟩
-    D = transpose(Gₙ .- g̅) * Γy⁻¹ * (Gₙ .- y)
+    G′ = Gₙ .- g̅
+
+    N_obs, N_ens = size(Gₙ)
+    y = reshape(y, N_obs, 1)
+    ϵ = Gₙ .- y
+
+    D = transpose(G′) * Γy⁻¹ * ϵ
 
     return D
 end
 
+frobenius_norm(A) = sqrt(sum(A.^2))
+
 function kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀=1.0, D=nothing)
-    N_ens = size(Xₙ, 2)
-    D = isnothing(D) ? compute_D(Xₙ, Gₙ, eki) : D
+
+    if isnothing(D)
+        D = compute_D(Xₙ, Gₙ, eki)
+    end
 
     # Calculate time step Δtₙ₋₁ = Δt₀ / (frobenius_norm(D(uₙ)) + ϵ)
     Δtₙ = Δt₀ / frobenius_norm(D)
 
     # Update
+    N_ens = size(Xₙ, 2)
     Xₙ₊₁ = Xₙ - (Δtₙ / N_ens) * Xₙ * D
 
     return Xₙ₊₁, Δtₙ
@@ -198,7 +212,6 @@ function eki_update(pseudo_scheme::Kovachki2018, Xₙ, Gₙ, eki)
 
     initial_step_size = pseudo_scheme.initial_step_size
     Xₙ₊₁, Δtₙ = kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀=initial_step_size)
-
     
     return Xₙ₊₁, Δtₙ
 end
@@ -317,9 +330,7 @@ function eki_update(pseudo_scheme::ThresholdedConvergenceRatio, Xₙ, Gₙ, eki;
     @assert det_cov_init != 0 "Ensemble covariance is singular!"
 
     while !accept_stepsize
-
         Xₙ₊₁ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
-
         cov_new = cov(Xₙ₊₁, dims = 2)
 
         if det(cov_new) > pseudo_scheme.cov_threshold * det_cov_init

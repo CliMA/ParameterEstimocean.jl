@@ -35,7 +35,7 @@ inv(sqrt(Γ))`.
 When keyword argument `constrained` is provided with `true` then input `θ`
 is assumed to represent constrained parameters.
 """
-function eki_objective(eki, θ, G::AbstractVector; constrained = false, augmented = false)
+function eki_objective(eki, θ, G::AbstractVector; constrained=false, augmented=false)
     y = eki.mapped_observations
     Γy = eki.noise_covariance
     inv_sqrt_Γy = eki.precomputed_arrays[:inv_sqrt_Γy]
@@ -50,19 +50,20 @@ function eki_objective(eki, θ, G::AbstractVector; constrained = false, augmente
     if augmented
         y = eki.precomputed_arrays[:y_augmented]
         inv_sqrt_Σ = eki.precomputed_arrays[:inv_sqrt_Σ]
-        η_mean_augmented = eki.precomputed_arrays[:η_mean_augmented]
-        Φ₁ = 1/2 * norm(inv_sqrt_Σ * (y - G - η_mean_augmented))^2
+        η̃ = eki.precomputed_arrays[:η_mean_augmented]
+        ϵ = inv_sqrt_Σ * (y - G - η̃)
+        Φ₁ = norm(ϵ)^2 / 2
         return (Φ₁, 0)
     end
 
     # Φ₁ = 1/2 * || Γy^(-½) * (y - G) ||²
-    error = inv_sqrt_Γy * (y - G)
-    Φ₁ = 1/2 * norm(error)^2
+    ϵ = inv_sqrt_Γy * (y .- G)
+    Φ₁ = norm(ϵ)^2 / 2
 
     # Φ₂ = 1/2 * || Γθ^(-½) * (θ - μθ) ||² 
     if eki.tikhonov
-        parameter_variance = inv_sqrt_Γθ * (θ - μθ)
-        Φ₂ = 1/2 * norm(parameter_variance)
+        χ = inv_sqrt_Γθ * (θ .- μθ)
+        Φ₂ = norm(χ)^2 / 2
     else
         Φ₂ = 0
     end
