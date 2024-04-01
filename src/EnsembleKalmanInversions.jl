@@ -300,14 +300,12 @@ function iterate!(eki::EnsembleKalmanInversion;
     iterator = show_progress ? ProgressBar(1:iterations) : 1:iterations
 
     for _ in iterator
-        pseudo_step!(eki; kwargs...)
+        pseudo_step!(eki; pseudo_Δt, pseudo_stepping, kwargs...)
 
         # Forward map
         eki.forward_map_output = resampling_forward_map!(eki)
         summary = IterationSummary(eki, eki.unconstrained_parameters, eki.forward_map_output)
         push!(eki.iteration_summaries, summary)
-
-        ensemble_mean = eki.iteration_summaries[end].ensemble_mean
     end
 
     # Return ensemble mean (best guess for optimal parameters)
@@ -324,8 +322,8 @@ end
 
 """
     pseudo_step!(eki::EnsembleKalmanInversion; 
-                 pseudo_Δt = nothing,
-                 pseudo_stepping = nothing,
+                 pseudo_Δt = eki.pseudo_Δt,
+                 pseudo_stepping = eki.pseudo_stepping,
                  covariance_inflation = 0.0,
                  momentum_parameter = 0.0)
 
@@ -335,28 +333,28 @@ Step forward `X = eki.unconstrained_parameters` using `y = eki.mapped_observatio
 Keyword arguments
 =================
 
-- `pseudo_Δt` (`Float64` or `Nothing`): Pseudo time-step. If `pseudo_Δt` is `nothing`, the time step 
-                        is set according to the algorithm specified by the `pseudo_stepping` scheme; 
-                        If `pseudo_Δt` is a `Float64`, `pseudo_stepping` is ignored. 
-                        (Default: `nothing`)
+- `pseudo_Δt` (`Float64`): Pseudo time-step used in the case that `pseudo_stepping` is `nothing`. 
+                        If `pseudo_stepping` is not `nothing`, the time step 
+                        is set according to the algorithm specified by the `pseudo_stepping` scheme.
+                        (Default: `eki.pseudo_Δt`)
 
-- `pseudo_stepping` (`Float64`): Scheme for selecting a time step if `pseudo_Δt` is `nothing`.
-                                 (Default: `eki.pseudo_stepping`)
-- `covariance_inflation`: (Default: 0.)
+- `pseudo_stepping` (`AbstractSteppingScheme` or `nothing`): Scheme for selecting a time step. 
+                    If `nothing`, the pseudo time step is set to `pseudo_Δt`
+                    (Default: `eki.pseudo_stepping`)
 
-- `momentum_parameter`: (Default: 0.)
+- `covariance_inflation`: Proportion by which to push each particle away from the ensemble mean
+                    following the EKI update. (Default: 0.)
+
+- `momentum_parameter`: Proportion of distance traveled by which to "overshoot" each particle's intented 
+                    destination. (Default: 0.)
 """
 function pseudo_step!(eki::EnsembleKalmanInversion; 
-                      pseudo_Δt = nothing,
-                      pseudo_stepping = nothing,
+                      pseudo_Δt = eki.pseudo_Δt,
+                      pseudo_stepping = eki.pseudo_stepping,
                       covariance_inflation = 0.0,
                       momentum_parameter = 0.0)
 
-    if isnothing(pseudo_Δt)
-        pseudo_Δt = eki.pseudo_Δt
-        pseudo_stepping = eki.pseudo_stepping
-    end
-
+    # `pseudo_Δt` takes precedence over `pseudo_stepping` iff `pseudo_stepping == nothing`
     eki.unconstrained_parameters, adaptive_Δt = step_parameters(eki, pseudo_stepping; 
                                                                 Δt = pseudo_Δt,
                                                                 covariance_inflation,
