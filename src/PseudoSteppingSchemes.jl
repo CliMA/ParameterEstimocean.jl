@@ -75,46 +75,60 @@ function iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ=1.0, perturb_observation=f
     # Scale noise Γy using Δt. 
     Δt⁻¹Γy = Γy / Δtₙ
 
-    y_perturbed = zeros(length(y), N_ens)
-    y_perturbed .= y
+
     if perturb_observation
+        ỹ = zeros(length(y), N_ens)
+        ỹ .= y
+
         Δt⁻¹Γyᴴ = Matrix(Hermitian(Δt⁻¹Γy))
         @assert Δt⁻¹Γyᴴ ≈ Δt⁻¹Γy
+
         ξₙ = rand(MvNormal(μ_noise, Δt⁻¹Γyᴴ), N_ens)
-        y_perturbed .+= ξₙ # [N_obs x N_ens]
+        ỹ .+= ξₙ # [N_obs x N_ens]
+    else
+        ỹ = y
     end
 
     Cᶿᵍ = cov(Xₙ, Gₙ, dims = 2, corrected = false) # [N_par × N_obs]
     Cᵍᵍ = cov(Gₙ, Gₙ, dims = 2, corrected = false) # [N_obs × N_obs]
 
     # EKI update: θ ← θ + Cᶿᵍ(Cᵍᵍ + h⁻¹Γy)⁻¹(y + ξₙ - g)
-    tmp = (Cᵍᵍ + Δt⁻¹Γy) \ (y_perturbed - Gₙ) # [N_obs × N_ens]
+    tmp = (Cᵍᵍ + Δt⁻¹Γy) \ (ỹ - Gₙ) # [N_obs × N_ens]
     Xₙ₊₁ = Xₙ + (Cᶿᵍ * tmp) # [N_par × N_ens]
 
     return Xₙ₊₁
 end
 
-frobenius_norm(A) = sqrt(sum(A .^ 2))
-
 function compute_D(Xₙ, Gₙ, eki)
     y = observations(eki)
-    g̅ = mean(Gₙ, dims = 2)
+    g̅ = mean(Gₙ, dims=2)
     Γy⁻¹ = inv_obs_noise_covariance(eki)
 
     # Transformation matrix (D(uₙ))ᵢⱼ = ⟨ G(u⁽ʲ⁾) - g̅, Γy⁻¹(G(u⁽ⁱ⁾) - y) ⟩
-    D = transpose(Gₙ .- g̅) * Γy⁻¹ * (Gₙ .- y)
+    G′ = Gₙ .- g̅
+
+    N_obs, N_ens = size(Gₙ)
+    y = reshape(y, N_obs, 1)
+    ϵ = Gₙ .- y
+
+    D = transpose(G′) * Γy⁻¹ * ϵ
 
     return D
 end
 
+frobenius_norm(A) = sqrt(sum(A.^2))
+
 function kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀=1.0, D=nothing)
-    N_ens = size(Xₙ, 2)
-    D = isnothing(D) ? compute_D(Xₙ, Gₙ, eki) : D
+
+    if isnothing(D)
+        D = compute_D(Xₙ, Gₙ, eki)
+    end
 
     # Calculate time step Δtₙ₋₁ = Δt₀ / (frobenius_norm(D(uₙ)) + ϵ)
     Δtₙ = Δt₀ / frobenius_norm(D)
 
     # Update
+    N_ens = size(Xₙ, 2)
     Xₙ₊₁ = Xₙ - (Δtₙ / N_ens) * Xₙ * D
 
     return Xₙ₊₁, Δtₙ
@@ -185,7 +199,6 @@ Implement an EKI update with a fixed time step given by `pseudo_scheme.step_size
 function eki_update(pseudo_scheme::ConstantPseudoTimeStep, Xₙ, Gₙ, eki)
     Δtₙ = pseudo_scheme.step_size
     Xₙ₊₁ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
-    @info "Particles stepped with time step $Δtₙ"
     return Xₙ₊₁, Δtₙ
 end
 
@@ -199,13 +212,7 @@ function eki_update(pseudo_scheme::Kovachki2018, Xₙ, Gₙ, eki)
 
     initial_step_size = pseudo_scheme.initial_step_size
     Xₙ₊₁, Δtₙ = kovachki_2018_update(Xₙ, Gₙ, eki; Δt₀=initial_step_size)
-
-    intro =          "Particles stepped adaptively with the Kovachki2018 pseudo-stepping scheme."
-    info1 = @sprintf("    ├─ iteration:   %d", eki.iteration)
-    info2 = @sprintf("    ├─ pseudo time: %.3e", eki.pseudotime)
-    info3 = @sprintf("    └─ pseudo step: %.3e", Δtₙ)
-    @info string(intro, '\n', info1, '\n', info2, '\n', info3)
-
+    
     return Xₙ₊₁, Δtₙ
 end
 
@@ -272,8 +279,6 @@ function eki_update(pseudo_scheme::Kovachki2018InitialConvergenceRatio, Xₙ, G�
 
         pseudo_scheme.initial_step_size = Δt₀
 
-        @info "Particles stepped adaptively with time step $Δtₙ and convergence ratio $r (target $target)."
-
         return Xₙ₊₁, Δtₙ
     
     else
@@ -293,8 +298,6 @@ function eki_update(pseudo_scheme::Chada2021, Xₙ, Gₙ, eki)
     initial_step_size = pseudo_scheme.initial_step_size
     Δtₙ = ((n+1) ^ pseudo_scheme.β) * initial_step_size
     Xₙ₊₁ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
-
-    @info "Particles stepped adaptively with time step $Δtₙ"
 
     return Xₙ₊₁, Δtₙ
 end
@@ -327,9 +330,7 @@ function eki_update(pseudo_scheme::ThresholdedConvergenceRatio, Xₙ, Gₙ, eki;
     @assert det_cov_init != 0 "Ensemble covariance is singular!"
 
     while !accept_stepsize
-
         Xₙ₊₁ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
-
         cov_new = cov(Xₙ₊₁, dims = 2)
 
         if det(cov_new) > pseudo_scheme.cov_threshold * det_cov_init
@@ -340,8 +341,6 @@ function eki_update(pseudo_scheme::ThresholdedConvergenceRatio, Xₙ, Gₙ, eki;
     end
 
     Xₙ₊₁ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
-
-    report && @info "Particles stepped adaptively with time step $Δtₙ"
 
     return Xₙ₊₁, Δtₙ
 end
@@ -393,9 +392,8 @@ function trained_gp_predict_function(X, y; standardize_X=true, zscore_limit=noth
         if n_pruned > 0
             percent_pruned = round((100n_pruned / length(y)); sigdigits=3)
 
-
             @info "Pruned $n_pruned GP training points ($percent_pruned%) corresponding to outputs 
-                outside $zscore_limit standard deviations from the mean."
+                   outside $zscore_limit standard deviations from the mean."
         end
     end
 
@@ -497,13 +495,7 @@ function eki_update(pseudo_scheme::ConstantConvergence, Xₙ, Gₙ, eki)
         iter += 1
     end
 
-    # A nice message
-    intro_str       =          "Pseudo time step found for ConstantConvergence pseudo-stepping."
-    convergence_str = @sprintf("    ├─ convergence ratio: %.6f (target: %.2f)", r, conv_rate)
-    iteration_str   = @sprintf("    ├─ iteration:   %d", eki.iteration)
-    time_str        = @sprintf("    ├─ pseudo time: %.3e", eki.pseudotime)
-    time_step_str   = @sprintf("    └─ pseudo step: %.3e", Δtₙ)
-    @info string(intro_str, '\n', convergence_str, '\n', iteration_str, '\n', time_str, '\n', time_step_str)
+    @info @sprintf("ConstantConvergence pseudo stepping: convergence ratio: %.6f (target: %.2f)", r, conv_rate)
 
     return Xₙ₊₁, Δtₙ
 end
@@ -528,8 +520,6 @@ function eki_update(pseudo_scheme::Iglesias2021, Xₙ, Gₙ, eki)
 
     Δtₙ = minimum([qₙ, 1-tₙ])
     Xₙ₊₁ = iglesias_2013_update(Xₙ, Gₙ, eki; Δtₙ)
-
-    @info "Pseudo time step $Δtₙ found for Iglesias2021 pseudo-stepping."
 
     return Xₙ₊₁, Δtₙ
 end

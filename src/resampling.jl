@@ -56,7 +56,8 @@ function resample!(resampler::Resampler, X, G, eki)
     particle_failure = eki.mark_failed_particles(X, G, eki)
     failures = findall(particle_failure) # indices of failed particles
     Nfailures = length(failures)
-    failed_fraction = Nfailures / size(X, 2)
+    Nens = size(X, 2)
+    failed_fraction = Nfailures / Nens
 
     if failed_fraction > 0
         # Print a nice message
@@ -64,14 +65,17 @@ function resample!(resampler::Resampler, X, G, eki)
 
         priors = eki.inverse_problem.free_parameters.priors
         θ = transform_to_constrained(priors, X)
-        failed_parameters_message = string("               ",  param_str.(keys(priors))..., '\n',
-                                           (failed_particle_str(θ, k) for k in failures)...)
 
-        @warn("""
-              The forward map for $Nfailures $particles ($(100failed_fraction)%) failed.
-              The failed particles are:
-              $failed_parameters_message
-              """)
+        if resampler.verbose
+            failed_parameters_message = string("               ",  param_str.(keys(priors))..., '\n',
+                                               (failed_particle_str(θ, k) for k in failures)...)
+
+            @info("""
+                  The forward map for $Nfailures $particles ($(100failed_fraction)%) failed.
+                  The failed particles are:
+                  $failed_parameters_message
+                  """)
+        end
     end
 
     if failed_fraction > resampler.acceptable_failure_fraction
@@ -86,17 +90,20 @@ function resample!(resampler::Resampler, X, G, eki)
         # We are resampling!
 
         if resampler.only_failed_particles
-            Nsample = Nfailures
-            replace_columns = failures
+            Nneed = ceil(Int, (1 - resampler.resample_failure_fraction) * Nens)
+            Nsuccesses = Nens - Nfailures
+            Nsample = Nneed - Nsuccesses
+            replace_columns = failures[1:Nsample]
 
         else # resample everything
             Nsample = size(G, 2)
             replace_columns = Colon()
         end
 
+        @info "Searching for $Nsample successful particles..."
         found_X, found_G = find_successful_particles(eki, X, G, Nsample)
 
-        @info "Replacing columns $replace_columns (failed fraction: $failed_fraction)..."
+        @info "Replacing columns $replace_columns (failed fraction: $failed_fraction)."
         view(X, :, replace_columns) .= found_X
         view(G, :, replace_columns) .= found_G
 
@@ -155,7 +162,6 @@ function find_successful_particles(eki, X, G, Nsample)
         # Note that eki.inverse_problem.simulation
         # must run `Nensemble` particles no matter what.
         X_sample = rand(existing_sample_distribution, Nensemble)
-
         G_sample = inverting_forward_map(eki.inverse_problem, X_sample)
 
         particle_failure = mark_failed_particles(X_sample, G_sample, eki)

@@ -73,9 +73,9 @@ using ParameterEstimocean.Parameters: unconstrained_prior, transform_to_constrai
         Qᵇ .= observations.metadata.parameters.buoyancy_flux
         N² .= observations.metadata.parameters.N²_deep
 
-        Cᴷc⁻_default = catke.mixing_length.Cᴷc⁻
+        C⁻c_default = catke.mixing_length.C⁻c
 
-        priors = (; Cᴷc⁻ = lognormal(mean=Cᴷc⁻_default, std=Cᴷc⁻_default/100))
+        priors = (; C⁻c = lognormal(mean=C⁻c_default, std=C⁻c_default/100))
 
         free_parameters = FreeParameters(priors)
         calibration = InverseProblem(observations, simulation, free_parameters)

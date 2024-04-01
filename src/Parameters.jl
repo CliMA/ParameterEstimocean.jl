@@ -2,7 +2,7 @@ module Parameters
 
 export FreeParameters, lognormal, ScaledLogitNormal
 
-using Oceananigans.Architectures: CPU, arch_array, architecture
+using Oceananigans.Architectures: CPU, on_architecture, architecture
 using Oceananigans.Utils: prettysummary
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, ScalarDiffusivity
 using Oceananigans.TurbulenceClosures: AbstractTimeDiscretization, ExplicitTimeDiscretization
@@ -540,6 +540,7 @@ Closure(ClosureSubModel(12, 2), 3)
 ```
 """
 closure_with_parameters(closure, parameters) = construct_object(dict_properties(closure), parameters)
+closure_with_parameters(closure, ::Nothing) = nothing
 
 closure_with_parameters(closure::AbstractTurbulenceClosure{ExplicitTimeDiscretization}, parameters) =
     construct_object(dict_properties(closure), parameters, type_parameters=nothing)
@@ -589,18 +590,20 @@ the parameters for the any closure that is of type `AbstractArray`. The `arch`it
 (`CPU()` or `GPU()`) defines whethere `Array` or `CuArray` is returned.
 """
 function new_closure_ensemble(closures::AbstractArray, parameter_ensemble, arch)
-    cpu_closures = arch_array(CPU(), closures)
+    cpu_closures = on_architecture(CPU(), closures)
 
     for (k, θₖ) in enumerate(parameter_ensemble)
         update_closure_ensemble_member!(cpu_closures, k, θₖ)
     end
 
-    return arch_array(arch, cpu_closures)
+    return on_architecture(arch, cpu_closures)
 end
 
 new_closure_ensemble(closures::Tuple, parameter_ensemble, arch) = 
     Tuple(new_closure_ensemble(closure, parameter_ensemble, arch) for closure in closures)
 
+# Don't change closure if parameters=nothing
+new_closure_ensemble(closure::Union{Tuple, AbstractArray}, ::Nothing, arch) = closure
 new_closure_ensemble(closure, parameter_ensemble, arch) = closure
 
 end # module

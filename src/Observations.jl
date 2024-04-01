@@ -8,14 +8,14 @@ using Oceananigans
 using Oceananigans.Fields
 using Oceananigans.Architectures
 
-using Oceananigans: fields
+using Oceananigans: prognostic_fields
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
 using Oceananigans.Grids: pop_flat_elements, topology, halo_size, on_architecture
 using Oceananigans.TimeSteppers: update_state!, reset!
 using Oceananigans.Fields: indices
 using Oceananigans.Utils: SpecifiedTimes, prettytime
-using Oceananigans.Architectures: arch_array, architecture
+using Oceananigans.Architectures: on_architecture, architecture
 using Oceananigans.OutputWriters: WindowedTimeAverage, AveragedSpecifiedTimes
 
 using JLD2
@@ -230,11 +230,11 @@ const not_metadata_names = ("serialized", "timeseries")
 read_group(group::JLD2.Group) = NamedTuple(Symbol(subgroup) => read_group(group[subgroup]) for subgroup in keys(group))
 read_group(group) = group
 
-using Oceananigans.Grids: ZRegRectilinearGrid
+using Oceananigans.Grids: ZRegularRG
 
 function with_size(new_size, old_grid)
 
-    old_grid isa ZRegRectilinearGrid ||
+    old_grid isa ZRegularRG ||
         error("Cannot remake stretched grid \n $old_grid \n with a new size!")
 
     topo = topology(old_grid)
@@ -306,8 +306,8 @@ function column_ensemble_interior(batch::BatchedSyntheticObservations,
 end
 
 function set!(model, obs::SyntheticObservations, time_index=1)
-    for field_name in keys(fields(model))
-        model_field = fields(model)[field_name]
+    for field_name in keys(prognostic_fields(model))
+        model_field = prognostic_fields(model)[field_name]
 
         if field_name ∈ keys(obs.field_time_serieses)
             obs_field = obs.field_time_serieses[field_name][time_index]
@@ -323,15 +323,15 @@ function set!(model, obs::SyntheticObservations, time_index=1)
 end
 
 function set!(model, observations::BatchedSyntheticObservations, time_index=1)
-    for field_name in keys(fields(model))
-        model_field = fields(model)[field_name]
+    for field_name in keys(prognostic_fields(model))
+        model_field = prognostic_fields(model)[field_name]
         model_field_size = size(model_field)
         Nensemble = model.grid.Nx
 
         observations_data = column_ensemble_interior(observations, field_name, time_index, model_field_size)
     
         # Reshape `observations_data` to the size of `model_field`'s interior
-        reshaped_data = arch_array(architecture(model_field), reshape(observations_data, size(model_field)))
+        reshaped_data = on_architecture(architecture(model_field), reshape(observations_data, size(model_field)))
     
         # Sets the interior of field `model_field` to values of `reshaped_data`
         model_field .= reshaped_data
@@ -393,6 +393,8 @@ function FieldTimeSeriesCollector(collected_fields, times;
         collected_fields = averaged_collected_fields
     end
 
+    times = collect(times)
+
     return FieldTimeSeriesCollector(grid, times, field_time_serieses,
                                     collected_fields, collection_times)
 end
@@ -415,7 +417,7 @@ function (collector::FieldTimeSeriesCollector)(simulation)
         field_time_series = collector.field_time_serieses[field_name]
         if architecture(collector.grid) != architecture(simulation.model.grid)
             arch = architecture(collector.grid)
-            device_collected_field_data = arch_array(arch, parent(collector.collected_fields[field_name]))
+            device_collected_field_data = on_architecture(arch, parent(collector.collected_fields[field_name]))
             parent(field_time_series[time_index]) .= device_collected_field_data
         else
             set!(field_time_series[time_index], collector.collected_fields[field_name])

@@ -9,12 +9,13 @@ using ..Observations: SyntheticObservations, batch, tupleit
 
 using Oceananigans
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
-using Oceananigans.Architectures: arch_array
+using Oceananigans.Architectures: on_architecture
 
 function ensemble_column_model_simulation(observations;
                                           closure,
                                           Nensemble,
                                           Δt = 1.0,
+                                          verbose = true,
                                           architecture = CPU(),
                                           tracers = :b,
                                           buoyancy = BuoyancyTracer(),
@@ -39,10 +40,10 @@ function ensemble_column_model_simulation(observations;
                            z = (-Lz, 0))
 
     coriolis_ensemble = [FPlane(f=observations[j].metadata.coriolis.f) for i = 1:Nensemble, j=1:Nbatch]
-    coriolis_ensemble = arch_array(architecture, coriolis_ensemble)
+    coriolis_ensemble = on_architecture(architecture, coriolis_ensemble)
 
     closure_ensemble = [deepcopy(closure) for i = 1:Nensemble, j=1:Nbatch]
-    closure_ensemble = arch_array(architecture, closure_ensemble)
+    closure_ensemble = on_architecture(architecture, closure_ensemble)
 
     if isnothing(non_ensemble_closure)
         closure = closure_ensemble
@@ -66,7 +67,7 @@ function ensemble_column_model_simulation(observations;
                                                  coriolis = coriolis_ensemble,
                                                  kwargs...)
 
-    ensemble_simulation = Simulation(ensemble_model; Δt, stop_time=first(observations).times[end])
+    ensemble_simulation = Simulation(ensemble_model; Δt, verbose, stop_time=first(observations).times[end])
 
     return ensemble_simulation
 end
