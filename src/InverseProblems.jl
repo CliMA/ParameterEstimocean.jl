@@ -30,8 +30,8 @@ using ..Observations:
 
 import ..Parameters: closure_with_parameters
 
-using Oceananigans: run!, fields, FieldTimeSeries, CPU
-using Oceananigans.Architectures: architecture
+using Oceananigans: run!, fields, FieldTimeSeries
+using Oceananigans.Architectures: architecture, CPU, GPU
 using Oceananigans.OutputReaders: InMemory, Linear
 using Oceananigans.Fields: interior, location
 using Oceananigans.Utils: prettysummary
@@ -355,19 +355,26 @@ Base.length(batch::BatchedInverseProblem) = length(batch.batch)
 Nensemble(batched_ip::BatchedInverseProblem) = Nensemble(first(batched_ip.batch))
 
 function collect_forward_maps_asynchronously!(outputs, batched_ip, parameters; kw...)
-    for n = 1:length(batched_ip)
-        ip = batched_ip[n]
-        forward_map_output = forward_map(ip, parameters; kw...)
-        outputs[n] = batched_ip.weights[n] * forward_map_output
+
+    ip1 = first(batched_ip)
+    grid = ip1.simulation.model.grid
+    arch = architecture(grid)
+
+    if arch isa GPU
+        for n = 1:length(batched_ip)
+            ip = batched_ip[n]
+            forward_map_output = forward_map(ip, parameters; kw...)
+            outputs[n] = batched_ip.weights[n] * forward_map_output
+        end
     end
 
-    #=
-    asyncmap(1:length(batched_ip), ntasks=10) do n
-        ip = batched_ip[n]
-        forward_map_output = forward_map(ip, parameters; kw...)
-        outputs[n] = batched_ip.weights[n] * forward_map_output
+    if arch isa CPU
+        asyncmap(1:length(batched_ip), ntasks=10) do n
+            ip = batched_ip[n]
+            forward_map_output = forward_map(ip, parameters; kw...)
+            outputs[n] = batched_ip.weights[n] * forward_map_output
+        end
     end
-    =#
 
     return outputs
 end
