@@ -11,6 +11,9 @@ using Oceananigans
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 using Oceananigans.Architectures: on_architecture
 
+@inline array_forcing_func(i, j, k, grid, clock, model_fields, f) = @inbounds f[i, j, k]
+array_forcing(array) = Forcing(array_forcing_func, discrete_form=true, parameters=array)
+
 function ensemble_column_model_simulation(observations;
                                           closure,
                                           Nensemble,
@@ -18,6 +21,7 @@ function ensemble_column_model_simulation(observations;
                                           verbose = true,
                                           architecture = CPU(),
                                           tracers = :b,
+                                          forced_fields = tuple(),
                                           buoyancy = BuoyancyTracer(),
                                           non_ensemble_closure = nothing,
                                           kwargs...)
@@ -63,7 +67,11 @@ function ensemble_column_model_simulation(observations;
 
     boundary_conditions = merge(momentum_boundary_conditions, tracer_boundary_conditions)
 
-    ensemble_model = HydrostaticFreeSurfaceModel(; grid, tracers, buoyancy, boundary_conditions, closure,
+    forced_fields = tupleit(forced_fields)
+    forcing = NamedTuple(name => array_forcing(CenterField(grid)) for name in forced_fields)
+
+    ensemble_model = HydrostaticFreeSurfaceModel(; grid, tracers, buoyancy, boundary_conditions,
+                                                 closure, forcing,
                                                  coriolis = coriolis_ensemble,
                                                  kwargs...)
 
